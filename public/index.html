@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Quiz Duo — 7 jeux pour deux</title>
+<style>
+:root{
+  --primary:#a78bfa;--primary2:#7c3aed;--buzz:#f97316;--correct:#22c55e;
+  --wrong:#ef4444;--gold:#fbbf24;--text:#f1f5f9;--muted:#94a3b8;
+  --card:rgba(255,255,255,.07);--border:rgba(255,255,255,.13)
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html{height:100%}
+body{
+  min-height:100%;
+  background:linear-gradient(135deg,#0f0c29,#302b63,#24243e);
+  background-size:400% 400%;
+  animation:bgpulse 12s ease infinite;
+  color:var(--text);
+  font-family:'Segoe UI',system-ui,sans-serif;
+  padding:0 0 48px;
+}
+@keyframes bgpulse{
+  0%{background-position:0% 50%}
+  50%{background-position:100% 50%}
+  100%{background-position:0% 50%}
+}
+
+/* ── Header ── */
+.header{text-align:center;padding:44px 20px 28px}
+.header h1{
+  font-size:clamp(2.6rem,9vw,4rem);
+  font-weight:800;
+  background:linear-gradient(135deg,var(--primary),var(--buzz));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  letter-spacing:-.02em;line-height:1.1
+}
+.header p{color:var(--muted);font-size:1rem;margin-top:10px;letter-spacing:.05em}
+
+/* ── Grid ── */
+.grid{
+  display:grid;
+  grid-template-columns:repeat(2,1fr);
+  gap:14px;
+  max-width:760px;
+  margin:0 auto;
+  padding:0 14px;
+}
+@media(min-width:680px){.grid{grid-template-columns:repeat(3,1fr)}}
+
+/* ── Card ── */
+.game-card{
+  display:block;
+  text-decoration:none;
+  background:var(--card);
+  border:1.5px solid var(--border);
+  border-radius:16px;
+  padding:18px 16px;
+  transition:transform .18s,border-color .2s,box-shadow .2s;
+  cursor:pointer;
+  position:relative;
+  overflow:hidden;
+  color:var(--text);
+}
+.game-card::after{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(135deg,rgba(167,139,250,.06),rgba(249,115,22,.06));
+  opacity:0;transition:opacity .2s;pointer-events:none;
+}
+.game-card:hover{
+  transform:scale(1.03);
+  border-color:var(--primary);
+  box-shadow:0 8px 36px rgba(167,139,250,.2);
+}
+.game-card:hover::after{opacity:1}
+.game-card:active{transform:scale(.98)}
+
+.card-icon{
+  font-size:2.2rem;
+  margin-bottom:10px;
+  display:block;
+  line-height:1;
+}
+.card-name{
+  font-size:1.05rem;
+  font-weight:700;
+  color:var(--text);
+  margin-bottom:5px;
+  line-height:1.2;
+}
+.card-desc{
+  font-size:.79rem;
+  color:var(--muted);
+  line-height:1.45;
+  margin-bottom:10px;
+}
+.card-badge{
+  display:inline-block;
+  padding:3px 9px;
+  border-radius:20px;
+  font-size:.68rem;
+  font-weight:700;
+  letter-spacing:.03em;
+}
+.b-quiz  {background:rgba(124,58,237,.22);color:#c4b5fd;border:1px solid rgba(124,58,237,.35)}
+.b-draw  {background:rgba(249,115,22,.18);color:#fdba74;border:1px solid rgba(249,115,22,.3)}
+.b-p4    {background:rgba(59,130,246,.18);color:#93c5fd;border:1px solid rgba(59,130,246,.3)}
+.b-morpion{background:rgba(34,197,94,.18);color:#86efac;border:1px solid rgba(34,197,94,.3)}
+.b-taboo {background:rgba(239,68,68,.18);color:#fca5a5;border:1px solid rgba(239,68,68,.3)}
+.b-emoji {background:rgba(251,191,36,.18);color:#fde68a;border:1px solid rgba(251,191,36,.3)}
+.b-verite{background:rgba(236,72,153,.18);color:#f9a8d4;border:1px solid rgba(236,72,153,.3)}
+
+/* ── Footer ── */
+.footer{
+  text-align:center;
+  margin-top:40px;
+  color:var(--muted);
+  font-size:.8rem;
+  padding:0 16px;
+}
+.footer span{
+  display:inline-block;
+  padding:7px 18px;
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:24px;
+  line-height:1.6;
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Quiz Duo</h1>
+  <p>7 jeux pour deux</p>
+</div>
+
+<div class="grid">
+
+  <a class="game-card" href="quiz.html">
+    <span class="card-icon">&#9889;</span>
+    <div class="card-name">Quiz Éclair</div>
+    <div class="card-desc">Buzzez le premier et répondez ! 15 questions, 9 catégories.</div>
+    <span class="card-badge b-quiz">Buzz &bull; 2 joueurs</span>
+  </a>
+
+  <a class="game-card" href="draw.html">
+    <span class="card-icon">&#9999;&#65039;</span>
+    <div class="card-name">Dessin &amp; Devine</div>
+    <div class="card-desc">Dessinez et faites deviner votre partenaire !</div>
+    <span class="card-badge b-draw">6 manches &bull; Chill</span>
+  </a>
+
+  <a class="game-card" href="p4.html">
+    <span class="card-icon">&#128993;</span>
+    <div class="card-name">Puissance 4</div>
+    <div class="card-desc">Alignez 4 pions avant votre adversaire !</div>
+    <span class="card-badge b-p4">Stratégie &bull; Tour/tour</span>
+  </a>
+
+  <a class="game-card" href="morpion.html">
+    <span class="card-icon">&#10799;&#65038;</span>
+    <div class="card-name">Morpion</div>
+    <div class="card-desc">Tic-tac-toe en ligne, best of 5 !</div>
+    <span class="card-badge b-morpion">Best of 5</span>
+  </a>
+
+  <a class="game-card" href="taboo.html">
+    <span class="card-icon">&#128683;</span>
+    <div class="card-name">Mots Interdits</div>
+    <div class="card-desc">Faites deviner sans prononcer les mots tabous !</div>
+    <span class="card-badge b-taboo">8 manches</span>
+  </a>
+
+  <a class="game-card" href="emoji.html">
+    <span class="card-icon">&#127775;</span>
+    <div class="card-name">Devinette Emoji</div>
+    <div class="card-desc">Devinez le film ou la chanson en emojis !</div>
+    <span class="card-badge b-emoji">15 devinettes</span>
+  </a>
+
+  <a class="game-card" href="verite.html">
+    <span class="card-icon">&#10084;&#65039;</span>
+    <div class="card-name">Vérité ou Défi</div>
+    <div class="card-desc">Vérités et défis pimentés pour couple !</div>
+    <span class="card-badge b-verite">20 tours &bull; Chill</span>
+  </a>
+
+</div>
+
+<div class="footer">
+  <span>Même Wi-Fi requis &nbsp;&bull;&nbsp; Fonctionne sur PC et téléphone</span>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Puissance 4</title>
+<style>
+  :root {
+    --primary: #a78bfa;
+    --buzz: #f97316;
+    --correct: #22c55e;
+    --wrong: #ef4444;
+    --gold: #fbbf24;
+    --text: #f1f5f9;
+    --muted: #94a3b8;
+    --card: rgba(255,255,255,.07);
+    --border: rgba(255,255,255,.13);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+    color: var(--text);
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    overflow: hidden;
+  }
+
+  #home-btn {
+    position: fixed;
+    top: 12px;
+    left: 12px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 8px 14px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    z-index: 100;
+    transition: background .2s;
+  }
+  #home-btn:hover { background: rgba(255,255,255,.14); }
+
+  #dot {
+    position: fixed;
+    top: 18px;
+    right: 16px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--wrong);
+    transition: background .4s;
+    z-index: 100;
+  }
+  #dot.ok { background: var(--correct); }
+
+  #app {
+    width: 100%;
+    max-width: 500px;
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 60px 16px 16px;
+    gap: 12px;
+    overflow: hidden;
+  }
+
+  h1 {
+    font-size: 22px;
+    font-weight: 700;
+    background: linear-gradient(90deg, var(--primary), var(--buzz));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    text-align: center;
+  }
+
+  /* SCOREBOARD */
+  #scoreboard {
+    display: flex;
+    gap: 10px;
+    width: 100%;
+  }
+
+  .score-card {
+    flex: 1;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 10px 14px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+  }
+  .score-card.active-turn {
+    border-color: var(--gold);
+    box-shadow: 0 0 12px rgba(251,191,36,.25);
+  }
+  .score-card .player-name {
+    font-size: 13px;
+    color: var(--muted);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 100%;
+  }
+  .score-card .score-num {
+    font-size: 28px;
+    font-weight: 800;
+    line-height: 1;
+  }
+  .score-card.p0 .score-num { color: var(--primary); }
+  .score-card.p1 .score-num { color: var(--buzz); }
+
+  /* STATUS */
+  #status {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--gold);
+    text-align: center;
+    min-height: 22px;
+  }
+
+  /* WAITING SCREEN */
+  #waiting-screen {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    width: 100%;
+  }
+
+  .info-box {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    text-align: center;
+    width: 100%;
+  }
+
+  .info-box .label {
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: .07em;
+  }
+
+  .info-box .url {
+    font-size: 14px;
+    color: var(--primary);
+    word-break: break-all;
+    font-weight: 600;
+  }
+
+  #qr-img {
+    width: 160px;
+    height: 160px;
+    border-radius: 12px;
+    background: white;
+    padding: 6px;
+  }
+
+  /* BUTTONS */
+  .btn {
+    padding: 12px 28px;
+    border-radius: 10px;
+    border: none;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 700;
+    transition: transform .1s, opacity .2s;
+    width: 100%;
+    max-width: 280px;
+  }
+  .btn:active { transform: scale(.97); }
+  .btn:disabled { opacity: .45; cursor: not-allowed; }
+
+  .btn-primary {
+    background: linear-gradient(135deg, var(--primary), #7c3aed);
+    color: white;
+  }
+  .btn-restart {
+    background: linear-gradient(135deg, var(--buzz), #c2410c);
+    color: white;
+  }
+
+  /* GRID AREA */
+  #grid-area {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    flex: 1;
+    min-height: 0;
+  }
+
+  /* COL BUTTONS */
+  #col-btns {
+    display: flex;
+    gap: 4px;
+    width: 100%;
+  }
+
+  .col-btn {
+    flex: 1;
+    background: var(--card);
+    border: 1px solid var(--border);
+    color: var(--primary);
+    border-radius: 6px;
+    padding: 6px 0;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 700;
+    transition: background .15s, transform .1s;
+    line-height: 1;
+  }
+  .col-btn:hover:not(:disabled) {
+    background: rgba(167,139,250,.18);
+    transform: translateY(-2px);
+  }
+  .col-btn:active:not(:disabled) { transform: scale(.95); }
+  .col-btn:disabled {
+    opacity: .3;
+    cursor: not-allowed;
+  }
+
+  /* BOARD */
+  #board {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    grid-template-rows: repeat(6, 1fr);
+    gap: 4px;
+    width: 100%;
+    flex: 1;
+    min-height: 0;
+    background: rgba(0,0,0,.35);
+    border-radius: 14px;
+    padding: 8px;
+    border: 1px solid var(--border);
+  }
+
+  .cell {
+    border-radius: 50%;
+    background: rgba(255,255,255,.05);
+    border: 1px solid rgba(255,255,255,.08);
+    aspect-ratio: 1;
+    width: 100%;
+    transition: background .15s;
+    cursor: pointer;
+  }
+
+  .cell.p0 {
+    background: var(--primary);
+    box-shadow: 0 0 8px rgba(167,139,250,.5);
+    animation: drop-in .25s ease-out;
+  }
+
+  .cell.p1 {
+    background: var(--buzz);
+    box-shadow: 0 0 8px rgba(249,115,22,.5);
+    animation: drop-in .25s ease-out;
+  }
+
+  .cell.win {
+    background: var(--gold) !important;
+    box-shadow: 0 0 14px rgba(251,191,36,.7) !important;
+    animation: pulse-win 1s ease-in-out infinite !important;
+  }
+
+  @keyframes drop-in {
+    from { opacity: 0; transform: scale(.6); }
+    to { opacity: 1; transform: scale(1); }
+  }
+
+  @keyframes pulse-win {
+    0%, 100% { transform: scale(1); box-shadow: 0 0 14px rgba(251,191,36,.7); }
+    50% { transform: scale(1.08); box-shadow: 0 0 24px rgba(251,191,36,1); }
+  }
+
+  /* GAME OVER */
+  #gameover-msg {
+    font-size: 20px;
+    font-weight: 800;
+    text-align: center;
+    color: var(--gold);
+    text-shadow: 0 0 20px rgba(251,191,36,.5);
+  }
+
+  /* ERROR */
+  #error-msg {
+    font-size: 14px;
+    color: var(--wrong);
+    text-align: center;
+    min-height: 20px;
+  }
+
+  /* NAME INPUT SCREEN */
+  #name-screen {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    width: 100%;
+    padding-top: 20px;
+  }
+
+  #name-screen p {
+    color: var(--muted);
+    text-align: center;
+    font-size: 15px;
+  }
+
+  .input-field {
+    width: 100%;
+    max-width: 300px;
+    padding: 12px 16px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--card);
+    color: var(--text);
+    font-size: 16px;
+    outline: none;
+    text-align: center;
+    font-family: inherit;
+    transition: border-color .2s;
+  }
+  .input-field:focus { border-color: var(--primary); }
+  .input-field::placeholder { color: var(--muted); }
+
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<button id="home-btn" onclick="location.href='index.html'">← Accueil</button>
+<div id="dot"></div>
+
+<div id="app">
+  <h1>Puissance 4</h1>
+
+  <!-- NAME SCREEN -->
+  <div id="name-screen">
+    <p>Entre ton pseudo pour rejoindre la partie</p>
+    <input id="name-input" class="input-field" type="text" maxlength="20" placeholder="Ton pseudo..." autocomplete="off">
+    <button class="btn btn-primary" onclick="joinGame()">Rejoindre</button>
+  </div>
+
+  <!-- GAME SCREEN -->
+  <div id="game-screen" class="hidden" style="display:none;flex-direction:column;align-items:center;gap:12px;width:100%;flex:1;min-height:0;">
+
+    <div id="scoreboard">
+      <div class="score-card p0" id="score-p0">
+        <span class="player-name" id="name-p0">—</span>
+        <span class="score-num" id="wins-p0">0</span>
+      </div>
+      <div class="score-card p1" id="score-p1">
+        <span class="player-name" id="name-p1">—</span>
+        <span class="score-num" id="wins-p1">0</span>
+      </div>
+    </div>
+
+    <div id="status">En attente...</div>
+    <div id="error-msg"></div>
+
+    <!-- WAITING -->
+    <div id="waiting-screen" class="hidden">
+      <div class="info-box">
+        <div class="label">Rejoins via cette adresse</div>
+        <div class="url" id="ip-url">chargement...</div>
+      </div>
+      <img id="qr-img" src="" alt="QR Code" onerror="this.style.display='none'">
+    </div>
+
+    <!-- READY -->
+    <div id="ready-screen" class="hidden">
+      <button class="btn btn-primary" id="start-btn" onclick="startGame()">Lancer la partie</button>
+    </div>
+
+    <!-- GAME OVER -->
+    <div id="gameover-screen" class="hidden">
+      <div id="gameover-msg"></div>
+      <br>
+      <button class="btn btn-restart" onclick="restartGame()">Rejouer</button>
+    </div>
+
+    <!-- GRID -->
+    <div id="grid-area" class="hidden">
+      <div id="col-btns"></div>
+      <div id="board"></div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  let ws = null;
+  let mySlot = -1;
+  let currentPhase = '';
+  let currentTurn = -1;
+  let reconnectTimer = null;
+  let playerName = '';
+  let lastBoard = null;
+  let lastWinLine = null;
+
+  function $(id) { return document.getElementById(id); }
+
+  function setConnected(c) {
+    $('dot').classList.toggle('ok', c);
+  }
+
+  function showError(msg) {
+    $('error-msg').textContent = msg;
+    setTimeout(() => { $('error-msg').textContent = ''; }, 3000);
+  }
+
+  function send(obj) {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify(obj));
+    }
+  }
+
+  function connect() {
+    if (ws) { try { ws.close(); } catch(e) {} }
+    ws = new WebSocket(`ws://${location.host}/ws/p4`);
+
+    ws.onopen = () => {
+      setConnected(true);
+      if (reconnectTimer) { clearInterval(reconnectTimer); reconnectTimer = null; }
+      if (playerName) {
+        send({ type: 'join_p4', name: playerName });
+      }
+    };
+
+    ws.onmessage = (e) => {
+      try {
+        const msg = JSON.parse(e.data);
+        handleMessage(msg);
+      } catch(err) {
+        console.error('Parse error', err);
+      }
+    };
+
+    ws.onclose = () => {
+      setConnected(false);
+      scheduleReconnect();
+    };
+
+    ws.onerror = () => {
+      setConnected(false);
+    };
+  }
+
+  function scheduleReconnect() {
+    if (!reconnectTimer) {
+      reconnectTimer = setInterval(() => {
+        if (!ws || ws.readyState === WebSocket.CLOSED) {
+          connect();
+        }
+      }, 2000);
+    }
+  }
+
+  function handleMessage(msg) {
+    if (msg.type === 'welcome_p4') {
+      mySlot = msg.slot;
+    } else if (msg.type === 'p4_state') {
+      renderState(msg);
+    } else if (msg.type === 'player_left') {
+      showError(`${msg.name} a quitté la partie.`);
+      setTimeout(() => { location.href = 'index.html'; }, 2000);
+    } else if (msg.type === 'error') {
+      showError(msg.msg);
+    }
+  }
+
+  function renderState(state) {
+    const { phase, players, board, turn, wins, winLine } = state;
+    currentPhase = phase;
+    currentTurn = turn;
+    lastBoard = board;
+    lastWinLine = winLine || null;
+
+    // Show game screen, hide name screen
+    $('name-screen').classList.add('hidden');
+    const gs = $('game-screen');
+    gs.classList.remove('hidden');
+    gs.style.display = 'flex';
+
+    // Scoreboard
+    if (players && players.length >= 1) {
+      $('name-p0').textContent = players[0] ? players[0].name : '—';
+      $('wins-p0').textContent = wins ? (wins[0] || 0) : 0;
+    }
+    if (players && players.length >= 2) {
+      $('name-p1').textContent = players[1] ? players[1].name : '—';
+      $('wins-p1').textContent = wins ? (wins[1] || 0) : 0;
+    }
+
+    // Active turn highlight
+    $('score-p0').classList.toggle('active-turn', phase === 'PLAYING' && turn === 0);
+    $('score-p1').classList.toggle('active-turn', phase === 'PLAYING' && turn === 1);
+
+    // Hide all sub-screens
+    $('waiting-screen').classList.add('hidden');
+    $('ready-screen').classList.add('hidden');
+    $('gameover-screen').classList.add('hidden');
+    $('grid-area').classList.add('hidden');
+
+    if (phase === 'WAITING') {
+      $('status').textContent = 'En attente d\'un adversaire...';
+      $('waiting-screen').classList.remove('hidden');
+      loadWaitingInfo();
+    } else if (phase === 'READY') {
+      $('status').textContent = 'Prêt ! En attente du lancement...';
+      if (mySlot === 0) {
+        $('ready-screen').classList.remove('hidden');
+        $('start-btn').disabled = false;
+      } else {
+        $('status').textContent = 'Prêt ! En attente que l\'hôte lance la partie...';
+      }
+    } else if (phase === 'PLAYING') {
+      $('grid-area').classList.remove('hidden');
+      const isMyTurn = turn === mySlot;
+      const turnName = players && players[turn] ? players[turn].name : '?';
+      $('status').textContent = isMyTurn ? 'C\'est ton tour !' : `Tour de ${turnName}...`;
+      renderBoard(board, null, turn, players);
+    } else if (phase === 'GAME_OVER') {
+      $('grid-area').classList.remove('hidden');
+      renderBoard(board, winLine, -1, players);
+
+      let winnerName = '?';
+      if (winLine && winLine.length > 0) {
+        const [r, c] = winLine[0];
+        const slot = board[r][c] - 1;
+        winnerName = players && players[slot] ? players[slot].name : '?';
+      }
+
+      const isWinner = winLine && winLine.length > 0 && (board[winLine[0][0]][winLine[0][1]] - 1 === mySlot);
+
+      $('gameover-msg').textContent = winLine && winLine.length > 0
+        ? (isWinner ? 'Tu as gagné !' : `${winnerName} gagne !`)
+        : 'Match nul !';
+
+      $('status').textContent = '';
+      $('gameover-screen').classList.remove('hidden');
+    }
+  }
+
+  function renderBoard(board, winLine, turn, players) {
+    const boardEl = $('board');
+    const colBtns = $('col-btns');
+    const isMyTurn = turn === mySlot && currentPhase === 'PLAYING';
+
+    // Build win set for fast lookup
+    const winSet = new Set();
+    if (winLine) {
+      winLine.forEach(([r, c]) => winSet.add(`${r},${c}`));
+    }
+
+    // Column buttons
+    colBtns.innerHTML = '';
+    for (let col = 0; col < 7; col++) {
+      const btn = document.createElement('button');
+      btn.className = 'col-btn';
+      btn.textContent = '▼';
+      const isFull = board[0][col] !== 0;
+      btn.disabled = !isMyTurn || isFull || currentPhase !== 'PLAYING';
+      btn.onclick = () => dropPiece(col);
+      colBtns.appendChild(btn);
+    }
+
+    // Board cells
+    boardEl.innerHTML = '';
+    for (let row = 0; row < 6; row++) {
+      for (let col = 0; col < 7; col++) {
+        const cell = document.createElement('div');
+        cell.className = 'cell';
+        const val = board[row][col];
+        if (val === 1) cell.classList.add('p0');
+        if (val === 2) cell.classList.add('p1');
+        if (winSet.has(`${row},${col}`)) cell.classList.add('win');
+
+        // Click on cell = drop in that column
+        if (isMyTurn && currentPhase === 'PLAYING' && board[0][col] === 0) {
+          cell.style.cursor = 'pointer';
+          cell.onclick = () => dropPiece(col);
+        }
+        boardEl.appendChild(cell);
+      }
+    }
+  }
+
+  let waitingLoaded = false;
+  function loadWaitingInfo() {
+    if (waitingLoaded) return;
+    waitingLoaded = true;
+    fetch('/api/ip')
+      .then(r => r.text())
+      .then(ip => { $('ip-url').textContent = `http://${ip.trim()}`; })
+      .catch(() => { $('ip-url').textContent = 'indisponible'; });
+
+    fetch('/api/qr')
+      .then(r => r.blob())
+      .then(blob => {
+        const url = URL.createObjectURL(blob);
+        $('qr-img').src = url;
+        $('qr-img').style.display = '';
+      })
+      .catch(() => { $('qr-img').style.display = 'none'; });
+  }
+
+  function joinGame() {
+    const name = $('name-input').value.trim();
+    if (!name) { showError('Entre un pseudo !'); return; }
+    playerName = name;
+    connect();
+  }
+
+  function startGame() {
+    send({ type: 'start_p4' });
+    $('start-btn').disabled = true;
+  }
+
+  function dropPiece(col) {
+    if (currentPhase !== 'PLAYING' || currentTurn !== mySlot) return;
+    send({ type: 'drop', col });
+  }
+
+  function restartGame() {
+    waitingLoaded = false;
+    send({ type: 'restart_p4' });
+  }
+
+  // Allow pressing Enter in name input
+  $('name-input').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') joinGame();
+  });
+
+  // Auto-focus name input
+  $('name-input').focus();
+</script>
+</body>
+</html>

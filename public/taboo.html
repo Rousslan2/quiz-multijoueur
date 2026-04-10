@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mots Interdits — Taboo</title>
+<style>
+  :root {
+    --primary: #a78bfa;
+    --buzz: #f97316;
+    --correct: #22c55e;
+    --wrong: #ef4444;
+    --gold: #fbbf24;
+    --text: #f1f5f9;
+    --muted: #94a3b8;
+    --card: rgba(255,255,255,.07);
+    --border: rgba(255,255,255,.13);
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    height: 100dvh;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+    color: var(--text);
+    overflow: hidden;
+  }
+  body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+  #app {
+    width: 100%;
+    max-width: 500px;
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    padding: 60px 16px 16px;
+    gap: 12px;
+    overflow-y: auto;
+  }
+  /* Fixed nav */
+  #back-btn {
+    position: fixed;
+    top: 12px; left: 12px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 8px 14px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    z-index: 100;
+  }
+  #back-btn:hover { background: rgba(255,255,255,.13); }
+  #dot {
+    position: fixed;
+    top: 18px; right: 16px;
+    width: 12px; height: 12px;
+    border-radius: 50%;
+    background: var(--wrong);
+    transition: background .3s;
+    z-index: 100;
+  }
+  #dot.ok { background: var(--correct); }
+
+  /* Score bar */
+  #score-bar {
+    display: flex;
+    justify-content: space-between;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 16px;
+    font-size: 15px;
+    font-weight: 600;
+    flex-shrink: 0;
+  }
+  #score-bar .player-score { display: flex; gap: 8px; align-items: center; }
+  #score-bar .me { color: var(--primary); }
+  #score-bar .opp { color: var(--gold); }
+
+  /* Timer bar */
+  .timer-wrap {
+    width: 100%;
+    height: 8px;
+    background: var(--card);
+    border-radius: 4px;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+  .timer-bar {
+    height: 100%;
+    background: var(--primary);
+    border-radius: 4px;
+    transition: width .1s linear;
+    animation: none;
+  }
+  .timer-bar.running {
+    animation: shrink var(--timer-duration, 60s) linear forwards;
+  }
+  @keyframes shrink {
+    from { width: 100%; }
+    to   { width: 0%; }
+  }
+
+  /* Cards */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 18px;
+  }
+
+  /* Word display (describer) */
+  #word-display {
+    text-align: center;
+  }
+  #word-display .label {
+    font-size: 13px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 8px;
+  }
+  #word-display .main-word {
+    font-size: 2.6rem;
+    font-weight: 900;
+    color: var(--primary);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    text-shadow: 0 0 20px rgba(167,139,250,.4);
+  }
+  #forbidden-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 14px;
+  }
+  #forbidden-list .label {
+    font-size: 13px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .forbidden-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .badge-forbidden {
+    background: rgba(239,68,68,.2);
+    border: 1px solid var(--wrong);
+    color: var(--wrong);
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    text-transform: uppercase;
+  }
+
+  /* Guesser UI */
+  #word-hint {
+    text-align: center;
+    font-size: 1rem;
+    color: var(--muted);
+    margin-bottom: 4px;
+  }
+  #word-hint span { color: var(--primary); font-weight: 700; font-size: 1.3rem; }
+  #guess-form {
+    display: flex;
+    gap: 8px;
+  }
+  #guess-input {
+    flex: 1;
+    background: rgba(255,255,255,.1);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--text);
+    font-size: 16px;
+    padding: 12px 14px;
+    outline: none;
+  }
+  #guess-input:focus { border-color: var(--primary); }
+  #guess-input::placeholder { color: var(--muted); }
+
+  /* Buttons */
+  .btn {
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 700;
+    padding: 14px 20px;
+    min-height: 56px;
+    transition: opacity .15s, transform .1s;
+  }
+  .btn:active { transform: scale(.97); }
+  .btn:disabled { opacity: .4; cursor: not-allowed; }
+  .btn-primary { background: var(--primary); color: #fff; }
+  .btn-danger  { background: var(--wrong); color: #fff; }
+  .btn-success { background: var(--correct); color: #fff; }
+  .btn-muted   { background: rgba(255,255,255,.12); color: var(--text); }
+  .btn-full    { width: 100%; }
+
+  /* Guess log */
+  #guess-log {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    max-height: 110px;
+    overflow-y: auto;
+  }
+  .guess-entry {
+    font-size: 13px;
+    color: var(--muted);
+    padding: 2px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .guess-entry .guesser { color: var(--primary); font-weight: 600; }
+
+  /* Turn info */
+  .turn-info {
+    text-align: center;
+    font-size: 14px;
+    color: var(--muted);
+  }
+  .turn-info strong { color: var(--text); }
+
+  /* Phase overlays */
+  #phase-overlay {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    flex: 1;
+    text-align: center;
+  }
+  #phase-overlay h1 { font-size: 1.8rem; font-weight: 800; }
+  #phase-overlay p  { font-size: 1rem; color: var(--muted); }
+  .qr-box {
+    background: #fff;
+    border-radius: 12px;
+    padding: 12px;
+    display: inline-block;
+  }
+  #url-display {
+    font-size: 13px;
+    color: var(--muted);
+    word-break: break-all;
+    text-align: center;
+  }
+
+  /* Reveal */
+  #reveal-box {
+    text-align: center;
+  }
+  #reveal-box .reveal-word {
+    font-size: 2rem;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+  }
+  #reveal-box .reveal-result {
+    font-size: 1.1rem;
+    margin-top: 8px;
+  }
+  #reveal-box .reveal-countdown {
+    font-size: 13px;
+    color: var(--muted);
+    margin-top: 10px;
+  }
+
+  /* Game over */
+  #gameover-box { text-align: center; }
+  #gameover-box h2 { font-size: 2rem; font-weight: 900; margin-bottom: 12px; }
+  .score-final { font-size: 1.2rem; margin-bottom: 6px; }
+
+  .hidden { display: none !important; }
+  .grille-btn-wrap { display: flex; justify-content: center; }
+</style>
+</head>
+<body>
+
+<button id="back-btn" onclick="location.href='index.html'">← Accueil</button>
+<div id="dot"></div>
+
+<div id="app">
+  <!-- Name entry -->
+  <div id="screen-name" class="hidden">
+    <div id="phase-overlay">
+      <h1>🃏 Mots Interdits</h1>
+      <p>Entre ton prénom pour rejoindre</p>
+      <input id="name-input" type="text" placeholder="Ton prénom" maxlength="20"
+        style="width:100%;background:rgba(255,255,255,.1);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:16px;padding:14px;outline:none;text-align:center;">
+      <button class="btn btn-primary btn-full" onclick="joinGame()">Rejoindre</button>
+    </div>
+  </div>
+
+  <!-- Waiting -->
+  <div id="screen-waiting" class="hidden">
+    <div id="phase-overlay">
+      <h1>En attente…</h1>
+      <p>Partage ce lien à ton adversaire</p>
+      <div class="qr-box"><canvas id="qr-canvas"></canvas></div>
+      <div id="url-display"></div>
+    </div>
+  </div>
+
+  <!-- Ready -->
+  <div id="screen-ready" class="hidden">
+    <div id="phase-overlay">
+      <h1>Prêt à jouer !</h1>
+      <p id="ready-players">2 joueurs connectés</p>
+      <button id="start-btn" class="btn btn-primary btn-full hidden" onclick="startGame()">Lancer la partie</button>
+      <p id="ready-wait" class="hidden" style="color:var(--muted)">En attente du joueur 1…</p>
+    </div>
+  </div>
+
+  <!-- Playing -->
+  <div id="screen-playing" class="hidden" style="display:flex;flex-direction:column;gap:12px;width:100%">
+    <div id="score-bar">
+      <div class="player-score me" id="score-p0">— 0 pts</div>
+      <div class="player-score opp" id="score-p1">— 0 pts</div>
+    </div>
+    <div class="turn-info" id="turn-info">Tour 1/10</div>
+    <div class="timer-wrap"><div class="timer-bar" id="timer-bar"></div></div>
+
+    <!-- Describer view -->
+    <div id="describer-view" class="card hidden">
+      <div id="word-display">
+        <div class="label">Mot à faire deviner :</div>
+        <div class="main-word" id="main-word">???</div>
+      </div>
+      <div id="forbidden-list">
+        <div class="label">Mots interdits :</div>
+        <div class="forbidden-badges" id="forbidden-badges"></div>
+      </div>
+    </div>
+
+    <!-- Guesser view -->
+    <div id="guesser-view" class="hidden" style="display:flex;flex-direction:column;gap:12px">
+      <div class="card">
+        <div id="word-hint">Le descripteur décrit un mot de <span id="word-len">?</span> lettres</div>
+      </div>
+      <div class="card">
+        <div id="guess-form">
+          <input id="guess-input" type="text" placeholder="Ta réponse…" autocomplete="off" autocorrect="off">
+          <button class="btn btn-primary" onclick="sendGuess()">Deviner</button>
+        </div>
+      </div>
+      <div class="grille-btn-wrap">
+        <button class="btn btn-danger" style="padding:12px 28px" onclick="sendGrille()">🚫 GRILLE !</button>
+      </div>
+      <div class="card" id="guess-log-wrap">
+        <div style="font-size:13px;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">Tentatives</div>
+        <div id="guess-log"></div>
+      </div>
+    </div>
+
+    <!-- Waiting (not your turn to describe) -->
+    <div id="waiting-view" class="card hidden" style="text-align:center;padding:24px">
+      <div style="font-size:1rem;color:var(--muted)" id="waiting-msg">C'est à l'autre de décrire…</div>
+    </div>
+  </div>
+
+  <!-- Reveal -->
+  <div id="screen-reveal" class="hidden">
+    <div id="phase-overlay">
+      <div id="reveal-box" class="card" style="width:100%;padding:28px">
+        <div class="label" style="font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Le mot était :</div>
+        <div class="reveal-word" id="reveal-word"></div>
+        <div class="reveal-result" id="reveal-result"></div>
+        <div class="reveal-countdown" id="reveal-countdown">Prochain tour dans 3.5s…</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Game Over -->
+  <div id="screen-gameover" class="hidden">
+    <div id="phase-overlay">
+      <div class="card" style="width:100%;padding:28px" id="gameover-box">
+        <div style="font-size:2.5rem;margin-bottom:8px">🏆</div>
+        <h2 id="gameover-title">Partie terminée !</h2>
+        <div class="score-final" id="go-score-p0"></div>
+        <div class="score-final" id="go-score-p1"></div>
+        <div id="go-winner" style="font-size:1.1rem;color:var(--gold);margin:14px 0"></div>
+        <div style="display:flex;gap:10px;margin-top:16px">
+          <button class="btn btn-muted btn-full" onclick="location.href='index.html'">Accueil</button>
+          <button class="btn btn-primary btn-full" onclick="restartGame()">Rejouer</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ─── State ──────────────────────────────────────────── */
+let ws = null;
+let mySlot = null;
+let myName = '';
+let state = null;
+let guessLog = [];
+let timerStart = null;
+let timerDuration = 60;
+let timerRAF = null;
+
+/* ─── WebSocket ──────────────────────────────────────── */
+function connect() {
+  if (ws && ws.readyState <= 1) return;
+  ws = new WebSocket(`ws://${location.host}/ws/taboo`);
+  ws.onopen = () => {
+    document.getElementById('dot').classList.add('ok');
+    if (myName) ws.send(JSON.stringify({ type: 'join_taboo', name: myName }));
+  };
+  ws.onclose = () => {
+    document.getElementById('dot').classList.remove('ok');
+    setTimeout(connect, 2000);
+  };
+  ws.onerror = () => ws.close();
+  ws.onmessage = e => handleMsg(JSON.parse(e.data));
+}
+
+function send(obj) {
+  if (ws && ws.readyState === 1) ws.send(JSON.stringify(obj));
+}
+
+/* ─── Message handler ────────────────────────────────── */
+function handleMsg(msg) {
+  switch (msg.type) {
+    case 'welcome_taboo':
+      mySlot = msg.slot;
+      myName = msg.name;
+      showScreen('screen-name'); // shouldn't appear again but keep as fallback
+      // If we already have a state, it will come via taboo_state
+      break;
+
+    case 'taboo_state':
+      state = msg;
+      guessLog = guessLog.slice(-5); // keep recent
+      renderState();
+      break;
+
+    case 'taboo_guess':
+      guessLog.push({ name: msg.name, word: msg.word });
+      if (guessLog.length > 5) guessLog.shift();
+      renderGuessLog();
+      break;
+
+    case 'taboo_correct':
+      // State will follow with REVEAL phase
+      break;
+
+    case 'taboo_grille':
+      // Scores updated via next state
+      break;
+
+    case 'player_left':
+      alert('Ton adversaire a quitté la partie.');
+      location.href = 'index.html';
+      break;
+
+    case 'error':
+      console.warn('Server error:', msg.msg);
+      break;
+  }
+}
+
+/* ─── Render ─────────────────────────────────────────── */
+function renderState() {
+  if (!state) return;
+  const { phase, players, scores, describerSlot, round, maxRounds, timerSeconds, wordLen, card } = state;
+
+  // Score bar (always)
+  const p0 = players[0] || { name: '—' };
+  const p1 = players[1] || { name: '—' };
+  document.getElementById('score-p0').textContent = `${p0.name} ${scores[0] ?? 0} pts`;
+  document.getElementById('score-p1').textContent = `${p1.name} ${scores[1] ?? 0} pts`;
+
+  // Screens
+  switch (phase) {
+    case 'WAITING':
+      showScreen('screen-waiting');
+      renderQR();
+      break;
+
+    case 'READY':
+      showScreen('screen-ready');
+      document.getElementById('ready-players').textContent = `${players.map(p=>p.name).join(' vs ')}`;
+      if (mySlot === 0) {
+        document.getElementById('start-btn').classList.remove('hidden');
+        document.getElementById('ready-wait').classList.add('hidden');
+      } else {
+        document.getElementById('start-btn').classList.add('hidden');
+        document.getElementById('ready-wait').classList.remove('hidden');
+      }
+      break;
+
+    case 'PLAYING':
+      showScreen('screen-playing');
+      document.getElementById('turn-info').textContent =
+        `Tour ${round}/${maxRounds} — ${mySlot === describerSlot ? 'C\'est à toi de décrire !' : `C\'est à ${players[describerSlot]?.name ?? '?'} de décrire`}`;
+
+      // Timer
+      timerDuration = timerSeconds;
+      startTimer(timerSeconds);
+
+      if (mySlot === describerSlot) {
+        // Describer
+        document.getElementById('describer-view').classList.remove('hidden');
+        document.getElementById('guesser-view').classList.add('hidden');
+        document.getElementById('waiting-view').classList.add('hidden');
+        if (card) {
+          document.getElementById('main-word').textContent = card.word;
+          const badges = document.getElementById('forbidden-badges');
+          badges.innerHTML = '';
+          card.forbidden.forEach(w => {
+            const b = document.createElement('span');
+            b.className = 'badge-forbidden';
+            b.textContent = w;
+            badges.appendChild(b);
+          });
+        }
+      } else {
+        // Guesser
+        document.getElementById('describer-view').classList.add('hidden');
+        document.getElementById('guesser-view').classList.remove('hidden');
+        document.getElementById('waiting-view').classList.add('hidden');
+        document.getElementById('word-len').textContent = wordLen ?? '?';
+        renderGuessLog();
+      }
+      break;
+
+    case 'REVEAL': {
+      stopTimer();
+      showScreen('screen-reveal');
+      const revealWord = state.revealWord || '';
+      const guessed = state.guessed || false;
+      document.getElementById('reveal-word').textContent = revealWord.toUpperCase();
+      const resultEl = document.getElementById('reveal-result');
+      if (guessed) {
+        resultEl.style.color = 'var(--correct)';
+        resultEl.textContent = '✅ Deviné !';
+      } else {
+        resultEl.style.color = 'var(--wrong)';
+        resultEl.textContent = '❌ Non deviné';
+      }
+      break;
+    }
+
+    case 'GAME_OVER':
+      stopTimer();
+      showScreen('screen-gameover');
+      document.getElementById('go-score-p0').textContent = `${p0.name} : ${scores[0] ?? 0} pts`;
+      document.getElementById('go-score-p1').textContent = `${p1.name} : ${scores[1] ?? 0} pts`;
+      const winner = scores[0] > scores[1] ? p0.name : scores[1] > scores[0] ? p1.name : null;
+      document.getElementById('go-winner').textContent = winner ? `🏆 ${winner} remporte la partie !` : '🤝 Égalité !';
+      break;
+  }
+}
+
+function renderGuessLog() {
+  const log = document.getElementById('guess-log');
+  if (!log) return;
+  log.innerHTML = '';
+  [...guessLog].reverse().forEach(entry => {
+    const div = document.createElement('div');
+    div.className = 'guess-entry';
+    div.innerHTML = `<span class="guesser">${entry.name}</span> : ${entry.word}`;
+    log.appendChild(div);
+  });
+}
+
+/* ─── Timer ──────────────────────────────────────────── */
+function startTimer(seconds) {
+  stopTimer();
+  const bar = document.getElementById('timer-bar');
+  if (!bar) return;
+  bar.style.animation = 'none';
+  bar.getBoundingClientRect(); // reflow
+  bar.style.setProperty('--timer-duration', seconds + 's');
+  bar.classList.add('running');
+  bar.style.animation = '';
+  bar.style.animationDuration = seconds + 's';
+  bar.style.animationName = 'shrink';
+  bar.style.animationTimingFunction = 'linear';
+  bar.style.animationFillMode = 'forwards';
+}
+
+function stopTimer() {
+  const bar = document.getElementById('timer-bar');
+  if (bar) {
+    const computed = getComputedStyle(bar).width;
+    bar.style.animation = 'none';
+    bar.style.width = computed;
+  }
+}
+
+/* ─── QR Code ────────────────────────────────────────── */
+function renderQR() {
+  const url = location.href;
+  document.getElementById('url-display').textContent = url;
+  // Simple QR via Google Charts API
+  const canvas = document.getElementById('qr-canvas');
+  const img = new Image();
+  img.crossOrigin = 'anonymous';
+  const enc = encodeURIComponent(url);
+  img.onload = () => {
+    canvas.width = img.width; canvas.height = img.height;
+    canvas.getContext('2d').drawImage(img, 0, 0);
+  };
+  img.src = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${enc}`;
+}
+
+/* ─── Screen management ──────────────────────────────── */
+function showScreen(id) {
+  ['screen-name','screen-waiting','screen-ready','screen-playing','screen-reveal','screen-gameover']
+    .forEach(s => {
+      const el = document.getElementById(s);
+      if (el) el.classList.add('hidden');
+    });
+  const target = document.getElementById(id);
+  if (target) target.classList.remove('hidden');
+}
+
+/* ─── Actions ────────────────────────────────────────── */
+function joinGame() {
+  const input = document.getElementById('name-input');
+  const name = input.value.trim();
+  if (!name) return;
+  myName = name;
+  send({ type: 'join_taboo', name });
+}
+
+function startGame() { send({ type: 'start_taboo' }); }
+function restartGame() { send({ type: 'restart_taboo' }); }
+
+function sendGuess() {
+  const input = document.getElementById('guess-input');
+  const word = input.value.trim();
+  if (!word) return;
+  send({ type: 'guess_taboo', word });
+  input.value = '';
+  input.focus();
+}
+
+function sendGrille() { send({ type: 'grille' }); }
+
+/* ─── Enter key support ──────────────────────────────── */
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter') {
+    const active = document.activeElement;
+    if (active && active.id === 'name-input') { joinGame(); return; }
+    if (active && active.id === 'guess-input') { sendGuess(); return; }
+  }
+});
+
+/* ─── Init ───────────────────────────────────────────── */
+showScreen('screen-name');
+connect();
+</script>
+</body>
+</html>

@@ -1,0 +1,14 @@
+{
+  "name": "quiz-multijoueur",
+  "version": "2.0.0",
+  "description": "Jeu de quiz multijoueur 2 joueurs - edition complete",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "qrcode": "^1.5.3",
+    "ws": "^8.18.0"
+  }
+}

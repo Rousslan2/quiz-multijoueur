@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Devinette Emoji</title>
+<style>
+  :root {
+    --primary: #a78bfa;
+    --buzz: #f97316;
+    --correct: #22c55e;
+    --wrong: #ef4444;
+    --gold: #fbbf24;
+    --text: #f1f5f9;
+    --muted: #94a3b8;
+    --card: rgba(255,255,255,.07);
+    --border: rgba(255,255,255,.13);
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    height: 100dvh;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+    color: var(--text);
+    overflow: hidden;
+  }
+  body { display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  #app {
+    width: 100%;
+    max-width: 500px;
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    padding: 60px 16px 16px;
+    gap: 12px;
+    overflow-y: auto;
+  }
+
+  /* Fixed nav */
+  #back-btn {
+    position: fixed;
+    top: 12px; left: 12px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 8px 14px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    z-index: 200;
+  }
+  #back-btn:hover { background: rgba(255,255,255,.13); }
+  #dot {
+    position: fixed;
+    top: 18px; right: 16px;
+    width: 12px; height: 12px;
+    border-radius: 50%;
+    background: var(--wrong);
+    transition: background .3s;
+    z-index: 200;
+  }
+  #dot.ok { background: var(--correct); }
+
+  /* Score bar */
+  #score-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 16px;
+    font-size: 14px;
+    font-weight: 600;
+    flex-shrink: 0;
+  }
+  .player-score { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+  .player-score .pts { font-size: 1.1rem; }
+  .player-score .wins { font-size: 11px; color: var(--muted); }
+  #score-bar .me .pts { color: var(--primary); }
+  #score-bar .opp .pts { color: var(--gold); }
+  #score-bar .sep { width: 1px; height: 36px; background: var(--border); }
+
+  /* Timer bar */
+  .timer-wrap { width: 100%; height: 8px; background: var(--card); border-radius: 4px; overflow: hidden; flex-shrink: 0; }
+  .timer-bar { height: 100%; background: var(--primary); border-radius: 4px; }
+  .timer-bar.running { animation: shrink var(--timer-dur, 30s) linear forwards; }
+  @keyframes shrink { from { width: 100%; } to { width: 0%; } }
+
+  /* Cards */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 18px;
+  }
+
+  /* Emoji display */
+  #emoji-display {
+    font-size: 3.5rem;
+    text-align: center;
+    letter-spacing: 6px;
+    line-height: 1.3;
+    padding: 16px 0;
+  }
+  #question-meta {
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  #question-meta .cat {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--muted);
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 3px 12px;
+    display: inline-block;
+    align-self: center;
+  }
+  #question-meta .qnum {
+    font-size: 13px;
+    color: var(--muted);
+  }
+
+  /* Buzz button */
+  #buzz-btn {
+    width: 100%;
+    min-height: 72px;
+    background: var(--buzz);
+    border: none;
+    border-radius: 14px;
+    color: #fff;
+    font-size: 1.5rem;
+    font-weight: 900;
+    cursor: pointer;
+    letter-spacing: 2px;
+    box-shadow: 0 0 24px rgba(249,115,22,.35);
+    animation: pulse-buzz 1.5s ease-in-out infinite;
+    transition: transform .1s;
+    flex-shrink: 0;
+  }
+  #buzz-btn:active { transform: scale(.96); }
+  #buzz-btn:disabled { animation: none; opacity: .4; cursor: not-allowed; }
+  @keyframes pulse-buzz {
+    0%, 100% { box-shadow: 0 0 24px rgba(249,115,22,.35); }
+    50%       { box-shadow: 0 0 40px rgba(249,115,22,.7); }
+  }
+
+  /* Buttons */
+  .btn {
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 700;
+    padding: 14px 20px;
+    min-height: 56px;
+    transition: opacity .15s, transform .1s;
+  }
+  .btn:active { transform: scale(.97); }
+  .btn:disabled { opacity: .4; cursor: not-allowed; }
+  .btn-primary { background: var(--primary); color: #fff; }
+  .btn-success { background: var(--correct); color: #fff; }
+  .btn-muted   { background: rgba(255,255,255,.12); color: var(--text); }
+  .btn-full    { width: 100%; }
+
+  /* Answer form */
+  #answer-wrap {
+    display: flex;
+    gap: 8px;
+  }
+  #answer-input {
+    flex: 1;
+    background: rgba(255,255,255,.1);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--text);
+    font-size: 16px;
+    padding: 12px 14px;
+    outline: none;
+  }
+  #answer-input:focus { border-color: var(--primary); }
+  #answer-input::placeholder { color: var(--muted); }
+
+  /* Buzzed info */
+  #buzzed-msg {
+    text-align: center;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--buzz);
+  }
+
+  /* Reveal */
+  #reveal-answer {
+    font-size: 1.6rem;
+    font-weight: 900;
+    text-align: center;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin: 8px 0;
+  }
+  #reveal-verdict {
+    text-align: center;
+    font-size: 1.1rem;
+    font-weight: 700;
+  }
+  #reveal-answered-text {
+    text-align: center;
+    font-size: 13px;
+    color: var(--muted);
+    margin-top: 4px;
+  }
+
+  /* Countdown overlay */
+  #countdown-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(15,12,41,.85);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 300;
+  }
+  #countdown-overlay .countdown-num {
+    font-size: 8rem;
+    font-weight: 900;
+    color: var(--primary);
+    animation: countdown-pop .8s ease-out;
+  }
+  @keyframes countdown-pop {
+    from { transform: scale(1.5); opacity: 0; }
+    to   { transform: scale(1); opacity: 1; }
+  }
+
+  /* Phase overlays */
+  #phase-overlay {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    flex: 1;
+    text-align: center;
+  }
+  #phase-overlay h1 { font-size: 1.8rem; font-weight: 800; }
+  #phase-overlay p  { font-size: 1rem; color: var(--muted); }
+  .qr-box { background: #fff; border-radius: 12px; padding: 12px; display: inline-block; }
+  #url-display { font-size: 13px; color: var(--muted); word-break: break-all; text-align: center; }
+
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<button id="back-btn" onclick="location.href='index.html'">← Accueil</button>
+<div id="dot"></div>
+
+<!-- Countdown overlay -->
+<div id="countdown-overlay" class="hidden">
+  <div class="countdown-num" id="countdown-num">3</div>
+</div>
+
+<div id="app">
+
+  <!-- Name entry -->
+  <div id="screen-name">
+    <div id="phase-overlay">
+      <h1>🎯 Devinette Emoji</h1>
+      <p>Entre ton prénom pour rejoindre</p>
+      <input id="name-input" type="text" placeholder="Ton prénom" maxlength="20"
+        style="width:100%;background:rgba(255,255,255,.1);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:16px;padding:14px;outline:none;text-align:center;">
+      <button class="btn btn-primary btn-full" onclick="joinGame()">Rejoindre</button>
+    </div>
+  </div>
+
+  <!-- Waiting -->
+  <div id="screen-waiting" class="hidden">
+    <div id="phase-overlay">
+      <h1>En attente…</h1>
+      <p>Partage ce lien à ton adversaire</p>
+      <div class="qr-box"><canvas id="qr-canvas"></canvas></div>
+      <div id="url-display"></div>
+    </div>
+  </div>
+
+  <!-- Ready -->
+  <div id="screen-ready" class="hidden">
+    <div id="phase-overlay">
+      <h1>Prêts !</h1>
+      <p id="ready-players"></p>
+      <button id="start-btn" class="btn btn-primary btn-full hidden" onclick="startGame()">Lancer la partie</button>
+      <p id="ready-wait" class="hidden" style="color:var(--muted)">En attente du joueur 1…</p>
+    </div>
+  </div>
+
+  <!-- Playing (QUESTION / BUZZED) -->
+  <div id="screen-playing" class="hidden" style="display:flex;flex-direction:column;gap:12px;width:100%">
+    <div id="score-bar">
+      <div class="player-score me">
+        <div class="pts" id="score-p0-pts">— 0 pts</div>
+        <div class="wins" id="score-p0-wins">0 victoire(s)</div>
+      </div>
+      <div class="sep"></div>
+      <div class="player-score opp">
+        <div class="pts" id="score-p1-pts">— 0 pts</div>
+        <div class="wins" id="score-p1-wins">0 victoire(s)</div>
+      </div>
+    </div>
+
+    <div id="question-meta">
+      <span class="qnum" id="q-num">Question 1/10</span>
+      <span class="cat" id="q-cat">Catégorie</span>
+    </div>
+
+    <div class="card">
+      <div id="emoji-display">🤔</div>
+    </div>
+
+    <div class="timer-wrap"><div class="timer-bar" id="timer-bar"></div></div>
+
+    <!-- QUESTION state -->
+    <div id="question-actions">
+      <button id="buzz-btn" onclick="doBuzz()">⚡ BUZZ !</button>
+    </div>
+
+    <!-- BUZZED state -->
+    <div id="buzzed-actions" class="hidden" style="display:flex;flex-direction:column;gap:10px">
+      <div class="buzzed-msg" id="buzzed-msg"></div>
+      <div id="answer-form-wrap" class="card hidden">
+        <div id="answer-wrap">
+          <input id="answer-input" type="text" placeholder="Ta réponse…" autocomplete="off" autocorrect="off">
+          <button class="btn btn-primary" onclick="submitAnswer()">Valider</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Reveal -->
+  <div id="screen-reveal" class="hidden" style="display:flex;flex-direction:column;gap:12px;width:100%">
+    <div id="score-bar-reveal" class="card" style="display:flex;justify-content:space-between;padding:10px 16px">
+      <div class="player-score me">
+        <div class="pts" id="r-score-p0-pts" style="color:var(--primary)"></div>
+        <div class="wins" id="r-score-p0-wins" style="font-size:11px;color:var(--muted)"></div>
+      </div>
+      <div class="sep" style="width:1px;height:36px;background:var(--border)"></div>
+      <div class="player-score opp">
+        <div class="pts" id="r-score-p1-pts" style="color:var(--gold)"></div>
+        <div class="wins" id="r-score-p1-wins" style="font-size:11px;color:var(--muted)"></div>
+      </div>
+    </div>
+    <div class="card" style="text-align:center">
+      <div style="font-size:2.5rem;margin-bottom:8px" id="reveal-emoji-display"></div>
+      <div style="font-size:13px;color:var(--muted);margin-bottom:10px" id="reveal-cat"></div>
+      <div id="reveal-verdict"></div>
+      <div id="reveal-answer"></div>
+      <div id="reveal-answered-text"></div>
+    </div>
+  </div>
+
+  <!-- Game Over -->
+  <div id="screen-gameover" class="hidden">
+    <div id="phase-overlay">
+      <div class="card" style="width:100%;padding:28px;text-align:center">
+        <div style="font-size:2.5rem;margin-bottom:8px">🏆</div>
+        <h2 style="font-size:1.8rem;font-weight:900;margin-bottom:16px">Partie terminée !</h2>
+        <div style="font-size:1.1rem;margin-bottom:4px" id="go-score-p0"></div>
+        <div style="font-size:1.1rem;margin-bottom:4px" id="go-score-p1"></div>
+        <div style="font-size:1rem;color:var(--muted);margin-bottom:4px" id="go-wins-p0"></div>
+        <div style="font-size:1rem;color:var(--muted);margin-bottom:16px" id="go-wins-p1"></div>
+        <div id="go-winner" style="font-size:1.1rem;color:var(--gold);margin-bottom:20px"></div>
+        <div style="display:flex;gap:10px">
+          <button class="btn btn-muted btn-full" onclick="location.href='index.html'">Accueil</button>
+          <button class="btn btn-primary btn-full" onclick="restartGame()">Rejouer</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+/* ─── State ──────────────────────────────────────────── */
+let ws = null;
+let mySlot = null;
+let myName = '';
+let state = null;
+
+/* ─── WebSocket ──────────────────────────────────────── */
+function connect() {
+  if (ws && ws.readyState <= 1) return;
+  ws = new WebSocket(`ws://${location.host}/ws/emoji`);
+  ws.onopen = () => {
+    document.getElementById('dot').classList.add('ok');
+    if (myName) ws.send(JSON.stringify({ type: 'join_emoji', name: myName }));
+  };
+  ws.onclose = () => {
+    document.getElementById('dot').classList.remove('ok');
+    setTimeout(connect, 2000);
+  };
+  ws.onerror = () => ws.close();
+  ws.onmessage = e => handleMsg(JSON.parse(e.data));
+}
+
+function send(obj) {
+  if (ws && ws.readyState === 1) ws.send(JSON.stringify(obj));
+}
+
+/* ─── Message handler ────────────────────────────────── */
+function handleMsg(msg) {
+  switch (msg.type) {
+    case 'welcome_emoji':
+      mySlot = msg.slot;
+      myName = msg.name;
+      break;
+
+    case 'emoji_state':
+      state = msg;
+      renderState();
+      break;
+
+    case 'countdown':
+      showCountdown(msg.seconds);
+      break;
+
+    case 'player_left':
+      alert('Ton adversaire a quitté la partie.');
+      location.href = 'index.html';
+      break;
+
+    case 'error':
+      console.warn('Server error:', msg.msg);
+      break;
+  }
+}
+
+/* ─── Countdown overlay ──────────────────────────────── */
+function showCountdown(n) {
+  const overlay = document.getElementById('countdown-overlay');
+  const num = document.getElementById('countdown-num');
+  overlay.classList.remove('hidden');
+  num.textContent = n;
+  // Re-trigger animation
+  num.style.animation = 'none';
+  num.getBoundingClientRect();
+  num.style.animation = 'countdown-pop .8s ease-out';
+}
+
+function hideCountdown() {
+  document.getElementById('countdown-overlay').classList.add('hidden');
+}
+
+/* ─── Timer ──────────────────────────────────────────── */
+function startTimer(seconds, barId) {
+  const bar = document.getElementById(barId || 'timer-bar');
+  if (!bar) return;
+  bar.style.animation = 'none';
+  bar.getBoundingClientRect();
+  bar.style.animationName = 'shrink';
+  bar.style.animationDuration = seconds + 's';
+  bar.style.animationTimingFunction = 'linear';
+  bar.style.animationFillMode = 'forwards';
+}
+
+/* ─── Render ─────────────────────────────────────────── */
+function renderState() {
+  if (!state) return;
+  const { phase, players, scores, wins, buzzedSlot, qIndex, total, puzzle, timerSeconds, reveal } = state;
+  const p0 = players[0] || { name: '—' };
+  const p1 = players[1] || { name: '—' };
+
+  // Update score bars
+  setScoreBar('score-p0-pts', `${p0.name} ${scores?.[0] ?? 0} pts`, 'score-p0-wins', `${wins?.[0] ?? 0} victoire(s)`);
+  setScoreBar('score-p1-pts', `${p1.name} ${scores?.[1] ?? 0} pts`, 'score-p1-wins', `${wins?.[1] ?? 0} victoire(s)`);
+  setScoreBar('r-score-p0-pts', `${p0.name} ${scores?.[0] ?? 0} pts`, 'r-score-p0-wins', `${wins?.[0] ?? 0} victoire(s)`);
+  setScoreBar('r-score-p1-pts', `${p1.name} ${scores?.[1] ?? 0} pts`, 'r-score-p1-wins', `${wins?.[1] ?? 0} victoire(s)`);
+
+  switch (phase) {
+    case 'WAITING':
+      hideCountdown();
+      showScreen('screen-waiting');
+      renderQR();
+      break;
+
+    case 'READY':
+      hideCountdown();
+      showScreen('screen-ready');
+      document.getElementById('ready-players').textContent = players.map(p => p.name).join(' vs ');
+      toggleEl('start-btn', mySlot === 0);
+      toggleEl('ready-wait', mySlot !== 0);
+      break;
+
+    case 'COUNTDOWN':
+      showScreen('screen-playing');
+      // Countdown messages come separately via type:'countdown'
+      break;
+
+    case 'QUESTION':
+      hideCountdown();
+      showScreen('screen-playing');
+      if (puzzle) {
+        document.getElementById('emoji-display').textContent = puzzle.emojis;
+        document.getElementById('q-cat').textContent = puzzle.cat || '';
+      }
+      document.getElementById('q-num').textContent = `Question ${(qIndex ?? 0) + 1}/${total ?? '?'}`;
+      toggleEl('question-actions', true);
+      toggleEl('buzzed-actions', false);
+      const buzzBtn = document.getElementById('buzz-btn');
+      buzzBtn.disabled = false;
+      startTimer(timerSeconds || 30);
+      break;
+
+    case 'BUZZED':
+      hideCountdown();
+      showScreen('screen-playing');
+      if (puzzle) document.getElementById('emoji-display').textContent = puzzle.emojis;
+      toggleEl('question-actions', false);
+      toggleEl('buzzed-actions', true);
+      const buzzerName = players[buzzedSlot]?.name ?? '?';
+      document.getElementById('buzzed-msg').textContent = `⚡ ${buzzerName} a buzzé !`;
+      const isMe = mySlot === buzzedSlot;
+      toggleEl('answer-form-wrap', isMe);
+      if (isMe) {
+        document.getElementById('answer-input').value = '';
+        document.getElementById('answer-input').focus();
+      }
+      startTimer(15);
+      break;
+
+    case 'REVEAL':
+      hideCountdown();
+      showScreen('screen-reveal');
+      if (puzzle) {
+        document.getElementById('reveal-emoji-display').textContent = puzzle.emojis;
+        document.getElementById('reveal-cat').textContent = puzzle.cat || '';
+      }
+      if (reveal) {
+        const verdict = document.getElementById('reveal-verdict');
+        const answerEl = document.getElementById('reveal-answer');
+        const answeredEl = document.getElementById('reveal-answered-text');
+        answerEl.textContent = (reveal.answer || '').toUpperCase();
+        answerEl.style.color = reveal.isCorrect ? 'var(--correct)' : 'var(--text)';
+        verdict.textContent = reveal.isCorrect ? '✅ Bonne réponse !' : '❌ Mauvaise réponse…';
+        verdict.style.color = reveal.isCorrect ? 'var(--correct)' : 'var(--wrong)';
+        if (reveal.answeredText && !reveal.isCorrect) {
+          answeredEl.textContent = `Réponse donnée : "${reveal.answeredText}"`;
+        } else {
+          answeredEl.textContent = '';
+        }
+      }
+      break;
+
+    case 'GAME_OVER':
+      hideCountdown();
+      showScreen('screen-gameover');
+      document.getElementById('go-score-p0').textContent = `${p0.name} : ${scores?.[0] ?? 0} pts`;
+      document.getElementById('go-score-p1').textContent = `${p1.name} : ${scores?.[1] ?? 0} pts`;
+      document.getElementById('go-wins-p0').textContent = `${p0.name} : ${wins?.[0] ?? 0} victoire(s)`;
+      document.getElementById('go-wins-p1').textContent = `${p1.name} : ${wins?.[1] ?? 0} victoire(s)`;
+      const s0 = scores?.[0] ?? 0, s1 = scores?.[1] ?? 0;
+      const winner = s0 > s1 ? p0.name : s1 > s0 ? p1.name : null;
+      document.getElementById('go-winner').textContent = winner ? `🏆 ${winner} remporte la partie !` : '🤝 Égalité !';
+      break;
+  }
+}
+
+function setScoreBar(ptsId, ptsText, winsId, winsText) {
+  const p = document.getElementById(ptsId);
+  const w = document.getElementById(winsId);
+  if (p) p.textContent = ptsText;
+  if (w) w.textContent = winsText;
+}
+
+/* ─── QR ─────────────────────────────────────────────── */
+function renderQR() {
+  const url = location.href;
+  document.getElementById('url-display').textContent = url;
+  const canvas = document.getElementById('qr-canvas');
+  const img = new Image();
+  img.crossOrigin = 'anonymous';
+  img.onload = () => {
+    canvas.width = img.width; canvas.height = img.height;
+    canvas.getContext('2d').drawImage(img, 0, 0);
+  };
+  img.src = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(url)}`;
+}
+
+/* ─── Helpers ────────────────────────────────────────── */
+function showScreen(id) {
+  ['screen-name','screen-waiting','screen-ready','screen-playing','screen-reveal','screen-gameover']
+    .forEach(s => { const el = document.getElementById(s); if (el) el.classList.add('hidden'); });
+  const t = document.getElementById(id);
+  if (t) t.classList.remove('hidden');
+}
+function toggleEl(id, show) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  if (show) el.classList.remove('hidden');
+  else el.classList.add('hidden');
+}
+
+/* ─── Actions ────────────────────────────────────────── */
+function joinGame() {
+  const n = document.getElementById('name-input').value.trim();
+  if (!n) return;
+  myName = n;
+  send({ type: 'join_emoji', name: myName });
+}
+function startGame() { send({ type: 'start_emoji' }); }
+function restartGame() { send({ type: 'restart_emoji' }); }
+function doBuzz() {
+  document.getElementById('buzz-btn').disabled = true;
+  send({ type: 'buzz_emoji' });
+}
+function submitAnswer() {
+  const input = document.getElementById('answer-input');
+  const text = input.value.trim();
+  if (!text) return;
+  send({ type: 'answer_emoji', text });
+  input.value = '';
+}
+
+/* ─── Enter key ──────────────────────────────────────── */
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter') {
+    if (document.activeElement?.id === 'name-input') { joinGame(); return; }
+    if (document.activeElement?.id === 'answer-input') { submitAnswer(); return; }
+  }
+});
+
+/* ─── Init ───────────────────────────────────────────── */
+connect();
+</script>
+</body>
+</html>
