@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>ZapPlay — Uno</title>
+<style>
+:root{--bg:#0f0c29;--bg2:#302b63;--card:rgba(255,255,255,.07);--border:rgba(255,255,255,.13);--primary:#a78bfa;--primary2:#7c3aed;--buzz:#f97316;--correct:#22c55e;--wrong:#ef4444;--gold:#fbbf24;--text:#f1f5f9;--muted:#94a3b8;--r:14px;
+  --rouge:#ef4444;--bleu:#3b82f6;--vert:#22c55e;--jaune:#fbbf24;--noir:#374151}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;background:linear-gradient(135deg,var(--bg) 0%,var(--bg2) 55%,#24243e 100%);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;overflow:hidden}
+#wrap{height:100dvh;display:flex;flex-direction:column;max-width:500px;margin:0 auto;padding:0 12px}
+.screen{display:none;flex-direction:column;flex:1;min-height:0}
+.screen.active{display:flex}
+.btn{width:100%;padding:14px;border:none;border-radius:10px;font-size:1rem;font-weight:700;cursor:pointer;touch-action:manipulation;transition:opacity .15s,transform .1s}
+.btn:active{transform:scale(.97);opacity:.9}
+.btn-primary{background:var(--primary2);color:#fff}
+.btn-secondary{background:rgba(255,255,255,.08);color:var(--text);border:1px solid var(--border)}
+.btn-success{background:var(--correct);color:#fff}
+input[type=text]{background:rgba(255,255,255,.06);border:1.5px solid var(--border);border-radius:10px;padding:13px 15px;font-size:16px;color:var(--text);width:100%;outline:none;transition:border-color .15s}
+input[type=text]:focus{border-color:var(--primary)}
+input[type=text]::placeholder{color:var(--muted)}
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:18px}
+/* Home */
+#s-home{justify-content:center;gap:18px}
+.logo h1{font-size:2.2rem;font-weight:800;background:linear-gradient(135deg,var(--primary),#f97316);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;text-align:center}
+.logo p{color:var(--muted);text-align:center;font-size:.9rem;margin-top:4px}
+.form-card{display:flex;flex-direction:column;gap:12px}
+.form-card h2{font-size:.8rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+#err{color:#fca5a5;font-size:.85rem;text-align:center;min-height:18px}
+/* Wait */
+#s-wait{justify-content:center;align-items:center;gap:18px;text-align:center}
+#wait-code{font-size:3rem;font-weight:800;letter-spacing:.18em;color:var(--primary);font-family:monospace}
+#wait-players{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;max-width:340px}
+.player-chip{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:6px 14px;font-size:.85rem;font-weight:600}
+.player-chip.host{border-color:var(--gold);color:var(--gold)}
+/* Game */
+#s-game{gap:0;overflow:hidden;position:relative}
+/* Other players */
+#others-area{display:flex;flex-wrap:wrap;gap:8px;padding:10px 0 6px;justify-content:center;flex-shrink:0}
+.other-player{background:var(--card);border:1.5px solid var(--border);border-radius:12px;padding:8px 14px;display:flex;align-items:center;gap:8px;transition:border-color .2s}
+.other-player.active-turn{border-color:var(--buzz);box-shadow:0 0 12px rgba(249,115,22,.3)}
+.op-name{font-size:.82rem;font-weight:600}
+.op-cards{font-size:.75rem;color:var(--muted)}
+.op-uno{font-size:.65rem;background:rgba(239,68,68,.2);color:#fca5a5;border:1px solid rgba(239,68,68,.4);border-radius:20px;padding:2px 6px;font-weight:700;display:none}
+.other-player.uno-alert .op-uno{display:block}
+/* Center area */
+#center-area{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;min-height:0}
+#direction-indicator{font-size:.75rem;color:var(--muted);letter-spacing:.05em}
+#draw-pending-badge{display:none;background:rgba(239,68,68,.2);color:#fca5a5;border:1px solid rgba(239,68,68,.4);border-radius:20px;padding:4px 12px;font-size:.82rem;font-weight:700}
+/* Card visual */
+.uno-card{
+  width:72px;height:108px;border-radius:12px;display:flex;align-items:center;justify-content:center;
+  font-size:1.6rem;font-weight:800;color:#fff;border:3px solid rgba(255,255,255,.4);
+  box-shadow:0 4px 18px rgba(0,0,0,.35);cursor:pointer;touch-action:manipulation;
+  transition:transform .12s,box-shadow .12s;flex-shrink:0;user-select:none;
+  text-shadow:0 1px 3px rgba(0,0,0,.4);position:relative;overflow:hidden;
+}
+.uno-card::before{content:'';position:absolute;inset:0;background:rgba(255,255,255,.08);border-radius:10px}
+.uno-card:active{transform:scale(.96)}
+.uno-card.rouge{background:linear-gradient(135deg,#ef4444,#b91c1c)}
+.uno-card.bleu{background:linear-gradient(135deg,#3b82f6,#1d4ed8)}
+.uno-card.vert{background:linear-gradient(135deg,#22c55e,#15803d)}
+.uno-card.jaune{background:linear-gradient(135deg,#fbbf24,#d97706);color:#1c1c1c}
+.uno-card.noir{background:linear-gradient(135deg,#4b5563,#1f2937)}
+.uno-card.top-card{width:88px;height:132px;font-size:2rem;cursor:default;pointer-events:none}
+.uno-card.playable{box-shadow:0 0 0 3px var(--primary),0 4px 18px rgba(0,0,0,.35)}
+.uno-card.playable:hover{transform:translateY(-6px);box-shadow:0 0 0 3px var(--primary),0 10px 28px rgba(0,0,0,.4)}
+.uno-card.selected{transform:translateY(-10px);box-shadow:0 0 0 3px var(--gold),0 10px 28px rgba(0,0,0,.4)}
+/* Hand */
+#hand-area{flex-shrink:0;padding:8px 0 10px;display:flex;flex-direction:column;gap:8px}
+#hand-scroll{display:flex;gap:8px;overflow-x:auto;padding:4px 2px 8px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+#hand-scroll::-webkit-scrollbar{display:none}
+/* Buttons row */
+#action-row{display:flex;gap:8px;flex-shrink:0}
+#draw-btn{flex:1;padding:12px;border:none;border-radius:10px;font-size:.95rem;font-weight:700;cursor:pointer;background:rgba(255,255,255,.1);border:1.5px solid var(--border);color:var(--text);transition:background .15s}
+#draw-btn:not(:disabled):hover{background:rgba(255,255,255,.18)}
+#draw-btn:disabled{opacity:.4;cursor:default}
+#uno-btn{flex:1;padding:12px;border:none;border-radius:10px;font-size:.95rem;font-weight:700;cursor:pointer;background:var(--wrong);color:#fff;display:none;transition:transform .1s}
+#uno-btn.flash{animation:unoflash .5s ease infinite alternate}
+@keyframes unoflash{0%{background:var(--wrong)}100%{background:#fbbf24;color:#000}}
+/* Color picker overlay */
+#color-picker{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:100;flex-direction:column;align-items:center;justify-content:center;gap:20px}
+#color-picker.show{display:flex}
+#color-picker h3{font-size:1.2rem;font-weight:700;color:var(--text)}
+#color-picker .colors{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.color-choice{width:90px;height:90px;border-radius:16px;border:none;cursor:pointer;font-size:1.4rem;font-weight:800;transition:transform .12s;touch-action:manipulation}
+.color-choice:active{transform:scale(.95)}
+.color-choice.rouge{background:linear-gradient(135deg,#ef4444,#b91c1c);color:#fff}
+.color-choice.bleu{background:linear-gradient(135deg,#3b82f6,#1d4ed8);color:#fff}
+.color-choice.vert{background:linear-gradient(135deg,#22c55e,#15803d);color:#fff}
+.color-choice.jaune{background:linear-gradient(135deg,#fbbf24,#d97706);color:#000}
+/* Game over */
+#s-over{justify-content:center;align-items:center;text-align:center;gap:20px}
+#over-icon{font-size:4rem}
+#over-title{font-size:1.8rem;font-weight:800}
+/* Misc */
+#dot{position:fixed;top:10px;right:12px;width:8px;height:8px;border-radius:50%;background:#ef4444;transition:background .3s}
+#dot.ok{background:#22c55e}
+#back-btn{position:fixed;top:6px;left:10px;background:none;border:none;color:var(--muted);font-size:.85rem;cursor:pointer;padding:4px 8px;border-radius:6px}
+#back-btn:hover{color:var(--text)}
+#status-toast{position:fixed;top:36px;left:50%;transform:translateX(-50%);background:rgba(30,27,75,.95);border:1px solid var(--border);border-radius:10px;padding:8px 18px;font-size:.85rem;font-weight:600;color:var(--text);z-index:300;pointer-events:none;opacity:0;transition:opacity .25s;max-width:280px;text-align:center}
+#status-toast.show{opacity:1}
+#confetti-wrap{position:fixed;inset:0;pointer-events:none;z-index:200;overflow:hidden}
+.conf{position:absolute;width:10px;height:10px;border-radius:2px;opacity:0;animation:conffall linear forwards}
+@keyframes conffall{0%{opacity:1;transform:translateY(-20px) rotate(0deg)}80%{opacity:1}100%{opacity:0;transform:translateY(110vh) rotate(720deg)}}
+</style>
+</head>
+<body>
+<div id="dot"></div>
+<button id="back-btn" onclick="location.href='index.html'">&#8592; Accueil</button>
+<div id="confetti-wrap"></div>
+<div id="status-toast"></div>
+
+<!-- Color picker overlay -->
+<div id="color-picker">
+  <h3>Choisir une couleur</h3>
+  <div class="colors">
+    <button class="color-choice rouge" onclick="pickColor('rouge')">&#x1F534; Rouge</button>
+    <button class="color-choice bleu" onclick="pickColor('bleu')">&#x1F535; Bleu</button>
+    <button class="color-choice vert" onclick="pickColor('vert')">&#x1F7E2; Vert</button>
+    <button class="color-choice jaune" onclick="pickColor('jaune')">&#x1F7E1; Jaune</button>
+  </div>
+</div>
+
+<div id="wrap">
+
+<!-- HOME -->
+<div id="s-home" class="screen active">
+  <div style="flex:1"></div>
+  <div class="logo"><h1>&#x1F0CF; Uno</h1><p>Le classique des cartes !</p></div>
+  <div class="card form-card">
+    <h2>Ton prénom</h2>
+    <input id="inp-name" type="text" placeholder="Ex: Marie" maxlength="20" autocomplete="off">
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-primary" style="flex:1" onclick="doCreate()">Créer une salle</button>
+      <button class="btn btn-secondary" style="flex:1" onclick="showJoin()">Rejoindre</button>
+    </div>
+    <div id="join-area" style="display:none;flex-direction:column;gap:8px">
+      <input id="inp-code" type="text" placeholder="Code (ex: ABCD)" maxlength="4" autocomplete="off" style="text-transform:uppercase;letter-spacing:.1em;text-align:center;font-size:1.1rem;font-weight:700">
+      <button class="btn btn-success" onclick="doJoin()">Rejoindre</button>
+    </div>
+    <div id="err"></div>
+  </div>
+  <div style="flex:2"></div>
+</div>
+
+<!-- WAIT -->
+<div id="s-wait" class="screen">
+  <div style="flex:1"></div>
+  <div style="font-size:.85rem;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;text-align:center">Code de la salle</div>
+  <div id="wait-code" style="font-size:3rem;font-weight:800;letter-spacing:.18em;color:var(--primary);font-family:monospace;text-align:center">----</div>
+  <div id="wait-msg" style="color:var(--muted);font-size:.9rem;text-align:center">En attente des joueurs (2-4)…</div>
+  <div id="wait-players" style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;max-width:340px;margin:0 auto"></div>
+  <button id="start-btn" class="btn btn-primary" style="max-width:280px;display:none;margin:0 auto" onclick="doStart()">Démarrer la partie</button>
+  <div id="wait-err" style="color:#fca5a5;font-size:.85rem;min-height:18px;text-align:center"></div>
+  <div style="flex:2"></div>
+</div>
+
+<!-- GAME -->
+<div id="s-game" class="screen">
+  <!-- Other players -->
+  <div id="others-area"></div>
+  <!-- Center -->
+  <div id="center-area">
+    <div id="direction-indicator">&#x25B6; Sens des aiguilles</div>
+    <div id="draw-pending-badge">+0 cartes en attente</div>
+    <div id="top-card-wrap" style="display:flex;align-items:center;gap:16px">
+      <div id="deck-pile" class="uno-card noir" style="cursor:pointer" onclick="doDraw()">&#x1F0CF;</div>
+      <div id="top-card" class="uno-card top-card rouge" style="font-size:2rem">5</div>
+    </div>
+    <div id="my-turn-badge" style="display:none;font-size:.85rem;font-weight:700;color:var(--buzz);background:rgba(249,115,22,.1);border:1px solid rgba(249,115,22,.3);border-radius:20px;padding:5px 16px">C'est ton tour !</div>
+  </div>
+  <!-- Hand -->
+  <div id="hand-area">
+    <div style="font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;padding-left:2px">Ta main</div>
+    <div id="hand-scroll"></div>
+    <div id="action-row">
+      <button id="draw-btn" onclick="doDraw()">+1 Piocher</button>
+      <button id="uno-btn" onclick="doUno()">UNO !</button>
+    </div>
+  </div>
+</div>
+
+<!-- GAME OVER -->
+<div id="s-over" class="screen">
+  <div id="over-icon">&#x1F3C6;</div>
+  <div id="over-title">Fin de partie</div>
+  <div id="over-sub" style="color:var(--muted);font-size:.95rem"></div>
+  <button class="btn btn-primary" style="max-width:280px" onclick="location.href='index.html'">Retour à l'accueil</button>
+</div>
+
+</div><!-- #wrap -->
+
+<script>
+const WS_URL = `${location.protocol==='https:'?'wss':'ws'}://${location.host}/ws/uno`;
+let ws = null;
+let mySlot = -1;
+let myCode = null;
+let isHost = false;
+let gameState = null;
+let pendingCardIndex = -1; // card index waiting for color pick
+
+const dot = document.getElementById('dot');
+
+function show(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function showJoin() {
+  const area = document.getElementById('join-area');
+  area.style.display = area.style.display === 'none' ? 'flex' : 'none';
+  area.style.flexDirection = 'column';
+}
+
+function setErr(msg) { document.getElementById('err').textContent = msg; }
+
+function toast(msg, duration=2000) {
+  const t = document.getElementById('status-toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), duration);
+}
+
+function connect(onOpen) {
+  ws = new WebSocket(WS_URL);
+  ws.onopen = () => { dot.classList.add('ok'); if (onOpen) onOpen(); };
+  ws.onclose = () => dot.classList.remove('ok');
+  ws.onmessage = e => { try { handle(JSON.parse(e.data)); } catch {} };
+}
+
+function send(obj) { if (ws && ws.readyState === 1) ws.send(JSON.stringify(obj)); }
+
+function doCreate() {
+  const name = document.getElementById('inp-name').value.trim();
+  if (!name) { setErr('Entre ton prénom !'); return; }
+  connect(() => send({ type:'create_uno', name }));
+}
+
+function doJoin() {
+  const name = document.getElementById('inp-name').value.trim();
+  const code = document.getElementById('inp-code').value.trim().toUpperCase();
+  if (!name) { setErr('Entre ton prénom !'); return; }
+  if (!code) { setErr('Entre le code !'); return; }
+  connect(() => send({ type:'join_uno', name, code }));
+}
+
+function doStart() { send({ type:'start_uno' }); }
+
+function handle(m) {
+  if (m.type === 'created_uno') {
+    mySlot = m.slot; myCode = m.code; isHost = true;
+    document.getElementById('wait-code').textContent = m.code;
+    document.getElementById('start-btn').style.display = 'block';
+    show('s-wait');
+  }
+  if (m.type === 'joined_uno') {
+    mySlot = m.slot; myCode = m.code;
+    document.getElementById('wait-code').textContent = m.code;
+    show('s-wait');
+  }
+  if (m.type === 'error' || m.type === 'uno_error') {
+    setErr(m.msg);
+    document.getElementById('wait-err').textContent = m.msg;
+    toast(m.msg);
+  }
+  if (m.type === 'player_left') {
+    document.getElementById('wait-err').textContent = m.name + ' a quitté la partie.';
+    toast(m.name + ' a quitté.');
+  }
+  if (m.type === 'uno_state') {
+    gameState = m;
+    renderGame(m);
+  }
+  if (m.type === 'uno_over') {
+    const isMe = m.winnerSlot === mySlot;
+    document.getElementById('over-icon').textContent = isMe ? '🎉' : '😔';
+    document.getElementById('over-title').textContent = isMe ? 'Tu as gagné !' : m.winnerName + ' a gagné !';
+    document.getElementById('over-sub').textContent = isMe ? 'Bravo, tu as vidé ta main !' : 'Meilleure chance la prochaine fois !';
+    if (isMe) spawnConfetti();
+    show('s-over');
+  }
+}
+
+function renderGame(m) {
+  if (m.phase === 'LOBBY') {
+    const wp = document.getElementById('wait-players');
+    wp.innerHTML = m.players.map((p, i) =>
+      `<span class="player-chip${i===0?' host':''}">${esc(p.name)}${i===0?' &#x1F451;':''}</span>`
+    ).join('');
+    if (isHost) document.getElementById('start-btn').style.display = m.players.length >= 2 ? 'block' : 'none';
+    show('s-wait');
+    return;
+  }
+  if (m.phase !== 'PLAYING') return;
+  show('s-game');
+
+  const activePlayers = m.players.filter(p => p.slot !== undefined);
+  const myTurnSlot = activePlayers[m.turn]?.slot;
+  const isMyTurn = myTurnSlot === mySlot;
+
+  // Others area
+  const othersArea = document.getElementById('others-area');
+  othersArea.innerHTML = m.players.filter(p => p.slot !== mySlot).map(p => {
+    const isActive = p.slot === myTurnSlot;
+    const unoAlert = p.cardCount === 1;
+    return `<div class="other-player${isActive?' active-turn':''}${unoAlert?' uno-alert':''}">
+      <div>
+        <div class="op-name">${esc(p.name)}</div>
+        <div class="op-cards">&#x1F0CF; ${p.cardCount} carte${p.cardCount!==1?'s':''}</div>
+      </div>
+      <span class="op-uno">UNO</span>
+    </div>`;
+  }).join('');
+
+  // Direction
+  const dirEl = document.getElementById('direction-indicator');
+  dirEl.textContent = m.direction === 1 ? '&#x25B6; Sens horaire' : '&#x25C4; Sens anti-horaire';
+  dirEl.innerHTML = m.direction === 1 ? '&#x25B6; Sens horaire' : '&#x25C4; Sens anti-horaire';
+
+  // Draw pending
+  const dpBadge = document.getElementById('draw-pending-badge');
+  if (m.drawPending > 0) {
+    dpBadge.style.display = 'block';
+    dpBadge.textContent = '+' + m.drawPending + ' carte' + (m.drawPending>1?'s':'') + ' en attente';
+  } else {
+    dpBadge.style.display = 'none';
+  }
+
+  // Top card
+  const topCard = document.getElementById('top-card');
+  if (m.topCard) {
+    topCard.className = 'uno-card top-card ' + m.topCard.color;
+    topCard.textContent = cardLabel(m.topCard.value);
+  }
+
+  // My turn badge
+  document.getElementById('my-turn-badge').style.display = isMyTurn ? 'block' : 'none';
+
+  // Draw button
+  const drawBtn = document.getElementById('draw-btn');
+  drawBtn.disabled = !isMyTurn;
+  if (m.drawPending > 0) {
+    drawBtn.textContent = '+' + m.drawPending + ' Piocher';
+  } else {
+    drawBtn.textContent = '+1 Piocher';
+  }
+
+  // UNO button
+  const unoBtn = document.getElementById('uno-btn');
+  const myHand = m.hand || [];
+  if (myHand.length === 1) {
+    unoBtn.style.display = 'block';
+    unoBtn.classList.add('flash');
+  } else {
+    unoBtn.style.display = 'none';
+    unoBtn.classList.remove('flash');
+  }
+
+  // Hand
+  const handScroll = document.getElementById('hand-scroll');
+  handScroll.innerHTML = '';
+  myHand.forEach((card, i) => {
+    const playable = isMyTurn && canPlay(card, m.topCard, m.drawPending);
+    const el = document.createElement('div');
+    el.className = 'uno-card ' + card.color + (playable ? ' playable' : '');
+    el.textContent = cardLabel(card.value);
+    if (playable) {
+      el.onclick = () => playCard(i, card);
+    }
+    handScroll.appendChild(el);
+  });
+}
+
+function cardLabel(value) {
+  if (value === 'skip') return '&#x26D4;';
+  if (value === 'reverse') return '&#x21BA;';
+  if (value === '+2') return '+2';
+  if (value === '+4') return '+4';
+  if (value === 'wild') return '&#x1F0CF;';
+  return value;
+}
+
+function canPlay(card, topCard, drawPending) {
+  if (!topCard) return true;
+  if (drawPending > 0) return card.value === '+2' || card.value === '+4';
+  if (card.color === 'noir') return true;
+  return card.color === topCard.color || card.value === topCard.value;
+}
+
+function playCard(index, card) {
+  // Highlight selected
+  const cards = document.querySelectorAll('#hand-scroll .uno-card');
+  cards.forEach((c, i) => { if (i === index) c.classList.add('selected'); });
+
+  if (card.color === 'noir') {
+    pendingCardIndex = index;
+    document.getElementById('color-picker').classList.add('show');
+  } else {
+    send({ type:'play_uno', cardIndex: index });
+  }
+}
+
+function pickColor(color) {
+  document.getElementById('color-picker').classList.remove('show');
+  if (pendingCardIndex >= 0) {
+    send({ type:'play_uno', cardIndex: pendingCardIndex, chosenColor: color });
+    pendingCardIndex = -1;
+  }
+}
+
+function doDraw() {
+  if (!gameState) return;
+  const activePlayers = gameState.players;
+  const myTurnSlot = activePlayers[gameState.turn]?.slot;
+  if (myTurnSlot !== mySlot) return;
+  send({ type:'draw_uno' });
+}
+
+function doUno() { send({ type:'uno_said' }); toast('UNO annoncé !'); }
+
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function spawnConfetti() {
+  const wrap = document.getElementById('confetti-wrap');
+  const colors = ['#a78bfa','#f97316','#22c55e','#fbbf24','#f472b6','#ef4444','#3b82f6'];
+  for (let i = 0; i < 80; i++) {
+    const el = document.createElement('div');
+    el.className = 'conf';
+    el.style.cssText = `left:${Math.random()*100}%;top:-10px;background:${colors[Math.floor(Math.random()*colors.length)]};animation-duration:${1.2+Math.random()*1.6}s;animation-delay:${Math.random()*.8}s;width:${6+Math.random()*8}px;height:${6+Math.random()*8}px`;
+    wrap.appendChild(el);
+    setTimeout(() => el.remove(), 3000);
+  }
+}
+
+// Auto-join from URL params
+const up = new URLSearchParams(location.search);
+if (up.get('create') && up.get('name')) {
+  document.getElementById('inp-name').value = up.get('name');
+  doCreate();
+} else if (up.get('code') && up.get('name')) {
+  document.getElementById('inp-name').value = up.get('name');
+  document.getElementById('inp-code').value = up.get('code');
+  document.getElementById('join-area').style.display = 'flex';
+  document.getElementById('join-area').style.flexDirection = 'column';
+  doJoin();
+}
+document.getElementById('inp-code').addEventListener('input', e => {
+  e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,'');
+});
+</script>
+</body>
+</html>

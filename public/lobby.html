@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Quiz Duo — Salles en ligne</title>
+<title>ZapPlay — Salles en ligne</title>
 <style>
 :root{
   --primary:#a78bfa;--primary2:#7c3aed;--buzz:#f97316;--correct:#22c55e;
@@ -203,6 +203,8 @@ select option{background:#1e1b4b;color:var(--text)}
         <option value="taboo">&#128683; Mots Interdits</option>
         <option value="emoji">&#127775; Devinette Emoji</option>
         <option value="verite">&#10084;&#65039; Vérité ou Défi</option>
+        <option value="loup">&#x1F43A; Loup-Garou</option>
+        <option value="uno">&#x1F0CF; Uno</option>
       </select>
       <input type="text" id="inp-create-name" placeholder="Votre prénom" maxlength="20" autocomplete="off">
       <button class="btn btn-primary" onclick="doCreate()">Créer la salle</button>
@@ -243,10 +245,12 @@ select option{background:#1e1b4b;color:var(--text)}
 <script>
 const GAME_URLS = {
   quiz:'quiz.html', draw:'draw.html', p4:'p4.html',
-  morpion:'morpion.html', taboo:'taboo.html', emoji:'emoji.html', verite:'verite.html'
+  morpion:'morpion.html', taboo:'taboo.html', emoji:'emoji.html', verite:'verite.html',
+  loup:'loup.html', uno:'uno.html'
 };
 const GAME_ICONS = {
-  quiz:'⚡', draw:'✏️', p4:'🟠', morpion:'✖️', taboo:'🚫', emoji:'🌟', verite:'❤️'
+  quiz:'⚡', draw:'✏️', p4:'🟠', morpion:'✖️', taboo:'🚫', emoji:'🌟', verite:'❤️',
+  loup:'🐺', uno:'🃏'
 };
 
 let createdCode = null;

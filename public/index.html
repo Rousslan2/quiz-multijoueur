@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Quiz Duo — 7 jeux pour deux</title>
+<title>ZapPlay — Jeux multijoueur en ligne</title>
 <style>
 :root{
   --primary:#a78bfa;--primary2:#7c3aed;--buzz:#f97316;--correct:#22c55e;
@@ -110,6 +110,8 @@ body{
 .b-taboo {background:rgba(239,68,68,.18);color:#fca5a5;border:1px solid rgba(239,68,68,.3)}
 .b-emoji {background:rgba(251,191,36,.18);color:#fde68a;border:1px solid rgba(251,191,36,.3)}
 .b-verite{background:rgba(236,72,153,.18);color:#f9a8d4;border:1px solid rgba(236,72,153,.3)}
+.b-loup {background:rgba(107,33,168,.22);color:#d8b4fe;border:1px solid rgba(107,33,168,.35)}
+.b-uno  {background:rgba(239,68,68,.18);color:#fca5a5;border:1px solid rgba(239,68,68,.3)}
 
 /* ── Footer ── */
 .footer{
@@ -132,8 +134,8 @@ body{
 <body>
 
 <div class="header">
-  <h1>Quiz Duo</h1>
-  <p>7 jeux pour deux</p>
+  <h1>ZapPlay</h1>
+  <p>Jeux multijoueur en ligne</p>
 </div>
 
 <div class="grid">
@@ -185,6 +187,20 @@ body{
     <div class="card-name">Vérité ou Défi</div>
     <div class="card-desc">Vérités et défis pimentés pour couple !</div>
     <span class="card-badge b-verite">20 tours &bull; Chill</span>
+  </a>
+
+  <a class="game-card" href="loup.html">
+    <span class="card-icon">&#x1F43A;</span>
+    <div class="card-name">Loup-Garou</div>
+    <div class="card-desc">Loups contre villageois, rôles secrets chaque nuit !</div>
+    <span class="card-badge b-loup">4-10 joueurs &bull; Rôles</span>
+  </a>
+
+  <a class="game-card" href="uno.html">
+    <span class="card-icon">&#x1F0CF;</span>
+    <div class="card-name">Uno</div>
+    <div class="card-desc">Le classique des cartes ! Videz votre main en premier.</div>
+    <span class="card-badge b-uno">2-4 joueurs &bull; Cartes</span>
   </a>
 
   <a class="game-card" href="lobby.html" style="grid-column:1/-1;max-width:400px;margin:0 auto;width:100%">

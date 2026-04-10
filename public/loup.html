@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>ZapPlay — Loup-Garou</title>
+<style>
+:root{--bg:#0f0c29;--bg2:#302b63;--card:rgba(255,255,255,.07);--border:rgba(255,255,255,.13);--primary:#a78bfa;--primary2:#7c3aed;--buzz:#f97316;--correct:#22c55e;--wrong:#ef4444;--gold:#fbbf24;--text:#f1f5f9;--muted:#94a3b8;--r:14px}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;background:linear-gradient(135deg,var(--bg) 0%,var(--bg2) 55%,#24243e 100%);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;overflow:hidden}
+#wrap{height:100dvh;display:flex;flex-direction:column;max-width:500px;margin:0 auto;padding:0 12px}
+.screen{display:none;flex-direction:column;flex:1;min-height:0}
+.screen.active{display:flex}
+.btn{width:100%;padding:14px;border:none;border-radius:10px;font-size:1rem;font-weight:700;cursor:pointer;touch-action:manipulation;transition:opacity .15s,transform .1s}
+.btn:active{transform:scale(.97);opacity:.9}
+.btn-primary{background:var(--primary2);color:#fff}
+.btn-secondary{background:rgba(255,255,255,.08);color:var(--text);border:1px solid var(--border)}
+.btn-danger{background:var(--wrong);color:#fff}
+.btn-success{background:var(--correct);color:#fff}
+.btn-gold{background:var(--gold);color:#000}
+input[type=text]{background:rgba(255,255,255,.06);border:1.5px solid var(--border);border-radius:10px;padding:13px 15px;font-size:16px;color:var(--text);width:100%;outline:none;transition:border-color .15s}
+input[type=text]:focus{border-color:var(--primary)}
+input[type=text]::placeholder{color:var(--muted)}
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:18px}
+/* Home */
+#s-home{justify-content:center;gap:18px}
+.logo h1{font-size:2.2rem;font-weight:800;background:linear-gradient(135deg,var(--primary),#f97316);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;text-align:center}
+.logo p{color:var(--muted);text-align:center;font-size:.9rem;margin-top:4px}
+.form-card{display:flex;flex-direction:column;gap:12px}
+.form-card h2{font-size:.8rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+#err{color:#fca5a5;font-size:.85rem;text-align:center;min-height:18px}
+/* Wait */
+#s-wait{justify-content:center;align-items:center;gap:18px;text-align:center}
+#wait-code{font-size:3rem;font-weight:800;letter-spacing:.18em;color:var(--primary);font-family:monospace}
+#wait-players{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;max-width:340px}
+.player-chip{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:6px 14px;font-size:.85rem;font-weight:600}
+.player-chip.host{border-color:var(--gold);color:var(--gold)}
+#start-btn{display:none}
+/* Role */
+#s-role{justify-content:center;align-items:center;gap:24px;text-align:center}
+#role-icon{font-size:5rem;animation:roleReveal .6s ease}
+@keyframes roleReveal{0%{transform:scale(0) rotate(-10deg);opacity:0}80%{transform:scale(1.15) rotate(3deg)}100%{transform:scale(1) rotate(0);opacity:1}}
+#role-name{font-size:1.8rem;font-weight:800;color:var(--primary)}
+#role-desc{color:var(--muted);font-size:.9rem;max-width:280px;line-height:1.5}
+#role-loups-list{display:none;background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.35);border-radius:10px;padding:10px 16px;font-size:.85rem;color:#fca5a5;text-align:center}
+/* Night */
+#s-night{justify-content:center;align-items:center;gap:20px;text-align:center;background:rgba(0,0,0,.35)}
+#night-title{font-size:1.5rem;font-weight:800;color:var(--primary)}
+#night-msg{color:var(--muted);font-size:.9rem;line-height:1.5;max-width:300px}
+#night-actions{width:100%;display:flex;flex-direction:column;gap:10px}
+.player-vote-btn{background:var(--card);border:2px solid var(--border);border-radius:12px;padding:14px;font-size:.95rem;font-weight:600;color:var(--text);cursor:pointer;transition:border-color .15s,background .15s;touch-action:manipulation}
+.player-vote-btn:hover{border-color:var(--primary);background:rgba(167,139,250,.1)}
+.player-vote-btn.selected{border-color:var(--wrong);background:rgba(239,68,68,.15);color:#fca5a5}
+.player-vote-btn:disabled{opacity:.4;cursor:default}
+#night-timer{font-size:.8rem;color:var(--muted);margin-top:-8px}
+/* Day */
+#s-day{gap:14px;padding:14px 0;overflow-y:auto}
+#day-title{font-size:1.3rem;font-weight:800;text-align:center}
+#day-result{text-align:center;padding:14px;background:var(--card);border:1px solid var(--border);border-radius:12px;font-size:.95rem;line-height:1.5}
+#day-players{display:flex;flex-direction:column;gap:8px}
+.day-player{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px}
+.day-player.dead{opacity:.4;filter:grayscale(1)}
+.day-player.me{border-color:var(--primary)}
+.dp-name{font-weight:600;font-size:.95rem}
+.dp-role{font-size:.75rem;color:var(--muted)}
+#vote-section{display:none;flex-direction:column;gap:10px}
+#vote-section h3{font-size:.8rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;text-align:center}
+#vote-timer{font-size:.8rem;color:var(--muted);text-align:center}
+/* Game over */
+#s-over{justify-content:center;align-items:center;text-align:center;gap:20px}
+#over-icon{font-size:4rem}
+#over-title{font-size:1.8rem;font-weight:800}
+#over-reason{color:var(--muted);font-size:.9rem}
+/* Misc */
+#dot{position:fixed;top:10px;right:12px;width:8px;height:8px;border-radius:50%;background:#ef4444;transition:background .3s}
+#dot.ok{background:#22c55e}
+#back-btn{position:fixed;top:6px;left:10px;background:none;border:none;color:var(--muted);font-size:.85rem;cursor:pointer;padding:4px 8px;border-radius:6px}
+#back-btn:hover{color:var(--text)}
+#confetti-wrap{position:fixed;inset:0;pointer-events:none;z-index:200;overflow:hidden}
+.conf{position:absolute;width:10px;height:10px;border-radius:2px;opacity:0;animation:conffall linear forwards}
+@keyframes conffall{0%{opacity:1;transform:translateY(-20px) rotate(0deg)}80%{opacity:1}100%{opacity:0;transform:translateY(110vh) rotate(720deg)}}
+</style>
+</head>
+<body>
+<div id="dot"></div>
+<button id="back-btn" onclick="location.href='index.html'">&#8592; Accueil</button>
+<div id="confetti-wrap"></div>
+
+<div id="wrap">
+
+<!-- HOME -->
+<div id="s-home" class="screen active">
+  <div style="flex:1"></div>
+  <div class="logo"><h1>&#x1F43A; Loup-Garou</h1><p>Loups contre villageois, rôles secrets !</p></div>
+  <div class="card form-card">
+    <h2>Ton prénom</h2>
+    <input id="inp-name" type="text" placeholder="Ex: Marie" maxlength="20" autocomplete="off">
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-primary" style="flex:1" onclick="doCreate()">Créer une salle</button>
+      <button class="btn btn-secondary" style="flex:1" onclick="showJoin()">Rejoindre</button>
+    </div>
+    <div id="join-area" style="display:none;flex-direction:column;gap:8px">
+      <input id="inp-code" type="text" placeholder="Code (ex: ABCD)" maxlength="4" autocomplete="off" style="text-transform:uppercase;letter-spacing:.1em;text-align:center;font-size:1.1rem;font-weight:700">
+      <button class="btn btn-success" onclick="doJoin()">Rejoindre</button>
+    </div>
+    <div id="err"></div>
+  </div>
+  <div style="flex:2"></div>
+</div>
+
+<!-- WAIT -->
+<div id="s-wait" class="screen">
+  <div style="font-size:.85rem;color:var(--muted);text-transform:uppercase;letter-spacing:.07em">Code de la salle</div>
+  <div id="wait-code">----</div>
+  <div id="wait-msg" style="color:var(--muted);font-size:.9rem">En attente des joueurs (4 min, 10 max)…</div>
+  <div id="wait-players"></div>
+  <button id="start-btn" class="btn btn-primary" style="max-width:280px" onclick="doStart()">Démarrer la partie</button>
+  <div id="wait-err" style="color:#fca5a5;font-size:.85rem;min-height:18px"></div>
+</div>
+
+<!-- ROLE REVEAL -->
+<div id="s-role" class="screen">
+  <div style="color:var(--muted);font-size:.85rem;text-transform:uppercase;letter-spacing:.07em">Ton rôle</div>
+  <div id="role-icon">&#x1F43A;</div>
+  <div id="role-name">Loup-Garou</div>
+  <div id="role-desc">Mange les villageois chaque nuit !</div>
+  <div id="role-loups-list"></div>
+  <div style="color:var(--muted);font-size:.8rem;margin-top:8px">La partie commence dans quelques secondes…</div>
+</div>
+
+<!-- NIGHT -->
+<div id="s-night" class="screen">
+  <div id="night-moon" style="font-size:3rem">&#x1F31A;</div>
+  <div id="night-title">Nuit</div>
+  <div id="night-msg">Fermez les yeux…</div>
+  <div id="night-timer"></div>
+  <div id="night-actions"></div>
+  <button id="night-pass-btn" class="btn btn-secondary" style="display:none;max-width:280px" onclick="doNightPass()">Passer (ne rien faire)</button>
+</div>
+
+<!-- DAY -->
+<div id="s-day" class="screen">
+  <div id="day-title">Discussion du village</div>
+  <div id="day-result"></div>
+  <div id="day-players"></div>
+  <div id="vote-section">
+    <h3>Vote — Qui éliminer ?</h3>
+    <div id="vote-timer"></div>
+    <div id="vote-btns" style="display:flex;flex-direction:column;gap:8px"></div>
+    <button class="btn btn-secondary" onclick="doVote(-1)">S'abstenir</button>
+  </div>
+</div>
+
+<!-- GAME OVER -->
+<div id="s-over" class="screen">
+  <div id="over-icon">&#x1F3C6;</div>
+  <div id="over-title">Fin de partie</div>
+  <div id="over-reason"></div>
+  <div id="over-players" style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;max-width:340px"></div>
+  <button class="btn btn-primary" style="max-width:280px" onclick="location.href='index.html'">Retour à l'accueil</button>
+</div>
+
+</div><!-- #wrap -->
+
+<script>
+const WS_URL = `${location.protocol==='https:'?'wss':'ws'}://${location.host}/ws/loup`;
+let ws = null;
+let mySlot = -1;
+let myRole = null;
+let myCode = null;
+let isHost = false;
+let roomPlayers = [];
+let currentPhase = null;
+let voteTarget = null;
+let voteTimerInterval = null;
+
+const dot = document.getElementById('dot');
+
+function show(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function showJoin() {
+  const area = document.getElementById('join-area');
+  area.style.display = area.style.display === 'none' ? 'flex' : 'none';
+  area.style.flexDirection = 'column';
+}
+
+function setErr(msg) {
+  document.getElementById('err').textContent = msg;
+}
+
+function connect(onOpen) {
+  ws = new WebSocket(WS_URL);
+  ws.onopen = () => { dot.classList.add('ok'); if (onOpen) onOpen(); };
+  ws.onclose = () => { dot.classList.remove('ok'); };
+  ws.onmessage = e => { try { handle(JSON.parse(e.data)); } catch {} };
+}
+
+function send(obj) { if (ws && ws.readyState === 1) ws.send(JSON.stringify(obj)); }
+
+function doCreate() {
+  const name = document.getElementById('inp-name').value.trim();
+  if (!name) { setErr('Entre ton prénom !'); return; }
+  connect(() => send({ type:'create', name }));
+}
+
+function doJoin() {
+  const name = document.getElementById('inp-name').value.trim();
+  const code = document.getElementById('inp-code').value.trim().toUpperCase();
+  if (!name) { setErr('Entre ton prénom !'); return; }
+  if (!code) { setErr('Entre le code de la salle !'); return; }
+  connect(() => send({ type:'join_loup', name, code }));
+}
+
+function doStart() {
+  send({ type:'start_loup' });
+}
+
+function handle(m) {
+  if (m.type === 'created_loup') {
+    mySlot = m.slot; myCode = m.code; isHost = true;
+    document.getElementById('wait-code').textContent = m.code;
+    document.getElementById('start-btn').style.display = 'block';
+    show('s-wait');
+  }
+  if (m.type === 'joined_loup') {
+    mySlot = m.slot; myCode = m.code;
+    document.getElementById('wait-code').textContent = m.code;
+    show('s-wait');
+  }
+  if (m.type === 'error') {
+    setErr(m.msg);
+    document.getElementById('wait-err').textContent = m.msg;
+  }
+  if (m.type === 'player_left') {
+    document.getElementById('wait-err').textContent = m.name + ' a quitté la partie.';
+  }
+  if (m.type === 'role_assigned') {
+    myRole = m.role;
+    const icons = { 'loup-garou':'&#x1F43A;', 'voyante':'&#x1F52E;', 'sorciere':'&#x1F9D9;', 'villageois':'&#x1F468;&#x200D;&#x1F33E;' };
+    const descs = {
+      'loup-garou':'Mange les villageois chaque nuit. Coordonne-toi avec les autres loups.',
+      'voyante':'Chaque nuit, tu peux voir le rôle d\'un joueur.',
+      'sorciere':'Tu as une potion de soin et une potion de mort. Utilise-les avec sagesse.',
+      'villageois':'Tu dois débusquer et éliminer les loups par le vote !'
+    };
+    const names = { 'loup-garou':'Loup-Garou', 'voyante':'Voyante', 'sorciere':'Sorcière', 'villageois':'Villageois' };
+    document.getElementById('role-icon').innerHTML = icons[m.role] || '&#x1F464;';
+    document.getElementById('role-name').textContent = names[m.role] || m.role;
+    document.getElementById('role-desc').textContent = descs[m.role] || '';
+    show('s-role');
+  }
+  if (m.type === 'loups_list') {
+    const box = document.getElementById('role-loups-list');
+    const names = m.loups.map(l => l.name).join(', ');
+    box.innerHTML = '&#x1F43A; Tes compagnons loups : <b>' + esc(names) + '</b>';
+    box.style.display = 'block';
+  }
+  if (m.type === 'loup_state') {
+    currentPhase = m.phase;
+    roomPlayers = m.players;
+    updateState(m);
+  }
+  if (m.type === 'night_result') {
+    const dayResult = document.getElementById('day-result');
+    if (m.killed) {
+      dayResult.innerHTML = '&#x1F480; <b>' + esc(m.killed) + '</b> a été tué(e) cette nuit.';
+    } else {
+      dayResult.innerHTML = '&#x1F31F; Personne n\'est mort cette nuit !';
+    }
+  }
+  if (m.type === 'voyante_result') {
+    const icons = { 'loup-garou':'&#x1F43A;', 'voyante':'&#x1F52E;', 'sorciere':'&#x1F9D9;', 'villageois':'&#x1F468;&#x200D;&#x1F33E;' };
+    const names2 = { 'loup-garou':'Loup-Garou', 'voyante':'Voyante', 'sorciere':'Sorcière', 'villageois':'Villageois' };
+    document.getElementById('night-msg').innerHTML =
+      esc(m.name) + ' est : <b>' + (icons[m.role]||'') + ' ' + (names2[m.role]||m.role) + '</b>';
+  }
+  if (m.type === 'sorciere_info') {
+    const attacked = m.attackedSlot !== null ? roomPlayers.find(p => p.slot === m.attackedSlot) : null;
+    let html = attacked
+      ? '&#x1F480; <b>' + esc(attacked.name) + '</b> a été attaqué(e) cette nuit.'
+      : 'Personne n\'a été attaqué.';
+    document.getElementById('night-msg').innerHTML = html;
+    // Build action buttons
+    const actions = document.getElementById('night-actions');
+    actions.innerHTML = '';
+    if (!m.usedSave && attacked) {
+      const b = document.createElement('button');
+      b.className = 'btn btn-success';
+      b.textContent = '&#x1F9EA; Utiliser la potion de soin';
+      b.innerHTML = '&#x2665; Sauver ' + esc(attacked.name);
+      b.onclick = () => { send({ type:'sorciere_action', action:'save' }); actions.innerHTML = '<div style="color:var(--correct)">Potion de soin utilisée !</div>'; };
+      actions.appendChild(b);
+    }
+    if (!m.usedKill) {
+      roomPlayers.filter(p => p.alive && p.slot !== mySlot).forEach(p => {
+        const b = document.createElement('button');
+        b.className = 'player-vote-btn';
+        b.innerHTML = '&#x2620; Tuer ' + esc(p.name);
+        b.onclick = () => { send({ type:'sorciere_action', action:'kill', target:p.slot }); actions.innerHTML = '<div style="color:var(--wrong)">Potion de mort utilisée !</div>'; };
+        actions.appendChild(b);
+      });
+    }
+    document.getElementById('night-pass-btn').style.display = 'block';
+  }
+  if (m.type === 'day_vote_result') {
+    const dayResult = document.getElementById('day-result');
+    if (m.eliminated) {
+      dayResult.innerHTML += '<br>&#x1F5F3; Le village a éliminé : <b>' + esc(m.eliminated) + '</b>.';
+    } else {
+      dayResult.innerHTML += '<br>&#x1F5F3; Le village n\'a éliminé personne.';
+    }
+    clearVoteTimer();
+  }
+  if (m.type === 'loup_over') {
+    clearVoteTimer();
+    const icon = m.winner === 'loups' ? '&#x1F43A;' : '&#x1F3D8;';
+    const title = m.winner === 'loups' ? 'Les Loups ont gagné !' : 'Le Village a gagné !';
+    document.getElementById('over-icon').innerHTML = icon;
+    document.getElementById('over-title').textContent = title;
+    document.getElementById('over-reason').textContent = m.reason;
+    // Show all roles
+    const op = document.getElementById('over-players');
+    op.innerHTML = roomPlayers.map(p => {
+      const icons = { 'loup-garou':'&#x1F43A;', 'voyante':'&#x1F52E;', 'sorciere':'&#x1F9D9;', 'villageois':'&#x1F468;&#x200D;&#x1F33E;' };
+      const role = p.role || '?';
+      return `<span style="background:var(--card);border:1px solid var(--border);border-radius:20px;padding:6px 12px;font-size:.82rem">
+        ${icons[role]||'&#x1F464;'} <b>${esc(p.name)}</b>${p.alive ? '' : ' &#x1F480;'}</span>`;
+    }).join('');
+    if (m.winner === 'village') spawnConfetti();
+    show('s-over');
+  }
+}
+
+function updateState(m) {
+  const phase = m.phase;
+  // Update wait screen
+  if (phase === 'LOBBY') {
+    const wp = document.getElementById('wait-players');
+    wp.innerHTML = m.players.map((p, i) =>
+      `<span class="player-chip${i===0?' host':''}">${esc(p.name)}${i===0?' &#x1F451;':''}</span>`
+    ).join('');
+    if (isHost) document.getElementById('start-btn').style.display = m.players.length >= 4 ? 'block' : 'none';
+    if (currentPhase !== 'LOBBY') show('s-wait');
+  }
+  if (phase === 'NIGHT') {
+    const np = m.nightPhase;
+    if (np === 'NIGHT_LOUPS') {
+      if (myRole === 'loup-garou') {
+        document.getElementById('night-title').textContent = '&#x1F43A; Loups, réveillez-vous !';
+        document.getElementById('night-msg').textContent = 'Choisissez votre victime.';
+        buildVoteButtons('night-actions', m.players.filter(p => p.alive && p.slot !== mySlot && p.role !== 'loup-garou'), slot => {
+          send({ type:'loup_vote', target:slot });
+          document.getElementById('night-msg').textContent = 'Vote envoyé… En attente des autres loups.';
+          document.querySelectorAll('#night-actions .player-vote-btn').forEach(b => b.disabled = true);
+        });
+      } else {
+        document.getElementById('night-title').innerHTML = '&#x1F31A; Nuit — Loups';
+        document.getElementById('night-msg').textContent = 'Fermez les yeux… Les loups choisissent leur victime.';
+        document.getElementById('night-actions').innerHTML = '';
+      }
+      document.getElementById('night-pass-btn').style.display = 'none';
+      show('s-night');
+    } else if (np === 'NIGHT_VOYANTE') {
+      if (myRole === 'voyante') {
+        document.getElementById('night-title').innerHTML = '&#x1F52E; Voyante, réveillez-vous !';
+        document.getElementById('night-msg').textContent = 'Choisissez un joueur pour voir son rôle.';
+        buildVoteButtons('night-actions', m.players.filter(p => p.alive && p.slot !== mySlot), slot => {
+          send({ type:'voyante_check', target:slot });
+          document.querySelectorAll('#night-actions .player-vote-btn').forEach(b => b.disabled = true);
+        });
+      } else {
+        document.getElementById('night-title').innerHTML = '&#x1F31A; Nuit — Voyante';
+        document.getElementById('night-msg').textContent = 'Fermez les yeux… La voyante consulte.';
+        document.getElementById('night-actions').innerHTML = '';
+      }
+      document.getElementById('night-pass-btn').style.display = myRole === 'voyante' ? 'block' : 'none';
+      show('s-night');
+    } else if (np === 'NIGHT_SORCIERE') {
+      if (myRole === 'sorciere') {
+        document.getElementById('night-title').innerHTML = '&#x1F9D9; Sorcière, réveillez-vous !';
+        // sorciere_info message will fill in details
+        document.getElementById('night-msg').textContent = 'En attente des informations…';
+      } else {
+        document.getElementById('night-title').innerHTML = '&#x1F31A; Nuit — Sorcière';
+        document.getElementById('night-msg').textContent = 'Fermez les yeux… La sorcière agit.';
+        document.getElementById('night-actions').innerHTML = '';
+      }
+      show('s-night');
+    }
+  }
+  if (phase === 'DAY_REVEAL') {
+    buildDayPlayers(m.players);
+    document.getElementById('day-title').textContent = 'Résultat de la nuit';
+    document.getElementById('vote-section').style.display = 'none';
+    show('s-day');
+  }
+  if (phase === 'DAY_VOTE') {
+    buildDayPlayers(m.players);
+    document.getElementById('day-title').textContent = 'Vote du village — Round ' + m.round;
+    const myPlayer = m.players.find(p => p.slot === mySlot);
+    if (myPlayer && myPlayer.alive) {
+      const vs = document.getElementById('vote-section');
+      vs.style.display = 'flex';
+      vs.style.flexDirection = 'column';
+      const vb = document.getElementById('vote-btns');
+      vb.innerHTML = '';
+      m.players.filter(p => p.alive && p.slot !== mySlot).forEach(p => {
+        const b = document.createElement('button');
+        b.className = 'player-vote-btn';
+        b.textContent = p.name;
+        b.onclick = () => doVote(p.slot);
+        vb.appendChild(b);
+      });
+      startVoteTimer(60);
+    }
+    show('s-day');
+  }
+}
+
+function buildVoteButtons(containerId, players, onClick) {
+  const c = document.getElementById(containerId);
+  c.innerHTML = '';
+  players.forEach(p => {
+    const b = document.createElement('button');
+    b.className = 'player-vote-btn';
+    b.textContent = p.name;
+    b.onclick = () => { onClick(p.slot); b.classList.add('selected'); };
+    c.appendChild(b);
+  });
+}
+
+function buildDayPlayers(players) {
+  const dp = document.getElementById('day-players');
+  dp.innerHTML = players.map(p => {
+    const icons = { 'loup-garou':'&#x1F43A;', 'voyante':'&#x1F52E;', 'sorciere':'&#x1F9D9;', 'villageois':'&#x1F468;&#x200D;&#x1F33E;' };
+    const role = p.role ? (icons[p.role]||'') + ' ' + p.role : '?';
+    return `<div class="day-player${p.alive?'':' dead'}${p.slot===mySlot?' me':''}">
+      <div><div class="dp-name">${esc(p.name)}${p.slot===mySlot?' (moi)':''}</div>
+      <div class="dp-role">${p.alive?'En vie':'Éliminé'} — ${role}</div></div>
+      <span>${p.alive?'&#x1F7E2;':'&#x1F534;'}</span>
+    </div>`;
+  }).join('');
+}
+
+function doVote(target) {
+  send({ type:'day_vote', target });
+  document.getElementById('vote-section').innerHTML = '<div style="color:var(--correct);text-align:center;padding:12px">Vote envoyé !</div>';
+  clearVoteTimer();
+}
+
+function doNightPass() {
+  send({ type:'sorciere_action', action:'pass' });
+  document.getElementById('night-pass-btn').style.display = 'none';
+  document.getElementById('night-msg').textContent = 'Action passée.';
+}
+
+let voteTimerSecs = 0;
+function startVoteTimer(secs) {
+  clearVoteTimer();
+  voteTimerSecs = secs;
+  const el = document.getElementById('vote-timer');
+  el.textContent = 'Temps restant : ' + secs + 's';
+  voteTimerInterval = setInterval(() => {
+    voteTimerSecs--;
+    el.textContent = 'Temps restant : ' + voteTimerSecs + 's';
+    if (voteTimerSecs <= 0) clearVoteTimer();
+  }, 1000);
+}
+function clearVoteTimer() {
+  if (voteTimerInterval) { clearInterval(voteTimerInterval); voteTimerInterval = null; }
+}
+
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function spawnConfetti() {
+  const wrap = document.getElementById('confetti-wrap');
+  const colors = ['#a78bfa','#f97316','#22c55e','#fbbf24','#f472b6'];
+  for (let i = 0; i < 60; i++) {
+    const el = document.createElement('div');
+    el.className = 'conf';
+    el.style.cssText = `left:${Math.random()*100}%;top:-10px;background:${colors[Math.floor(Math.random()*colors.length)]};animation-duration:${1.2+Math.random()*1.6}s;animation-delay:${Math.random()*.8}s;width:${6+Math.random()*8}px;height:${6+Math.random()*8}px`;
+    wrap.appendChild(el);
+    setTimeout(() => el.remove(), 3000);
+  }
+}
+
+// Auto-join from URL params
+const up = new URLSearchParams(location.search);
+if (up.get('create') && up.get('name')) {
+  document.getElementById('inp-name').value = up.get('name');
+  doCreate();
+} else if (up.get('code') && up.get('name')) {
+  document.getElementById('inp-name').value = up.get('name');
+  document.getElementById('inp-code').value = up.get('code');
+  document.getElementById('join-area').style.display = 'flex';
+  document.getElementById('join-area').style.flexDirection = 'column';
+  doJoin();
+}
+document.getElementById('inp-code').addEventListener('input', e => {
+  e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,'');
+});
+</script>
+</body>
+</html>

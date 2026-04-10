@@ -10,7 +10,7 @@ const app    = express();
 const server = http.createServer(app);
 const PORT   = process.env.PORT || 3001;
 
-// ── 9 WebSocket servers ───────────────────────────────────────────────────────
+// ── 11 WebSocket servers ──────────────────────────────────────────────────────
 const wssQuiz    = new WebSocket.Server({ noServer: true });
 const wssDraw    = new WebSocket.Server({ noServer: true });
 const wssP4      = new WebSocket.Server({ noServer: true });
@@ -20,12 +20,15 @@ const wssEmoji   = new WebSocket.Server({ noServer: true });
 const wssVerite  = new WebSocket.Server({ noServer: true });
 const wssChat    = new WebSocket.Server({ noServer: true });
 const wssLobby   = new WebSocket.Server({ noServer: true });
+const wssLoup    = new WebSocket.Server({ noServer: true });
+const wssUno     = new WebSocket.Server({ noServer: true });
 
 server.on('upgrade', (req, socket, head) => {
   const routes = {
     '/ws/quiz':wssQuiz,'/ws/draw':wssDraw,'/ws/p4':wssP4,
     '/ws/morpion':wssMorpion,'/ws/taboo':wssTaboo,'/ws/emoji':wssEmoji,
-    '/ws/verite':wssVerite,'/ws/chat':wssChat,'/ws/lobby':wssLobby
+    '/ws/verite':wssVerite,'/ws/chat':wssChat,'/ws/lobby':wssLobby,
+    '/ws/loup':wssLoup,'/ws/uno':wssUno
   };
   const h = routes[req.url];
   if (h) h.handleUpgrade(req, socket, head, ws => h.emit('connection', ws));
@@ -52,12 +55,13 @@ app.get('/api/ip', (_, res) => res.json({ ip: getLocalIP(), port: PORT }));
 // ── Rooms API ─────────────────────────────────────────────────────────────────
 const GAME_NAMES = {
   quiz:'Quiz Éclair', draw:'Dessin & Devine', p4:'Puissance 4',
-  morpion:'Morpion', taboo:'Mots Interdits', emoji:'Devinette Emoji', verite:'Vérité ou Défi'
+  morpion:'Morpion', taboo:'Mots Interdits', emoji:'Devinette Emoji', verite:'Vérité ou Défi',
+  loup:'Loup-Garou', uno:'Uno'
 };
 
 function getRoomsSnapshot() {
   const all = [];
-  const maps = { quiz:quizRooms, draw:drawRooms, p4:p4Rooms, morpion:morpionRooms, taboo:tabooRooms, emoji:emojiRooms, verite:veriteRooms };
+  const maps = { quiz:quizRooms, draw:drawRooms, p4:p4Rooms, morpion:morpionRooms, taboo:tabooRooms, emoji:emojiRooms, verite:veriteRooms, loup:loupRooms, uno:unoRooms };
   for (const [game, map] of Object.entries(maps)) {
     for (const [code, room] of map) {
       all.push({
@@ -66,8 +70,8 @@ function getRoomsSnapshot() {
         gameName: GAME_NAMES[game],
         host: room.host,
         players: room.players.map(p => p.name),
-        maxPlayers: 4,
-        status: room.phase === 'WAITING' ? 'waiting' : 'playing'
+        maxPlayers: game==='loup'?10:game==='uno'?4:4,
+        status: room.phase === 'LOBBY' || room.phase === 'WAITING' ? 'waiting' : 'playing'
       });
     }
   }
@@ -1244,6 +1248,478 @@ wssVerite.on('connection',ws=>{
 });
 
 // ════════════════════════════════════════════════════════
+//  LOUP-GAROU
+// ════════════════════════════════════════════════════════
+
+const loupRooms = new Map();
+
+function makeLoupRoom(code, host) {
+  return { code, host, players:[], phase:'LOBBY',
+           votes:{}, nightKill:null, savedSlot:null, witchKillSlot:null,
+           witchUsedSave:false, witchUsedKill:false,
+           timer:null, round:0 };
+}
+
+function loupSnap(room, forSlot) {
+  const players = room.players.map(p => {
+    const obj = { name:p.name, slot:p.slot, alive:p.alive };
+    // reveal role only to the player themselves, or if dead
+    if (p.slot === forSlot || !p.alive || room.phase === 'GAME_OVER') obj.role = p.role;
+    return obj;
+  });
+  return { type:'loup_state', phase:room.phase, players, round:room.round,
+           code:room.code, host:room.host, nightPhase:room.nightPhase||null };
+}
+
+function loupBcastAll(room) {
+  room.players.forEach(p => {
+    if (p.ws.readyState === WebSocket.OPEN) wsend(p.ws, loupSnap(room, p.slot));
+  });
+}
+
+function loupCountWin(room) {
+  const alive = room.players.filter(p => p.alive);
+  const loups = alive.filter(p => p.role === 'loup-garou').length;
+  const village = alive.filter(p => p.role !== 'loup-garou').length;
+  if (loups === 0) return 'village';
+  if (loups >= village) return 'loups';
+  return null;
+}
+
+function loupStartNight(room) {
+  room.phase = 'NIGHT';
+  room.nightPhase = 'NIGHT_LOUPS';
+  room.votes = {};
+  room.nightKill = null;
+  room.savedSlot = null;
+  room.witchKillSlot = null;
+  room.round++;
+  loupBcastAll(room);
+  // 30s timer for loups
+  clearTimeout(room.timer);
+  room.timer = setTimeout(() => loupResolveLoups(room), 30000);
+}
+
+function loupResolveLoups(room) {
+  clearTimeout(room.timer);
+  // tally votes
+  const tally = {};
+  Object.values(room.votes).forEach(t => { tally[t] = (tally[t]||0)+1; });
+  let max = 0, victim = null;
+  for (const [slot, cnt] of Object.entries(tally)) {
+    if (cnt > max) { max = cnt; victim = Number(slot); }
+    else if (cnt === max) { victim = null; } // tie = no kill
+  }
+  room.nightKill = victim;
+  room.votes = {};
+  room.nightPhase = 'NIGHT_VOYANTE';
+  loupBcastAll(room);
+  clearTimeout(room.timer);
+  room.timer = setTimeout(() => loupResolveSorciere(room), 15000);
+}
+
+function loupResolveSorciere(room) {
+  clearTimeout(room.timer);
+  room.nightPhase = 'NIGHT_SORCIERE';
+  loupBcastAll(room);
+  // Send attacked info to sorciere
+  const sorciere = room.players.find(p => p.role === 'sorciere' && p.alive);
+  if (sorciere) {
+    wsend(sorciere.ws, { type:'sorciere_info', attackedSlot: room.nightKill,
+      usedSave: room.witchUsedSave, usedKill: room.witchUsedKill });
+  }
+  clearTimeout(room.timer);
+  room.timer = setTimeout(() => loupDayReveal(room), 20000);
+}
+
+function loupDayReveal(room) {
+  clearTimeout(room.timer);
+  // Apply night results
+  let killed = null;
+  if (room.nightKill !== null && room.savedSlot !== room.nightKill) {
+    const p = room.players[room.nightKill];
+    if (p) { p.alive = false; killed = p.name; }
+  }
+  if (room.witchKillSlot !== null) {
+    const p = room.players[room.witchKillSlot];
+    if (p && p.alive) { p.alive = false; killed = (killed ? killed + ', ' : '') + p.name; }
+  }
+  room.phase = 'DAY_REVEAL';
+  room.nightPhase = null;
+  loupBcastAll(room);
+  bcast(room.players, { type:'night_result', killed });
+
+  const win = loupCountWin(room);
+  if (win) { return loupGameOver(room, win); }
+
+  clearTimeout(room.timer);
+  room.timer = setTimeout(() => loupStartDayVote(room), 4000);
+}
+
+function loupStartDayVote(room) {
+  room.phase = 'DAY_VOTE';
+  room.votes = {};
+  loupBcastAll(room);
+  clearTimeout(room.timer);
+  room.timer = setTimeout(() => loupResolveDayVote(room), 60000);
+}
+
+function loupResolveDayVote(room) {
+  clearTimeout(room.timer);
+  const tally = {};
+  Object.values(room.votes).forEach(t => { if(t>=0) tally[t] = (tally[t]||0)+1; });
+  let max = 0, eliminated = null;
+  for (const [slot, cnt] of Object.entries(tally)) {
+    if (cnt > max) { max = cnt; eliminated = Number(slot); }
+    else if (cnt === max) { eliminated = null; }
+  }
+  if (eliminated !== null) {
+    const p = room.players[eliminated];
+    if (p) p.alive = false;
+  }
+  const elimName = eliminated !== null ? room.players[eliminated]?.name : null;
+  bcast(room.players, { type:'day_vote_result', eliminated: elimName, votes: room.votes });
+
+  const win = loupCountWin(room);
+  if (win) return loupGameOver(room, win);
+
+  clearTimeout(room.timer);
+  room.timer = setTimeout(() => loupStartNight(room), 3000);
+}
+
+function loupGameOver(room, winner) {
+  room.phase = 'GAME_OVER';
+  const reason = winner === 'loups' ? 'Les loups ont mangé le village !' : 'Tous les loups sont éliminés !';
+  bcast(room.players, { type:'loup_over', winner, reason });
+  loupBcastAll(room);
+  broadcastLobby();
+}
+
+wssLoup.on('connection', ws => {
+  makeWS(wssLoup).alive(ws);
+  let myRoom = null;
+  ws.on('close', () => {
+    makeWS(wssLoup).clear(ws);
+    if (!myRoom) return;
+    const idx = myRoom.players.findIndex(p => p.ws === ws); if (idx < 0) return;
+    const name = myRoom.players[idx].name;
+    myRoom.players.splice(idx, 1);
+    myRoom.players.forEach((p, i) => p.slot = i);
+    if (myRoom.players.length === 0) { clearTimeout(myRoom.timer); loupRooms.delete(myRoom.code); }
+    else { myRoom.phase = 'LOBBY'; bcast(myRoom.players, { type:'player_left', name }); loupBcastAll(myRoom); }
+    broadcastLobby();
+  });
+  ws.on('message', raw => {
+    let d; try { d = JSON.parse(raw); } catch { return; }
+    const player = myRoom ? myRoom.players.find(p => p.ws === ws) : null;
+    switch (d.type) {
+      case 'create': {
+        const name = String(d.name||'').trim().slice(0,20)||'Joueur';
+        const code = genCode(loupRooms);
+        const room = makeLoupRoom(code, name);
+        loupRooms.set(code, room);
+        myRoom = room;
+        room.players.push({ ws, name, slot:0, alive:true, role:null });
+        wsend(ws, { type:'created_loup', code, slot:0, name });
+        loupBcastAll(room);
+        broadcastLobby();
+        break;
+      }
+      case 'join_loup': {
+        const code = String(d.code||'').trim().toUpperCase();
+        const room = loupRooms.get(code);
+        if (!room) { wsend(ws, { type:'error', msg:'Salle introuvable.' }); return; }
+        if (room.players.length >= 10) { wsend(ws, { type:'error', msg:'Salle pleine (10 max).' }); return; }
+        if (room.phase !== 'LOBBY') { wsend(ws, { type:'error', msg:'Partie déjà en cours.' }); return; }
+        const name = String(d.name||'').trim().slice(0,20)||'Joueur';
+        const slot = room.players.length;
+        room.players.push({ ws, name, slot, alive:true, role:null });
+        myRoom = room;
+        wsend(ws, { type:'joined_loup', slot, name, code });
+        loupBcastAll(room);
+        broadcastLobby();
+        break;
+      }
+      case 'start_loup': {
+        if (!player || !myRoom || player.slot !== 0 || myRoom.phase !== 'LOBBY') return;
+        if (myRoom.players.length < 4) { wsend(ws, { type:'error', msg:'Il faut au moins 4 joueurs.' }); return; }
+        // Assign roles
+        const n = myRoom.players.length;
+        const nLoups = Math.min(3, Math.max(1, Math.floor(n/3)));
+        const roles = [];
+        for (let i = 0; i < nLoups; i++) roles.push('loup-garou');
+        roles.push('voyante');
+        roles.push('sorciere');
+        while (roles.length < n) roles.push('villageois');
+        const shuffled = shuffle(roles);
+        myRoom.players.forEach((p, i) => p.role = shuffled[i]);
+        // Send each player their role
+        myRoom.players.forEach(p => wsend(p.ws, { type:'role_assigned', role:p.role, slot:p.slot }));
+        // Send loups list to all loups
+        const loupsList = myRoom.players.filter(p => p.role === 'loup-garou').map(p => ({ name:p.name, slot:p.slot }));
+        myRoom.players.filter(p => p.role === 'loup-garou').forEach(p => wsend(p.ws, { type:'loups_list', loups:loupsList }));
+        myRoom.phase = 'NIGHT';
+        loupBcastAll(myRoom);
+        clearTimeout(myRoom.timer);
+        myRoom.timer = setTimeout(() => loupStartNight(myRoom), 4000);
+        broadcastLobby();
+        break;
+      }
+      case 'loup_vote': {
+        if (!player || !myRoom || myRoom.phase !== 'NIGHT' || myRoom.nightPhase !== 'NIGHT_LOUPS') return;
+        if (player.role !== 'loup-garou' || !player.alive) return;
+        const target = Number(d.target);
+        const tp = myRoom.players[target];
+        if (!tp || !tp.alive || tp.role === 'loup-garou') return;
+        myRoom.votes[player.slot] = target;
+        // Check if all alive loups voted
+        const aliveLoups = myRoom.players.filter(p => p.role === 'loup-garou' && p.alive);
+        if (aliveLoups.every(p => myRoom.votes[p.slot] !== undefined)) loupResolveLoups(myRoom);
+        break;
+      }
+      case 'voyante_check': {
+        if (!player || !myRoom || myRoom.phase !== 'NIGHT' || myRoom.nightPhase !== 'NIGHT_VOYANTE') return;
+        if (player.role !== 'voyante' || !player.alive) return;
+        const target = Number(d.target);
+        const tp = myRoom.players[target];
+        if (!tp) return;
+        wsend(ws, { type:'voyante_result', slot:target, name:tp.name, role:tp.role });
+        // Move to sorciere
+        loupResolveSorciere(myRoom);
+        break;
+      }
+      case 'sorciere_action': {
+        if (!player || !myRoom || myRoom.phase !== 'NIGHT' || myRoom.nightPhase !== 'NIGHT_SORCIERE') return;
+        if (player.role !== 'sorciere' || !player.alive) return;
+        if (d.action === 'save' && !myRoom.witchUsedSave && myRoom.nightKill !== null) {
+          myRoom.savedSlot = myRoom.nightKill;
+          myRoom.witchUsedSave = true;
+        } else if (d.action === 'kill' && !myRoom.witchUsedKill) {
+          const target = Number(d.target);
+          const tp = myRoom.players[target];
+          if (tp && tp.alive) { myRoom.witchKillSlot = target; myRoom.witchUsedKill = true; }
+        }
+        loupDayReveal(myRoom);
+        break;
+      }
+      case 'day_vote': {
+        if (!player || !myRoom || myRoom.phase !== 'DAY_VOTE' || !player.alive) return;
+        const target = Number(d.target);
+        if (target >= 0) {
+          const tp = myRoom.players[target];
+          if (!tp || !tp.alive) return;
+        }
+        myRoom.votes[player.slot] = target;
+        // Check if all alive voted
+        const alivePlayers = myRoom.players.filter(p => p.alive);
+        if (alivePlayers.every(p => myRoom.votes[p.slot] !== undefined)) loupResolveDayVote(myRoom);
+        break;
+      }
+    }
+  });
+});
+
+// ════════════════════════════════════════════════════════
+//  UNO
+// ════════════════════════════════════════════════════════
+
+const unoRooms = new Map();
+
+function makeUnoRoom(code, host) {
+  return { code, host, players:[], phase:'LOBBY',
+           deck:[], pile:[], hands:{},
+           turn:0, direction:1, drawPending:0,
+           unoSaid:{}, timer:null };
+}
+
+function buildUnoDeck() {
+  const colors = ['rouge','bleu','vert','jaune'];
+  const deck = [];
+  for (const c of colors) {
+    deck.push({ color:c, value:'0' });
+    for (const v of ['1','2','3','4','5','6','7','8','9','+2','skip','reverse']) {
+      deck.push({ color:c, value:v });
+      deck.push({ color:c, value:v });
+    }
+  }
+  for (let i = 0; i < 4; i++) deck.push({ color:'noir', value:'wild' });
+  for (let i = 0; i < 4; i++) deck.push({ color:'noir', value:'+4' });
+  return shuffle(deck);
+}
+
+function unoSnap(room, forSlot) {
+  return {
+    type:'uno_state', phase:room.phase, code:room.code,
+    players: room.players.map(p => ({ name:p.name, slot:p.slot, cardCount:(room.hands[p.slot]||[]).length })),
+    turn: room.turn, topCard: room.pile[room.pile.length-1]||null,
+    hand: room.hands[forSlot]||[],
+    direction: room.direction, drawPending: room.drawPending,
+  };
+}
+
+function unoBcastAll(room) {
+  room.players.forEach(p => {
+    if (p.ws.readyState === WebSocket.OPEN) wsend(p.ws, unoSnap(room, p.slot));
+  });
+}
+
+function unoNextTurn(room, skip=false) {
+  const n = room.players.filter(p => p.active !== false).length;
+  let steps = skip ? 2 : 1;
+  for (let i = 0; i < steps; i++) {
+    room.turn = (room.turn + room.direction + n) % n;
+  }
+  unoBcastAll(room);
+}
+
+function unoDrawCards(room, slot, count) {
+  for (let i = 0; i < count; i++) {
+    if (room.deck.length === 0) {
+      const top = room.pile.pop();
+      room.deck = shuffle(room.pile);
+      room.pile = [top];
+    }
+    if (room.deck.length > 0) {
+      room.hands[slot] = room.hands[slot] || [];
+      room.hands[slot].push(room.deck.pop());
+    }
+  }
+}
+
+function unoCanPlay(card, topCard, drawPending) {
+  if (drawPending > 0) {
+    return card.value === '+2' || card.value === '+4';
+  }
+  if (card.color === 'noir') return true;
+  return card.color === topCard.color || card.value === topCard.value;
+}
+
+wssUno.on('connection', ws => {
+  makeWS(wssUno).alive(ws);
+  let myRoom = null;
+  ws.on('close', () => {
+    makeWS(wssUno).clear(ws);
+    if (!myRoom) return;
+    const idx = myRoom.players.findIndex(p => p.ws === ws); if (idx < 0) return;
+    const name = myRoom.players[idx].name;
+    myRoom.players.splice(idx, 1);
+    myRoom.players.forEach((p, i) => p.slot = i);
+    if (myRoom.players.length === 0) { clearTimeout(myRoom.timer); unoRooms.delete(myRoom.code); }
+    else { myRoom.phase = 'LOBBY'; bcast(myRoom.players, { type:'player_left', name }); unoBcastAll(myRoom); }
+    broadcastLobby();
+  });
+  ws.on('message', raw => {
+    let d; try { d = JSON.parse(raw); } catch { return; }
+    const player = myRoom ? myRoom.players.find(p => p.ws === ws) : null;
+    switch (d.type) {
+      case 'create_uno': {
+        const name = String(d.name||'').trim().slice(0,20)||'Joueur';
+        const code = genCode(unoRooms);
+        const room = makeUnoRoom(code, name);
+        unoRooms.set(code, room);
+        myRoom = room;
+        room.players.push({ ws, name, slot:0 });
+        wsend(ws, { type:'created_uno', code, slot:0, name });
+        unoBcastAll(room);
+        broadcastLobby();
+        break;
+      }
+      case 'join_uno': {
+        const code = String(d.code||'').trim().toUpperCase();
+        const room = unoRooms.get(code);
+        if (!room) { wsend(ws, { type:'uno_error', msg:'Salle introuvable.' }); return; }
+        if (room.players.length >= 4) { wsend(ws, { type:'uno_error', msg:'Salle pleine (4 max).' }); return; }
+        if (room.phase !== 'LOBBY') { wsend(ws, { type:'uno_error', msg:'Partie déjà en cours.' }); return; }
+        const name = String(d.name||'').trim().slice(0,20)||'Joueur';
+        const slot = room.players.length;
+        room.players.push({ ws, name, slot });
+        myRoom = room;
+        wsend(ws, { type:'joined_uno', slot, name, code });
+        unoBcastAll(room);
+        broadcastLobby();
+        break;
+      }
+      case 'start_uno': {
+        if (!player || !myRoom || player.slot !== 0 || myRoom.phase !== 'LOBBY') return;
+        if (myRoom.players.length < 2) { wsend(ws, { type:'uno_error', msg:'Il faut au moins 2 joueurs.' }); return; }
+        myRoom.deck = buildUnoDeck();
+        myRoom.hands = {};
+        myRoom.players.forEach(p => { myRoom.hands[p.slot] = []; unoDrawCards(myRoom, p.slot, 7); });
+        // First card - skip wilds
+        let first;
+        do { first = myRoom.deck.pop(); } while (first.color === 'noir');
+        myRoom.pile = [first];
+        myRoom.turn = 0; myRoom.direction = 1; myRoom.drawPending = 0; myRoom.unoSaid = {};
+        myRoom.phase = 'PLAYING';
+        unoBcastAll(myRoom);
+        broadcastLobby();
+        break;
+      }
+      case 'play_uno': {
+        if (!player || !myRoom || myRoom.phase !== 'PLAYING') return;
+        const activePlayers = myRoom.players.filter(p => p.active !== false);
+        if (activePlayers[myRoom.turn]?.slot !== player.slot) { wsend(ws, { type:'uno_error', msg:'Ce n\'est pas ton tour.' }); return; }
+        const hand = myRoom.hands[player.slot] || [];
+        const ci = Number(d.cardIndex);
+        if (ci < 0 || ci >= hand.length) return;
+        const card = hand[ci];
+        const top = myRoom.pile[myRoom.pile.length-1];
+        if (!unoCanPlay(card, top, myRoom.drawPending)) { wsend(ws, { type:'uno_error', msg:'Carte non jouable.' }); return; }
+        // Play card
+        hand.splice(ci, 1);
+        if (card.color === 'noir' && d.chosenColor) {
+          card.chosenColor = d.chosenColor;
+          myRoom.pile.push({ ...card, color: d.chosenColor });
+        } else {
+          myRoom.pile.push(card);
+        }
+        myRoom.unoSaid[player.slot] = false;
+        // Check win
+        if (hand.length === 0) {
+          myRoom.phase = 'GAME_OVER';
+          bcast(myRoom.players, { type:'uno_over', winnerSlot:player.slot, winnerName:player.name });
+          unoBcastAll(myRoom);
+          broadcastLobby();
+          return;
+        }
+        // Apply card effects
+        let skipNext = false;
+        if (card.value === 'reverse') {
+          myRoom.direction *= -1;
+          if (myRoom.players.length === 2) skipNext = true;
+        } else if (card.value === 'skip') {
+          skipNext = true;
+        } else if (card.value === '+2') {
+          myRoom.drawPending += 2;
+        } else if (card.value === '+4') {
+          myRoom.drawPending += 4;
+        } else {
+          myRoom.drawPending = 0;
+        }
+        unoNextTurn(myRoom, skipNext);
+        break;
+      }
+      case 'draw_uno': {
+        if (!player || !myRoom || myRoom.phase !== 'PLAYING') return;
+        const activePlayers = myRoom.players.filter(p => p.active !== false);
+        if (activePlayers[myRoom.turn]?.slot !== player.slot) { wsend(ws, { type:'uno_error', msg:'Ce n\'est pas ton tour.' }); return; }
+        const drawCount = myRoom.drawPending > 0 ? myRoom.drawPending : 1;
+        unoDrawCards(myRoom, player.slot, drawCount);
+        myRoom.drawPending = 0;
+        unoNextTurn(myRoom);
+        break;
+      }
+      case 'uno_said': {
+        if (!player || !myRoom) return;
+        const hand = myRoom.hands[player.slot] || [];
+        if (hand.length === 1) myRoom.unoSaid[player.slot] = true;
+        break;
+      }
+    }
+  });
+});
+
+// ════════════════════════════════════════════════════════
 //  CHAT GLOBAL
 // ════════════════════════════════════════════════════════
 const chatClients = new Set();
@@ -1271,7 +1747,7 @@ wssChat.on('connection', ws => {
 server.listen(PORT,'0.0.0.0',()=>{
   const ip=getLocalIP();
   console.log('\n╔══════════════════════════════════╗');
-  console.log('║    Quiz Duo v4.0 — Salles !      ║');
+  console.log('║    ZapPlay v5.0 — Salles !       ║');
   console.log('╠══════════════════════════════════╣');
   console.log(`║  PC  : http://localhost:${PORT}   ║`);
   console.log(`║  Tel : http://${ip}:${PORT}║`);
