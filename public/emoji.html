@@ -273,7 +273,15 @@
       <p>Entre ton prénom pour rejoindre</p>
       <input id="name-input" type="text" placeholder="Ton prénom" maxlength="20"
         style="width:100%;background:rgba(255,255,255,.1);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:16px;padding:14px;outline:none;text-align:center;">
-      <button class="btn btn-primary btn-full" onclick="joinGame()">Rejoindre</button>
+      <div style="display:flex;gap:8px;margin-top:4px">
+        <button class="btn btn-primary" style="flex:1" onclick="createGame()">Créer une salle</button>
+        <button class="btn btn-secondary" style="flex:1" onclick="showJoinE()">Rejoindre (code)</button>
+      </div>
+      <div id="join-code-area" style="display:none;flex-direction:column;gap:8px;margin-top:4px">
+        <input id="code-input" type="text" maxlength="4" placeholder="Code (ABCD)"
+          style="width:100%;background:rgba(255,255,255,.1);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:1.1rem;font-weight:700;padding:12px;outline:none;text-align:center;text-transform:uppercase;letter-spacing:.12em;" autocomplete="off">
+        <button class="btn btn-primary btn-full" onclick="joinGame()">Rejoindre</button>
+      </div>
     </div>
   </div>
 
@@ -281,6 +289,13 @@
   <div id="screen-waiting" class="hidden">
     <div id="phase-overlay">
       <h1>En attente…</h1>
+      <div id="emoji-code-box" onclick="copyCodeE()" title="Cliquer pour copier"
+        style="text-align:center;background:rgba(167,139,250,.1);border:2px solid rgba(167,139,250,.35);
+               border-radius:12px;padding:10px 18px;cursor:pointer;margin-bottom:10px">
+        <div style="font-size:.65rem;color:#94a3b8;text-transform:uppercase;letter-spacing:.07em;margin-bottom:3px">Code de la salle</div>
+        <div id="emoji-code-display" style="font-size:2.2rem;font-weight:800;letter-spacing:.2em;color:#a78bfa;font-family:monospace;line-height:1">----</div>
+        <div id="emoji-copy-hint" style="font-size:.65rem;color:#94a3b8;margin-top:3px">Cliquer pour copier</div>
+      </div>
       <p>Partage ce lien à ton adversaire</p>
       <div class="qr-box"><canvas id="qr-canvas"></canvas></div>
       <div id="url-display"></div>
@@ -389,13 +404,16 @@ let mySlot = null;
 let myName = '';
 let state = null;
 
+let myRoomCode = '';
+let pendingAction = null;
+
 /* ─── WebSocket ──────────────────────────────────────── */
 function connect() {
   if (ws && ws.readyState <= 1) return;
   ws = new WebSocket(`ws://${location.host}/ws/emoji`);
   ws.onopen = () => {
     document.getElementById('dot').classList.add('ok');
-    if (myName) ws.send(JSON.stringify({ type: 'join_emoji', name: myName }));
+    if (pendingAction) { pendingAction(); pendingAction = null; }
   };
   ws.onclose = () => {
     document.getElementById('dot').classList.remove('ok');
@@ -405,6 +423,21 @@ function connect() {
   ws.onmessage = e => handleMsg(JSON.parse(e.data));
 }
 
+(function(){
+  const p = new URLSearchParams(location.search);
+  if (p.get('name')) document.getElementById('name-input').value = p.get('name');
+  if (p.get('code')) {
+    const ci = document.getElementById('code-input');
+    if(ci) ci.value = p.get('code').toUpperCase();
+    showJoinE();
+  }
+  if (p.get('create') === '1' && p.get('name')) {
+    const name = p.get('name');
+    document.getElementById('name-input').value = name;
+    myName = name; pendingAction = () => send({ type: 'create_emoji', name }); connect();
+  }
+})();
+
 function send(obj) {
   if (ws && ws.readyState === 1) ws.send(JSON.stringify(obj));
 }
@@ -412,9 +445,15 @@ function send(obj) {
 /* ─── Message handler ────────────────────────────────── */
 function handleMsg(msg) {
   switch (msg.type) {
+    case 'created_emoji':
+      mySlot = msg.slot; myName = msg.name; myRoomCode = msg.code;
+      document.getElementById('emoji-code-display').textContent = msg.code;
+      showScreen('screen-waiting');
+      break;
     case 'welcome_emoji':
       mySlot = msg.slot;
       myName = msg.name;
+      myRoomCode = msg.code||'';
       break;
 
     case 'emoji_state':
@@ -481,8 +520,7 @@ function renderState() {
   switch (phase) {
     case 'WAITING':
       hideCountdown();
-      showScreen('screen-waiting');
-      renderQR();
+      if (mySlot === 0) { showScreen('screen-waiting'); renderQR(); }
       break;
 
     case 'READY':
@@ -603,12 +641,34 @@ function toggleEl(id, show) {
 }
 
 /* ─── Actions ────────────────────────────────────────── */
+function showJoinE() {
+  const a = document.getElementById('join-code-area');
+  a.style.display = a.style.display === 'flex' ? 'none' : 'flex';
+  a.style.flexDirection = 'column'; a.style.gap = '8px';
+}
+function createGame() {
+  const n = document.getElementById('name-input').value.trim();
+  if (!n) return;
+  myName = n; pendingAction = () => send({ type: 'create_emoji', name: n }); connect();
+}
 function joinGame() {
   const n = document.getElementById('name-input').value.trim();
   if (!n) return;
-  myName = n;
-  send({ type: 'join_emoji', name: myName });
+  const c = document.getElementById('code-input').value.trim().toUpperCase();
+  if (!c) return;
+  myName = n; pendingAction = () => send({ type: 'join_emoji', name: n, code: c }); connect();
 }
+function copyCodeE() {
+  if (!myRoomCode) return;
+  navigator.clipboard.writeText(myRoomCode).then(() => {
+    const h = document.getElementById('emoji-copy-hint');
+    h.textContent = 'Copié !'; h.style.color = '#22c55e';
+    setTimeout(() => { h.textContent = 'Cliquer pour copier'; h.style.color = ''; }, 1500);
+  }).catch(() => {});
+}
+document.getElementById('code-input') && document.getElementById('code-input').addEventListener('input', e => {
+  e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,'');
+});
 function startGame() { send({ type: 'start_emoji' }); }
 function restartGame() { send({ type: 'restart_emoji' }); }
 function doBuzz() {

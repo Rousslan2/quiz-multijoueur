@@ -141,17 +141,35 @@ input[type=text]::placeholder{color:var(--muted)}
   <div class="card form-card">
     <h2>Ton prénom</h2>
     <input id="inp-name" type="text" placeholder="Ex: Marie" maxlength="20" autocomplete="off">
-    <button class="btn btn-primary" onclick="doJoin()">Rejoindre la partie</button>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-primary" style="flex:1" onclick="doCreate()">Créer une salle</button>
+      <button class="btn btn-secondary" style="flex:1" onclick="showJoinInput()">Rejoindre (code)</button>
+    </div>
+    <div id="join-code-area" style="display:none;flex-direction:column;gap:8px">
+      <input id="inp-code" type="text" placeholder="Code (ex: ABCD)" maxlength="4" autocomplete="off"
+        style="text-transform:uppercase;letter-spacing:.12em;font-size:1.1rem;font-weight:700;text-align:center">
+      <button class="btn btn-secondary" onclick="doJoin()">Rejoindre</button>
+    </div>
   </div>
   <div id="err"></div>
   <div style="flex:1"></div>
 </div>
 
-<!-- WAIT -->
+<!-- WAIT (host waiting for 2nd player) -->
 <div id="s-wait" class="screen">
+  <div style="text-align:center;padding:16px 0 8px">
+    <div style="font-size:.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Code de votre salle</div>
+    <div id="room-code-display" onclick="copyRoomCode()" title="Cliquer pour copier"
+      style="font-size:3rem;font-weight:800;letter-spacing:.2em;color:var(--primary);font-family:monospace;
+             background:rgba(167,139,250,.1);border:2px solid rgba(167,139,250,.35);border-radius:14px;
+             padding:14px 20px;cursor:pointer;transition:background .18s;display:inline-block">
+      ----
+    </div>
+    <div id="copy-hint-quiz" style="font-size:.72rem;color:var(--muted);margin-top:6px">Cliquer pour copier</div>
+  </div>
   <div id="qr-box"><span style="color:var(--muted);font-size:.75rem">chargement...</span></div>
   <div id="qr-url"></div>
-  <div id="wait-msg"><h2>En attente...</h2><p>Scannez le QR ou entrez l'adresse</p></div>
+  <div id="wait-msg"><h2>En attente...</h2><p>Partagez le code ou scannez le QR</p></div>
 </div>
 
 <!-- SETUP -->
@@ -280,16 +298,40 @@ function stopTimer(){clearTimeout(tickT);const b=document.getElementById('timer-
 
 // ── WebSocket ─────────────────────────────────────────────────────────────────
 const WS_URL = `ws://${location.host}/ws/quiz`;
-let ws, mySlot=-1, myName='', reconnect=false;
+let ws, mySlot=-1, myName='', myCode='', reconnectAction=null;
 function connect(){
   ws=new WebSocket(WS_URL);
-  ws.onopen=()=>{document.getElementById('dot').classList.add('ok');if(reconnect&&myName){reconnect=false;send({type:'join',name:myName});}};
-  ws.onclose=()=>{document.getElementById('dot').classList.remove('ok');reconnect=true;setTimeout(connect,2000);};
+  ws.onopen=()=>{
+    document.getElementById('dot').classList.add('ok');
+    if(reconnectAction){reconnectAction();reconnectAction=null;}
+  };
+  ws.onclose=()=>{document.getElementById('dot').classList.remove('ok');setTimeout(connect,2000);};
   ws.onerror=()=>{};
   ws.onmessage=e=>{let m;try{m=JSON.parse(e.data);}catch{return;}handle(m);};
 }
 connect();
 function send(d){if(ws&&ws.readyState===WebSocket.OPEN)ws.send(JSON.stringify(d));}
+
+// ── URL params auto-action ────────────────────────────────────────────────────
+(function(){
+  const p=new URLSearchParams(location.search);
+  if(p.get('name'))document.getElementById('inp-name').value=p.get('name');
+  if(p.get('code')){
+    const code=p.get('code').toUpperCase();
+    document.getElementById('inp-code').value=code;
+    showJoinInput();
+  }
+  if(p.get('create')==='1'&&p.get('name')){
+    // Auto-create after WS connects
+    const name=p.get('name');
+    document.getElementById('inp-name').value=name;
+    const tryCreate=()=>{
+      if(ws&&ws.readyState===WebSocket.OPEN){SND.init();myName=name;send({type:'create',name});}
+      else reconnectAction=tryCreate;
+    };
+    setTimeout(tryCreate,300);
+  }
+})();
 
 // ── Question count ────────────────────────────────────────────────────────────
 let selectedCount = 15;
@@ -302,8 +344,36 @@ document.getElementById('count-row').addEventListener('click', e => {
 });
 
 // ── Actions ───────────────────────────────────────────────────────────────────
-function doJoin(){SND.init();const n=document.getElementById('inp-name').value.trim();if(!n){showErr('Entre ton prénom !');return;}myName=n;send({type:'join',name:n});}
-document.getElementById('inp-name').addEventListener('keydown',e=>{if(e.key==='Enter')doJoin();});
+function showJoinInput(){
+  const a=document.getElementById('join-code-area');
+  a.style.display=a.style.display==='flex'?'none':'flex';
+  a.style.flexDirection='column';a.style.gap='8px';
+}
+function doCreate(){
+  SND.init();
+  const n=document.getElementById('inp-name').value.trim();
+  if(!n){showErr('Entre ton prénom !');return;}
+  myName=n;send({type:'create',name:n});
+}
+function doJoin(){
+  SND.init();
+  const n=document.getElementById('inp-name').value.trim();
+  if(!n){showErr('Entre ton prénom !');return;}
+  const c=document.getElementById('inp-code').value.trim().toUpperCase();
+  if(!c){showErr('Entre le code de la salle !');return;}
+  myName=n;send({type:'join',name:n,code:c});
+}
+function copyRoomCode(){
+  if(!myCode)return;
+  navigator.clipboard.writeText(myCode).then(()=>{
+    const h=document.getElementById('copy-hint-quiz');
+    h.textContent='Copié !';h.style.color='var(--correct)';
+    setTimeout(()=>{h.textContent='Cliquer pour copier';h.style.color='';},1500);
+  }).catch(()=>{});
+}
+document.getElementById('inp-name').addEventListener('keydown',e=>{if(e.key==='Enter')doCreate();});
+document.getElementById('inp-code').addEventListener('input',e=>{e.target.value=e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,'');});
+document.getElementById('inp-code').addEventListener('keydown',e=>{if(e.key==='Enter')doJoin();});
 function doBuzz(){send({type:'buzz'});}
 function doAnswer(i){send({type:'answer',index:i});}
 function doRestart(){send({type:'restart'});}
@@ -397,7 +467,12 @@ function launchConfetti() {
 // ── Messages ──────────────────────────────────────────────────────────────────
 function handle(msg){
   switch(msg.type){
-    case 'welcome': mySlot=msg.slot; break;
+    case 'created':
+      mySlot=msg.slot;myCode=msg.code;
+      document.getElementById('room-code-display').textContent=msg.code;
+      show('s-wait');loadQR();
+      break;
+    case 'welcome': mySlot=msg.slot;myCode=msg.code||''; break;
     case 'error': showErr(msg.msg); break;
     case 'countdown': showCountdown(msg.seconds); break;
     case 'player_left': show('s-home');showErr((msg.name||'L\'adversaire')+' a quitté.'); break;
@@ -408,7 +483,10 @@ function handle(msg){
 // ── Render ────────────────────────────────────────────────────────────────────
 function render(st){
   const me=st.players[mySlot];const opp=st.players[mySlot===0?1:0];
-  if(st.phase==='WAITING'){show('s-wait');loadQR();return;}
+  if(st.phase==='WAITING'){
+    if(mySlot===0){show('s-wait');loadQR();}
+    return;
+  }
   if(st.phase==='SETUP'){
     show('s-setup');
     const isP1=mySlot===0;

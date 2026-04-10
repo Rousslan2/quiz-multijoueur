@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Quiz Duo — Salles en ligne</title>
+<style>
+:root{
+  --primary:#a78bfa;--primary2:#7c3aed;--buzz:#f97316;--correct:#22c55e;
+  --wrong:#ef4444;--gold:#fbbf24;--text:#f1f5f9;--muted:#94a3b8;
+  --card:rgba(255,255,255,.07);--border:rgba(255,255,255,.13);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html{height:100%}
+body{
+  min-height:100%;
+  background:linear-gradient(135deg,#0f0c29,#302b63,#24243e);
+  background-size:400% 400%;
+  animation:bgpulse 12s ease infinite;
+  color:var(--text);
+  font-family:'Segoe UI',system-ui,sans-serif;
+  padding-bottom:48px;
+}
+@keyframes bgpulse{
+  0%{background-position:0% 50%}
+  50%{background-position:100% 50%}
+  100%{background-position:0% 50%}
+}
+
+/* ── Header ── */
+.header{
+  display:flex;align-items:center;gap:14px;
+  padding:20px 20px 16px;
+  max-width:800px;margin:0 auto;
+}
+.back-btn{
+  background:var(--card);border:1px solid var(--border);color:var(--text);
+  padding:8px 14px;border-radius:10px;font-size:.9rem;cursor:pointer;
+  text-decoration:none;display:flex;align-items:center;gap:6px;
+  transition:background .18s,border-color .18s;flex-shrink:0;
+}
+.back-btn:hover{background:rgba(255,255,255,.12);border-color:var(--primary)}
+.header-title{
+  font-size:clamp(1.6rem,6vw,2.4rem);font-weight:800;
+  background:linear-gradient(135deg,var(--primary),var(--buzz));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  letter-spacing:-.02em;line-height:1.1;
+}
+.header-sub{color:var(--muted);font-size:.85rem;margin-top:2px}
+.live-dot{
+  width:8px;height:8px;border-radius:50%;background:var(--correct);
+  display:inline-block;margin-right:5px;
+  animation:blink 2s ease-in-out infinite;
+}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* ── Main layout ── */
+.main{max-width:800px;margin:0 auto;padding:0 16px;display:flex;flex-direction:column;gap:20px}
+
+/* ── Panels ── */
+.panel{
+  background:var(--card);border:1.5px solid var(--border);
+  border-radius:18px;padding:20px;
+}
+.panel-title{
+  font-size:.78rem;color:var(--muted);text-transform:uppercase;
+  letter-spacing:.07em;font-weight:700;margin-bottom:14px;
+}
+
+/* ── Two-column actions ── */
+.actions-row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:520px){.actions-row{grid-template-columns:1fr}}
+
+.action-card{
+  background:rgba(255,255,255,.04);border:1.5px solid var(--border);
+  border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:10px;
+}
+.action-card h3{font-size:.95rem;font-weight:700;color:var(--text)}
+.action-card p{font-size:.78rem;color:var(--muted);line-height:1.4}
+
+input[type=text],select{
+  background:rgba(255,255,255,.06);border:1.5px solid var(--border);
+  border-radius:10px;padding:11px 14px;font-size:15px;color:var(--text);
+  width:100%;outline:none;transition:border-color .15s;
+  appearance:none;-webkit-appearance:none;
+}
+input[type=text]:focus,select:focus{border-color:var(--primary)}
+input::placeholder{color:var(--muted)}
+select option{background:#1e1b4b;color:var(--text)}
+
+.btn{
+  width:100%;padding:12px;border:none;border-radius:10px;
+  font-size:.95rem;font-weight:700;cursor:pointer;
+  touch-action:manipulation;transition:opacity .15s,transform .1s;
+}
+.btn:active{transform:scale(.97);opacity:.9}
+.btn-primary{background:var(--primary2);color:#fff}
+.btn-buzz{background:var(--buzz);color:#fff}
+.btn-success{background:var(--correct);color:#fff}
+
+/* Code display */
+.code-display{
+  background:rgba(167,139,250,.12);border:2px solid rgba(167,139,250,.4);
+  border-radius:14px;padding:14px 18px;text-align:center;
+  cursor:pointer;transition:background .18s;
+}
+.code-display:hover{background:rgba(167,139,250,.2)}
+.code-display .code-label{font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px}
+.code-display .code-value{
+  font-size:2.6rem;font-weight:800;letter-spacing:.18em;
+  color:var(--primary);font-family:monospace;line-height:1.1;
+}
+.code-display .code-hint{font-size:.72rem;color:var(--muted);margin-top:4px}
+.copied-flash{color:var(--correct)!important}
+
+/* Status msg */
+.status-msg{
+  font-size:.82rem;text-align:center;min-height:18px;
+  padding:6px;border-radius:8px;transition:all .2s;
+}
+.status-ok{color:#86efac;background:rgba(34,197,94,.1)}
+.status-err{color:#fca5a5;background:rgba(239,68,68,.1)}
+
+/* ── Rooms list ── */
+.rooms-header{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:14px;
+}
+.rooms-header h2{font-size:.78rem;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;font-weight:700}
+.rooms-count{
+  font-size:.72rem;background:rgba(167,139,250,.15);color:var(--primary);
+  padding:3px 9px;border-radius:20px;font-weight:700;
+}
+
+#rooms-list{display:flex;flex-direction:column;gap:10px}
+.room-card{
+  background:rgba(255,255,255,.05);border:1.5px solid var(--border);
+  border-radius:14px;padding:14px 16px;
+  display:flex;align-items:center;gap:12px;
+  transition:border-color .18s;
+}
+.room-card:hover{border-color:rgba(167,139,250,.4)}
+.room-icon{font-size:1.8rem;flex-shrink:0;width:44px;text-align:center}
+.room-info{flex:1;min-width:0}
+.room-game{font-size:.72rem;color:var(--primary);font-weight:700;text-transform:uppercase;letter-spacing:.05em}
+.room-host{font-size:.95rem;font-weight:600;margin:2px 0}
+.room-players{font-size:.78rem;color:var(--muted)}
+.room-meta{display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0}
+.badge{
+  padding:3px 9px;border-radius:20px;font-size:.68rem;font-weight:700;letter-spacing:.03em;
+}
+.badge-waiting{background:rgba(34,197,94,.18);color:#86efac;border:1px solid rgba(34,197,94,.35)}
+.badge-playing{background:rgba(239,68,68,.18);color:#fca5a5;border:1px solid rgba(239,68,68,.35)}
+.join-btn{
+  background:var(--primary2);color:#fff;border:none;
+  padding:7px 14px;border-radius:8px;font-size:.8rem;font-weight:700;
+  cursor:pointer;transition:opacity .15s,transform .1s;white-space:nowrap;
+}
+.join-btn:hover{opacity:.88}
+.join-btn:active{transform:scale(.97)}
+.join-btn:disabled{opacity:.35;cursor:default;background:#374151}
+
+.empty-state{
+  text-align:center;padding:32px 20px;color:var(--muted);
+}
+.empty-state .empty-icon{font-size:2.5rem;margin-bottom:10px}
+.empty-state p{font-size:.9rem;line-height:1.5}
+
+/* ── Spinner ── */
+.spinner{
+  width:32px;height:32px;margin:20px auto;
+  border:3px solid rgba(167,139,250,.2);
+  border-top-color:var(--primary);
+  border-radius:50%;animation:spin .7s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <a class="back-btn" href="index.html">&#8592; Accueil</a>
+  <div>
+    <div class="header-title">Salles en ligne</div>
+    <div class="header-sub"><span class="live-dot"></span>Temps réel</div>
+  </div>
+</div>
+
+<div class="main">
+
+  <!-- Actions row -->
+  <div class="actions-row">
+
+    <!-- Create room -->
+    <div class="action-card">
+      <h3>&#43; Créer une salle</h3>
+      <p>Choisissez un jeu et partagez le code à votre partenaire.</p>
+      <select id="sel-game">
+        <option value="quiz">&#9889; Quiz Éclair</option>
+        <option value="draw">&#9999;&#65039; Dessin &amp; Devine</option>
+        <option value="p4">&#128993; Puissance 4</option>
+        <option value="morpion">&#10799;&#65038; Morpion</option>
+        <option value="taboo">&#128683; Mots Interdits</option>
+        <option value="emoji">&#127775; Devinette Emoji</option>
+        <option value="verite">&#10084;&#65039; Vérité ou Défi</option>
+      </select>
+      <input type="text" id="inp-create-name" placeholder="Votre prénom" maxlength="20" autocomplete="off">
+      <button class="btn btn-primary" onclick="doCreate()">Créer la salle</button>
+      <div id="create-status" class="status-msg"></div>
+      <div id="code-box" style="display:none">
+        <div class="code-display" onclick="copyCode()" title="Cliquer pour copier">
+          <div class="code-label">Code de la salle</div>
+          <div class="code-value" id="code-val">----</div>
+          <div class="code-hint" id="copy-hint">Cliquer pour copier</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Join with code -->
+    <div class="action-card">
+      <h3>&#128273; Rejoindre avec un code</h3>
+      <p>Entrez le code 4 lettres partagé par l'hôte.</p>
+      <input type="text" id="inp-join-code" placeholder="Code (ex: ABCD)" maxlength="4" autocomplete="off"
+        style="text-transform:uppercase;letter-spacing:.12em;font-size:1.2rem;font-weight:700;text-align:center">
+      <input type="text" id="inp-join-name" placeholder="Votre prénom" maxlength="20" autocomplete="off">
+      <button class="btn btn-buzz" onclick="doJoinCode()">Rejoindre</button>
+      <div id="join-status" class="status-msg"></div>
+    </div>
+
+  </div>
+
+  <!-- Rooms list -->
+  <div class="panel">
+    <div class="rooms-header">
+      <h2>Salles disponibles</h2>
+      <span class="rooms-count" id="rooms-count">0 salle</span>
+    </div>
+    <div id="rooms-list"><div class="spinner"></div></div>
+  </div>
+
+</div>
+
+<script>
+const GAME_URLS = {
+  quiz:'quiz.html', draw:'draw.html', p4:'p4.html',
+  morpion:'morpion.html', taboo:'taboo.html', emoji:'emoji.html', verite:'verite.html'
+};
+const GAME_ICONS = {
+  quiz:'⚡', draw:'✏️', p4:'🟠', morpion:'✖️', taboo:'🚫', emoji:'🌟', verite:'❤️'
+};
+
+let createdCode = null;
+let createdGame = null;
+let lobbyWs = null;
+
+// ── URL param auto-fill ──────────────────────────────────────────────────────
+const urlParams = new URLSearchParams(location.search);
+if (urlParams.get('code')) {
+  document.getElementById('inp-join-code').value = urlParams.get('code').toUpperCase();
+}
+
+// ── WebSocket lobby ──────────────────────────────────────────────────────────
+function connectLobby() {
+  lobbyWs = new WebSocket(`ws://${location.host}/ws/lobby`);
+  lobbyWs.onmessage = e => {
+    try { const m = JSON.parse(e.data); if (m.type === 'rooms') renderRooms(m.rooms); } catch {}
+  };
+  lobbyWs.onclose = () => setTimeout(connectLobby, 2000);
+}
+connectLobby();
+
+// Auto-refresh fallback every 5s
+setInterval(() => {
+  fetch('/api/rooms').then(r=>r.json()).then(renderRooms).catch(()=>{});
+}, 5000);
+
+// ── Render rooms ─────────────────────────────────────────────────────────────
+function renderRooms(rooms) {
+  const list = document.getElementById('rooms-list');
+  const cnt = document.getElementById('rooms-count');
+  cnt.textContent = rooms.length + ' salle' + (rooms.length !== 1 ? 's' : '');
+
+  if (!rooms.length) {
+    list.innerHTML = `<div class="empty-state">
+      <div class="empty-icon">🎮</div>
+      <p>Aucune salle ouverte pour l'instant.<br>Créez-en une pour commencer !</p>
+    </div>`;
+    return;
+  }
+
+  list.innerHTML = rooms.map(r => {
+    const icon = GAME_ICONS[r.game] || '🎮';
+    const isWaiting = r.status === 'waiting';
+    const isFull = r.players.length >= r.maxPlayers;
+    const canJoin = isWaiting && !isFull;
+    const badge = isWaiting
+      ? `<span class="badge badge-waiting">En attente</span>`
+      : `<span class="badge badge-playing">En cours</span>`;
+    const joinBtn = canJoin
+      ? `<button class="join-btn" onclick="joinRoom('${r.code}','${r.game}')">Rejoindre</button>`
+      : `<button class="join-btn" disabled>${isFull ? 'Pleine' : 'En cours'}</button>`;
+    return `<div class="room-card">
+      <div class="room-icon">${icon}</div>
+      <div class="room-info">
+        <div class="room-game">${r.gameName}</div>
+        <div class="room-host">${escHtml(r.host)}</div>
+        <div class="room-players">👥 ${r.players.length}/${r.maxPlayers} joueur${r.players.length !== 1 ? 's' : ''} &bull; Code: <b>${r.code}</b></div>
+      </div>
+      <div class="room-meta">
+        ${badge}
+        ${joinBtn}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── Create ────────────────────────────────────────────────────────────────────
+async function doCreate() {
+  const game = document.getElementById('sel-game').value;
+  const name = document.getElementById('inp-create-name').value.trim();
+  const statusEl = document.getElementById('create-status');
+  if (!name) { showStatus(statusEl, 'Entre ton prénom !', 'err'); return; }
+
+  // Navigate to the game page with create=1&name=...
+  // We do it client-side so the game page handles the WS create flow
+  const url = `${GAME_URLS[game]}?create=1&name=${encodeURIComponent(name)}`;
+  location.href = url;
+}
+
+// ── Join with code ─────────────────────────────────────────────────────────
+function joinRoom(code, game) {
+  const name = document.getElementById('inp-join-name').value.trim() ||
+               document.getElementById('inp-create-name').value.trim();
+  if (!name) {
+    document.getElementById('inp-join-name').focus();
+    showStatus(document.getElementById('join-status'), 'Entre ton prénom d\'abord !', 'err');
+    return;
+  }
+  location.href = `${GAME_URLS[game]}?code=${code}&name=${encodeURIComponent(name)}`;
+}
+
+function doJoinCode() {
+  const code = document.getElementById('inp-join-code').value.trim().toUpperCase();
+  const name = document.getElementById('inp-join-name').value.trim();
+  const statusEl = document.getElementById('join-status');
+  if (!code || code.length < 2) { showStatus(statusEl, 'Entre le code de la salle !', 'err'); return; }
+  if (!name) { showStatus(statusEl, 'Entre ton prénom !', 'err'); return; }
+
+  // Find room game from API then redirect
+  fetch('/api/rooms').then(r=>r.json()).then(rooms => {
+    const room = rooms.find(r => r.code === code);
+    if (!room) { showStatus(statusEl, 'Salle introuvable. Vérifie le code.', 'err'); return; }
+    if (room.players.length >= room.maxPlayers) { showStatus(statusEl, 'Cette salle est pleine !', 'err'); return; }
+    location.href = `${GAME_URLS[room.game]}?code=${code}&name=${encodeURIComponent(name)}`;
+  }).catch(() => showStatus(statusEl, 'Erreur réseau. Réessaie.', 'err'));
+}
+
+function copyCode() {
+  if (!createdCode) return;
+  navigator.clipboard.writeText(createdCode).then(() => {
+    const hint = document.getElementById('copy-hint');
+    hint.textContent = 'Copié !';
+    hint.classList.add('copied-flash');
+    setTimeout(() => { hint.textContent = 'Cliquer pour copier'; hint.classList.remove('copied-flash'); }, 1500);
+  }).catch(() => {});
+}
+
+function showStatus(el, msg, type) {
+  el.textContent = msg;
+  el.className = 'status-msg status-' + (type === 'err' ? 'err' : 'ok');
+  setTimeout(() => { if (el.textContent === msg) { el.textContent = ''; el.className = 'status-msg'; } }, 3500);
+}
+
+// ── Auto-fill from URL ────────────────────────────────────────────────────────
+document.getElementById('inp-join-code').addEventListener('input', e => {
+  e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,'');
+});
+</script>
+</body>
+</html>

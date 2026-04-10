@@ -148,7 +148,15 @@ canvas{width:100%;height:100%;display:block;touch-action:none}
   <div class="form-card">
     <label>Ton prénom</label>
     <input id="inp-name" type="text" placeholder="Ex: Jean" maxlength="20" autocomplete="off">
-    <button class="btn btn-orange" onclick="doJoin()">Rejoindre</button>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-orange" style="flex:1" onclick="doCreate()">Créer une salle</button>
+      <button class="btn btn-sec" style="flex:1" onclick="showJoinInput()">Rejoindre (code)</button>
+    </div>
+    <div id="join-code-area" style="display:none;flex-direction:column;gap:8px">
+      <input id="inp-code" type="text" placeholder="Code (ex: ABCD)" maxlength="4" autocomplete="off"
+        style="text-transform:uppercase;letter-spacing:.12em;font-size:1.1rem;font-weight:700;text-align:center">
+      <button class="btn btn-sec" onclick="doJoin()">Rejoindre</button>
+    </div>
   </div>
   <div id="err"></div>
   <div style="flex:1"></div>
@@ -156,9 +164,17 @@ canvas{width:100%;height:100%;display:block;touch-action:none}
 
 <!-- WAIT -->
 <div id="s-wait" class="screen">
+  <div style="text-align:center;padding:12px 0 8px">
+    <div style="font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Code de votre salle</div>
+    <div id="room-code-display" onclick="copyRoomCode()" title="Cliquer pour copier"
+      style="font-size:2.8rem;font-weight:800;letter-spacing:.2em;color:var(--orange);font-family:monospace;
+             background:rgba(249,115,22,.1);border:2px solid rgba(249,115,22,.3);border-radius:12px;
+             padding:12px 18px;cursor:pointer;display:inline-block">----</div>
+    <div id="copy-hint-draw" style="font-size:.7rem;color:var(--muted);margin-top:4px">Cliquer pour copier</div>
+  </div>
   <div id="qr-box"><span style="color:var(--muted);font-size:.72rem">chargement...</span></div>
   <div id="qr-url"></div>
-  <div id="wait-txt"><h2>En attente...</h2><p>Scannez le QR ou entrez l'adresse</p></div>
+  <div id="wait-txt"><h2>En attente...</h2><p>Partagez le code ou scannez le QR</p></div>
 </div>
 
 <!-- READY -->
@@ -256,20 +272,32 @@ canvas{width:100%;height:100%;display:block;touch-action:none}
 <script>
 // ── WebSocket ─────────────────────────────────────────────────────────────────
 const WS_URL = `ws://${location.host}/ws/draw`;
-let ws, mySlot = -1, myName = '', reconnect = false;
+let ws, mySlot = -1, myName = '', myCode = '', reconnectAction = null;
 
 function connect() {
   ws = new WebSocket(WS_URL);
   ws.onopen = () => {
     document.getElementById('dot').classList.add('ok');
-    if (reconnect && myName) { reconnect = false; send({ type: 'join_draw', name: myName }); }
+    if (reconnectAction) { reconnectAction(); reconnectAction = null; }
   };
-  ws.onclose = () => { document.getElementById('dot').classList.remove('ok'); reconnect = true; setTimeout(connect, 2000); };
+  ws.onclose = () => { document.getElementById('dot').classList.remove('ok'); setTimeout(connect, 2000); };
   ws.onerror = () => {};
   ws.onmessage = e => { let m; try { m = JSON.parse(e.data); } catch { return; } handle(m); };
 }
 connect();
 function send(d) { if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(d)); }
+
+// ── URL params ────────────────────────────────────────────────────────────────
+(function(){
+  const p=new URLSearchParams(location.search);
+  if(p.get('name'))document.getElementById('inp-name').value=p.get('name');
+  if(p.get('code')){document.getElementById('inp-code').value=p.get('code').toUpperCase();showJoinInput();}
+  if(p.get('create')==='1'&&p.get('name')){
+    const name=p.get('name');document.getElementById('inp-name').value=name;
+    const tryCreate=()=>{if(ws&&ws.readyState===WebSocket.OPEN){myName=name;send({type:'create_draw',name});}else reconnectAction=tryCreate;};
+    setTimeout(tryCreate,300);
+  }
+})();
 
 // ── Round selector ────────────────────────────────────────────────────────────
 let selectedRounds = 6;
@@ -279,13 +307,33 @@ function selectRounds(n) {
 }
 
 // ── Actions ───────────────────────────────────────────────────────────────────
+function showJoinInput(){
+  const a=document.getElementById('join-code-area');
+  a.style.display=a.style.display==='flex'?'none':'flex';a.style.flexDirection='column';a.style.gap='8px';
+}
+function doCreate(){
+  const n=document.getElementById('inp-name').value.trim();
+  if(!n){showErr('Entre ton prénom !');return;}
+  myName=n;send({type:'create_draw',name:n});
+}
 function doJoin() {
   const n = document.getElementById('inp-name').value.trim();
   if (!n) { showErr('Entre ton prénom !'); return; }
-  myName = n;
-  send({ type: 'join_draw', name: n });
+  const c = document.getElementById('inp-code').value.trim().toUpperCase();
+  if (!c) { showErr('Entre le code de la salle !'); return; }
+  myName = n; send({ type: 'join_draw', name: n, code: c });
 }
-document.getElementById('inp-name').addEventListener('keydown', e => { if (e.key === 'Enter') doJoin(); });
+function copyRoomCode(){
+  if(!myCode)return;
+  navigator.clipboard.writeText(myCode).then(()=>{
+    const h=document.getElementById('copy-hint-draw');
+    h.textContent='Copié !';h.style.color='var(--correct)';
+    setTimeout(()=>{h.textContent='Cliquer pour copier';h.style.color='';},1500);
+  }).catch(()=>{});
+}
+document.getElementById('inp-name').addEventListener('keydown', e => { if (e.key === 'Enter') doCreate(); });
+document.getElementById('inp-code').addEventListener('input',e=>{e.target.value=e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,'');});
+document.getElementById('inp-code').addEventListener('keydown',e=>{if(e.key==='Enter')doJoin();});
 function doStart()   { send({ type: 'start_draw', rounds: selectedRounds }); }
 function doRestart() { send({ type: 'restart_draw' }); }
 function doClear()   { send({ type: 'draw_clear' }); clearCanvas(); }
@@ -553,7 +601,12 @@ function updateHintDisplay(hint) {
 // ── Message handler ───────────────────────────────────────────────────────────
 function handle(msg) {
   switch (msg.type) {
-    case 'welcome_draw': mySlot = msg.slot; break;
+    case 'created_draw':
+      mySlot=msg.slot;myCode=msg.code;
+      document.getElementById('room-code-display').textContent=msg.code;
+      show('s-wait');loadQR();
+      break;
+    case 'welcome_draw': mySlot = msg.slot; myCode = msg.code||''; break;
     case 'error': showErr(msg.msg); break;
     case 'player_left': show('s-home'); showErr((msg.name || 'L\'adversaire') + ' a quitté.'); break;
 
@@ -617,7 +670,7 @@ function renderState(st) {
     document.getElementById('sc' + guSlot).classList.remove('drawer-active');
   }
 
-  if (phase === 'WAITING') { show('s-wait'); loadQR(); return; }
+  if (phase === 'WAITING') { if(mySlot===0){show('s-wait');loadQR();} return; }
 
   if (phase === 'READY') {
     show('s-ready');

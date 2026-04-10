@@ -366,7 +366,15 @@
   <div id="name-screen">
     <p>Entre ton pseudo pour rejoindre la partie</p>
     <input id="name-input" class="input-field" type="text" maxlength="20" placeholder="Ton pseudo..." autocomplete="off">
-    <button class="btn btn-primary" onclick="joinGame()">Rejoindre</button>
+    <div style="display:flex;gap:8px;margin-top:4px">
+      <button class="btn btn-primary" style="flex:1" onclick="createGame()">Créer une salle</button>
+      <button class="btn btn-secondary" style="flex:1" onclick="showJoinM()">Rejoindre (code)</button>
+    </div>
+    <div id="join-code-area" style="display:none;flex-direction:column;gap:8px;margin-top:4px">
+      <input id="code-input" class="input-field" type="text" maxlength="4" placeholder="Code (ABCD)"
+        style="text-transform:uppercase;letter-spacing:.12em;font-size:1.1rem;font-weight:700;text-align:center" autocomplete="off">
+      <button class="btn btn-primary" onclick="joinGame()">Rejoindre</button>
+    </div>
   </div>
 
   <!-- GAME SCREEN -->
@@ -397,6 +405,13 @@
 
     <!-- WAITING -->
     <div id="waiting-screen" class="hidden">
+      <div id="room-code-box" onclick="copyRoomCodeM()" title="Cliquer pour copier"
+        style="text-align:center;background:rgba(167,139,250,.1);border:2px solid rgba(167,139,250,.35);
+               border-radius:12px;padding:10px 18px;cursor:pointer;margin-bottom:8px">
+        <div style="font-size:.65rem;color:#94a3b8;text-transform:uppercase;letter-spacing:.07em;margin-bottom:3px">Code de la salle</div>
+        <div id="morpion-code-display" style="font-size:2.2rem;font-weight:800;letter-spacing:.2em;color:#a78bfa;font-family:monospace;line-height:1">----</div>
+        <div id="morpion-copy-hint" style="font-size:.65rem;color:#94a3b8;margin-top:3px">Cliquer pour copier</div>
+      </div>
       <div class="info-box">
         <div class="label">Rejoins via cette adresse</div>
         <div class="url" id="ip-url">chargement...</div>
@@ -437,6 +452,8 @@
   let currentPlayers = [];
   let reconnectTimer = null;
   let playerName = '';
+  let myRoomCode = '';
+  let pendingAction = null;
   let waitingLoaded = false;
   const GAME_WINS = 5;
 
@@ -464,9 +481,7 @@
     ws.onopen = () => {
       setConnected(true);
       if (reconnectTimer) { clearInterval(reconnectTimer); reconnectTimer = null; }
-      if (playerName) {
-        send({ type: 'join_morpion', name: playerName });
-      }
+      if (pendingAction) { pendingAction(); pendingAction = null; }
     };
 
     ws.onmessage = (e) => {
@@ -499,8 +514,13 @@
   }
 
   function handleMessage(msg) {
-    if (msg.type === 'welcome_morpion') {
-      mySlot = msg.slot;
+    if (msg.type === 'created_morpion') {
+      mySlot = msg.slot; myRoomCode = msg.code;
+      $('morpion-code-display').textContent = msg.code;
+      $('name-screen').style.display = 'none';
+      $('game-screen').style.display = 'flex';
+    } else if (msg.type === 'welcome_morpion') {
+      mySlot = msg.slot; myRoomCode = msg.code||'';
     } else if (msg.type === 'morpion_state') {
       renderState(msg);
     } else if (msg.type === 'player_left') {
@@ -548,8 +568,7 @@
 
     if (phase === 'WAITING') {
       $('status').textContent = 'En attente d\'un adversaire...';
-      $('waiting-screen').classList.remove('hidden');
-      loadWaitingInfo();
+      if (mySlot === 0) { $('waiting-screen').classList.remove('hidden'); loadWaitingInfo(); }
 
     } else if (phase === 'READY') {
       if (mySlot === 0) {
@@ -677,12 +696,40 @@
       .catch(() => { $('qr-img').style.display = 'none'; });
   }
 
+  function showJoinM() {
+    const a = $('join-code-area');
+    a.style.display = a.style.display === 'flex' ? 'none' : 'flex';
+    a.style.flexDirection = 'column'; a.style.gap = '8px';
+  }
+  function createGame() {
+    const name = $('name-input').value.trim();
+    if (!name) { showError('Entre un pseudo !'); return; }
+    playerName = name; pendingAction = () => send({ type: 'create_morpion', name }); connect();
+  }
   function joinGame() {
     const name = $('name-input').value.trim();
     if (!name) { showError('Entre un pseudo !'); return; }
-    playerName = name;
-    connect();
+    const code = $('code-input').value.trim().toUpperCase();
+    if (!code) { showError('Entre le code !'); return; }
+    playerName = name; pendingAction = () => send({ type: 'join_morpion', name, code }); connect();
   }
+  function copyRoomCodeM() {
+    if (!myRoomCode) return;
+    navigator.clipboard.writeText(myRoomCode).then(() => {
+      $('morpion-copy-hint').textContent = 'Copié !'; $('morpion-copy-hint').style.color = '#22c55e';
+      setTimeout(() => { $('morpion-copy-hint').textContent = 'Cliquer pour copier'; $('morpion-copy-hint').style.color = ''; }, 1500);
+    }).catch(() => {});
+  }
+  (function(){
+    const p = new URLSearchParams(location.search);
+    if (p.get('name')) $('name-input').value = p.get('name');
+    if (p.get('code')) { $('code-input').value = p.get('code').toUpperCase(); showJoinM(); }
+    if (p.get('create') === '1' && p.get('name')) {
+      const name = p.get('name'); $('name-input').value = name;
+      playerName = name; pendingAction = () => send({ type: 'create_morpion', name }); connect();
+    }
+  })();
+  $('code-input') && $('code-input').addEventListener('input', e => { e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,''); });
 
   function startGame() {
     send({ type: 'start_morpion' });

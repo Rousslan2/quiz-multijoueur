@@ -355,7 +355,15 @@
   <div id="name-screen">
     <p>Entre ton pseudo pour rejoindre la partie</p>
     <input id="name-input" class="input-field" type="text" maxlength="20" placeholder="Ton pseudo..." autocomplete="off">
-    <button class="btn btn-primary" onclick="joinGame()">Rejoindre</button>
+    <div style="display:flex;gap:8px;margin-top:4px">
+      <button class="btn btn-primary" style="flex:1" onclick="createGame()">Créer une salle</button>
+      <button class="btn btn-restart" style="flex:1" onclick="showJoinP4()">Rejoindre (code)</button>
+    </div>
+    <div id="join-code-area" style="display:none;margin-top:8px;display:none;flex-direction:column;gap:8px">
+      <input id="code-input" class="input-field" type="text" maxlength="4" placeholder="Code (ABCD)"
+        style="text-transform:uppercase;letter-spacing:.12em;font-size:1.1rem;font-weight:700;text-align:center" autocomplete="off">
+      <button class="btn btn-restart" onclick="joinGame()">Rejoindre</button>
+    </div>
   </div>
 
   <!-- GAME SCREEN -->
@@ -377,6 +385,13 @@
 
     <!-- WAITING -->
     <div id="waiting-screen" class="hidden">
+      <div id="room-code-box" onclick="copyRoomCodeP4()" title="Cliquer pour copier"
+        style="text-align:center;background:rgba(167,139,250,.1);border:2px solid rgba(167,139,250,.35);
+               border-radius:12px;padding:12px 20px;cursor:pointer;margin-bottom:10px">
+        <div style="font-size:.68rem;color:#94a3b8;text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px">Code de la salle</div>
+        <div id="p4-code-display" style="font-size:2.4rem;font-weight:800;letter-spacing:.2em;color:#a78bfa;font-family:monospace;line-height:1">----</div>
+        <div id="p4-copy-hint" style="font-size:.68rem;color:#94a3b8;margin-top:4px">Cliquer pour copier</div>
+      </div>
       <div class="info-box">
         <div class="label">Rejoins via cette adresse</div>
         <div class="url" id="ip-url">chargement...</div>
@@ -412,6 +427,7 @@
   let currentTurn = -1;
   let reconnectTimer = null;
   let playerName = '';
+  let myRoomCode = '';
   let lastBoard = null;
   let lastWinLine = null;
 
@@ -439,9 +455,7 @@
     ws.onopen = () => {
       setConnected(true);
       if (reconnectTimer) { clearInterval(reconnectTimer); reconnectTimer = null; }
-      if (playerName) {
-        send({ type: 'join_p4', name: playerName });
-      }
+      if (pendingAction) { pendingAction(); pendingAction = null; }
     };
 
     ws.onmessage = (e) => {
@@ -474,8 +488,13 @@
   }
 
   function handleMessage(msg) {
-    if (msg.type === 'welcome_p4') {
-      mySlot = msg.slot;
+    if (msg.type === 'created_p4') {
+      mySlot = msg.slot; myRoomCode = msg.code;
+      $('p4-code-display').textContent = msg.code;
+      $('name-screen').style.display = 'none';
+      $('game-screen').style.display = 'flex';
+    } else if (msg.type === 'welcome_p4') {
+      mySlot = msg.slot; myRoomCode = msg.code||'';
     } else if (msg.type === 'p4_state') {
       renderState(msg);
     } else if (msg.type === 'player_left') {
@@ -521,8 +540,7 @@
 
     if (phase === 'WAITING') {
       $('status').textContent = 'En attente d\'un adversaire...';
-      $('waiting-screen').classList.remove('hidden');
-      loadWaitingInfo();
+      if (mySlot === 0) { $('waiting-screen').classList.remove('hidden'); loadWaitingInfo(); }
     } else if (phase === 'READY') {
       $('status').textContent = 'Prêt ! En attente du lancement...';
       if (mySlot === 0) {
@@ -622,12 +640,49 @@
       .catch(() => { $('qr-img').style.display = 'none'; });
   }
 
-  function joinGame() {
+  let pendingAction = null;
+
+  function showJoinP4() {
+    const a = $('join-code-area');
+    a.style.display = a.style.display === 'flex' ? 'none' : 'flex';
+    a.style.flexDirection = 'column'; a.style.gap = '8px';
+  }
+  function createGame() {
     const name = $('name-input').value.trim();
     if (!name) { showError('Entre un pseudo !'); return; }
     playerName = name;
+    pendingAction = () => send({ type: 'create_p4', name });
     connect();
   }
+  function joinGame() {
+    const name = $('name-input').value.trim();
+    if (!name) { showError('Entre un pseudo !'); return; }
+    const code = $('code-input').value.trim().toUpperCase();
+    if (!code) { showError('Entre le code !'); return; }
+    playerName = name;
+    pendingAction = () => send({ type: 'join_p4', name, code });
+    connect();
+  }
+  function copyRoomCodeP4() {
+    if (!myRoomCode) return;
+    navigator.clipboard.writeText(myRoomCode).then(() => {
+      $('p4-copy-hint').textContent = 'Copié !'; $('p4-copy-hint').style.color = '#22c55e';
+      setTimeout(() => { $('p4-copy-hint').textContent = 'Cliquer pour copier'; $('p4-copy-hint').style.color = ''; }, 1500);
+    }).catch(() => {});
+  }
+
+  // URL params
+  (function(){
+    const p = new URLSearchParams(location.search);
+    if (p.get('name')) $('name-input').value = p.get('name');
+    if (p.get('code')) { $('code-input').value = p.get('code').toUpperCase(); showJoinP4(); }
+    if (p.get('create') === '1' && p.get('name')) {
+      const name = p.get('name'); $('name-input').value = name;
+      playerName = name; pendingAction = () => send({ type: 'create_p4', name }); connect();
+    }
+  })();
+
+  $('code-input') && $('code-input').addEventListener('input', e => { e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,''); });
 
   function startGame() {
     send({ type: 'start_p4' });
