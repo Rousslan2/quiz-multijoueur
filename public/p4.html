@@ -539,8 +539,18 @@
     $('grid-area').classList.add('hidden');
 
     if (phase === 'WAITING') {
-      $('status').textContent = 'En attente d\'un adversaire...';
-      if (mySlot === 0) { $('waiting-screen').classList.remove('hidden'); loadWaitingInfo(); }
+      if (mySlot === 0) {
+        $('waiting-screen').classList.remove('hidden'); loadWaitingInfo();
+        if (players.length >= 2) {
+          $('ready-screen').classList.remove('hidden');
+          $('start-btn').disabled = false;
+          $('status').textContent = 'Prêt à lancer !';
+        } else {
+          $('status').textContent = 'En attente d\'un adversaire...';
+        }
+      } else {
+        $('status').textContent = 'En attente que l\'hôte lance la partie...';
+      }
     } else if (phase === 'READY') {
       $('status').textContent = 'Prêt ! En attente du lancement...';
       if (mySlot === 0) {

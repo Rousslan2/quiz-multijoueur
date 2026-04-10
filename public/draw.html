@@ -675,7 +675,15 @@ function renderState(st) {
 
   renderDrawScoreboard(players, scores, drawerSlot);
 
-  if (phase === 'WAITING') { if(mySlot===0){show('s-wait');loadQR();} return; }
+  if (phase === 'WAITING') {
+    show('s-ready');
+    const isP1 = mySlot === 0;
+    document.getElementById('btn-launch').style.display = isP1 && players.length >= 2 ? '' : 'none';
+    const n = players.length;
+    document.getElementById('ready-title').textContent = n + ' joueur' + (n > 1 ? 's' : '') + ' connecté' + (n > 1 ? 's' : '') + ' !';
+    document.getElementById('ready-sub').textContent = isP1 ? 'Lance quand tout le monde est là !' : 'En attente que l\'hôte lance...';
+    return;
+  }
 
   if (phase === 'READY') {
     show('s-ready');

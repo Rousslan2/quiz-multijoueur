@@ -463,7 +463,12 @@ function renderState() {
 
   switch (phase) {
     case 'WAITING':
-      if (mySlot === 0) { showScreen('screen-waiting'); renderQR(); }
+      showScreen('screen-ready');
+      document.getElementById('ready-players').textContent = players.length >= 2
+        ? players.map(p => p.name).join(' · ') : 'En attente de joueurs...';
+      toggleEl('start-btn', mySlot === 0 && players.length >= 2);
+      toggleEl('ready-wait', mySlot !== 0 || players.length < 2);
+      if (mySlot === 0 && players.length < 2) renderQR();
       break;
 
     case 'READY':

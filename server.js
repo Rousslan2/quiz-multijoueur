@@ -512,14 +512,14 @@ wssDraw.on('connection',ws=>{
         room.players.push({ws,name,slot});
         myRoom=room;
         wsend(ws,{type:'welcome_draw',slot,name,code});
-        if(room.players.length>=2){room.phase='READY';room.scores=[0,0,0,0];room.round=0;bcast(room.players,dSnap(room));}
-        else wsend(ws,dSnap(room));
+        bcast(room.players,dSnap(room));
         broadcastLobby();
         break;
       }
       case 'start_draw':{
         if(!player||player.slot!==0)return;
-        if(!myRoom||!['READY','GAME_OVER'].includes(myRoom.phase))return;
+        if(!myRoom||!['WAITING','READY','GAME_OVER'].includes(myRoom.phase))return;
+        if(myRoom.players.length<2){wsend(ws,{type:'error',msg:'Il faut au moins 2 joueurs.'});return;}
         if(d.rounds)myRoom.maxRounds=Math.min(24,Math.max(2,Number(d.rounds)));
         myRoom.scores=[0,0,0,0];myRoom.round=0;dStartRound(myRoom);
         broadcastLobby();
@@ -642,18 +642,18 @@ wssP4.on('connection',ws=>{
         const code=String(d.code||'').trim().toUpperCase();
         const room=p4Rooms.get(code);
         if(!room){wsend(ws,{type:'error',msg:'Salle introuvable.'});return;}
-        if(room.players.length>=2){wsend(ws,{type:'error',msg:'Partie pleine.'});return;}
+        if(room.players.length>=2){wsend(ws,{type:'error',msg:'Partie pleine (2 joueurs max).'});return;}
         const name=String(d.name||'').trim().slice(0,20)||'Joueur';
         const slot=room.players.length;room.players.push({ws,name,slot});
         myRoom=room;
         wsend(ws,{type:'welcome_p4',slot,name,code});
-        if(room.players.length===2){room.phase='READY';bcast(room.players,p4Snap(room));}
-        else wsend(ws,p4Snap(room));
+        bcast(room.players,p4Snap(room));
         broadcastLobby();
         break;
       }
       case 'start_p4':{
-        if(!player||!myRoom||player.slot!==0||!['READY','GAME_OVER'].includes(myRoom.phase))return;
+        if(!player||!myRoom||player.slot!==0||!['WAITING','READY','GAME_OVER'].includes(myRoom.phase))return;
+        if(myRoom.players.length<2){wsend(ws,{type:'error',msg:'Il faut 2 joueurs.'});return;}
         myRoom.board=p4Board();myRoom.turn=0;myRoom.phase='PLAYING';bcast(myRoom.players,p4Snap(myRoom));
         broadcastLobby();
         break;
@@ -733,18 +733,18 @@ wssMorpion.on('connection',ws=>{
         const code=String(d.code||'').trim().toUpperCase();
         const room=morpionRooms.get(code);
         if(!room){wsend(ws,{type:'error',msg:'Salle introuvable.'});return;}
-        if(room.players.length>=2){wsend(ws,{type:'error',msg:'Partie pleine.'});return;}
+        if(room.players.length>=2){wsend(ws,{type:'error',msg:'Partie pleine (2 joueurs max).'});return;}
         const name=String(d.name||'').trim().slice(0,20)||'Joueur';
         const slot=room.players.length;morpionRooms.get(code).players.push({ws,name,slot});
         myRoom=room;
         wsend(ws,{type:'welcome_morpion',slot,name,code});
-        if(room.players.length===2){room.phase='READY';bcast(room.players,mSnap(room));}
-        else wsend(ws,mSnap(room));
+        bcast(room.players,mSnap(room));
         broadcastLobby();
         break;
       }
       case 'start_morpion':{
-        if(!player||!myRoom||player.slot!==0||!['READY','ROUNDOVER'].includes(myRoom.phase))return;
+        if(!player||!myRoom||player.slot!==0||!['WAITING','READY','ROUNDOVER'].includes(myRoom.phase))return;
+        if(myRoom.players.length<2){wsend(ws,{type:'error',msg:'Il faut 2 joueurs.'});return;}
         myRoom.board=Array(9).fill(0);myRoom.phase='PLAYING';
         const roundNum=myRoom.wins[0]+myRoom.wins[1]+myRoom.draws;
         myRoom.turn=roundNum%2;
@@ -896,18 +896,18 @@ wssTaboo.on('connection',ws=>{
         const code=String(d.code||'').trim().toUpperCase();
         const room=tabooRooms.get(code);
         if(!room){wsend(ws,{type:'error',msg:'Salle introuvable.'});return;}
-        if(room.players.length>=2){wsend(ws,{type:'error',msg:'Partie pleine.'});return;}
+        if(room.players.length>=4){wsend(ws,{type:'error',msg:'Partie pleine (4 joueurs max).'});return;}
         const name=String(d.name||'').trim().slice(0,20)||'Joueur';
         const slot=room.players.length;room.players.push({ws,name,slot});
         myRoom=room;
         wsend(ws,{type:'welcome_taboo',slot,name,code});
-        if(room.players.length===2){room.phase='READY';room.scores=[0,0];room.round=0;bcast(room.players,tSnap(room));}
-        else wsend(ws,tSnap(room));
+        bcast(room.players,tSnap(room));
         broadcastLobby();
         break;
       }
       case 'start_taboo':{
-        if(!player||!myRoom||player.slot!==0||!['READY','GAME_OVER'].includes(myRoom.phase))return;
+        if(!player||!myRoom||player.slot!==0||!['WAITING','READY','GAME_OVER'].includes(myRoom.phase))return;
+        if(myRoom.players.length<2){wsend(ws,{type:'error',msg:'Il faut au moins 2 joueurs.'});return;}
         myRoom.scores=[0,0];myRoom.round=0;myRoom.usedCards=[];tStartRound(myRoom);
         broadcastLobby();
         break;
@@ -1050,13 +1050,13 @@ wssEmoji.on('connection',ws=>{
         const slot=room.players.length;room.players.push({ws,name,slot});
         myRoom=room;
         wsend(ws,{type:'welcome_emoji',slot,name,code});
-        if(room.players.length>=2){room.phase='READY';room.scores=[0,0,0,0];bcast(room.players,eSnap(room));}
-        else wsend(ws,eSnap(room));
+        bcast(room.players,eSnap(room));
         broadcastLobby();
         break;
       }
       case 'start_emoji':{
-        if(!player||!myRoom||player.slot!==0||!['READY','GAME_OVER'].includes(myRoom.phase))return;
+        if(!player||!myRoom||player.slot!==0||!['WAITING','READY','GAME_OVER'].includes(myRoom.phase))return;
+        if(myRoom.players.length<2){wsend(ws,{type:'error',msg:'Il faut au moins 2 joueurs.'});return;}
         myRoom.scores=[0,0,0,0];myRoom.qIndex=0;
         myRoom.puzzles=shuffle(EMOJI_PUZZLES).slice(0,Math.min(15,EMOJI_PUZZLES.length));
         myRoom.phase='COUNTDOWN';bcast(myRoom.players,{type:'countdown',seconds:3});
@@ -1199,13 +1199,13 @@ wssVerite.on('connection',ws=>{
         const slot=room.players.length;room.players.push({ws,name,slot});
         myRoom=room;
         wsend(ws,{type:'welcome_verite',slot,name,code});
-        if(room.players.length>=2){room.phase='READY';room.scores=[0,0,0,0];room.deck=shuffle([...VERITE_CARTES]);bcast(room.players,vSnap(room));}
-        else wsend(ws,vSnap(room));
+        bcast(room.players,vSnap(room));
         broadcastLobby();
         break;
       }
       case 'start_verite':{
-        if(!player||!myRoom||player.slot!==0||!['READY','GAME_OVER'].includes(myRoom.phase))return;
+        if(!player||!myRoom||player.slot!==0||!['WAITING','READY','GAME_OVER'].includes(myRoom.phase))return;
+        if(myRoom.players.length<2){wsend(ws,{type:'error',msg:'Il faut au moins 2 joueurs.'});return;}
         myRoom.scores=[0,0,0,0];myRoom.turn=0;myRoom.turnNum=0;myRoom.card=null;
         myRoom.deck=shuffle([...VERITE_CARTES]);
         myRoom.phase='CHOOSING';bcast(myRoom.players,vSnap(myRoom));
