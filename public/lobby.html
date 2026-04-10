@@ -261,7 +261,7 @@ if (urlParams.get('code')) {
 
 // ── WebSocket lobby ──────────────────────────────────────────────────────────
 function connectLobby() {
-  lobbyWs = new WebSocket(`ws://${location.host}/ws/lobby`);
+  lobbyWs = new WebSocket(`${location.protocol==='https:'?'wss':'ws'}://${location.host}/ws/lobby`);
   lobbyWs.onmessage = e => {
     try { const m = JSON.parse(e.data); if (m.type === 'rooms') renderRooms(m.rooms); } catch {}
   };

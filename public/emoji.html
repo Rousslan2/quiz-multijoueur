@@ -388,7 +388,7 @@ let pendingAction = null;
 /* ─── WebSocket ──────────────────────────────────────── */
 function connect() {
   if (ws && ws.readyState <= 1) return;
-  ws = new WebSocket(`ws://${location.host}/ws/emoji`);
+  ws = new WebSocket(`${location.protocol==='https:'?'wss':'ws'}://${location.host}/ws/emoji`);
   ws.onopen = () => {
     document.getElementById('dot').classList.add('ok');
     if (pendingAction) { pendingAction(); pendingAction = null; }

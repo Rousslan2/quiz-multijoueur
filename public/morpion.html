@@ -476,7 +476,7 @@
 
   function connect() {
     if (ws) { try { ws.close(); } catch(e) {} }
-    ws = new WebSocket(`ws://${location.host}/ws/morpion`);
+    ws = new WebSocket(`${location.protocol==='https:'?'wss':'ws'}://${location.host}/ws/morpion`);
 
     ws.onopen = () => {
       setConnected(true);

@@ -296,7 +296,7 @@ function startTimer(s){
 function stopTimer(){clearTimeout(tickT);const b=document.getElementById('timer-bar');b.classList.remove('go');}
 
 // ── WebSocket ─────────────────────────────────────────────────────────────────
-const WS_URL = `ws://${location.host}/ws/quiz`;
+const WS_URL = `${location.protocol==='https:'?'wss':'ws'}://${location.host}/ws/quiz`;
 let ws, mySlot=-1, myName='', myCode='', reconnectAction=null;
 function connect(){
   ws=new WebSocket(WS_URL);

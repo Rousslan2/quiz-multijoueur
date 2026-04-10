@@ -270,7 +270,7 @@ canvas{width:100%;height:100%;display:block;touch-action:none}
 
 <script>
 // ── WebSocket ─────────────────────────────────────────────────────────────────
-const WS_URL = `ws://${location.host}/ws/draw`;
+const WS_URL = `${location.protocol==='https:'?'wss':'ws'}://${location.host}/ws/draw`;
 let ws, mySlot = -1, myName = '', myCode = '', reconnectAction = null;
 
 function connect() {
