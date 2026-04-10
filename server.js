@@ -434,32 +434,42 @@ function makeDrawRoom(code, host) {
   };
 }
 
-function dSnap(room, extra={}){
-  return{type:'draw_state',phase:room.phase,players:room.players.map(p=>({name:p.name,slot:p.slot})),
+function dSnap(room, extra={}, forSlot=-1){
+  const base={type:'draw_state',phase:room.phase,
+    players:room.players.map(p=>({name:p.name,slot:p.slot})),
     scores:[...room.scores],drawerSlot:room.drawerSlot,round:room.round,maxRounds:room.maxRounds,
-    letterCount:room.word?room.word.length:0,hint:room.word?buildHint(room.word,room.revealedLetters):null,
-    guessedBy:room.guessedBy,code:room.code,...extra};
+    letterCount:room.word?room.word.length:0,
+    hint:room.word?buildHint(room.word,room.revealedLetters):null,
+    guessedBy:room.guessedBy,
+    guessedSlots:room.roundGuessers?[...room.roundGuessers]:[],
+    code:room.code,...extra};
+  // Only send word to the drawer
+  if(forSlot>=0 && forSlot===room.drawerSlot && room.word) base.word=room.word;
+  return base;
 }
 
 function dStartRound(room){
   if(room.round>=room.maxRounds){dEnd(room);return;}
-  room.round++;room.drawerSlot=(room.round-1)%room.players.length;
+  room.round++;
+  // Rotate drawer through ALL players
+  room.drawerSlot=room.players[(room.round-1)%room.players.length]?.slot??0;
   const allWords=Object.values(DRAW_WORDS).flat();
   room.word=shuffle(allWords)[0];
   room.phase='DRAWING';room.guessedBy=-1;room.strokeBatches=[];room.revealedLetters=[];
-  room.roundGuessers=new Set(); // track who guessed correctly this round
-  const base=dSnap(room,{timerSeconds:60});
-  room.players.forEach(p=>{
-    if(p.slot===room.drawerSlot) wsend(p.ws,{...base,word:room.word});
-    else wsend(p.ws,base);
-  });
+  room.roundGuessers=new Set();
   clearTimeout(room.timer);
-  room.timer=setTimeout(()=>{if(room.phase==='DRAWING')dReveal(room,false);},60000);
+  room.players.forEach(p=>{
+    wsend(p.ws,dSnap(room,{timerSeconds:60},p.slot));
+  });
+  room.timer=setTimeout(()=>{if(room.phase==='DRAWING')dReveal(room);},60000);
 }
 
 function dReveal(room){
-  clearTimeout(room.timer);room.phase='REVEAL';
-  bcast(room.players,{...dSnap(room,{revealWord:room.word}),guessedBy:room.guessedBy});
+  clearTimeout(room.timer);room.phase='ROUND_OVER';
+  // Broadcast with revealWord to ALL, including word reveal
+  room.players.forEach(p=>{
+    wsend(p.ws,{...dSnap(room,{revealWord:room.word},p.slot),revealWord:room.word,guessedBy:room.guessedBy,guessedSlots:room.roundGuessers?[...room.roundGuessers]:[]});
+  });
   room.timer=setTimeout(()=>{if(room.players.length>=2)dStartRound(room);},4000);
 }
 
@@ -467,7 +477,7 @@ function dEnd(room){
   clearTimeout(room.timer);room.phase='GAME_OVER';
   let win=-1,best=-1;
   room.players.forEach(p=>{const s=room.scores[p.slot]??0;if(s>best){best=s;win=p.slot;}else if(s===best){win=-1;}});
-  bcast(room.players,{...dSnap(room),winnerSlot:win});
+  room.players.forEach(p=>{wsend(p.ws,{...dSnap(room,{winnerSlot:win},p.slot)});});
   broadcastLobby();
 }
 
@@ -497,7 +507,7 @@ wssDraw.on('connection',ws=>{
         myRoom=room;
         room.players.push({ws,name,slot:0});
         wsend(ws,{type:'created_draw',code,slot:0,name});
-        wsend(ws,dSnap(room));
+        wsend(ws,dSnap(room,{},0));
         broadcastLobby();
         break;
       }
@@ -512,7 +522,7 @@ wssDraw.on('connection',ws=>{
         room.players.push({ws,name,slot});
         myRoom=room;
         wsend(ws,{type:'welcome_draw',slot,name,code});
-        bcast(room.players,dSnap(room));
+        room.players.forEach(p=>wsend(p.ws,dSnap(room,{},p.slot)));
         broadcastLobby();
         break;
       }
@@ -521,19 +531,22 @@ wssDraw.on('connection',ws=>{
         if(!myRoom||!['WAITING','READY','GAME_OVER'].includes(myRoom.phase))return;
         if(myRoom.players.length<2){wsend(ws,{type:'error',msg:'Il faut au moins 2 joueurs.'});return;}
         if(d.rounds)myRoom.maxRounds=Math.min(24,Math.max(2,Number(d.rounds)));
-        myRoom.scores=[0,0,0,0];myRoom.round=0;dStartRound(myRoom);
+        myRoom.scores=[0,0,0,0];myRoom.round=0;myRoom.roundGuessers=new Set();
+        dStartRound(myRoom);
         broadcastLobby();
         break;
       }
       case 'draw_pts':{
         if(!player||!myRoom||player.slot!==myRoom.drawerSlot||myRoom.phase!=='DRAWING')return;
         myRoom.strokeBatches.push(d.pts);
+        // Broadcast to ALL players (including drawer for latency compensation on other devices)
         myRoom.players.forEach(p=>{if(p.slot!==myRoom.drawerSlot)wsend(p.ws,{type:'draw_pts',pts:d.pts});});
         break;
       }
       case 'draw_undo':{
         if(!player||!myRoom||player.slot!==myRoom.drawerSlot)return;
         if(myRoom.strokeBatches.length>0)myRoom.strokeBatches.pop();
+        // Broadcast replay to all non-drawers
         myRoom.players.forEach(p=>{if(p.slot!==myRoom.drawerSlot)wsend(p.ws,{type:'draw_replay',batches:myRoom.strokeBatches});});
         break;
       }
@@ -551,11 +564,8 @@ wssDraw.on('connection',ws=>{
         const pos=unrevealed[Math.floor(Math.random()*unrevealed.length)];
         myRoom.revealedLetters.push(pos);
         myRoom.scores[myRoom.drawerSlot]=Math.max(0,myRoom.scores[myRoom.drawerSlot]-1);
-        const hint=buildHint(word,myRoom.revealedLetters);
-        myRoom.players.forEach(p=>{
-          if(p.slot!==myRoom.drawerSlot)wsend(p.ws,{type:'draw_hint_update',hint,scores:[...myRoom.scores]});
-          else wsend(p.ws,{type:'draw_scores_update',scores:[...myRoom.scores]});
-        });
+        // Broadcast updated state with new hint to everyone
+        myRoom.players.forEach(p=>{wsend(p.ws,dSnap(myRoom,{},p.slot));});
         break;
       }
       case 'guess':{
@@ -564,24 +574,26 @@ wssDraw.on('connection',ws=>{
         if(myRoom.roundGuessers.has(player.slot))return; // already guessed correctly
         const guess=String(d.word||'').trim().slice(0,60);if(!guess)return;
         const result=drawClose(guess,myRoom.word);
-        bcast(myRoom.players,{type:'guess_result',name:player.name,word:guess,result});
+        // Always broadcast the guess result to everyone (so all see wrong guesses as chat)
+        bcast(myRoom.players,{type:'guess_result',name:player.name,slot:player.slot,word:guess,result});
         if(result==='correct'){
           myRoom.roundGuessers.add(player.slot);
           myRoom.scores[player.slot]+=2;myRoom.scores[myRoom.drawerSlot]+=1;
           myRoom.guessedBy=player.slot;
           // Check if all non-drawers have guessed
-          const numGuessers=myRoom.players.length-1;
+          const numGuessers=myRoom.players.filter(p=>p.slot!==myRoom.drawerSlot).length;
           if(myRoom.roundGuessers.size>=numGuessers){dReveal(myRoom);}
           else{
-            // Just update scores for everyone, game continues
-            bcast(myRoom.players,{...dSnap(myRoom),scores:[...myRoom.scores]});
+            // Send updated state to everyone with new scores + guessedSlots
+            myRoom.players.forEach(p=>{wsend(p.ws,dSnap(myRoom,{scores:[...myRoom.scores]},p.slot));});
           }
         }
         break;
       }
       case 'restart_draw':{
         if(!player||!myRoom||myRoom.phase!=='GAME_OVER')return;
-        myRoom.phase='READY';myRoom.scores=[0,0,0,0];myRoom.round=0;bcast(myRoom.players,dSnap(myRoom));
+        myRoom.phase='READY';myRoom.scores=[0,0,0,0];myRoom.round=0;
+        myRoom.players.forEach(p=>wsend(p.ws,dSnap(myRoom,{},p.slot)));
         broadcastLobby();
         break;
       }
@@ -1528,8 +1540,11 @@ const unoRooms = new Map();
 function makeUnoRoom(code, host) {
   return { code, host, players:[], phase:'LOBBY',
            deck:[], pile:[], hands:{},
-           turn:0, direction:1, drawPending:0,
-           unoSaid:{}, timer:null };
+           turn:0, direction:1, drawStack:0,
+           currentColor:'rouge',
+           unoAlert:{},   // slot -> bool (announced UNO)
+           unoCatchWindow:{}, // slot -> timeout handle
+           timer:null };
 }
 
 function buildUnoDeck() {
@@ -1537,23 +1552,30 @@ function buildUnoDeck() {
   const deck = [];
   for (const c of colors) {
     deck.push({ color:c, value:'0' });
-    for (const v of ['1','2','3','4','5','6','7','8','9','+2','skip','reverse']) {
+    for (const v of ['1','2','3','4','5','6','7','8','9','skip','reverse','+2']) {
       deck.push({ color:c, value:v });
       deck.push({ color:c, value:v });
     }
   }
   for (let i = 0; i < 4; i++) deck.push({ color:'noir', value:'wild' });
   for (let i = 0; i < 4; i++) deck.push({ color:'noir', value:'+4' });
-  return shuffle(deck);
+  return shuffle(deck); // 108 cards total
 }
 
 function unoSnap(room, forSlot) {
+  const top = room.pile[room.pile.length-1] || null;
+  const displayTop = top ? { ...top, color: room.currentColor } : null;
   return {
-    type:'uno_state', phase:room.phase, code:room.code,
-    players: room.players.map(p => ({ name:p.name, slot:p.slot, cardCount:(room.hands[p.slot]||[]).length })),
-    turn: room.turn, topCard: room.pile[room.pile.length-1]||null,
-    hand: room.hands[forSlot]||[],
-    direction: room.direction, drawPending: room.drawPending,
+    type:'uno_state', phase:room.phase, code:room.code, mySlot:forSlot,
+    players: room.players.map(p => ({
+      name:p.name, slot:p.slot,
+      cardCount:(room.hands[p.slot]||[]).length,
+      unoAlert:!!(room.unoAlert[p.slot])
+    })),
+    turn: room.turn, topCard: displayTop,
+    currentColor: room.currentColor,
+    hand: forSlot >= 0 ? (room.hands[forSlot]||[]) : [],
+    direction: room.direction, drawStack: room.drawStack,
   };
 }
 
@@ -1563,35 +1585,38 @@ function unoBcastAll(room) {
   });
 }
 
+// Advance turn index (room.turn is an index into room.players array)
 function unoNextTurn(room, skip=false) {
-  const n = room.players.filter(p => p.active !== false).length;
+  const n = room.players.length;
+  if (n === 0) return;
   let steps = skip ? 2 : 1;
   for (let i = 0; i < steps; i++) {
-    room.turn = (room.turn + room.direction + n) % n;
+    room.turn = ((room.turn + room.direction) % n + n) % n;
   }
-  unoBcastAll(room);
 }
 
 function unoDrawCards(room, slot, count) {
+  if (!room.hands[slot]) room.hands[slot] = [];
   for (let i = 0; i < count; i++) {
     if (room.deck.length === 0) {
+      if (room.pile.length <= 1) break; // nothing to reshuffle
       const top = room.pile.pop();
       room.deck = shuffle(room.pile);
       room.pile = [top];
     }
     if (room.deck.length > 0) {
-      room.hands[slot] = room.hands[slot] || [];
       room.hands[slot].push(room.deck.pop());
     }
   }
 }
 
-function unoCanPlay(card, topCard, drawPending) {
-  if (drawPending > 0) {
+function unoCanPlay(card, topCard, currentColor, drawStack) {
+  if (drawStack > 0) {
+    // Must play +2 or +4 to chain, otherwise must draw
     return card.value === '+2' || card.value === '+4';
   }
-  if (card.color === 'noir') return true;
-  return card.color === topCard.color || card.value === topCard.value;
+  if (card.color === 'noir') return true; // wilds always playable
+  return card.color === currentColor || card.value === topCard.value;
 }
 
 wssUno.on('connection', ws => {
@@ -1602,6 +1627,9 @@ wssUno.on('connection', ws => {
     if (!myRoom) return;
     const idx = myRoom.players.findIndex(p => p.ws === ws); if (idx < 0) return;
     const name = myRoom.players[idx].name;
+    // Clear any catch window timer for this slot
+    const slot = myRoom.players[idx].slot;
+    if (myRoom.unoCatchWindow[slot]) { clearTimeout(myRoom.unoCatchWindow[slot]); delete myRoom.unoCatchWindow[slot]; }
     myRoom.players.splice(idx, 1);
     myRoom.players.forEach((p, i) => p.slot = i);
     if (myRoom.players.length === 0) { clearTimeout(myRoom.timer); unoRooms.delete(myRoom.code); }
@@ -1619,8 +1647,8 @@ wssUno.on('connection', ws => {
         unoRooms.set(code, room);
         myRoom = room;
         room.players.push({ ws, name, slot:0 });
-        wsend(ws, { type:'created_uno', code, slot:0, name });
-        unoBcastAll(room);
+        wsend(ws, { type:'uno_created', code, slot:0, name });
+        wsend(ws, unoSnap(room, 0));
         broadcastLobby();
         break;
       }
@@ -1634,7 +1662,7 @@ wssUno.on('connection', ws => {
         const slot = room.players.length;
         room.players.push({ ws, name, slot });
         myRoom = room;
-        wsend(ws, { type:'joined_uno', slot, name, code });
+        wsend(ws, { type:'uno_joined', slot, name, code });
         unoBcastAll(room);
         broadcastLobby();
         break;
@@ -1644,12 +1672,14 @@ wssUno.on('connection', ws => {
         if (myRoom.players.length < 2) { wsend(ws, { type:'uno_error', msg:'Il faut au moins 2 joueurs.' }); return; }
         myRoom.deck = buildUnoDeck();
         myRoom.hands = {};
-        myRoom.players.forEach(p => { myRoom.hands[p.slot] = []; unoDrawCards(myRoom, p.slot, 7); });
-        // First card - skip wilds
+        myRoom.players.forEach(p => { myRoom.hands[p.slot] = []; });
+        myRoom.players.forEach(p => unoDrawCards(myRoom, p.slot, 7));
+        // First card on pile — skip action cards and wilds
         let first;
-        do { first = myRoom.deck.pop(); } while (first.color === 'noir');
+        do { first = myRoom.deck.pop(); } while (!first || first.color === 'noir' || ['skip','reverse','+2'].includes(first.value));
         myRoom.pile = [first];
-        myRoom.turn = 0; myRoom.direction = 1; myRoom.drawPending = 0; myRoom.unoSaid = {};
+        myRoom.currentColor = first.color;
+        myRoom.turn = 0; myRoom.direction = 1; myRoom.drawStack = 0; myRoom.unoAlert = {}; myRoom.unoCatchWindow = {};
         myRoom.phase = 'PLAYING';
         unoBcastAll(myRoom);
         broadcastLobby();
@@ -1657,23 +1687,46 @@ wssUno.on('connection', ws => {
       }
       case 'play_uno': {
         if (!player || !myRoom || myRoom.phase !== 'PLAYING') return;
-        const activePlayers = myRoom.players.filter(p => p.active !== false);
-        if (activePlayers[myRoom.turn]?.slot !== player.slot) { wsend(ws, { type:'uno_error', msg:'Ce n\'est pas ton tour.' }); return; }
+        if (myRoom.players[myRoom.turn]?.slot !== player.slot) {
+          wsend(ws, { type:'uno_error', msg:"Ce n'est pas ton tour." }); return;
+        }
         const hand = myRoom.hands[player.slot] || [];
         const ci = Number(d.cardIndex);
-        if (ci < 0 || ci >= hand.length) return;
+        if (ci < 0 || ci >= hand.length) { wsend(ws, { type:'uno_error', msg:'Carte invalide.' }); return; }
         const card = hand[ci];
         const top = myRoom.pile[myRoom.pile.length-1];
-        if (!unoCanPlay(card, top, myRoom.drawPending)) { wsend(ws, { type:'uno_error', msg:'Carte non jouable.' }); return; }
-        // Play card
-        hand.splice(ci, 1);
-        if (card.color === 'noir' && d.chosenColor) {
-          card.chosenColor = d.chosenColor;
-          myRoom.pile.push({ ...card, color: d.chosenColor });
-        } else {
-          myRoom.pile.push(card);
+        if (!unoCanPlay(card, top, myRoom.currentColor, myRoom.drawStack)) {
+          wsend(ws, { type:'uno_error', msg:'Carte non jouable.' }); return;
         }
-        myRoom.unoSaid[player.slot] = false;
+
+        // Remove card from hand
+        hand.splice(ci, 1);
+
+        // Determine active color for wild
+        let playedColor = card.color;
+        if (card.color === 'noir') {
+          const chosen = String(d.chosenColor||'rouge');
+          playedColor = ['rouge','bleu','vert','jaune'].includes(chosen) ? chosen : 'rouge';
+        }
+        // Push to pile (store original card)
+        myRoom.pile.push({ ...card });
+        myRoom.currentColor = playedColor;
+
+        // UNO detection: player now has 1 card — open catch window
+        if (hand.length === 1) {
+          myRoom.unoAlert[player.slot] = false; // not yet announced
+          // Start 2s catch window
+          if (myRoom.unoCatchWindow[player.slot]) clearTimeout(myRoom.unoCatchWindow[player.slot]);
+          myRoom.unoCatchWindow[player.slot] = setTimeout(() => {
+            // Window expired without catch — safe (player didn't say UNO but no one caught)
+            delete myRoom.unoCatchWindow[player.slot];
+          }, 2000);
+        }
+
+        // Broadcast play event
+        bcast(myRoom.players, { type:'uno_played', slot:player.slot, name:player.name,
+          card: { ...card, color:playedColor }, nextTurn:myRoom.turn });
+
         // Check win
         if (hand.length === 0) {
           myRoom.phase = 'GAME_OVER';
@@ -1682,37 +1735,68 @@ wssUno.on('connection', ws => {
           broadcastLobby();
           return;
         }
-        // Apply card effects
+
+        // Apply effects
         let skipNext = false;
         if (card.value === 'reverse') {
           myRoom.direction *= -1;
-          if (myRoom.players.length === 2) skipNext = true;
+          if (myRoom.players.length === 2) skipNext = true; // reverse = skip in 2p
         } else if (card.value === 'skip') {
           skipNext = true;
         } else if (card.value === '+2') {
-          myRoom.drawPending += 2;
+          myRoom.drawStack += 2;
         } else if (card.value === '+4') {
-          myRoom.drawPending += 4;
+          myRoom.drawStack += 4;
         } else {
-          myRoom.drawPending = 0;
+          myRoom.drawStack = 0;
         }
+
         unoNextTurn(myRoom, skipNext);
+        unoBcastAll(myRoom);
         break;
       }
       case 'draw_uno': {
         if (!player || !myRoom || myRoom.phase !== 'PLAYING') return;
-        const activePlayers = myRoom.players.filter(p => p.active !== false);
-        if (activePlayers[myRoom.turn]?.slot !== player.slot) { wsend(ws, { type:'uno_error', msg:'Ce n\'est pas ton tour.' }); return; }
-        const drawCount = myRoom.drawPending > 0 ? myRoom.drawPending : 1;
+        if (myRoom.players[myRoom.turn]?.slot !== player.slot) {
+          wsend(ws, { type:'uno_error', msg:"Ce n'est pas ton tour." }); return;
+        }
+        const drawCount = myRoom.drawStack > 0 ? myRoom.drawStack : 1;
         unoDrawCards(myRoom, player.slot, drawCount);
-        myRoom.drawPending = 0;
+        myRoom.drawStack = 0;
+        bcast(myRoom.players, { type:'uno_drew', slot:player.slot, name:player.name, count:drawCount });
         unoNextTurn(myRoom);
+        unoBcastAll(myRoom);
         break;
       }
       case 'uno_said': {
-        if (!player || !myRoom) return;
+        if (!player || !myRoom || myRoom.phase !== 'PLAYING') return;
         const hand = myRoom.hands[player.slot] || [];
-        if (hand.length === 1) myRoom.unoSaid[player.slot] = true;
+        if (hand.length === 1) {
+          myRoom.unoAlert[player.slot] = true;
+          // Cancel catch window since they said UNO
+          if (myRoom.unoCatchWindow[player.slot]) {
+            clearTimeout(myRoom.unoCatchWindow[player.slot]);
+            delete myRoom.unoCatchWindow[player.slot];
+          }
+          bcast(myRoom.players, { type:'uno_said', slot:player.slot, name:player.name });
+          unoBcastAll(myRoom);
+        }
+        break;
+      }
+      case 'catch_uno': {
+        if (!player || !myRoom || myRoom.phase !== 'PLAYING') return;
+        const targetSlot = Number(d.targetSlot);
+        const target = myRoom.players.find(p => p.slot === targetSlot);
+        if (!target) return;
+        const targetHand = myRoom.hands[targetSlot] || [];
+        // Can catch if: target has 1 card, hasn't said UNO, catch window still open
+        if (targetHand.length === 1 && !myRoom.unoAlert[targetSlot] && myRoom.unoCatchWindow[targetSlot]) {
+          clearTimeout(myRoom.unoCatchWindow[targetSlot]);
+          delete myRoom.unoCatchWindow[targetSlot];
+          unoDrawCards(myRoom, targetSlot, 2);
+          bcast(myRoom.players, { type:'uno_caught', catcher:player.name, target:target.name, targetSlot });
+          unoBcastAll(myRoom);
+        }
         break;
       }
     }

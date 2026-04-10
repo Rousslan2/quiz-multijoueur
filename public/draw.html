@@ -117,10 +117,12 @@ canvas{width:100%;height:100%;display:block;touch-action:none}
 .guess-item.correct{background:rgba(34,197,94,.15);border-color:var(--correct);color:#86efac}
 .guess-item.close{background:rgba(251,191,36,.1);border-color:var(--gold);color:var(--gold)}
 
-/* REVEAL */
+/* ROUND OVER */
 #s-reveal{justify-content:center;align-items:center;text-align:center;gap:14px}
 #reveal-word{font-size:2rem;font-weight:800;color:var(--orange)}
 #reveal-msg{font-size:1rem;color:var(--muted)}
+#reveal-guessers{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-top:4px}
+.rg-chip{background:rgba(34,197,94,.15);border:1px solid var(--correct);border-radius:20px;padding:4px 12px;font-size:.8rem;color:#86efac}
 
 /* GAME OVER */
 #s-gameover{justify-content:center;align-items:center;text-align:center;gap:14px}
@@ -248,13 +250,15 @@ canvas{width:100%;height:100%;display:block;touch-action:none}
   <div id="guess-log" style="display:none"></div>
 </div>
 
-<!-- REVEAL -->
+<!-- ROUND OVER -->
 <div id="s-reveal" class="screen">
   <div id="reveal-icon" style="font-size:3rem"></div>
   <div id="reveal-msg"></div>
   <div style="color:var(--muted);font-size:.85rem">Le mot était :</div>
   <div id="reveal-word"></div>
   <div id="reveal-sub" style="font-size:.85rem;color:var(--muted)"></div>
+  <div id="reveal-guessers"></div>
+  <div style="color:var(--muted);font-size:.78rem">Prochaine manche dans quelques secondes...</div>
 </div>
 
 <!-- GAME OVER -->
@@ -609,26 +613,36 @@ function handle(msg) {
     case 'error': showErr(msg.msg); break;
     case 'player_left': show('s-home'); showErr((msg.name || 'L\'adversaire') + ' a quitté.'); break;
 
-    case 'draw_state': renderState(msg); break;
+    case 'draw_state':
+      // Reset lastPhase when a new round starts (DRAWING from non-DRAWING)
+      if (msg.phase === 'DRAWING' && lastPhase !== 'DRAWING') {
+        lastPhase = '';
+      }
+      renderState(msg);
+      break;
 
     case 'draw_pts':
-      applyPts(msg.pts);
+      if (!isDrawer) applyPts(msg.pts);
       break;
 
     case 'draw_clear':
-      clearCanvas();
+      if (!isDrawer) clearCanvas();
       break;
 
     case 'guess_result':
       addGuess(msg.name, msg.word, msg.result);
+      // If this player's own correct guess, hide input
+      if (msg.result === 'correct' && msg.slot === mySlot && !isDrawer) {
+        document.getElementById('guess-area').style.display = 'none';
+      }
       break;
 
     // Undo: server replays all batches
     case 'draw_replay':
-      replayBatches(msg.batches);
+      if (!isDrawer) replayBatches(msg.batches);
       break;
 
-    // Hint update for guesser
+    // Legacy hint update (kept for backward compat)
     case 'draw_hint_update':
       updateHintDisplay(msg.hint);
       if (msg.scores) {
@@ -639,7 +653,6 @@ function handle(msg) {
       }
       break;
 
-    // Scores update for drawer after hint
     case 'draw_scores_update':
       if (msg.scores) {
         msg.scores.forEach((s, i) => {
@@ -652,33 +665,37 @@ function handle(msg) {
 }
 
 // ── Render scoreboard ─────────────────────────────────────────────────────────
-function renderDrawScoreboard(players, scores, drawerSlot) {
+function renderDrawScoreboard(players, scores, drawerSlot, guessedSlots) {
+  guessedSlots = guessedSlots || [];
   const sb = document.getElementById('scoreboard');
   sb.innerHTML = '';
   players.forEach((p, i) => {
     if (i > 0) { const vs = document.createElement('div'); vs.className = 'vs'; vs.textContent = 'VS'; sb.appendChild(vs); }
     const isDrawer = p.slot === drawerSlot;
+    const guessed = guessedSlots.includes(p.slot);
     const d = document.createElement('div');
     d.className = 'sc' + (isDrawer ? ' drawer-active' : '');
     d.id = 'sc' + p.slot;
-    d.innerHTML = '<div class="sc-name">' + p.name + (isDrawer ? ' ✏️' : '') + '</div>'
+    d.innerHTML = '<div class="sc-name">' + p.name + (isDrawer ? ' ✏️' : '') + (guessed ? ' ✅' : '') + '</div>'
       + '<div class="sc-pts" id="p' + p.slot + '">' + (scores?.[p.slot] ?? 0) + '</div>'
-      + '<div class="sc-role" id="r' + p.slot + '">' + (isDrawer ? '<span class="role-draw">Dessine</span>' : '<span class="role-guess">Devine</span>') + '</div>';
+      + '<div class="sc-role" id="r' + p.slot + '">' + (isDrawer ? '<span class="role-draw">Dessine</span>' : (guessed ? '<span class="role-draw" style="color:var(--correct)">Trouvé !</span>' : '<span class="role-guess">Devine</span>')) + '</div>';
     sb.appendChild(d);
   });
 }
 
 // ── Render state ──────────────────────────────────────────────────────────────
+let lastPhase = '';
 function renderState(st) {
-  const { phase, players, drawerSlot, round, maxRounds, word, letterCount, scores, timerSeconds, winnerSlot, hint } = st;
+  const { phase, players, drawerSlot, round, maxRounds, word, letterCount, scores, timerSeconds, winnerSlot, hint, guessedSlots } = st;
   isDrawer = (drawerSlot === mySlot);
 
-  renderDrawScoreboard(players, scores, drawerSlot);
+  renderDrawScoreboard(players, scores, drawerSlot, guessedSlots);
 
   if (phase === 'WAITING') {
     show('s-ready');
     const isP1 = mySlot === 0;
     document.getElementById('btn-launch').style.display = isP1 && players.length >= 2 ? '' : 'none';
+    document.getElementById('round-selector-wrap').style.display = 'none';
     const n = players.length;
     document.getElementById('ready-title').textContent = n + ' joueur' + (n > 1 ? 's' : '') + ' connecté' + (n > 1 ? 's' : '') + ' !';
     document.getElementById('ready-sub').textContent = isP1 ? 'Lance quand tout le monde est là !' : 'En attente que l\'hôte lance...';
@@ -701,8 +718,15 @@ function renderState(st) {
 
   if (phase === 'DRAWING') {
     show('s-game');
-    guesses.length = 0;
-    document.getElementById('guess-log').innerHTML = '';
+    // Reset guess log only if entering drawing from a different phase
+    if (lastPhase !== 'DRAWING') {
+      guesses.length = 0;
+      document.getElementById('guess-log').innerHTML = '';
+      clearCanvas();
+      startTimer(timerSeconds || 60);
+      setTimeout(resizeCanvas, 50);
+    }
+    lastPhase = 'DRAWING';
 
     // Round info
     document.getElementById('round-info').textContent = 'Manche ' + round + '/' + maxRounds;
@@ -713,7 +737,7 @@ function renderState(st) {
     const wl = document.getElementById('word-label');
     if (isDrawer) {
       wl.textContent = 'Dessine :';
-      wv.textContent = word.toUpperCase();
+      wv.textContent = (word || '').toUpperCase();
       wv.style.display = '';
       wh.style.display = 'none';
       document.getElementById('toolbar').style.display = 'flex';
@@ -722,43 +746,53 @@ function renderState(st) {
       document.getElementById('canvas-wrap').classList.remove('view-only');
     } else {
       wl.textContent = 'Devinez :';
-      const displayHint = hint || ('_ '.repeat(letterCount).trim());
+      const displayHint = hint || ('_ '.repeat(letterCount || 0).trim());
       wh.textContent = displayHint;
       wv.style.display = 'none';
       wh.style.display = '';
       document.getElementById('toolbar').style.display = 'none';
-      document.getElementById('guess-area').style.display = 'flex';
+      // Show guess input only if player hasn't already guessed
+      const alreadyGuessed = (guessedSlots || []).includes(mySlot);
+      document.getElementById('guess-area').style.display = alreadyGuessed ? 'none' : 'flex';
       document.getElementById('guess-log').style.display = 'flex';
       document.getElementById('canvas-wrap').classList.add('view-only');
+      if (alreadyGuessed) {
+        // Show that this player already guessed — add to log if not there
+      }
     }
-
-    clearCanvas();
-    startTimer(timerSeconds || 60);
-    setTimeout(resizeCanvas, 50);
     return;
   }
 
-  if (phase === 'REVEAL') {
+  if (phase === 'ROUND_OVER') {
     show('s-reveal');
     stopTimer();
-    const guessed = st.guessedBy >= 0;
-    document.getElementById('reveal-icon').textContent = guessed ? '🎉' : '⏱️';
-    document.getElementById('reveal-word').textContent = st.revealWord?.toUpperCase() || '?';
-    if (guessed) {
-      const guesser = players.find(p => p.slot === st.guessedBy);
+    lastPhase = 'ROUND_OVER';
+    const gs = guessedSlots || [];
+    const someGuessed = gs.length > 0;
+    document.getElementById('reveal-icon').textContent = someGuessed ? '🎉' : '⏱️';
+    document.getElementById('reveal-word').textContent = (st.revealWord || '').toUpperCase() || '?';
+    if (someGuessed) {
+      const names = gs.map(s => players.find(p => p.slot === s)?.name || '?');
+      document.getElementById('reveal-msg').textContent = names.join(', ') + ' ' + (names.length > 1 ? 'ont trouvé' : 'a trouvé') + ' !';
       const drawer = players.find(p => p.slot === drawerSlot);
-      document.getElementById('reveal-msg').textContent = (guesser?.name || '?') + ' a trouvé !';
-      document.getElementById('reveal-sub').textContent = '+2 pts pour ' + guesser?.name + ' · +1 pt pour ' + drawer?.name;
+      document.getElementById('reveal-sub').textContent = 'Bravo ! +1 pt pour ' + (drawer?.name || '');
     } else {
       document.getElementById('reveal-msg').textContent = 'Temps écoulé ! Personne n\'a trouvé.';
       document.getElementById('reveal-sub').textContent = '';
     }
+    // Show who guessed
+    const rgDiv = document.getElementById('reveal-guessers');
+    rgDiv.innerHTML = gs.map(s => {
+      const p = players.find(x => x.slot === s);
+      return `<span class="rg-chip">✅ ${p ? p.name : '?'}</span>`;
+    }).join('');
     return;
   }
 
   if (phase === 'GAME_OVER') {
     show('s-gameover');
     stopTimer();
+    lastPhase = 'GAME_OVER';
     if (winnerSlot < 0) document.getElementById('go-winner').textContent = 'Égalité !';
     else if (winnerSlot === mySlot) document.getElementById('go-winner').textContent = 'Tu as gagné !';
     else document.getElementById('go-winner').textContent = (players.find(p=>p.slot===winnerSlot)?.name || '?') + ' a gagné !';
