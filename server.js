@@ -10,7 +10,7 @@ const app    = express();
 const server = http.createServer(app);
 const PORT   = process.env.PORT || 3001;
 
-// ── 7 WebSocket servers ───────────────────────────────────────────────────────
+// ── 8 WebSocket servers ───────────────────────────────────────────────────────
 const wssQuiz    = new WebSocket.Server({ noServer: true });
 const wssDraw    = new WebSocket.Server({ noServer: true });
 const wssP4      = new WebSocket.Server({ noServer: true });
@@ -18,9 +18,10 @@ const wssMorpion = new WebSocket.Server({ noServer: true });
 const wssTaboo   = new WebSocket.Server({ noServer: true });
 const wssEmoji   = new WebSocket.Server({ noServer: true });
 const wssVerite  = new WebSocket.Server({ noServer: true });
+const wssChat    = new WebSocket.Server({ noServer: true });
 
 server.on('upgrade', (req, socket, head) => {
-  const routes = { '/ws/quiz':wssQuiz,'/ws/draw':wssDraw,'/ws/p4':wssP4,'/ws/morpion':wssMorpion,'/ws/taboo':wssTaboo,'/ws/emoji':wssEmoji,'/ws/verite':wssVerite };
+  const routes = { '/ws/quiz':wssQuiz,'/ws/draw':wssDraw,'/ws/p4':wssP4,'/ws/morpion':wssMorpion,'/ws/taboo':wssTaboo,'/ws/emoji':wssEmoji,'/ws/verite':wssVerite,'/ws/chat':wssChat };
   const h = routes[req.url];
   if (h) h.handleUpgrade(req, socket, head, ws => h.emit('connection', ws));
   else socket.destroy();
@@ -956,11 +957,36 @@ wssVerite.on('connection',ws=>{
   });
 });
 
+// ════════════════════════════════════════════════════════
+//  CHAT GLOBAL
+// ════════════════════════════════════════════════════════
+const chatClients = new Set();
+wssChat.on('connection', ws => {
+  chatClients.add(ws);
+  // Annonce d'arrivee
+  ws.on('message', raw => {
+    let d; try { d = JSON.parse(raw); } catch { return; }
+    if (d.type === 'chat') {
+      const name = String(d.name || 'Anonyme').trim().slice(0, 20);
+      const text = String(d.text || '').trim().slice(0, 200);
+      if (!text) return;
+      const out = JSON.stringify({ type: 'chat', name, text, time: Date.now() });
+      chatClients.forEach(c => { if (c.readyState === WebSocket.OPEN) c.send(out); });
+    }
+    if (d.type === 'join_chat') {
+      const name = String(d.name || 'Anonyme').trim().slice(0, 20);
+      const out = JSON.stringify({ type: 'system', text: `${name} a rejoint le chat`, time: Date.now() });
+      chatClients.forEach(c => { if (c.readyState === WebSocket.OPEN) c.send(out); });
+    }
+  });
+  ws.on('close', () => chatClients.delete(ws));
+});
+
 // ── Start ─────────────────────────────────────────────────────────────────────
 server.listen(PORT,'0.0.0.0',()=>{
   const ip=getLocalIP();
   console.log('\n╔══════════════════════════════════╗');
-  console.log('║    Quiz Duo v3.0 — 7 jeux !      ║');
+  console.log('║    Quiz Duo v3.0 — 8 jeux !      ║');
   console.log('╠══════════════════════════════════╣');
   console.log(`║  PC  : http://localhost:${PORT}   ║`);
   console.log(`║  Tel : http://${ip}:${PORT}║`);

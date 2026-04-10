@@ -499,5 +499,6 @@ function renderGameOver(st){
   [me,opp].filter(Boolean).forEach(p=>{const wins=st.wins?.[p.slot]??0;const d=document.createElement('div');d.className='fs-card';d.innerHTML=`<div class="fs-name">${p.name}</div><div class="fs-pts">${p.score}</div><div class="fs-wins">${wins} victoire${wins!==1?'s':''}</div>`;sc.appendChild(d);});
 }
 </script>
+<script src="chat.js"></script>
 </body>
 </html>
