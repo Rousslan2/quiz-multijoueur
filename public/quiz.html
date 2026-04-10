@@ -58,17 +58,18 @@ input[type=text]::placeholder{color:var(--muted)}
 .cq-item{background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:8px;padding:10px 12px;display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:.82rem}
 .cq-del{background:none;border:none;color:var(--wrong);cursor:pointer;font-size:1rem;padding:0 4px}
 /* Game */
-#scoreboard{display:flex;justify-content:space-between;align-items:center;padding:10px 0;gap:8px}
-.sc{flex:1;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:8px 12px;text-align:center;position:relative}
+#scoreboard{display:flex;justify-content:space-between;align-items:center;padding:10px 0;gap:6px;flex-wrap:wrap}
+.sc{flex:1;min-width:60px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:6px 8px;text-align:center;position:relative}
 .sc.me{border-color:var(--primary)}
-.sc-name{font-size:.75rem;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.sc-pts{font-size:1.5rem;font-weight:700}
+.sc.opp{border-color:var(--buzz)}
+.sc-name{font-size:.68rem;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sc-pts{font-size:1.25rem;font-weight:700}
 .sc.me .sc-pts{color:var(--primary)}
 .sc.opp .sc-pts{color:var(--buzz)}
-.streak-badge{position:absolute;top:-6px;right:-6px;background:var(--gold);color:#000;border-radius:20px;font-size:.65rem;font-weight:800;padding:2px 6px;display:none}
+.streak-badge{position:absolute;top:-6px;right:-6px;background:var(--gold);color:#000;border-radius:20px;font-size:.6rem;font-weight:800;padding:2px 5px;display:none}
 .streak-badge.show{display:block}
-.wins-row{font-size:.7rem;color:var(--muted);text-align:center;margin-top:2px}
-.vs{background:var(--card);border:1px solid var(--border);border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:700;color:var(--muted);flex-shrink:0}
+.wins-row{font-size:.65rem;color:var(--muted);text-align:center;margin-top:2px}
+.vs{background:var(--card);border:1px solid var(--border);border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:.6rem;font-weight:700;color:var(--muted);flex-shrink:0}
 #timer-wrap{height:5px;background:rgba(255,255,255,.08);border-radius:3px;margin:2px 0 8px;overflow:hidden}
 #timer-bar{height:100%;width:100%;border-radius:3px;background:var(--primary);transform-origin:left}
 #timer-bar.go{animation:shrink linear forwards}
@@ -103,8 +104,8 @@ input[type=text]::placeholder{color:var(--muted)}
 #s-gameover{justify-content:center;align-items:center;text-align:center;gap:14px}
 #go-title{font-size:1.7rem;font-weight:800}
 #go-winner{font-size:1rem;color:var(--gold);font-weight:600;padding:10px 18px;background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.3);border-radius:10px}
-.final-scores{display:flex;gap:12px;width:100%}
-.fs-card{flex:1;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;text-align:center}
+.final-scores{display:flex;flex-wrap:wrap;gap:10px;width:100%}
+.fs-card{flex:1;min-width:calc(50% - 10px);background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;text-align:center}
 .fs-name{color:var(--muted);font-size:.8rem;margin-bottom:4px}
 .fs-pts{font-size:2rem;font-weight:800}
 .fs-wins{font-size:.75rem;color:var(--muted);margin-top:4px}
@@ -169,7 +170,7 @@ input[type=text]::placeholder{color:var(--muted)}
   </div>
   <div id="qr-box"><span style="color:var(--muted);font-size:.75rem">chargement...</span></div>
   <div id="qr-url"></div>
-  <div id="wait-msg"><h2>En attente...</h2><p>Partagez le code ou scannez le QR</p></div>
+  <div id="wait-msg"><h2 id="wait-title">En attente...</h2><p>En attente de joueurs (1-4)</p><p style="color:var(--muted);font-size:.85rem" id="wait-count">1 joueur connecté</p></div>
 </div>
 
 <!-- SETUP -->
@@ -230,9 +231,7 @@ input[type=text]::placeholder{color:var(--muted)}
 <!-- GAME -->
 <div id="s-game" class="screen">
   <div id="scoreboard">
-    <div class="sc me"><div class="sc-name" id="name-me">Moi</div><div class="sc-pts" id="pts-me">0</div><div class="wins-row" id="wins-me"></div><div class="streak-badge" id="streak-me">x3</div></div>
-    <div class="vs">VS</div>
-    <div class="sc opp"><div class="sc-name" id="name-opp">Adv.</div><div class="sc-pts" id="pts-opp">0</div><div class="wins-row" id="wins-opp"></div><div class="streak-badge" id="streak-opp">x3</div></div>
+    <!-- Dynamically rendered by renderScoreboard() -->
   </div>
   <div id="timer-wrap"><div id="timer-bar"></div></div>
   <div id="main">
@@ -475,35 +474,61 @@ function handle(msg){
     case 'welcome': mySlot=msg.slot;myCode=msg.code||''; break;
     case 'error': showErr(msg.msg); break;
     case 'countdown': showCountdown(msg.seconds); break;
-    case 'player_left': show('s-home');showErr((msg.name||'L\'adversaire')+' a quitté.'); break;
+    case 'player_left':
+      if(msg.name){showErr((msg.name)+' a quitté.');}
+      // stay in current screen if still playing, go home only if waiting
+      break;
     case 'state': render(msg); break;
   }
 }
 
+// ── Scoreboard renderer ───────────────────────────────────────────────────────
+function renderScoreboard(st){
+  const sb=document.getElementById('scoreboard');
+  sb.innerHTML='';
+  st.players.forEach((p,i)=>{
+    if(i>0){const vs=document.createElement('div');vs.className='vs';vs.textContent='VS';sb.appendChild(vs);}
+    const isMe=p.slot===mySlot;
+    const streak=st.players[p.slot]?.streak||0;
+    const wins=st.wins?.[p.slot]||0;
+    const d=document.createElement('div');
+    d.className='sc'+(isMe?' me':' opp');
+    d.id='sc-'+p.slot;
+    d.innerHTML=`<div class="sc-name">${p.name}</div><div class="sc-pts" id="pts-${p.slot}">${p.score}</div><div class="wins-row" id="wins-${p.slot}">${wins?wins+' vic.':''}</div><div class="streak-badge${streak>=3?' show':''}" id="streak-${p.slot}">x${streak}</div>`;
+    sb.appendChild(d);
+  });
+}
+
 // ── Render ────────────────────────────────────────────────────────────────────
 function render(st){
-  const me=st.players[mySlot];const opp=st.players[mySlot===0?1:0];
+  const me=st.players.find(p=>p.slot===mySlot);
   if(st.phase==='WAITING'){
-    if(mySlot===0){show('s-wait');loadQR();}
+    if(mySlot===0){
+      show('s-wait');loadQR();
+      const c=st.players.length;
+      document.getElementById('wait-count').textContent=c+' joueur'+(c>1?'s':'')+' connecté'+(c>1?'s':'');
+    }
     return;
   }
   if(st.phase==='SETUP'){
     show('s-setup');
     const isP1=mySlot===0;
-    document.getElementById('btn-start').style.display=isP1?'':'none';
-    document.getElementById('setup-status').textContent=isP1?`${opp?.name||'L\'adversaire'} est prêt — lance la partie !`:`En attente que ${st.players[0]?.name||'Joueur 1'} lance...`;
-    document.querySelectorAll('.cat-btn,.diff-btn,.count-btn,#btn-start,.custom-toggle').forEach(el=>{el.disabled=!isP1;el.style.pointerEvents=isP1?'':'none';el.style.opacity=isP1?'':'0.5';});
+    const n=st.players.length;
+    const canStart=isP1&&n>=2;
+    document.getElementById('btn-start').style.display=canStart?'':'none';
+    if(isP1){
+      document.getElementById('setup-status').textContent=`${n} joueur${n>1?'s':''} — lance quand tu es prêt !`;
+    } else {
+      document.getElementById('setup-status').textContent=`En attente que ${st.players[0]?.name||'Joueur 1'} lance...`;
+    }
+    document.querySelectorAll('.cat-btn,.diff-btn,.count-btn,.custom-toggle').forEach(el=>{el.disabled=!isP1;el.style.pointerEvents=isP1?'':'none';el.style.opacity=isP1?'':'0.5';});
+    document.getElementById('btn-start').disabled=!canStart;
     return;
   }
   if(st.phase==='GAME_OVER'){renderGameOver(st);return;}
   if(st.phase==='COUNTDOWN')return;
   show('s-game');
-  if(me){document.getElementById('name-me').textContent=me.name;document.getElementById('pts-me').textContent=me.score;}
-  if(opp){document.getElementById('name-opp').textContent=opp.name;document.getElementById('pts-opp').textContent=opp.score;}
-  if(st.wins){document.getElementById('wins-me').textContent=st.wins[mySlot]?`${st.wins[mySlot]} victoire${st.wins[mySlot]>1?'s':''}`:'' ;document.getElementById('wins-opp').textContent=st.wins[mySlot===0?1:0]?`${st.wins[mySlot===0?1:0]} victoire${st.wins[mySlot===0?1:0]>1?'s':''}`:'';}
-  const ms=me?.streak||0,os=opp?.streak||0;
-  const sm=document.getElementById('streak-me'),so=document.getElementById('streak-opp');
-  sm.textContent=`x${ms}`;sm.classList.toggle('show',ms>=3);so.textContent=`x${os}`;so.classList.toggle('show',os>=3);
+  renderScoreboard(st);
 
   // Update joker buttons
   const myJokers = me?.jokers || null;
@@ -531,10 +556,10 @@ function render(st){
       setBuzz(false);
     }
     if(st.phase==='SECOND_CHANCE'){
-      const isMe=st.secondChanceSlot===mySlot;
+      const isSecondMe=st.secondChanceSlot===mySlot;
       stopTimer();startTimer(st.timerSeconds||5);
       if(st.firstWrongAns>=0)btns[st.firstWrongAns].className='ans-btn wrong';
-      if(isMe){btns.forEach((b,i)=>{if(i!==st.firstWrongAns){b.className='ans-btn enabled';b.disabled=false;}});setStatus('Deuxième chance pour toi !','second');}
+      if(isSecondMe){btns.forEach((b,i)=>{if(i!==st.firstWrongAns){b.className='ans-btn enabled';b.disabled=false;}});setStatus('Deuxième chance pour toi !','second');}
       else{setStatus(`Deuxième chance pour ${st.players[st.secondChanceSlot]?.name||'?'} !`,'second');}
       setBuzz(false);SND.buzz();
     }
@@ -548,11 +573,11 @@ function render(st){
         if(isCorrect){
           navigator.vibrate&&navigator.vibrate([100,50,100]);
           const bonus=timeBonus?' ⚡+1 Bonus Vitesse !':'';
-          setStatus(`+${pts} point${pts>1?'s':''}${streakBonus?' + Bonus série !':''}${bonus}`,  'ok',isSecondChance?'(2ème chance)':'');
+          setStatus(`+${pts} point${pts>1?'s':''}${streakBonus?' + Bonus série !':''}${bonus}`,'ok',isSecondChance?'(2ème chance)':'');
           SND.correct();
         }else{setStatus('Mauvaise réponse...','bad');SND.wrong();}
       }
-      else{const name=st.players[answererSlot]?.name||'?';if(isCorrect){setStatus(`${name} : +${pts} pt${pts>1?'s':''}${''}`, 'bad',isSecondChance?'(2ème chance)':'');SND.correct();}else{setStatus(`${name} s'est trompé !`,'ok');SND.wrong();}}
+      else{const aName=st.players[answererSlot]?.name||'?';if(isCorrect){setStatus(aName+' : +'+pts+' pt'+(pts>1?'s':''),'bad',isSecondChance?'(2ème chance)':'');SND.correct();}else{setStatus(aName+' s\'est trompé !','ok');SND.wrong();}}
     }
   }
 }
@@ -568,13 +593,21 @@ function setStatus(text,cls='',sub=''){
 }
 function renderGameOver(st){
   show('s-gameover');stopTimer();
-  const me=st.players[mySlot],opp=st.players[mySlot===0?1:0];
   const ws=st.winnerSlot??-1;
   if(ws<0)document.getElementById('go-winner').textContent='Égalité — match nul !';
   else if(ws===mySlot){document.getElementById('go-winner').textContent='Tu as gagné ! Félicitations !';launchConfetti();}
-  else document.getElementById('go-winner').textContent=`${st.players[ws]?.name||'?'} a gagné !`;
+  else document.getElementById('go-winner').textContent=(st.players[ws]?.name||'?')+' a gagné !';
   const sc=document.getElementById('go-scores');sc.innerHTML='';
-  [me,opp].filter(Boolean).forEach(p=>{const wins=st.wins?.[p.slot]??0;const d=document.createElement('div');d.className='fs-card';d.innerHTML=`<div class="fs-name">${p.name}</div><div class="fs-pts">${p.score}</div><div class="fs-wins">${wins} victoire${wins!==1?'s':''}</div>`;sc.appendChild(d);});
+  // Sort by score descending
+  const sorted=[...st.players].sort((a,b)=>b.score-a.score);
+  sorted.forEach(p=>{
+    const wins=st.wins?.[p.slot]??0;
+    const d=document.createElement('div');
+    d.className='fs-card';
+    if(p.slot===mySlot)d.style.borderColor='var(--primary)';
+    d.innerHTML='<div class="fs-name">'+p.name+'</div><div class="fs-pts">'+p.score+'</div><div class="fs-wins">'+wins+' victoire'+(wins!==1?'s':'')+'</div>';
+    sc.appendChild(d);
+  });
 }
 </script>
 <script src="chat.js"></script>

@@ -66,7 +66,7 @@
   #dot.ok { background: var(--correct); }
 
   /* Score bar */
-  #score-bar {
+  #score-bar, .score-bar-multi {
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -75,13 +75,16 @@
     border-radius: 10px;
     padding: 10px 16px;
     flex-shrink: 0;
+    flex-wrap: wrap;
+    gap: 6px;
   }
-  .player-score { display: flex; flex-direction: column; align-items: center; gap: 3px; }
-  .player-score .name { font-size: 12px; color: var(--muted); }
-  .player-score .pts  { font-size: 1.2rem; font-weight: 800; }
-  #score-bar .me .pts  { color: var(--primary); }
-  #score-bar .opp .pts { color: var(--gold); }
-  #score-bar .sep { width: 1px; height: 36px; background: var(--border); }
+  .player-score { display: flex; flex-direction: column; align-items: center; gap: 3px; flex: 1; min-width: 60px; }
+  .player-score .name { font-size: 11px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 75px; }
+  .player-score .pts  { font-size: 1.1rem; font-weight: 800; }
+  .player-score.active-turn .name { color: var(--primary); }
+  .player-score.active-turn .pts { color: var(--primary); }
+  .player-score.me .pts { color: var(--primary); }
+  .sep { width: 1px; height: 36px; background: var(--border); flex-shrink: 0; }
 
   /* Turn progress */
   #turn-progress {
@@ -291,16 +294,8 @@
 
   <!-- Choosing (my turn) -->
   <div id="screen-choosing-me" class="hidden" style="display:flex;flex-direction:column;gap:14px;width:100%">
-    <div id="score-bar">
-      <div class="player-score me">
-        <div class="name" id="cm-name-p0"></div>
-        <div class="pts"  id="cm-pts-p0">0 pts</div>
-      </div>
-      <div class="sep"></div>
-      <div class="player-score opp">
-        <div class="name" id="cm-name-p1"></div>
-        <div class="pts"  id="cm-pts-p1">0 pts</div>
-      </div>
+    <div id="score-bar" class="score-bar-multi">
+      <!-- Dynamically rendered -->
     </div>
     <div id="turn-progress"><strong id="cm-turn-info">Tour 1/20</strong></div>
     <div id="game-card" class="type-none">
@@ -318,16 +313,8 @@
 
   <!-- Choosing (other's turn) -->
   <div id="screen-choosing-other" class="hidden" style="display:flex;flex-direction:column;gap:14px;width:100%">
-    <div id="score-bar-other" class="card" style="display:flex;justify-content:space-between;align-items:center;padding:10px 16px">
-      <div class="player-score me">
-        <div class="name" id="co-name-p0"></div>
-        <div class="pts"  id="co-pts-p0" style="color:var(--primary)">0 pts</div>
-      </div>
-      <div class="sep" style="width:1px;height:36px;background:var(--border)"></div>
-      <div class="player-score opp">
-        <div class="name" id="co-name-p1"></div>
-        <div class="pts"  id="co-pts-p1" style="color:var(--gold)">0 pts</div>
-      </div>
+    <div id="score-bar-other" class="score-bar-multi" style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px 16px;display:flex;flex-wrap:wrap;gap:6px">
+      <!-- Dynamically rendered -->
     </div>
     <div><strong id="co-turn-info" style="font-size:14px;color:var(--muted);display:block;text-align:center">Tour 1/20</strong></div>
     <div id="waiting-card">
@@ -338,16 +325,8 @@
 
   <!-- Card phase -->
   <div id="screen-card" class="hidden" style="display:flex;flex-direction:column;gap:14px;width:100%">
-    <div id="score-bar-card" class="card" style="display:flex;justify-content:space-between;align-items:center;padding:10px 16px">
-      <div class="player-score me">
-        <div class="name" id="ca-name-p0"></div>
-        <div class="pts"  id="ca-pts-p0" style="color:var(--primary)">0 pts</div>
-      </div>
-      <div class="sep" style="width:1px;height:36px;background:var(--border)"></div>
-      <div class="player-score opp">
-        <div class="name" id="ca-name-p1"></div>
-        <div class="pts"  id="ca-pts-p1" style="color:var(--gold)">0 pts</div>
-      </div>
+    <div id="score-bar-card" class="score-bar-multi" style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px 16px;display:flex;flex-wrap:wrap;gap:6px">
+      <!-- Dynamically rendered -->
     </div>
     <div id="card-turn-info" style="text-align:center;font-size:14px;color:var(--muted)"></div>
     <div id="game-card-main" class="type-none" style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;border-radius:20px;border:2px solid var(--border);padding:28px 24px;text-align:center;min-height:200px;transition:background .4s,border-color .4s">
@@ -370,8 +349,7 @@
       <div class="card" style="width:100%;padding:28px;text-align:center">
         <div style="font-size:2.5rem;margin-bottom:8px">🏆</div>
         <h2 style="font-size:1.8rem;font-weight:900;margin-bottom:16px">Partie terminée !</h2>
-        <div style="font-size:1.1rem;margin-bottom:6px" id="go-score-p0"></div>
-        <div style="font-size:1.1rem;margin-bottom:20px" id="go-score-p1"></div>
+        <div id="go-scores-list" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;justify-content:center"></div>
         <div id="go-winner" style="font-size:1.1rem;color:var(--gold);margin-bottom:20px"></div>
         <div style="display:flex;gap:10px">
           <button class="btn btn-muted btn-full" onclick="location.href='index.html'">Accueil</button>
@@ -458,15 +436,30 @@ function handleMsg(msg) {
   }
 }
 
+/* ─── Score bar renderer ─────────────────────────────── */
+function renderVeriteScoreBar(barId, players, scores, activeTurn) {
+  const bar = document.getElementById(barId);
+  if (!bar) return;
+  bar.innerHTML = '';
+  players.forEach((p, i) => {
+    if (i > 0) { const sep = document.createElement('div'); sep.className = 'sep'; bar.appendChild(sep); }
+    const isActive = p.slot === activeTurn;
+    const isMe = p.slot === mySlot;
+    const d = document.createElement('div');
+    d.className = 'player-score' + (isMe ? ' me' : '') + (isActive ? ' active-turn' : '');
+    d.innerHTML = '<div class="name">' + p.name + (isActive ? ' 🎯' : '') + '</div>'
+      + '<div class="pts">' + (scores?.[p.slot] ?? 0) + ' pts</div>';
+    bar.appendChild(d);
+  });
+}
+
 /* ─── Render ─────────────────────────────────────────── */
 function renderState() {
   if (!state) return;
   const { phase, players, scores, turn, turnNum, maxTurns, card } = state;
-  const p0 = players[0] || { name: '—' };
-  const p1 = players[1] || { name: '—' };
   const isMyTurn = (mySlot === turn);
-  const turnPlayerName = players[turn]?.name ?? '?';
-  const turnText = `Tour ${turnNum ?? 1}/${maxTurns ?? 20}`;
+  const turnPlayerName = players.find(p => p.slot === turn)?.name ?? '?';
+  const turnText = 'Tour ' + (turnNum ?? 1) + '/' + (maxTurns ?? 20);
 
   switch (phase) {
     case 'WAITING':
@@ -475,26 +468,20 @@ function renderState() {
 
     case 'READY':
       showScreen('screen-ready');
-      document.getElementById('ready-players').textContent = players.map(p => p.name).join(' vs ');
+      document.getElementById('ready-players').textContent = players.map(p => p.name).join(' · ');
       toggleEl('start-btn', mySlot === 0);
       toggleEl('ready-wait', mySlot !== 0);
       break;
 
     case 'CHOOSING':
+      renderVeriteScoreBar('score-bar', players, scores, turn);
       if (isMyTurn) {
         showScreen('screen-choosing-me');
-        setEl('cm-name-p0', p0.name);
-        setEl('cm-name-p1', p1.name);
-        setEl('cm-pts-p0', `${scores?.[0] ?? 0} pts`);
-        setEl('cm-pts-p1', `${scores?.[1] ?? 0} pts`);
         setEl('cm-turn-info', turnText);
-        setEl('cm-my-name', `C'est à toi, ${p0.name === myName ? p0.name : p1.name} !`);
+        setEl('cm-my-name', 'C\'est à toi, ' + myName + ' !');
       } else {
         showScreen('screen-choosing-other');
-        setEl('co-name-p0', p0.name);
-        setEl('co-name-p1', p1.name);
-        setEl('co-pts-p0', `${scores?.[0] ?? 0} pts`);
-        setEl('co-pts-p1', `${scores?.[1] ?? 0} pts`);
+        renderVeriteScoreBar('score-bar-other', players, scores, turn);
         setEl('co-turn-info', turnText);
         setEl('co-other-name', turnPlayerName);
       }
@@ -502,33 +489,27 @@ function renderState() {
 
     case 'CARD':
       showScreen('screen-card');
-      setEl('ca-name-p0', p0.name);
-      setEl('ca-name-p1', p1.name);
-      setEl('ca-pts-p0', `${scores?.[0] ?? 0} pts`);
-      setEl('ca-pts-p1', `${scores?.[1] ?? 0} pts`);
-      setEl('card-turn-info', `${turnText} — ${turnPlayerName}`);
+      renderVeriteScoreBar('score-bar-card', players, scores, turn);
+      setEl('card-turn-info', turnText + ' — ' + turnPlayerName);
 
       if (card) {
         const isVerite = card.type === 'verite';
         const cardEl = document.getElementById('game-card-main');
         const badge = document.getElementById('card-badge-main');
 
-        // Card background/border
         cardEl.style.background = isVerite ? 'rgba(139,92,246,.25)' : 'rgba(249,115,22,.22)';
         cardEl.style.borderColor = isVerite ? '#a78bfa' : '#f97316';
 
-        // Badge
         badge.textContent = isVerite ? 'VÉRITÉ' : 'DÉFI';
         badge.className = isVerite ? 'badge-verite' : 'badge-defi';
         badge.style.background = isVerite ? 'rgba(139,92,246,.4)' : 'rgba(249,115,22,.35)';
         badge.style.color = isVerite ? '#c4b5fd' : '#fdba74';
-        badge.style.border = `1px solid ${isVerite ? '#a78bfa' : '#f97316'}`;
+        badge.style.border = '1px solid ' + (isVerite ? '#a78bfa' : '#f97316');
 
         setEl('card-cat-main', card.cat || '');
         setEl('card-text-main', card.text || '');
       }
 
-      // Show/hide done buttons
       const doneBtns = document.getElementById('done-btns');
       const spectMsg = document.getElementById('card-spectator-msg');
       if (isMyTurn) {
@@ -542,11 +523,21 @@ function renderState() {
 
     case 'GAME_OVER':
       showScreen('screen-gameover');
-      setEl('go-score-p0', `${p0.name} : ${scores?.[0] ?? 0} pts`);
-      setEl('go-score-p1', `${p1.name} : ${scores?.[1] ?? 0} pts`);
-      const s0 = scores?.[0] ?? 0, s1 = scores?.[1] ?? 0;
-      const winner = s0 > s1 ? p0.name : s1 > s0 ? p1.name : null;
-      setEl('go-winner', winner ? `🏆 ${winner} remporte la partie !` : '🤝 Égalité !');
+      const sorted = [...players].sort((a, b) => (scores?.[b.slot] ?? 0) - (scores?.[a.slot] ?? 0));
+      const gsList = document.getElementById('go-scores-list');
+      gsList.innerHTML = '';
+      sorted.forEach(p => {
+        const d = document.createElement('div');
+        d.style.cssText = 'background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px 14px;text-align:center;flex:1;min-width:calc(50% - 8px)';
+        if (p.slot === mySlot) d.style.borderColor = 'var(--primary)';
+        d.innerHTML = '<div style="font-size:12px;color:var(--muted)">' + p.name + '</div>'
+          + '<div style="font-size:1.4rem;font-weight:800;color:var(--primary)">' + (scores?.[p.slot] ?? 0) + ' pts</div>';
+        gsList.appendChild(d);
+      });
+      const winnerSlot = state.winnerSlot ?? -1;
+      if (winnerSlot < 0) setEl('go-winner', '🤝 Égalité !');
+      else if (winnerSlot === mySlot) setEl('go-winner', '🏆 Tu remportes la partie !');
+      else setEl('go-winner', '🏆 ' + (players.find(p => p.slot === winnerSlot)?.name || '?') + ' remporte la partie !');
       break;
   }
 }

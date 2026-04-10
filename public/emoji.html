@@ -73,13 +73,15 @@
     font-size: 14px;
     font-weight: 600;
     flex-shrink: 0;
+    flex-wrap: wrap;
+    gap: 6px;
   }
-  .player-score { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+  .player-score { display: flex; flex-direction: column; align-items: center; gap: 2px; flex: 1; min-width: 55px; }
+  .player-score .name-lbl { font-size: 11px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 70px; }
   .player-score .pts { font-size: 1.1rem; }
-  .player-score .wins { font-size: 11px; color: var(--muted); }
-  #score-bar .me .pts { color: var(--primary); }
-  #score-bar .opp .pts { color: var(--gold); }
-  #score-bar .sep { width: 1px; height: 36px; background: var(--border); }
+  .player-score.answered .pts { color: var(--correct); }
+  .player-score.me .pts { color: var(--primary); }
+  #score-bar .sep { width: 1px; height: 36px; background: var(--border); flex-shrink: 0; }
 
   /* Timer bar */
   .timer-wrap { width: 100%; height: 8px; background: var(--card); border-radius: 4px; overflow: hidden; flex-shrink: 0; }
@@ -312,18 +314,10 @@
     </div>
   </div>
 
-  <!-- Playing (QUESTION / BUZZED) -->
+  <!-- Playing (QUESTION) -->
   <div id="screen-playing" class="hidden" style="display:flex;flex-direction:column;gap:12px;width:100%">
     <div id="score-bar">
-      <div class="player-score me">
-        <div class="pts" id="score-p0-pts">— 0 pts</div>
-        <div class="wins" id="score-p0-wins">0 victoire(s)</div>
-      </div>
-      <div class="sep"></div>
-      <div class="player-score opp">
-        <div class="pts" id="score-p1-pts">— 0 pts</div>
-        <div class="wins" id="score-p1-wins">0 victoire(s)</div>
-      </div>
+      <!-- Dynamically rendered -->
     </div>
 
     <div id="question-meta">
@@ -337,42 +331,29 @@
 
     <div class="timer-wrap"><div class="timer-bar" id="timer-bar"></div></div>
 
-    <!-- QUESTION state -->
-    <div id="question-actions">
-      <button id="buzz-btn" onclick="doBuzz()">⚡ BUZZ !</button>
-    </div>
-
-    <!-- BUZZED state -->
-    <div id="buzzed-actions" class="hidden" style="display:flex;flex-direction:column;gap:10px">
-      <div class="buzzed-msg" id="buzzed-msg"></div>
-      <div id="answer-form-wrap" class="card hidden">
-        <div id="answer-wrap">
-          <input id="answer-input" type="text" placeholder="Ta réponse…" autocomplete="off" autocorrect="off">
-          <button class="btn btn-primary" onclick="submitAnswer()">Valider</button>
-        </div>
+    <!-- Answer form — always visible during QUESTION -->
+    <div id="answer-form-wrap" class="card" style="display:none">
+      <div id="answer-wrap">
+        <input id="answer-input" type="text" placeholder="Ta réponse…" autocomplete="off" autocorrect="off">
+        <button class="btn btn-primary" onclick="submitAnswer()">Valider</button>
       </div>
     </div>
+
+    <!-- Status message (correct/wrong feedback) -->
+    <div id="answer-status" style="text-align:center;font-size:1rem;font-weight:700;min-height:24px"></div>
   </div>
 
   <!-- Reveal -->
   <div id="screen-reveal" class="hidden" style="display:flex;flex-direction:column;gap:12px;width:100%">
-    <div id="score-bar-reveal" class="card" style="display:flex;justify-content:space-between;padding:10px 16px">
-      <div class="player-score me">
-        <div class="pts" id="r-score-p0-pts" style="color:var(--primary)"></div>
-        <div class="wins" id="r-score-p0-wins" style="font-size:11px;color:var(--muted)"></div>
-      </div>
-      <div class="sep" style="width:1px;height:36px;background:var(--border)"></div>
-      <div class="player-score opp">
-        <div class="pts" id="r-score-p1-pts" style="color:var(--gold)"></div>
-        <div class="wins" id="r-score-p1-wins" style="font-size:11px;color:var(--muted)"></div>
-      </div>
+    <div id="score-bar-reveal" class="card" style="display:flex;justify-content:space-between;padding:10px 16px;flex-wrap:wrap;gap:6px">
+      <!-- Dynamically rendered -->
     </div>
     <div class="card" style="text-align:center">
       <div style="font-size:2.5rem;margin-bottom:8px" id="reveal-emoji-display"></div>
       <div style="font-size:13px;color:var(--muted);margin-bottom:10px" id="reveal-cat"></div>
       <div id="reveal-verdict"></div>
       <div id="reveal-answer"></div>
-      <div id="reveal-answered-text"></div>
+      <div id="reveal-correct-players" style="font-size:13px;color:var(--correct);margin-top:6px"></div>
     </div>
   </div>
 
@@ -382,10 +363,7 @@
       <div class="card" style="width:100%;padding:28px;text-align:center">
         <div style="font-size:2.5rem;margin-bottom:8px">🏆</div>
         <h2 style="font-size:1.8rem;font-weight:900;margin-bottom:16px">Partie terminée !</h2>
-        <div style="font-size:1.1rem;margin-bottom:4px" id="go-score-p0"></div>
-        <div style="font-size:1.1rem;margin-bottom:4px" id="go-score-p1"></div>
-        <div style="font-size:1rem;color:var(--muted);margin-bottom:4px" id="go-wins-p0"></div>
-        <div style="font-size:1rem;color:var(--muted);margin-bottom:16px" id="go-wins-p1"></div>
+        <div id="go-scores-list" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;justify-content:center"></div>
         <div id="go-winner" style="font-size:1.1rem;color:var(--gold);margin-bottom:20px"></div>
         <div style="display:flex;gap:10px">
           <button class="btn btn-muted btn-full" onclick="location.href='index.html'">Accueil</button>
@@ -465,9 +443,39 @@ function handleMsg(msg) {
       showCountdown(msg.seconds);
       break;
 
+    case 'emoji_correct':
+      // Another player (or us) answered correctly
+      {
+        const isMe = msg.slot === mySlot;
+        const statusEl = document.getElementById('answer-status');
+        if (isMe) {
+          statusEl.style.color = 'var(--correct)';
+          statusEl.textContent = '✅ Bonne réponse ! +' + msg.pts + ' pts';
+          document.getElementById('answer-form-wrap').style.display = 'none';
+        } else {
+          statusEl.style.color = 'var(--gold)';
+          statusEl.textContent = msg.name + ' a trouvé ! (+' + msg.pts + ' pts)';
+        }
+        // Update scoreboard if state available
+        if (state && msg.answeredSlots) {
+          renderScoreBar(state.players, state.scores, msg.answeredSlots);
+        }
+      }
+      break;
+
+    case 'emoji_wrong':
+      if (msg.slot === mySlot || !msg.slot) {
+        const statusEl = document.getElementById('answer-status');
+        statusEl.style.color = 'var(--wrong)';
+        statusEl.textContent = '❌ Mauvaise réponse…';
+        setTimeout(() => { statusEl.textContent = ''; }, 1500);
+      }
+      break;
+
     case 'player_left':
-      alert('Ton adversaire a quitté la partie.');
-      location.href = 'index.html';
+      // Don't force redirect mid-game, just show a message
+      const statusEl = document.getElementById('answer-status');
+      if (statusEl) { statusEl.style.color = 'var(--muted)'; statusEl.textContent = (msg.name||'Un joueur') + ' a quitté.'; }
       break;
 
     case 'error':
@@ -504,18 +512,31 @@ function startTimer(seconds, barId) {
   bar.style.animationFillMode = 'forwards';
 }
 
+/* ─── Score bar renderer ─────────────────────────────── */
+function renderScoreBar(players, scores, answeredSlots) {
+  ['score-bar', 'score-bar-reveal'].forEach(barId => {
+    const bar = document.getElementById(barId);
+    if (!bar) return;
+    bar.innerHTML = '';
+    players.forEach((p, i) => {
+      if (i > 0) { const sep = document.createElement('div'); sep.className = 'sep'; bar.appendChild(sep); }
+      const answered = answeredSlots && answeredSlots.includes(p.slot);
+      const isMe = p.slot === mySlot;
+      const d = document.createElement('div');
+      d.className = 'player-score' + (isMe ? ' me' : '') + (answered ? ' answered' : '');
+      d.innerHTML = '<div class="name-lbl">' + p.name + (answered ? ' ✅' : '') + '</div>'
+        + '<div class="pts">' + (scores?.[p.slot] ?? 0) + ' pts</div>';
+      bar.appendChild(d);
+    });
+  });
+}
+
 /* ─── Render ─────────────────────────────────────────── */
 function renderState() {
   if (!state) return;
-  const { phase, players, scores, wins, buzzedSlot, qIndex, total, puzzle, timerSeconds, reveal } = state;
-  const p0 = players[0] || { name: '—' };
-  const p1 = players[1] || { name: '—' };
+  const { phase, players, scores, wins, answeredSlots, qIndex, total, puzzle, timerSeconds, reveal } = state;
 
-  // Update score bars
-  setScoreBar('score-p0-pts', `${p0.name} ${scores?.[0] ?? 0} pts`, 'score-p0-wins', `${wins?.[0] ?? 0} victoire(s)`);
-  setScoreBar('score-p1-pts', `${p1.name} ${scores?.[1] ?? 0} pts`, 'score-p1-wins', `${wins?.[1] ?? 0} victoire(s)`);
-  setScoreBar('r-score-p0-pts', `${p0.name} ${scores?.[0] ?? 0} pts`, 'r-score-p0-wins', `${wins?.[0] ?? 0} victoire(s)`);
-  setScoreBar('r-score-p1-pts', `${p1.name} ${scores?.[1] ?? 0} pts`, 'r-score-p1-wins', `${wins?.[1] ?? 0} victoire(s)`);
+  renderScoreBar(players, scores, answeredSlots || []);
 
   switch (phase) {
     case 'WAITING':
@@ -526,14 +547,13 @@ function renderState() {
     case 'READY':
       hideCountdown();
       showScreen('screen-ready');
-      document.getElementById('ready-players').textContent = players.map(p => p.name).join(' vs ');
+      document.getElementById('ready-players').textContent = players.map(p => p.name).join(' · ');
       toggleEl('start-btn', mySlot === 0);
       toggleEl('ready-wait', mySlot !== 0);
       break;
 
     case 'COUNTDOWN':
       showScreen('screen-playing');
-      // Countdown messages come separately via type:'countdown'
       break;
 
     case 'QUESTION':
@@ -543,29 +563,17 @@ function renderState() {
         document.getElementById('emoji-display').textContent = puzzle.emojis;
         document.getElementById('q-cat').textContent = puzzle.cat || '';
       }
-      document.getElementById('q-num').textContent = `Question ${(qIndex ?? 0) + 1}/${total ?? '?'}`;
-      toggleEl('question-actions', true);
-      toggleEl('buzzed-actions', false);
-      const buzzBtn = document.getElementById('buzz-btn');
-      buzzBtn.disabled = false;
-      startTimer(timerSeconds || 30);
-      break;
-
-    case 'BUZZED':
-      hideCountdown();
-      showScreen('screen-playing');
-      if (puzzle) document.getElementById('emoji-display').textContent = puzzle.emojis;
-      toggleEl('question-actions', false);
-      toggleEl('buzzed-actions', true);
-      const buzzerName = players[buzzedSlot]?.name ?? '?';
-      document.getElementById('buzzed-msg').textContent = `⚡ ${buzzerName} a buzzé !`;
-      const isMe = mySlot === buzzedSlot;
-      toggleEl('answer-form-wrap', isMe);
-      if (isMe) {
+      document.getElementById('q-num').textContent = 'Question ' + ((qIndex ?? 0) + 1) + '/' + (total ?? '?');
+      // Show answer form (not yet answered)
+      const afWrap = document.getElementById('answer-form-wrap');
+      const alreadyAnswered = answeredSlots && answeredSlots.includes(mySlot);
+      afWrap.style.display = alreadyAnswered ? 'none' : '';
+      document.getElementById('answer-status').textContent = '';
+      if (!alreadyAnswered) {
         document.getElementById('answer-input').value = '';
         document.getElementById('answer-input').focus();
       }
-      startTimer(15);
+      startTimer(timerSeconds || 20);
       break;
 
     case 'REVEAL':
@@ -576,40 +584,37 @@ function renderState() {
         document.getElementById('reveal-cat').textContent = puzzle.cat || '';
       }
       if (reveal) {
-        const verdict = document.getElementById('reveal-verdict');
         const answerEl = document.getElementById('reveal-answer');
-        const answeredEl = document.getElementById('reveal-answered-text');
         answerEl.textContent = (reveal.answer || '').toUpperCase();
-        answerEl.style.color = reveal.isCorrect ? 'var(--correct)' : 'var(--text)';
-        verdict.textContent = reveal.isCorrect ? '✅ Bonne réponse !' : '❌ Mauvaise réponse…';
-        verdict.style.color = reveal.isCorrect ? 'var(--correct)' : 'var(--wrong)';
-        if (reveal.answeredText && !reveal.isCorrect) {
-          answeredEl.textContent = `Réponse donnée : "${reveal.answeredText}"`;
-        } else {
-          answeredEl.textContent = '';
-        }
+        answerEl.style.color = 'var(--correct)';
+        const correctSlots = reveal.correctSlots || [];
+        const correctNames = correctSlots.map(s => players.find(p => p.slot === s)?.name).filter(Boolean);
+        document.getElementById('reveal-verdict').textContent = correctNames.length ? correctNames.join(', ') + ' ont trouvé !' : 'Personne n\'a trouvé.';
+        document.getElementById('reveal-correct-players').textContent = correctNames.length ? '✅ ' + correctNames.join(' · ') : '';
       }
       break;
 
     case 'GAME_OVER':
       hideCountdown();
       showScreen('screen-gameover');
-      document.getElementById('go-score-p0').textContent = `${p0.name} : ${scores?.[0] ?? 0} pts`;
-      document.getElementById('go-score-p1').textContent = `${p1.name} : ${scores?.[1] ?? 0} pts`;
-      document.getElementById('go-wins-p0').textContent = `${p0.name} : ${wins?.[0] ?? 0} victoire(s)`;
-      document.getElementById('go-wins-p1').textContent = `${p1.name} : ${wins?.[1] ?? 0} victoire(s)`;
-      const s0 = scores?.[0] ?? 0, s1 = scores?.[1] ?? 0;
-      const winner = s0 > s1 ? p0.name : s1 > s0 ? p1.name : null;
-      document.getElementById('go-winner').textContent = winner ? `🏆 ${winner} remporte la partie !` : '🤝 Égalité !';
+      const sorted = [...players].sort((a, b) => (scores?.[b.slot] ?? 0) - (scores?.[a.slot] ?? 0));
+      const gsList = document.getElementById('go-scores-list');
+      gsList.innerHTML = '';
+      sorted.forEach(p => {
+        const d = document.createElement('div');
+        d.style.cssText = 'background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px 14px;text-align:center;flex:1;min-width:calc(50% - 8px)';
+        if (p.slot === mySlot) d.style.borderColor = 'var(--primary)';
+        d.innerHTML = '<div style="font-size:12px;color:var(--muted)">' + p.name + '</div>'
+          + '<div style="font-size:1.4rem;font-weight:800;color:var(--primary)">' + (scores?.[p.slot] ?? 0) + ' pts</div>'
+          + '<div style="font-size:11px;color:var(--muted)">' + (wins?.[p.slot] ?? 0) + ' victoire(s)</div>';
+        gsList.appendChild(d);
+      });
+      const winnerSlot = state.winnerSlot ?? -1;
+      if (winnerSlot < 0) document.getElementById('go-winner').textContent = '🤝 Égalité !';
+      else if (winnerSlot === mySlot) document.getElementById('go-winner').textContent = '🏆 Tu remportes la partie !';
+      else document.getElementById('go-winner').textContent = '🏆 ' + (players.find(p => p.slot === winnerSlot)?.name || '?') + ' remporte la partie !';
       break;
   }
-}
-
-function setScoreBar(ptsId, ptsText, winsId, winsText) {
-  const p = document.getElementById(ptsId);
-  const w = document.getElementById(winsId);
-  if (p) p.textContent = ptsText;
-  if (w) w.textContent = winsText;
 }
 
 /* ─── QR ─────────────────────────────────────────────── */
@@ -671,10 +676,6 @@ document.getElementById('code-input') && document.getElementById('code-input').a
 });
 function startGame() { send({ type: 'start_emoji' }); }
 function restartGame() { send({ type: 'restart_emoji' }); }
-function doBuzz() {
-  document.getElementById('buzz-btn').disabled = true;
-  send({ type: 'buzz_emoji' });
-}
 function submitAnswer() {
   const input = document.getElementById('answer-input');
   const text = input.value.trim();

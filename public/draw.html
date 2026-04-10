@@ -44,15 +44,16 @@ input[type=text]::placeholder{color:var(--muted)}
 .round-btn.on{border-color:var(--orange);color:var(--text);background:rgba(249,115,22,.12)}
 
 /* GAME */
-#scoreboard{display:flex;justify-content:space-between;align-items:center;padding:8px 0;gap:8px}
-.sc{flex:1;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:7px 10px;text-align:center}
+#scoreboard{display:flex;justify-content:space-between;align-items:center;padding:8px 0;gap:6px;flex-wrap:wrap}
+.sc{flex:1;min-width:55px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:6px 8px;text-align:center;position:relative}
 .sc.drawer-active{border-color:var(--orange)}
-.sc-name{font-size:.72rem;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.sc-pts{font-size:1.35rem;font-weight:700;color:var(--orange)}
-.sc-role{font-size:.62rem;margin-top:1px}
+.sc-name{font-size:.68rem;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sc-pts{font-size:1.2rem;font-weight:700;color:var(--orange)}
+.sc-role{font-size:.6rem;margin-top:1px}
 .role-draw{color:var(--orange)}
 .role-guess{color:#60a5fa}
-.vs{width:28px;height:28px;background:var(--card);border:1px solid var(--border);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.65rem;color:var(--muted);flex-shrink:0}
+.draw-badge{position:absolute;top:-5px;right:-5px;font-size:.75rem;line-height:1;background:var(--card);border-radius:50%;padding:2px}
+.vs{width:24px;height:24px;background:var(--card);border:1px solid var(--border);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.6rem;color:var(--muted);flex-shrink:0}
 
 /* Timer bar */
 #timer-wrap{height:4px;background:rgba(255,255,255,.08);border-radius:2px;margin:0 0 6px;overflow:hidden}
@@ -123,8 +124,8 @@ canvas{width:100%;height:100%;display:block;touch-action:none}
 
 /* GAME OVER */
 #s-gameover{justify-content:center;align-items:center;text-align:center;gap:14px}
-.final-sc{display:flex;gap:10px;width:100%}
-.fs-card{flex:1;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;text-align:center}
+.final-sc{display:flex;flex-wrap:wrap;gap:10px;width:100%}
+.fs-card{flex:1;min-width:calc(50% - 10px);background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;text-align:center}
 .fs-name{color:var(--muted);font-size:.78rem;margin-bottom:3px}
 .fs-pts{font-size:2rem;font-weight:800;color:var(--orange)}
 
@@ -180,7 +181,7 @@ canvas{width:100%;height:100%;display:block;touch-action:none}
 <!-- READY -->
 <div id="s-ready" class="screen">
   <div style="font-size:3rem">&#127912;</div>
-  <h2>Les deux joueurs sont prêts !</h2>
+  <h2 id="ready-title">Joueurs prêts !</h2>
   <p id="ready-sub">En attente du lancement...</p>
   <div id="round-selector-wrap" style="display:none;flex-direction:column;align-items:center;gap:8px">
     <p style="font-size:.82rem;color:var(--muted)">Nombre de manches</p>
@@ -196,9 +197,7 @@ canvas{width:100%;height:100%;display:block;touch-action:none}
 <!-- GAME -->
 <div id="s-game" class="screen">
   <div id="scoreboard">
-    <div class="sc" id="sc0"><div class="sc-name" id="n0">-</div><div class="sc-pts" id="p0">0</div><div class="sc-role" id="r0"></div></div>
-    <div class="vs">VS</div>
-    <div class="sc" id="sc1"><div class="sc-name" id="n1">-</div><div class="sc-pts" id="p1">0</div><div class="sc-role" id="r1"></div></div>
+    <!-- Dynamically rendered -->
   </div>
   <div id="timer-wrap"><div id="timer-bar"></div></div>
 
@@ -652,23 +651,29 @@ function handle(msg) {
   }
 }
 
+// ── Render scoreboard ─────────────────────────────────────────────────────────
+function renderDrawScoreboard(players, scores, drawerSlot) {
+  const sb = document.getElementById('scoreboard');
+  sb.innerHTML = '';
+  players.forEach((p, i) => {
+    if (i > 0) { const vs = document.createElement('div'); vs.className = 'vs'; vs.textContent = 'VS'; sb.appendChild(vs); }
+    const isDrawer = p.slot === drawerSlot;
+    const d = document.createElement('div');
+    d.className = 'sc' + (isDrawer ? ' drawer-active' : '');
+    d.id = 'sc' + p.slot;
+    d.innerHTML = '<div class="sc-name">' + p.name + (isDrawer ? ' ✏️' : '') + '</div>'
+      + '<div class="sc-pts" id="p' + p.slot + '">' + (scores?.[p.slot] ?? 0) + '</div>'
+      + '<div class="sc-role" id="r' + p.slot + '">' + (isDrawer ? '<span class="role-draw">Dessine</span>' : '<span class="role-guess">Devine</span>') + '</div>';
+    sb.appendChild(d);
+  });
+}
+
 // ── Render state ──────────────────────────────────────────────────────────────
 function renderState(st) {
   const { phase, players, drawerSlot, round, maxRounds, word, letterCount, scores, timerSeconds, winnerSlot, hint } = st;
   isDrawer = (drawerSlot === mySlot);
 
-  // Scoreboard
-  players.forEach((p, i) => {
-    document.getElementById('n' + i).textContent = p.name;
-    document.getElementById('p' + i).textContent = scores?.[i] ?? 0;
-  });
-  if (drawerSlot >= 0) {
-    document.getElementById('r' + drawerSlot).innerHTML = '<span class="role-draw">Dessine</span>';
-    const guSlot = drawerSlot === 0 ? 1 : 0;
-    document.getElementById('r' + guSlot).innerHTML = '<span class="role-guess">Devine</span>';
-    document.getElementById('sc' + drawerSlot).classList.add('drawer-active');
-    document.getElementById('sc' + guSlot).classList.remove('drawer-active');
-  }
+  renderDrawScoreboard(players, scores, drawerSlot);
 
   if (phase === 'WAITING') { if(mySlot===0){show('s-wait');loadQR();} return; }
 
@@ -678,10 +683,11 @@ function renderState(st) {
     document.getElementById('btn-launch').style.display = isP1 ? '' : 'none';
     const rsWrap = document.getElementById('round-selector-wrap');
     rsWrap.style.display = isP1 ? 'flex' : 'none';
-    const opp = players[mySlot === 0 ? 1 : 0];
+    const n = players.length;
+    document.getElementById('ready-title').textContent = n + ' joueur' + (n > 1 ? 's' : '') + ' prêts !';
     document.getElementById('ready-sub').textContent = isP1
-      ? `${opp?.name || 'L\'adversaire'} est là — lance la partie !`
-      : `En attente que ${players[0]?.name || 'le joueur 1'} lance...`;
+      ? 'Lance la partie quand tu es prêt !'
+      : 'En attente que ' + (players[0]?.name || 'le joueur 1') + ' lance...';
     return;
   }
 
@@ -691,7 +697,7 @@ function renderState(st) {
     document.getElementById('guess-log').innerHTML = '';
 
     // Round info
-    document.getElementById('round-info').textContent = `Manche ${round}/${maxRounds}`;
+    document.getElementById('round-info').textContent = 'Manche ' + round + '/' + maxRounds;
 
     // Word / hint
     const wv = document.getElementById('word-value');
@@ -708,7 +714,6 @@ function renderState(st) {
       document.getElementById('canvas-wrap').classList.remove('view-only');
     } else {
       wl.textContent = 'Devinez :';
-      // Use hint from state if available, otherwise build dashes
       const displayHint = hint || ('_ '.repeat(letterCount).trim());
       wh.textContent = displayHint;
       wv.style.display = 'none';
@@ -729,13 +734,13 @@ function renderState(st) {
     show('s-reveal');
     stopTimer();
     const guessed = st.guessedBy >= 0;
-    document.getElementById('reveal-icon').textContent = guessed ? '' : '';
+    document.getElementById('reveal-icon').textContent = guessed ? '🎉' : '⏱️';
     document.getElementById('reveal-word').textContent = st.revealWord?.toUpperCase() || '?';
     if (guessed) {
-      const guesser = players[st.guessedBy];
-      const drawer = players[drawerSlot];
-      document.getElementById('reveal-msg').textContent = `${guesser?.name || '?'} a trouvé !`;
-      document.getElementById('reveal-sub').textContent = `+2 pts pour ${guesser?.name} · +1 pt pour ${drawer?.name}`;
+      const guesser = players.find(p => p.slot === st.guessedBy);
+      const drawer = players.find(p => p.slot === drawerSlot);
+      document.getElementById('reveal-msg').textContent = (guesser?.name || '?') + ' a trouvé !';
+      document.getElementById('reveal-sub').textContent = '+2 pts pour ' + guesser?.name + ' · +1 pt pour ' + drawer?.name;
     } else {
       document.getElementById('reveal-msg').textContent = 'Temps écoulé ! Personne n\'a trouvé.';
       document.getElementById('reveal-sub').textContent = '';
@@ -748,14 +753,16 @@ function renderState(st) {
     stopTimer();
     if (winnerSlot < 0) document.getElementById('go-winner').textContent = 'Égalité !';
     else if (winnerSlot === mySlot) document.getElementById('go-winner').textContent = 'Tu as gagné !';
-    else document.getElementById('go-winner').textContent = `${players[winnerSlot]?.name || '?'} a gagné !`;
+    else document.getElementById('go-winner').textContent = (players.find(p=>p.slot===winnerSlot)?.name || '?') + ' a gagné !';
 
     const sc = document.getElementById('go-scores');
     sc.innerHTML = '';
-    players.forEach((p, i) => {
+    const sorted = [...players].sort((a, b) => (scores?.[b.slot] ?? 0) - (scores?.[a.slot] ?? 0));
+    sorted.forEach(p => {
       const d = document.createElement('div');
       d.className = 'fs-card';
-      d.innerHTML = `<div class="fs-name">${p.name}</div><div class="fs-pts">${scores?.[i] ?? 0}</div>`;
+      if (p.slot === mySlot) d.style.borderColor = 'var(--orange)';
+      d.innerHTML = '<div class="fs-name">' + p.name + '</div><div class="fs-pts">' + (scores?.[p.slot] ?? 0) + '</div>';
       sc.appendChild(d);
     });
   }

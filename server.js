@@ -66,7 +66,7 @@ function getRoomsSnapshot() {
         gameName: GAME_NAMES[game],
         host: room.host,
         players: room.players.map(p => p.name),
-        maxPlayers: 2,
+        maxPlayers: 4,
         status: room.phase === 'WAITING' ? 'waiting' : 'playing'
       });
     }
@@ -211,7 +211,7 @@ function makeQuizRoom(code, host) {
     code, host, phase:'WAITING',
     players:[], questions:[], qIndex:0,
     buzzedSlot:-1, secondChanceSlot:-1, firstWrongAns:-1,
-    streaks:[0,0], wins:[0,0], timer:null, questionStartTime:0,
+    streaks:[0,0,0,0], wins:[0,0,0,0], timer:null, questionStartTime:0,
   };
 }
 
@@ -257,6 +257,7 @@ function qReveal(room, answererSlot, selectedIndex, isSecondChance=false) {
 
 function qWrong(room, wrongSlot, selectedIndex) {
   room.streaks[wrongSlot]=0; room.firstWrongAns=selectedIndex;
+  // Second chance only in 2-player games
   if(room.players.length===2){
     const other=wrongSlot===0?1:0;
     room.phase='SECOND_CHANCE'; room.secondChanceSlot=other;
@@ -269,10 +270,8 @@ function qWrong(room, wrongSlot, selectedIndex) {
 function qEnd(room) {
   clearTimeout(room.timer); room.phase='GAME_OVER';
   let win=-1;
-  if(room.players.length===2){
-    if(room.players[0].score>room.players[1].score)win=0;
-    else if(room.players[1].score>room.players[0].score)win=1;
-  }
+  let bestScore=-1;
+  room.players.forEach(p=>{if(p.score>bestScore){bestScore=p.score;win=p.slot;}else if(p.score===bestScore){win=-1;}});
   if(win>=0)room.wins[win]++;
   bcast(room.players,{...qSnap(room),winnerSlot:win,wins:[...room.wins]});
   broadcastLobby();
@@ -287,7 +286,7 @@ wssQuiz.on('connection',ws=>{
     const idx=myRoom.players.findIndex(p=>p.ws===ws);if(idx<0)return;
     const name=myRoom.players[idx].name;
     myRoom.players.splice(idx,1);myRoom.players.forEach((p,i)=>p.slot=i);
-    clearTimeout(myRoom.timer);myRoom.phase='WAITING';myRoom.streaks=[0,0];
+    clearTimeout(myRoom.timer);myRoom.phase='WAITING';myRoom.streaks=[0,0,0,0];
     bcast(myRoom.players,{type:'player_left',name});
     if(myRoom.players.length===0){quizRooms.delete(myRoom.code);}
     broadcastLobby();
@@ -312,14 +311,16 @@ wssQuiz.on('connection',ws=>{
         const code=String(d.code||'').trim().toUpperCase();
         const room=quizRooms.get(code);
         if(!room){wsend(ws,{type:'error',msg:'Salle introuvable.'});return;}
-        if(room.players.length>=2){wsend(ws,{type:'error',msg:'Partie pleine.'});return;}
+        if(room.players.length>=4){wsend(ws,{type:'error',msg:'Partie pleine (4 joueurs max).'});return;}
+        if(room.phase!=='WAITING'){wsend(ws,{type:'error',msg:'La partie a déjà commencé.'});return;}
         const name=String(d.name||'').trim().slice(0,20)||'Joueur';
         const slot=room.players.length;
         room.players.push({ws,name,score:0,slot,jokers:{fifty:true,pass:true}});
         myRoom=room;
         wsend(ws,{type:'welcome',slot,name,code});
-        if(room.players.length===2){room.phase='SETUP';bcast(room.players,qSnap(room));}
-        else wsend(ws,qSnap(room));
+        // Move to SETUP as soon as 2+ players; host can start whenever ready
+        if(room.players.length>=2){room.phase='SETUP';}
+        bcast(room.players,qSnap(room));
         broadcastLobby();
         break;
       }
@@ -334,7 +335,7 @@ wssQuiz.on('connection',ws=>{
         if(Array.isArray(d.custom)&&d.custom.length)d.custom.forEach(cq=>{if(cq.text&&Array.isArray(cq.opts)&&cq.opts.length===4&&cq.ans>=0&&cq.ans<=3)pool.push({...cq,cat:'custom',diff:2});});
         if(!pool.length){wsend(ws,{type:'error',msg:'Aucune question avec ces filtres.'});return;}
         myRoom.players.forEach(x=>{x.score=0;x.jokers={fifty:true,pass:true};});
-        myRoom.streaks=[0,0];
+        myRoom.streaks=[0,0,0,0];
         myRoom.questions=shuffle(pool).slice(0,Math.min(count,pool.length));myRoom.qIndex=0;
         myRoom.phase='COUNTDOWN';bcast(myRoom.players,{type:'countdown',seconds:3});
         clearTimeout(myRoom.timer);myRoom.timer=setTimeout(()=>qStart(myRoom),3000);
@@ -424,7 +425,7 @@ function makeDrawRoom(code, host) {
   return {
     code, host, phase:'WAITING',
     players:[],drawerSlot:0,round:0,maxRounds:6,
-    word:null,scores:[0,0],timer:null,guessedBy:-1,
+    word:null,scores:[0,0,0,0],timer:null,guessedBy:-1,
     strokeBatches:[],revealedLetters:[],
   };
 }
@@ -438,15 +439,16 @@ function dSnap(room, extra={}){
 
 function dStartRound(room){
   if(room.round>=room.maxRounds){dEnd(room);return;}
-  room.round++;room.drawerSlot=(room.round-1)%2;
+  room.round++;room.drawerSlot=(room.round-1)%room.players.length;
   const allWords=Object.values(DRAW_WORDS).flat();
   room.word=shuffle(allWords)[0];
   room.phase='DRAWING';room.guessedBy=-1;room.strokeBatches=[];room.revealedLetters=[];
+  room.roundGuessers=new Set(); // track who guessed correctly this round
   const base=dSnap(room,{timerSeconds:60});
-  const drawer=room.players[room.drawerSlot];
-  const guesser=room.players[room.drawerSlot===0?1:0];
-  if(drawer)wsend(drawer.ws,{...base,word:room.word});
-  if(guesser)wsend(guesser.ws,base);
+  room.players.forEach(p=>{
+    if(p.slot===room.drawerSlot) wsend(p.ws,{...base,word:room.word});
+    else wsend(p.ws,base);
+  });
   clearTimeout(room.timer);
   room.timer=setTimeout(()=>{if(room.phase==='DRAWING')dReveal(room,false);},60000);
 }
@@ -454,12 +456,13 @@ function dStartRound(room){
 function dReveal(room){
   clearTimeout(room.timer);room.phase='REVEAL';
   bcast(room.players,{...dSnap(room,{revealWord:room.word}),guessedBy:room.guessedBy});
-  room.timer=setTimeout(()=>{if(room.players.length===2)dStartRound(room);},4000);
+  room.timer=setTimeout(()=>{if(room.players.length>=2)dStartRound(room);},4000);
 }
 
 function dEnd(room){
   clearTimeout(room.timer);room.phase='GAME_OVER';
-  const win=room.scores[0]>room.scores[1]?0:room.scores[1]>room.scores[0]?1:-1;
+  let win=-1,best=-1;
+  room.players.forEach(p=>{const s=room.scores[p.slot]??0;if(s>best){best=s;win=p.slot;}else if(s===best){win=-1;}});
   bcast(room.players,{...dSnap(room),winnerSlot:win});
   broadcastLobby();
 }
@@ -473,7 +476,7 @@ wssDraw.on('connection',ws=>{
     const idx=myRoom.players.findIndex(p=>p.ws===ws);if(idx<0)return;
     const name=myRoom.players[idx].name;
     myRoom.players.splice(idx,1);myRoom.players.forEach((p,i)=>p.slot=i);
-    clearTimeout(myRoom.timer);myRoom.phase='WAITING';myRoom.scores=[0,0];myRoom.round=0;
+    clearTimeout(myRoom.timer);myRoom.phase='WAITING';myRoom.scores=[0,0,0,0];myRoom.round=0;
     bcast(myRoom.players,{type:'player_left',name});
     if(myRoom.players.length===0){drawRooms.delete(myRoom.code);}
     broadcastLobby();
@@ -498,13 +501,14 @@ wssDraw.on('connection',ws=>{
         const code=String(d.code||'').trim().toUpperCase();
         const room=drawRooms.get(code);
         if(!room){wsend(ws,{type:'error',msg:'Salle introuvable.'});return;}
-        if(room.players.length>=2){wsend(ws,{type:'error',msg:'Partie pleine.'});return;}
+        if(room.players.length>=4){wsend(ws,{type:'error',msg:'Partie pleine (4 joueurs max).'});return;}
+        if(room.phase!=='WAITING'){wsend(ws,{type:'error',msg:'La partie a déjà commencé.'});return;}
         const name=String(d.name||'').trim().slice(0,20)||'Joueur';
         const slot=room.players.length;
         room.players.push({ws,name,slot});
         myRoom=room;
         wsend(ws,{type:'welcome_draw',slot,name,code});
-        if(room.players.length===2){room.phase='READY';room.scores=[0,0];room.round=0;bcast(room.players,dSnap(room));}
+        if(room.players.length>=2){room.phase='READY';room.scores=[0,0,0,0];room.round=0;bcast(room.players,dSnap(room));}
         else wsend(ws,dSnap(room));
         broadcastLobby();
         break;
@@ -512,23 +516,21 @@ wssDraw.on('connection',ws=>{
       case 'start_draw':{
         if(!player||player.slot!==0)return;
         if(!myRoom||!['READY','GAME_OVER'].includes(myRoom.phase))return;
-        if(d.rounds)myRoom.maxRounds=Math.min(18,Math.max(2,Number(d.rounds)));
-        myRoom.scores=[0,0];myRoom.round=0;dStartRound(myRoom);
+        if(d.rounds)myRoom.maxRounds=Math.min(24,Math.max(2,Number(d.rounds)));
+        myRoom.scores=[0,0,0,0];myRoom.round=0;dStartRound(myRoom);
         broadcastLobby();
         break;
       }
       case 'draw_pts':{
         if(!player||!myRoom||player.slot!==myRoom.drawerSlot||myRoom.phase!=='DRAWING')return;
         myRoom.strokeBatches.push(d.pts);
-        const guesser=myRoom.players[myRoom.drawerSlot===0?1:0];
-        if(guesser)wsend(guesser.ws,{type:'draw_pts',pts:d.pts});
+        myRoom.players.forEach(p=>{if(p.slot!==myRoom.drawerSlot)wsend(p.ws,{type:'draw_pts',pts:d.pts});});
         break;
       }
       case 'draw_undo':{
         if(!player||!myRoom||player.slot!==myRoom.drawerSlot)return;
         if(myRoom.strokeBatches.length>0)myRoom.strokeBatches.pop();
-        const guesser=myRoom.players[myRoom.drawerSlot===0?1:0];
-        if(guesser)wsend(guesser.ws,{type:'draw_replay',batches:myRoom.strokeBatches});
+        myRoom.players.forEach(p=>{if(p.slot!==myRoom.drawerSlot)wsend(p.ws,{type:'draw_replay',batches:myRoom.strokeBatches});});
         break;
       }
       case 'draw_clear':{
@@ -546,25 +548,36 @@ wssDraw.on('connection',ws=>{
         myRoom.revealedLetters.push(pos);
         myRoom.scores[myRoom.drawerSlot]=Math.max(0,myRoom.scores[myRoom.drawerSlot]-1);
         const hint=buildHint(word,myRoom.revealedLetters);
-        const guesser=myRoom.players[myRoom.drawerSlot===0?1:0];
-        if(guesser)wsend(guesser.ws,{type:'draw_hint_update',hint,scores:[...myRoom.scores]});
-        wsend(player.ws,{type:'draw_scores_update',scores:[...myRoom.scores]});
+        myRoom.players.forEach(p=>{
+          if(p.slot!==myRoom.drawerSlot)wsend(p.ws,{type:'draw_hint_update',hint,scores:[...myRoom.scores]});
+          else wsend(p.ws,{type:'draw_scores_update',scores:[...myRoom.scores]});
+        });
         break;
       }
       case 'guess':{
         if(!player||!myRoom||player.slot===myRoom.drawerSlot||myRoom.phase!=='DRAWING')return;
+        if(!myRoom.roundGuessers)myRoom.roundGuessers=new Set();
+        if(myRoom.roundGuessers.has(player.slot))return; // already guessed correctly
         const guess=String(d.word||'').trim().slice(0,60);if(!guess)return;
         const result=drawClose(guess,myRoom.word);
         bcast(myRoom.players,{type:'guess_result',name:player.name,word:guess,result});
         if(result==='correct'){
+          myRoom.roundGuessers.add(player.slot);
           myRoom.scores[player.slot]+=2;myRoom.scores[myRoom.drawerSlot]+=1;
-          myRoom.guessedBy=player.slot;dReveal(myRoom);
+          myRoom.guessedBy=player.slot;
+          // Check if all non-drawers have guessed
+          const numGuessers=myRoom.players.length-1;
+          if(myRoom.roundGuessers.size>=numGuessers){dReveal(myRoom);}
+          else{
+            // Just update scores for everyone, game continues
+            bcast(myRoom.players,{...dSnap(myRoom),scores:[...myRoom.scores]});
+          }
         }
         break;
       }
       case 'restart_draw':{
         if(!player||!myRoom||myRoom.phase!=='GAME_OVER')return;
-        myRoom.phase='READY';myRoom.scores=[0,0];myRoom.round=0;bcast(myRoom.players,dSnap(myRoom));
+        myRoom.phase='READY';myRoom.scores=[0,0,0,0];myRoom.round=0;bcast(myRoom.players,dSnap(myRoom));
         broadcastLobby();
         break;
       }
@@ -967,27 +980,32 @@ function emojiNorm(s){return s.toLowerCase().normalize('NFD').replace(/[\u0300-\
 const emojiRooms = new Map();
 
 function makeEmojiRoom(code, host) {
-  return { code, host, players:[], phase:'WAITING', puzzles:[], qIndex:0, buzzedSlot:-1, scores:[0,0], wins:[0,0], timer:null };
+  return { code, host, players:[], phase:'WAITING', puzzles:[], qIndex:0, scores:[0,0,0,0], wins:[0,0,0,0], timer:null, firstAnswerTime:null, answeredSlots:new Set() };
 }
-function eSnap(room,extra={}){return{type:'emoji_state',phase:room.phase,players:room.players.map(p=>({name:p.name,slot:p.slot})),scores:[...room.scores],wins:[...room.wins],buzzedSlot:room.buzzedSlot,qIndex:room.qIndex,total:room.puzzles.length,puzzle:room.puzzles[room.qIndex]?{emojis:room.puzzles[room.qIndex].emojis,cat:room.puzzles[room.qIndex].cat}:null,code:room.code,...extra};}
+function eSnap(room,extra={}){return{type:'emoji_state',phase:room.phase,players:room.players.map(p=>({name:p.name,slot:p.slot})),scores:[...room.scores],wins:[...room.wins],answeredSlots:[...( room.answeredSlots||new Set())],qIndex:room.qIndex,total:room.puzzles.length,puzzle:room.puzzles[room.qIndex]?{emojis:room.puzzles[room.qIndex].emojis,cat:room.puzzles[room.qIndex].cat}:null,code:room.code,...extra};}
 
 function eStartQ(room){
   if(room.qIndex>=room.puzzles.length){eEnd(room);return;}
-  room.phase='QUESTION';room.buzzedSlot=-1;
+  room.phase='QUESTION';room.firstAnswerTime=null;room.answeredSlots=new Set();
   bcast(room.players,{...eSnap(room),timerSeconds:20});
   clearTimeout(room.timer);
-  room.timer=setTimeout(()=>{if(room.phase==='QUESTION')eReveal(room,-1,'');},20000);
+  room.timer=setTimeout(()=>{if(room.phase==='QUESTION')eReveal(room,[]);},20000);
 }
-function eReveal(room,slot,text){
+function eReveal(room,correctSlots){
   clearTimeout(room.timer);
   const p=room.puzzles[room.qIndex];
-  const correct=slot>=0&&emojiNorm(text)===emojiNorm(p.answer);
-  if(correct){room.scores[slot]+=2;}
   room.phase='REVEAL';
-  bcast(room.players,{...eSnap(room),reveal:{answer:p.answer,isCorrect:correct,answererSlot:slot,answeredText:text}});
-  room.qIndex++;room.timer=setTimeout(()=>eStartQ(room),3000);
+  bcast(room.players,{...eSnap(room),reveal:{answer:p.answer,correctSlots}});
+  room.qIndex++;room.timer=setTimeout(()=>eStartQ(room),3500);
 }
-function eEnd(room){clearTimeout(room.timer);room.phase='GAME_OVER';const win=room.scores[0]>room.scores[1]?0:room.scores[1]>room.scores[0]?1:-1;if(win>=0)room.wins[win]++;bcast(room.players,{...eSnap(room),winnerSlot:win});broadcastLobby();}
+function eEnd(room){
+  clearTimeout(room.timer);room.phase='GAME_OVER';
+  let win=-1,best=-1;
+  room.players.forEach(p=>{const s=room.scores[p.slot]??0;if(s>best){best=s;win=p.slot;}else if(s===best){win=-1;}});
+  if(win>=0)room.wins[win]++;
+  bcast(room.players,{...eSnap(room),winnerSlot:win});
+  broadcastLobby();
+}
 
 wssEmoji.on('connection',ws=>{
   makeWS(wssEmoji).alive(ws);
@@ -1022,41 +1040,61 @@ wssEmoji.on('connection',ws=>{
         const code=String(d.code||'').trim().toUpperCase();
         const room=emojiRooms.get(code);
         if(!room){wsend(ws,{type:'error',msg:'Salle introuvable.'});return;}
-        if(room.players.length>=2){wsend(ws,{type:'error',msg:'Partie pleine.'});return;}
+        if(room.players.length>=4){wsend(ws,{type:'error',msg:'Partie pleine (4 joueurs max).'});return;}
+        if(room.phase!=='WAITING'){wsend(ws,{type:'error',msg:'La partie a déjà commencé.'});return;}
         const name=String(d.name||'').trim().slice(0,20)||'Joueur';
         const slot=room.players.length;room.players.push({ws,name,slot});
         myRoom=room;
         wsend(ws,{type:'welcome_emoji',slot,name,code});
-        if(room.players.length===2){room.phase='READY';room.scores=[0,0];bcast(room.players,eSnap(room));}
+        if(room.players.length>=2){room.phase='READY';room.scores=[0,0,0,0];bcast(room.players,eSnap(room));}
         else wsend(ws,eSnap(room));
         broadcastLobby();
         break;
       }
       case 'start_emoji':{
         if(!player||!myRoom||player.slot!==0||!['READY','GAME_OVER'].includes(myRoom.phase))return;
-        myRoom.scores=[0,0];myRoom.qIndex=0;
+        myRoom.scores=[0,0,0,0];myRoom.qIndex=0;
         myRoom.puzzles=shuffle(EMOJI_PUZZLES).slice(0,Math.min(15,EMOJI_PUZZLES.length));
         myRoom.phase='COUNTDOWN';bcast(myRoom.players,{type:'countdown',seconds:3});
         clearTimeout(myRoom.timer);myRoom.timer=setTimeout(()=>eStartQ(myRoom),3000);
         broadcastLobby();
         break;
       }
-      case 'buzz_emoji':{
-        if(!myRoom||myRoom.phase!=='QUESTION')return;
-        if(!player)return;
-        clearTimeout(myRoom.timer);myRoom.phase='BUZZED';myRoom.buzzedSlot=player.slot;
-        bcast(myRoom.players,{...eSnap(myRoom),timerSeconds:15});
-        myRoom.timer=setTimeout(()=>{if(myRoom.phase==='BUZZED')eReveal(myRoom,player.slot,'');},15000);
-        break;
-      }
       case 'answer_emoji':{
-        if(!myRoom||myRoom.phase!=='BUZZED'||!player||player.slot!==myRoom.buzzedSlot)return;
-        eReveal(myRoom,player.slot,String(d.text||'').trim());
+        if(!myRoom||myRoom.phase!=='QUESTION'||!player)return;
+        if(!myRoom.answeredSlots)myRoom.answeredSlots=new Set();
+        if(myRoom.answeredSlots.has(player.slot))return; // already answered
+        const text=String(d.text||'').trim();if(!text)return;
+        const p=myRoom.puzzles[myRoom.qIndex];
+        const correct=emojiNorm(text)===emojiNorm(p.answer);
+        if(correct){
+          myRoom.answeredSlots.add(player.slot);
+          const now=Date.now();
+          if(myRoom.firstAnswerTime===null){
+            // First correct: 3pts, start 5s window
+            myRoom.firstAnswerTime=now;
+            myRoom.scores[player.slot]+=3;
+            bcast(myRoom.players,{type:'emoji_correct',name:player.name,slot:player.slot,pts:3,answeredSlots:[...myRoom.answeredSlots]});
+            clearTimeout(myRoom.timer);
+            myRoom.timer=setTimeout(()=>{eReveal(myRoom,[...myRoom.answeredSlots]);},5000);
+          } else if(now-myRoom.firstAnswerTime<=5000){
+            // Within 5s: 1pt
+            myRoom.scores[player.slot]+=1;
+            bcast(myRoom.players,{type:'emoji_correct',name:player.name,slot:player.slot,pts:1,answeredSlots:[...myRoom.answeredSlots]});
+            // Check if all players answered
+            if(myRoom.answeredSlots.size>=myRoom.players.length){
+              clearTimeout(myRoom.timer);eReveal(myRoom,[...myRoom.answeredSlots]);
+            }
+          }
+          // After 5s window (shouldn't happen since timer fires)
+        } else {
+          wsend(player.ws,{type:'emoji_wrong',name:player.name,text});
+        }
         break;
       }
       case 'restart_emoji':{
         if(!player||!myRoom||myRoom.phase!=='GAME_OVER')return;
-        myRoom.scores=[0,0];myRoom.phase='READY';bcast(myRoom.players,eSnap(myRoom));
+        myRoom.scores=[0,0,0,0];myRoom.phase='READY';bcast(myRoom.players,eSnap(myRoom));
         broadcastLobby();
         break;
       }
@@ -1114,7 +1152,7 @@ const VERITE_CARTES=[
 const veriteRooms = new Map();
 
 function makeVeriteRoom(code, host) {
-  return { code, host, players:[], phase:'WAITING', turn:0, turnNum:0, maxTurns:20, card:null, scores:[0,0], deck:[], timer:null };
+  return { code, host, players:[], phase:'WAITING', turn:0, turnNum:0, maxTurns:20, card:null, scores:[0,0,0,0], deck:[], timer:null };
 }
 function vSnap(room,extra={}){return{type:'verite_state',phase:room.phase,players:room.players.map(p=>({name:p.name,slot:p.slot})),scores:[...room.scores],turn:room.turn,turnNum:room.turnNum,maxTurns:room.maxTurns,card:room.card,code:room.code,...extra};}
 
@@ -1151,19 +1189,20 @@ wssVerite.on('connection',ws=>{
         const code=String(d.code||'').trim().toUpperCase();
         const room=veriteRooms.get(code);
         if(!room){wsend(ws,{type:'error',msg:'Salle introuvable.'});return;}
-        if(room.players.length>=2){wsend(ws,{type:'error',msg:'Partie pleine.'});return;}
+        if(room.players.length>=4){wsend(ws,{type:'error',msg:'Partie pleine (4 joueurs max).'});return;}
+        if(room.phase!=='WAITING'){wsend(ws,{type:'error',msg:'La partie a déjà commencé.'});return;}
         const name=String(d.name||'').trim().slice(0,20)||'Joueur';
         const slot=room.players.length;room.players.push({ws,name,slot});
         myRoom=room;
         wsend(ws,{type:'welcome_verite',slot,name,code});
-        if(room.players.length===2){room.phase='READY';room.scores=[0,0];room.deck=shuffle([...VERITE_CARTES]);bcast(room.players,vSnap(room));}
+        if(room.players.length>=2){room.phase='READY';room.scores=[0,0,0,0];room.deck=shuffle([...VERITE_CARTES]);bcast(room.players,vSnap(room));}
         else wsend(ws,vSnap(room));
         broadcastLobby();
         break;
       }
       case 'start_verite':{
         if(!player||!myRoom||player.slot!==0||!['READY','GAME_OVER'].includes(myRoom.phase))return;
-        myRoom.scores=[0,0];myRoom.turn=0;myRoom.turnNum=0;myRoom.card=null;
+        myRoom.scores=[0,0,0,0];myRoom.turn=0;myRoom.turnNum=0;myRoom.card=null;
         myRoom.deck=shuffle([...VERITE_CARTES]);
         myRoom.phase='CHOOSING';bcast(myRoom.players,vSnap(myRoom));
         broadcastLobby();
@@ -1182,13 +1221,20 @@ wssVerite.on('connection',ws=>{
         if(!player||!myRoom||player.slot!==myRoom.turn||myRoom.phase!=='CARD')return;
         if(d.completed)myRoom.scores[myRoom.turn]+=1;
         myRoom.turnNum++;
-        if(myRoom.turnNum>=myRoom.maxTurns){myRoom.phase='GAME_OVER';const win=myRoom.scores[0]>myRoom.scores[1]?0:myRoom.scores[1]>myRoom.scores[0]?1:-1;bcast(myRoom.players,{...vSnap(myRoom),winnerSlot:win});broadcastLobby();}
-        else{myRoom.turn=myRoom.turn===0?1:0;myRoom.card=null;myRoom.phase='CHOOSING';bcast(myRoom.players,vSnap(myRoom));}
+        if(myRoom.turnNum>=myRoom.maxTurns){
+          myRoom.phase='GAME_OVER';
+          let win=-1,best=-1;
+          myRoom.players.forEach(p=>{const s=myRoom.scores[p.slot]??0;if(s>best){best=s;win=p.slot;}else if(s===best){win=-1;}});
+          bcast(myRoom.players,{...vSnap(myRoom),winnerSlot:win});broadcastLobby();
+        } else{
+          myRoom.turn=(myRoom.turn+1)%myRoom.players.length;
+          myRoom.card=null;myRoom.phase='CHOOSING';bcast(myRoom.players,vSnap(myRoom));
+        }
         break;
       }
       case 'restart_verite':{
         if(!player||!myRoom||myRoom.phase!=='GAME_OVER')return;
-        myRoom.scores=[0,0];myRoom.turn=0;myRoom.turnNum=0;myRoom.card=null;
+        myRoom.scores=[0,0,0,0];myRoom.turn=0;myRoom.turnNum=0;myRoom.card=null;
         myRoom.deck=shuffle([...VERITE_CARTES]);myRoom.phase='CHOOSING';bcast(myRoom.players,vSnap(myRoom));
         broadcastLobby();
         break;
