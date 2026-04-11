@@ -524,8 +524,8 @@
     } else if (msg.type === 'morpion_state') {
       renderState(msg);
     } else if (msg.type === 'player_left') {
+      // Le serveur envoie un morpion_state avec phase WAITING qui mettra à jour l'UI
       showError(`${msg.name} a quitté la partie.`);
-      setTimeout(() => { location.href = 'index.html'; }, 2000);
     } else if (msg.type === 'error') {
       showError(msg.msg);
     }

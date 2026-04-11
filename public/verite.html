@@ -426,8 +426,9 @@ function handleMsg(msg) {
       break;
 
     case 'player_left':
-      alert('Ton adversaire a quitté la partie.');
-      location.href = 'index.html';
+      // Le serveur enverra un verite_state avec la nouvelle phase
+      { const toastEl=document.getElementById('toast')||document.getElementById('status-msg');
+        if(toastEl){toastEl.textContent=(msg.name||'Un joueur')+' a quitté.';toastEl.style.display='block';setTimeout(()=>{toastEl.style.display='none';},3000);} }
       break;
 
     case 'error':

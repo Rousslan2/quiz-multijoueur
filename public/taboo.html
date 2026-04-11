@@ -498,8 +498,9 @@ function handleMsg(msg) {
       break;
 
     case 'player_left':
-      alert('Ton adversaire a quitté la partie.');
-      location.href = 'index.html';
+      // Le serveur enverra un taboo_state avec la nouvelle phase
+      { const el=document.getElementById('msg-area')||document.getElementById('status-msg');
+        if(el)el.textContent=(msg.name||'Un joueur')+' a quitté la partie.'; }
       break;
 
     case 'error':

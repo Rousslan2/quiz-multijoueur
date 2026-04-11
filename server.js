@@ -290,9 +290,17 @@ wssQuiz.on('connection',ws=>{
     const idx=myRoom.players.findIndex(p=>p.ws===ws);if(idx<0)return;
     const name=myRoom.players[idx].name;
     myRoom.players.splice(idx,1);myRoom.players.forEach((p,i)=>p.slot=i);
-    clearTimeout(myRoom.timer);myRoom.phase='WAITING';myRoom.streaks=[0,0,0,0];
+    clearTimeout(myRoom.timer);
+    if(myRoom.players.length===0){quizRooms.delete(myRoom.code);broadcastLobby();return;}
     bcast(myRoom.players,{type:'player_left',name});
-    if(myRoom.players.length===0){quizRooms.delete(myRoom.code);}
+    if(myRoom.players.length>=2 && ['QUESTION','BUZZED','SECOND_CHANCE','REVEAL'].includes(myRoom.phase)){
+      // Continuer la partie avec les joueurs restants
+      myRoom.streaks=[0,0,0,0];
+      qStart(myRoom);
+    } else {
+      myRoom.phase='WAITING';myRoom.streaks=[0,0,0,0];
+      bcast(myRoom.players,qSnap(myRoom));
+    }
     broadcastLobby();
   });
   ws.on('message',raw=>{
@@ -400,13 +408,14 @@ wssQuiz.on('connection',ws=>{
 // ════════════════════════════════════════════════════════
 
 const DRAW_WORDS = {
-  animaux:['chien','chat','lion','éléphant','girafe','singe','pingouin','requin','dauphin','papillon','renard','lapin','ours','tigre','zèbre','flamant rose','hibou','tortue','crocodile','poulpe','baleine','aigle','bison','loup','raton laveur','manchot','fennec','pangolin','axolotl','capybara'],
-  objets:['avion','voiture','vélo','train','bateau','fusée','hélicoptère','moto','bus','camion','parapluie','horloge','bougie','ballon','cadeau','couronne','épée','bouclier','lunettes','chapeau','clé','marteau','loupe','seringue','jumelles','sablier','boussole','télescope','accordéon','harmonica'],
-  lieux:['maison','château','phare','igloo','pyramide','pont','escalier','grotte','volcan','île','désert','forêt','glacier','cimetière','stade','cirque','phare','gare','aéroport','sous-marin'],
-  nourriture:['pizza','gâteau','glace','hamburger','sushi','baguette','croissant','fraise','ananas','champignon','taco','bento','fondue','ratatouille','crêpe','macaron','churros','boba','ramen','curry'],
-  nature:['soleil','lune','étoile','arc-en-ciel','montagne','mer','cactus','arbre','fleur','tornde','foudre','aurora','glacier','marécage','oasis','delta','geysir','stalactite','banquise','tourbillon'],
-  celebrites:['Einstein','Napoléon','Cléopâtre','Newton','Shakespeare','Picasso','Mozart','Darwin','Léonard de Vinci','Marie Curie'],
-  divers:['dragon','licorne','fantôme','robot','sorcière','alien','super-héros','vampire','sirène','astronaute','pirate','ninja','chevalier','pharaon','elfes','zombie','fée','cyclope','centaure','phoenix'],
+  animaux:['chien','chat','lion','éléphant','girafe','singe','pingouin','requin','dauphin','papillon','renard','lapin','ours','tigre','zèbre','flamant rose','hibou','tortue','crocodile','poulpe','baleine','aigle','bison','loup','raton laveur','manchot','fennec','pangolin','axolotl','capybara','koala','panda','gorille','perroquet','kangourou','daim','phoque','lynx','jaguar','piranha'],
+  objets:['avion','voiture','vélo','train','bateau','fusée','hélicoptère','moto','bus','camion','parapluie','horloge','bougie','ballon','cadeau','couronne','épée','bouclier','lunettes','chapeau','clé','marteau','loupe','seringue','jumelles','sablier','boussole','télescope','accordéon','harmonica','piano','guitare','trompette','violon','skateboard','trottinette','parachute','sous-marin','catapulte','igloo'],
+  lieux:['maison','château','phare','igloo','pyramide','pont','escalier','grotte','volcan','île','désert','forêt','glacier','cimetière','stade','cirque','gare','aéroport','sous-marin','arc de triomphe','cathédrale','labyrinthie','marché','cirque','manège','plage','falaise','cascade','fjord','savane'],
+  nourriture:['pizza','gâteau','glace','hamburger','sushi','baguette','croissant','fraise','ananas','champignon','taco','bento','fondue','ratatouille','crêpe','macaron','churros','boba','ramen','curry','donut','hot-dog','wok','paella','kebab','brioche','éclair','profiterole','salade','sushi'],
+  nature:['soleil','lune','étoile','arc-en-ciel','montagne','mer','cactus','arbre','fleur','foudre','aurora','glacier','marécage','oasis','tourbillon','tornade','banquise','récif','mangrove','geyser','séisme','éruption','aurore','météorite','comète','tempête','brouillard','rosée','dune','falaise'],
+  celebrites:['Einstein','Napoléon','Cléopâtre','Newton','Shakespeare','Picasso','Mozart','Darwin','Léonard de Vinci','Marie Curie','Sherlock Holmes','Dracula','Batman','Cendrillon','Merlin'],
+  divers:['dragon','licorne','fantôme','robot','sorcière','alien','super-héros','vampire','sirène','astronaute','pirate','ninja','chevalier','pharaon','zombie','fée','cyclope','centaure','phoenix','yéti','sasquatch','momie','golem','titan','djinn','lutin','gnome','elfe','troll','enchanteur'],
+  sport:['football','basketball','tennis','natation','cyclisme','ski','boxe','judo','surf','escalade','volleyball','hockey','golf','rugby','baseball','fléchettes','billard','bowling','escrime','triathlon'],
 };
 
 function drawNorm(s){return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();}
@@ -429,21 +438,25 @@ function makeDrawRoom(code, host) {
   return {
     code, host, phase:'WAITING',
     players:[],drawerSlot:0,round:0,maxRounds:6,
-    word:null,scores:[0,0,0,0],timer:null,guessedBy:-1,
-    strokeBatches:[],revealedLetters:[],
+    word:null,scores:[0,0,0,0],wins:[0,0,0,0],timer:null,guessedBy:-1,
+    strokeBatches:[],revealedLetters:[],roundGuessers:new Set(),
+    roundStartTime:0,
   };
 }
 
 function dSnap(room, extra={}, forSlot=-1){
   const base={type:'draw_state',phase:room.phase,
     players:room.players.map(p=>({name:p.name,slot:p.slot})),
-    scores:[...room.scores],drawerSlot:room.drawerSlot,round:room.round,maxRounds:room.maxRounds,
+    scores:[...room.scores],wins:[...(room.wins||[0,0,0,0])],
+    drawerSlot:room.drawerSlot,round:room.round,maxRounds:room.maxRounds,
     letterCount:room.word?room.word.length:0,
     hint:room.word?buildHint(room.word,room.revealedLetters):null,
     guessedBy:room.guessedBy,
     guessedSlots:room.roundGuessers?[...room.roundGuessers]:[],
+    roundStartTime:room.roundStartTime||0,
+    wordCategory:room.wordCategory||null,
     code:room.code,...extra};
-  // Only send word to the drawer
+  // Envoyer le mot seulement au dessinateur
   if(forSlot>=0 && forSlot===room.drawerSlot && room.word) base.word=room.word;
   return base;
 }
@@ -453,10 +466,15 @@ function dStartRound(room){
   room.round++;
   // Rotate drawer through ALL players
   room.drawerSlot=room.players[(room.round-1)%room.players.length]?.slot??0;
-  const allWords=Object.values(DRAW_WORDS).flat();
-  room.word=shuffle(allWords)[0];
+  // Choisir un mot aléatoire avec sa catégorie
+  const cats=Object.keys(DRAW_WORDS);
+  const cat=cats[Math.floor(Math.random()*cats.length)];
+  const words=DRAW_WORDS[cat];
+  room.word=words[Math.floor(Math.random()*words.length)];
+  room.wordCategory=cat;
   room.phase='DRAWING';room.guessedBy=-1;room.strokeBatches=[];room.revealedLetters=[];
   room.roundGuessers=new Set();
+  room.roundStartTime=Date.now();
   clearTimeout(room.timer);
   room.players.forEach(p=>{
     wsend(p.ws,dSnap(room,{timerSeconds:60},p.slot));
@@ -465,19 +483,25 @@ function dStartRound(room){
 }
 
 function dReveal(room){
+  if(room.phase==='ROUND_OVER')return; // prevent double-call
   clearTimeout(room.timer);room.phase='ROUND_OVER';
-  // Broadcast with revealWord to ALL, including word reveal
+  const gs=room.roundGuessers?[...room.roundGuessers]:[];
+  // Broadcast with revealWord to ALL players
   room.players.forEach(p=>{
-    wsend(p.ws,{...dSnap(room,{revealWord:room.word},p.slot),revealWord:room.word,guessedBy:room.guessedBy,guessedSlots:room.roundGuessers?[...room.roundGuessers]:[]});
+    wsend(p.ws,{...dSnap(room,{revealWord:room.word},p.slot),revealWord:room.word,guessedBy:room.guessedBy,guessedSlots:gs});
   });
-  room.timer=setTimeout(()=>{if(room.players.length>=2)dStartRound(room);},4000);
+  room.timer=setTimeout(()=>{
+    if(room.phase==='ROUND_OVER'&&room.players.length>=2)dStartRound(room);
+  },4000);
 }
 
 function dEnd(room){
   clearTimeout(room.timer);room.phase='GAME_OVER';
   let win=-1,best=-1;
   room.players.forEach(p=>{const s=room.scores[p.slot]??0;if(s>best){best=s;win=p.slot;}else if(s===best){win=-1;}});
-  room.players.forEach(p=>{wsend(p.ws,{...dSnap(room,{winnerSlot:win},p.slot)});});
+  if(!room.wins)room.wins=[0,0,0,0];
+  if(win>=0)room.wins[win]++;
+  room.players.forEach(p=>{wsend(p.ws,{...dSnap(room,{winnerSlot:win,wins:[...room.wins]},p.slot)});});
   broadcastLobby();
 }
 
@@ -489,10 +513,46 @@ wssDraw.on('connection',ws=>{
     if(!myRoom)return;
     const idx=myRoom.players.findIndex(p=>p.ws===ws);if(idx<0)return;
     const name=myRoom.players[idx].name;
-    myRoom.players.splice(idx,1);myRoom.players.forEach((p,i)=>p.slot=i);
-    clearTimeout(myRoom.timer);myRoom.phase='WAITING';myRoom.scores=[0,0,0,0];myRoom.round=0;
+    const leavingSlot=myRoom.players[idx].slot;
+    const wasDrawer=leavingSlot===myRoom.drawerSlot;
+    myRoom.players.splice(idx,1);
+    myRoom.players.forEach((p,i)=>p.slot=i);
+    clearTimeout(myRoom.timer);
+    if(myRoom.players.length===0){drawRooms.delete(myRoom.code);broadcastLobby();return;}
     bcast(myRoom.players,{type:'player_left',name});
-    if(myRoom.players.length===0){drawRooms.delete(myRoom.code);}
+    const inGame=['DRAWING','ROUND_OVER'].includes(myRoom.phase);
+    if(myRoom.players.length<2){
+      // Pas assez de joueurs pour continuer
+      myRoom.phase='WAITING';myRoom.scores=[0,0,0,0];myRoom.round=0;myRoom.roundGuessers=new Set();
+      myRoom.players.forEach(p=>wsend(p.ws,dSnap(myRoom,{},p.slot)));
+    } else if(inGame){
+      // Recalculer le dessinateur avec les nouveaux slots
+      myRoom.drawerSlot=myRoom.players[(myRoom.round-1)%myRoom.players.length]?.slot??0;
+      // Reset roundGuessers car les slots ont changé
+      myRoom.roundGuessers=new Set();
+      if(myRoom.phase==='DRAWING'){
+        if(wasDrawer){
+          // Le dessinateur est parti : passer à la révélation
+          dReveal(myRoom);
+        } else {
+          // Un devineur est parti : continuer avec les joueurs restants
+          // Redémarrer le timer de 60s (approximatif)
+          myRoom.players.forEach(p=>wsend(p.ws,dSnap(myRoom,{timerSeconds:60},p.slot)));
+          myRoom.roundStartTime=Date.now();
+          myRoom.timer=setTimeout(()=>{if(myRoom.phase==='DRAWING')dReveal(myRoom);},60000);
+        }
+      } else {
+        // ROUND_OVER : relancer le timer de transition
+        myRoom.timer=setTimeout(()=>{
+          if(myRoom.phase==='ROUND_OVER'&&myRoom.players.length>=2)dStartRound(myRoom);
+        },3000);
+        myRoom.players.forEach(p=>wsend(p.ws,dSnap(myRoom,{},p.slot)));
+      }
+    } else {
+      // WAITING / READY / GAME_OVER : mise à jour state
+      if(myRoom.phase==='GAME_OVER'){myRoom.phase='READY';}
+      myRoom.players.forEach(p=>wsend(p.ws,dSnap(myRoom,{},p.slot)));
+    }
     broadcastLobby();
   });
   ws.on('message',raw=>{
@@ -532,7 +592,11 @@ wssDraw.on('connection',ws=>{
         if(myRoom.players.length<2){wsend(ws,{type:'error',msg:'Il faut au moins 2 joueurs.'});return;}
         if(d.rounds)myRoom.maxRounds=Math.min(24,Math.max(2,Number(d.rounds)));
         myRoom.scores=[0,0,0,0];myRoom.round=0;myRoom.roundGuessers=new Set();
-        dStartRound(myRoom);
+        myRoom.strokeBatches=[];myRoom.revealedLetters=[];myRoom.guessedBy=-1;
+        // Countdown avant le début
+        bcast(myRoom.players,{type:'draw_countdown',seconds:3});
+        clearTimeout(myRoom.timer);
+        myRoom.timer=setTimeout(()=>dStartRound(myRoom),3000);
         broadcastLobby();
         break;
       }
@@ -593,6 +657,7 @@ wssDraw.on('connection',ws=>{
       case 'restart_draw':{
         if(!player||!myRoom||myRoom.phase!=='GAME_OVER')return;
         myRoom.phase='READY';myRoom.scores=[0,0,0,0];myRoom.round=0;
+        myRoom.roundGuessers=new Set();myRoom.strokeBatches=[];myRoom.revealedLetters=[];myRoom.word=null;
         myRoom.players.forEach(p=>wsend(p.ws,dSnap(myRoom,{},p.slot)));
         broadcastLobby();
         break;
@@ -630,8 +695,11 @@ wssP4.on('connection',ws=>{
     const idx=myRoom.players.findIndex(p=>p.ws===ws);if(idx<0)return;
     const name=myRoom.players[idx].name;
     myRoom.players.splice(idx,1);myRoom.players.forEach((p,i)=>p.slot=i);
-    myRoom.phase='WAITING';bcast(myRoom.players,{type:'player_left',name});
-    if(myRoom.players.length===0){p4Rooms.delete(myRoom.code);}
+    clearTimeout(myRoom.timer);
+    if(myRoom.players.length===0){p4Rooms.delete(myRoom.code);broadcastLobby();return;}
+    myRoom.phase='WAITING';
+    bcast(myRoom.players,{type:'player_left',name});
+    bcast(myRoom.players,p4Snap(myRoom));
     broadcastLobby();
   });
   ws.on('message',raw=>{
@@ -721,8 +789,11 @@ wssMorpion.on('connection',ws=>{
     const idx=myRoom.players.findIndex(p=>p.ws===ws);if(idx<0)return;
     const name=myRoom.players[idx].name;
     myRoom.players.splice(idx,1);myRoom.players.forEach((p,i)=>p.slot=i);
-    myRoom.phase='WAITING';bcast(myRoom.players,{type:'player_left',name});
-    if(myRoom.players.length===0){morpionRooms.delete(myRoom.code);}
+    clearTimeout(myRoom.timer);
+    if(myRoom.players.length===0){morpionRooms.delete(myRoom.code);broadcastLobby();return;}
+    myRoom.phase='WAITING';
+    bcast(myRoom.players,{type:'player_left',name});
+    bcast(myRoom.players,mSnap(myRoom));
     broadcastLobby();
   });
   ws.on('message',raw=>{
@@ -844,13 +915,15 @@ const TABOO_CARDS=[
 const tabooRooms = new Map();
 
 function makeTabooRoom(code, host) {
-  return { code, host, players:[], phase:'WAITING', describerSlot:0, round:0, maxRounds:8, card:null, scores:[0,0], timer:null, usedCards:[] };
+  return { code, host, players:[], phase:'WAITING', describerSlot:0, round:0, maxRounds:8, card:null, scores:[0,0,0,0], timer:null, usedCards:[] };
 }
 function tSnap(room,extra={}){return{type:'taboo_state',phase:room.phase,players:room.players.map(p=>({name:p.name,slot:p.slot})),scores:[...room.scores],describerSlot:room.describerSlot,round:room.round,maxRounds:room.maxRounds,code:room.code,...extra};}
 
 function tStartRound(room){
   if(room.round>=room.maxRounds){tEnd(room);return;}
-  room.round++;room.describerSlot=(room.round-1)%2;
+  room.round++;
+  // Rotation du descripteur parmi TOUS les joueurs
+  room.describerSlot=room.players[(room.round-1)%room.players.length]?.slot??0;
   const available=TABOO_CARDS.filter((_,i)=>!room.usedCards.includes(i));
   if(!available.length){room.usedCards=[];}
   const pool=room.usedCards.length?TABOO_CARDS.filter((_,i)=>!room.usedCards.includes(i)):TABOO_CARDS;
@@ -858,21 +931,31 @@ function tStartRound(room){
   room.card=pool[idx];
   room.usedCards.push(TABOO_CARDS.indexOf(room.card));
   room.phase='PLAYING';
-  const describer=room.players[room.describerSlot];
-  const guesser=room.players[room.describerSlot===0?1:0];
   const base=tSnap(room,{timerSeconds:60,round:room.round,maxRounds:room.maxRounds});
-  if(describer)wsend(describer.ws,{...base,card:{word:room.card.word,forbidden:room.card.forbidden}});
-  if(guesser)wsend(guesser.ws,{...base,wordLen:room.card.word.length});
+  // Envoyer la carte au descripteur, le nb de lettres aux devineurs
+  room.players.forEach(p=>{
+    if(p.slot===room.describerSlot){wsend(p.ws,{...base,card:{word:room.card.word,forbidden:room.card.forbidden}});}
+    else{wsend(p.ws,{...base,wordLen:room.card.word.length});}
+  });
   clearTimeout(room.timer);
   room.timer=setTimeout(()=>{if(room.phase==='PLAYING')tReveal(room,false);},60000);
 }
 
 function tReveal(room,guessed){
+  if(room.phase==='REVEAL')return; // prevent double-call
   clearTimeout(room.timer);room.phase='REVEAL';
   bcast(room.players,{...tSnap(room),revealWord:room.card.word,guessed});
-  room.timer=setTimeout(()=>{if(room.players.length===2)tStartRound(room);},3500);
+  room.timer=setTimeout(()=>{
+    if(room.phase==='REVEAL'&&room.players.length>=2)tStartRound(room);
+  },3500);
 }
-function tEnd(room){clearTimeout(room.timer);room.phase='GAME_OVER';const win=room.scores[0]>room.scores[1]?0:room.scores[1]>room.scores[0]?1:-1;bcast(room.players,{...tSnap(room),winnerSlot:win});broadcastLobby();}
+function tEnd(room){
+  clearTimeout(room.timer);room.phase='GAME_OVER';
+  let win=-1,best=-1;
+  room.players.forEach(p=>{const s=room.scores[p.slot]??0;if(s>best){best=s;win=p.slot;}else if(s===best){win=-1;}});
+  bcast(room.players,{...tSnap(room),winnerSlot:win});
+  broadcastLobby();
+}
 
 wssTaboo.on('connection',ws=>{
   makeWS(wssTaboo).alive(ws);
@@ -883,9 +966,23 @@ wssTaboo.on('connection',ws=>{
     const idx=myRoom.players.findIndex(p=>p.ws===ws);if(idx<0)return;
     const name=myRoom.players[idx].name;
     myRoom.players.splice(idx,1);myRoom.players.forEach((p,i)=>p.slot=i);
-    myRoom.phase='WAITING';myRoom.scores=[0,0];myRoom.round=0;
+    clearTimeout(myRoom.timer);
+    if(myRoom.players.length===0){tabooRooms.delete(myRoom.code);broadcastLobby();return;}
     bcast(myRoom.players,{type:'player_left',name});
-    if(myRoom.players.length===0){tabooRooms.delete(myRoom.code);}
+    if(myRoom.players.length<2){
+      myRoom.phase='WAITING';myRoom.scores=[0,0,0,0];myRoom.round=0;
+    } else if(['PLAYING','REVEAL'].includes(myRoom.phase)){
+      // Recalculer le descripteur et continuer
+      myRoom.describerSlot=myRoom.players[(myRoom.round-1)%myRoom.players.length]?.slot??0;
+      if(myRoom.phase==='REVEAL'){
+        myRoom.timer=setTimeout(()=>{if(myRoom.phase==='REVEAL'&&myRoom.players.length>=2)tStartRound(myRoom);},2000);
+      } else {
+        tReveal(myRoom,false);
+      }
+    } else {
+      if(myRoom.phase==='GAME_OVER')myRoom.phase='WAITING';
+    }
+    bcast(myRoom.players,tSnap(myRoom));
     broadcastLobby();
   });
   ws.on('message',raw=>{
@@ -929,7 +1026,8 @@ wssTaboo.on('connection',ws=>{
         const guess=String(d.word||'').trim().slice(0,60);if(!guess)return;
         const norm=s=>s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
         if(norm(guess)===norm(myRoom.card.word)){
-          myRoom.scores[player.slot]+=2;myRoom.scores[myRoom.describerSlot]+=1;
+          myRoom.scores[player.slot]=(myRoom.scores[player.slot]||0)+2;
+          myRoom.scores[myRoom.describerSlot]=(myRoom.scores[myRoom.describerSlot]||0)+1;
           bcast(myRoom.players,{type:'taboo_correct',guesser:player.name,word:myRoom.card.word});
           tReveal(myRoom,true);
         }else{
@@ -939,14 +1037,14 @@ wssTaboo.on('connection',ws=>{
       }
       case 'grille':{
         if(!player||!myRoom||player.slot===myRoom.describerSlot||myRoom.phase!=='PLAYING')return;
-        myRoom.scores[myRoom.describerSlot]=Math.max(0,myRoom.scores[myRoom.describerSlot]-1);
+        myRoom.scores[myRoom.describerSlot]=Math.max(0,(myRoom.scores[myRoom.describerSlot]||0)-1);
         bcast(myRoom.players,{type:'taboo_grille',name:player.name,scores:[...myRoom.scores]});
         tReveal(myRoom,false);
         break;
       }
       case 'restart_taboo':{
         if(!player||!myRoom||myRoom.phase!=='GAME_OVER')return;
-        myRoom.scores=[0,0];myRoom.round=0;myRoom.usedCards=[];myRoom.phase='READY';bcast(myRoom.players,tSnap(myRoom));
+        myRoom.scores=[0,0,0,0];myRoom.round=0;myRoom.usedCards=[];myRoom.phase='READY';bcast(myRoom.players,tSnap(myRoom));
         broadcastLobby();
         break;
       }
@@ -1032,8 +1130,24 @@ wssEmoji.on('connection',ws=>{
     const idx=myRoom.players.findIndex(p=>p.ws===ws);if(idx<0)return;
     const name=myRoom.players[idx].name;
     myRoom.players.splice(idx,1);myRoom.players.forEach((p,i)=>p.slot=i);
-    myRoom.phase='WAITING';bcast(myRoom.players,{type:'player_left',name});
-    if(myRoom.players.length===0){emojiRooms.delete(myRoom.code);}
+    clearTimeout(myRoom.timer);
+    if(myRoom.players.length===0){emojiRooms.delete(myRoom.code);broadcastLobby();return;}
+    bcast(myRoom.players,{type:'player_left',name});
+    if(myRoom.players.length<2){
+      myRoom.phase='WAITING';myRoom.scores=[0,0,0,0];myRoom.qIndex=0;
+    } else if(['QUESTION','REVEAL'].includes(myRoom.phase)){
+      // Continuer la partie si assez de joueurs
+      if(myRoom.phase==='QUESTION'){
+        myRoom.answeredSlots=new Set();
+        bcast(myRoom.players,{...eSnap(myRoom),timerSeconds:20});
+        myRoom.timer=setTimeout(()=>{if(myRoom.phase==='QUESTION')eReveal(myRoom,[]);},20000);
+      } else {
+        myRoom.timer=setTimeout(()=>eStartQ(myRoom),2000);
+      }
+    } else {
+      if(myRoom.phase==='GAME_OVER')myRoom.phase='WAITING';
+    }
+    bcast(myRoom.players,eSnap(myRoom));
     broadcastLobby();
   });
   ws.on('message',raw=>{
@@ -1181,8 +1295,20 @@ wssVerite.on('connection',ws=>{
     const idx=myRoom.players.findIndex(p=>p.ws===ws);if(idx<0)return;
     const name=myRoom.players[idx].name;
     myRoom.players.splice(idx,1);myRoom.players.forEach((p,i)=>p.slot=i);
-    myRoom.phase='WAITING';bcast(myRoom.players,{type:'player_left',name});
-    if(myRoom.players.length===0){veriteRooms.delete(myRoom.code);}
+    clearTimeout(myRoom.timer);
+    if(myRoom.players.length===0){veriteRooms.delete(myRoom.code);broadcastLobby();return;}
+    bcast(myRoom.players,{type:'player_left',name});
+    if(myRoom.players.length<2){
+      myRoom.phase='WAITING';myRoom.scores=[0,0,0,0];myRoom.turnNum=0;
+    } else if(['CHOOSING','CARD'].includes(myRoom.phase)){
+      // Ajuster le tour au joueur suivant
+      myRoom.turn=myRoom.turn%myRoom.players.length;
+      myRoom.card=null;myRoom.phase='CHOOSING';
+      bcast(myRoom.players,vSnap(myRoom));
+    } else {
+      if(myRoom.phase==='GAME_OVER')myRoom.phase='WAITING';
+      bcast(myRoom.players,vSnap(myRoom));
+    }
     broadcastLobby();
   });
   ws.on('message',raw=>{
