@@ -496,16 +496,21 @@ let timerDuration = 0;
 let canvasCountdownHandle = null;
 let timerSecondsHandle = null;
 
-function startTimer(s) {
+function startTimer(s, total) {
+  const fullDuration = (total && total > s) ? total : s;
+  const elapsed = Math.max(0, fullDuration - s);
   clearTimeout(timerHandle);
   clearInterval(timerSecondsHandle);
   timerDuration = s;
   timerStartedAt = Date.now();
   timerRemaining = s;
   const bar = document.getElementById('timer-bar');
-  bar.classList.remove('go'); bar.style.animationDuration = '';
+  bar.classList.remove('go');
+  bar.style.animationDuration = '';
+  bar.style.animationDelay = '';
   void bar.offsetWidth;
-  bar.style.animationDuration = s + 's';
+  bar.style.animationDuration = fullDuration + 's';
+  bar.style.animationDelay = '-' + elapsed + 's';
   bar.classList.add('go');
   scheduleCanvasCountdown(s);
   // Seconds counter
@@ -528,7 +533,9 @@ function stopTimer() {
   clearTimeout(timerHandle);
   clearInterval(canvasCountdownHandle);
   clearInterval(timerSecondsHandle);
-  document.getElementById('timer-bar').classList.remove('go');
+  const bar = document.getElementById('timer-bar');
+  bar.classList.remove('go');
+  bar.style.animationDelay = '';
   hideCanvasCountdown();
   const secsEl = document.getElementById('timer-seconds');
   if (secsEl) secsEl.textContent = '';
@@ -970,9 +977,10 @@ function renderState(st) {
       forceTimerSync = false;
       // Sync timer depuis le timestamp serveur (anti-drift)
       if (roundStartTime && roundStartTime > 0) {
+        const total = timerSeconds || 60;
         const elapsed = Math.max(0, (Date.now() - roundStartTime) / 1000);
-        const remaining = Math.max(3, Math.min(60, 60 - elapsed));
-        startTimer(remaining);
+        const remaining = Math.max(3, Math.min(total, total - elapsed));
+        startTimer(remaining, total);
       } else {
         startTimer(timerSeconds || 60);
       }

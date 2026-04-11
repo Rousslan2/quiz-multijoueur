@@ -528,18 +528,24 @@ function renderState() {
   // Screens
   switch (phase) {
     case 'WAITING':
-      showScreen('screen-ready');
-      document.getElementById('ready-players').textContent = players.length >= 2
-        ? players.map(p=>p.name).join(' · ')
-        : 'En attente de joueurs...';
-      if (mySlot === 0 && players.length >= 2) {
-        document.getElementById('start-btn').classList.remove('hidden');
-        document.getElementById('ready-wait').classList.add('hidden');
+      if (mySlot === 0 && players.length < 2) {
+        // Host alone — stay on waiting screen so room code is visible
+        showScreen('screen-waiting');
+        renderQR();
       } else {
-        document.getElementById('start-btn').classList.add('hidden');
-        document.getElementById('ready-wait').classList.remove('hidden');
-        document.getElementById('ready-wait').textContent = mySlot === 0
-          ? 'En attente de joueurs...' : 'En attente que l\'hôte lance...';
+        showScreen('screen-ready');
+        document.getElementById('ready-players').textContent = players.length >= 2
+          ? players.map(p=>p.name).join(' · ')
+          : 'En attente de joueurs...';
+        if (mySlot === 0 && players.length >= 2) {
+          document.getElementById('start-btn').classList.remove('hidden');
+          document.getElementById('ready-wait').classList.add('hidden');
+        } else {
+          document.getElementById('start-btn').classList.add('hidden');
+          document.getElementById('ready-wait').classList.remove('hidden');
+          document.getElementById('ready-wait').textContent = mySlot === 0
+            ? 'En attente de joueurs...' : 'En attente que l\'hôte lance...';
+        }
       }
       break;
 

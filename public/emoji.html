@@ -546,12 +546,17 @@ function renderState() {
   switch (phase) {
     case 'WAITING':
       hideCountdown();
-      showScreen('screen-ready');
-      document.getElementById('ready-players').textContent = players.length >= 2
-        ? players.map(p => p.name).join(' · ') : 'En attente de joueurs...';
-      toggleEl('start-btn', mySlot === 0 && players.length >= 2);
-      toggleEl('ready-wait', mySlot !== 0 || players.length < 2);
-      if (mySlot === 0 && players.length < 2) renderQR();
+      if (mySlot === 0 && players.length < 2) {
+        // Host alone — stay on waiting screen so room code is visible
+        showScreen('screen-waiting');
+        renderQR();
+      } else {
+        showScreen('screen-ready');
+        document.getElementById('ready-players').textContent = players.length >= 2
+          ? players.map(p => p.name).join(' · ') : 'En attente de joueurs...';
+        toggleEl('start-btn', mySlot === 0 && players.length >= 2);
+        toggleEl('ready-wait', mySlot !== 0);
+      }
       break;
 
     case 'READY':
