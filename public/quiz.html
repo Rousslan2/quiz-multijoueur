@@ -478,6 +478,9 @@ function handle(msg){
       if(msg.name){showErr((msg.name)+' a quitté.');}
       // stay in current screen if still playing, go home only if waiting
       break;
+    case 'game_abandoned':
+      showErr('Tous les autres joueurs ont quitté — partie abandonnée !');
+      break;
     case 'state': render(msg); break;
   }
 }

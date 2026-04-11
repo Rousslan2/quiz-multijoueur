@@ -298,6 +298,8 @@ wssQuiz.on('connection',ws=>{
       myRoom.streaks=[0,0,0,0];
       qStart(myRoom);
     } else {
+      const wasInGame=['QUESTION','BUZZED','SECOND_CHANCE','REVEAL'].includes(myRoom.phase);
+      if(wasInGame) bcast(myRoom.players,{type:'game_abandoned'});
       myRoom.phase='WAITING';myRoom.streaks=[0,0,0,0];
       bcast(myRoom.players,qSnap(myRoom));
     }
@@ -523,6 +525,7 @@ wssDraw.on('connection',ws=>{
     const inGame=['DRAWING','ROUND_OVER'].includes(myRoom.phase);
     if(myRoom.players.length<2){
       // Pas assez de joueurs pour continuer
+      if(inGame) bcast(myRoom.players,{type:'game_abandoned'});
       myRoom.phase='WAITING';myRoom.scores=[0,0,0,0];myRoom.round=0;myRoom.roundGuessers=new Set();
       myRoom.players.forEach(p=>wsend(p.ws,dSnap(myRoom,{},p.slot)));
     } else if(inGame){
@@ -697,8 +700,10 @@ wssP4.on('connection',ws=>{
     myRoom.players.splice(idx,1);myRoom.players.forEach((p,i)=>p.slot=i);
     clearTimeout(myRoom.timer);
     if(myRoom.players.length===0){p4Rooms.delete(myRoom.code);broadcastLobby();return;}
-    myRoom.phase='WAITING';
+    const p4WasInGame=['PLAYING','ROUNDOVER','GAME_OVER'].includes(myRoom.phase);
     bcast(myRoom.players,{type:'player_left',name});
+    if(p4WasInGame) bcast(myRoom.players,{type:'game_abandoned'});
+    myRoom.phase='WAITING';
     bcast(myRoom.players,p4Snap(myRoom));
     broadcastLobby();
   });
@@ -791,8 +796,10 @@ wssMorpion.on('connection',ws=>{
     myRoom.players.splice(idx,1);myRoom.players.forEach((p,i)=>p.slot=i);
     clearTimeout(myRoom.timer);
     if(myRoom.players.length===0){morpionRooms.delete(myRoom.code);broadcastLobby();return;}
-    myRoom.phase='WAITING';
+    const mWasInGame=['PLAYING','ROUNDOVER','GAME_OVER'].includes(myRoom.phase);
     bcast(myRoom.players,{type:'player_left',name});
+    if(mWasInGame) bcast(myRoom.players,{type:'game_abandoned'});
+    myRoom.phase='WAITING';
     bcast(myRoom.players,mSnap(myRoom));
     broadcastLobby();
   });
@@ -970,6 +977,8 @@ wssTaboo.on('connection',ws=>{
     if(myRoom.players.length===0){tabooRooms.delete(myRoom.code);broadcastLobby();return;}
     bcast(myRoom.players,{type:'player_left',name});
     if(myRoom.players.length<2){
+      const tWasInGame=['PLAYING','REVEAL'].includes(myRoom.phase);
+      if(tWasInGame) bcast(myRoom.players,{type:'game_abandoned'});
       myRoom.phase='WAITING';myRoom.scores=[0,0,0,0];myRoom.round=0;
     } else if(['PLAYING','REVEAL'].includes(myRoom.phase)){
       // Recalculer le descripteur et continuer
@@ -1134,6 +1143,8 @@ wssEmoji.on('connection',ws=>{
     if(myRoom.players.length===0){emojiRooms.delete(myRoom.code);broadcastLobby();return;}
     bcast(myRoom.players,{type:'player_left',name});
     if(myRoom.players.length<2){
+      const eWasInGame=['QUESTION','REVEAL'].includes(myRoom.phase);
+      if(eWasInGame) bcast(myRoom.players,{type:'game_abandoned'});
       myRoom.phase='WAITING';myRoom.scores=[0,0,0,0];myRoom.qIndex=0;
     } else if(['QUESTION','REVEAL'].includes(myRoom.phase)){
       // Continuer la partie si assez de joueurs

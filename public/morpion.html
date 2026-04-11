@@ -526,6 +526,8 @@
     } else if (msg.type === 'player_left') {
       // Le serveur envoie un morpion_state avec phase WAITING qui mettra à jour l'UI
       showError(`${msg.name} a quitté la partie.`);
+    } else if (msg.type === 'game_abandoned') {
+      showError('Tous les autres joueurs ont quitté — partie abandonnée !');
     } else if (msg.type === 'error') {
       showError(msg.msg);
     }

@@ -431,6 +431,11 @@ function handleMsg(msg) {
         if(toastEl){toastEl.textContent=(msg.name||'Un joueur')+' a quitté.';toastEl.style.display='block';setTimeout(()=>{toastEl.style.display='none';},3000);} }
       break;
 
+    case 'game_abandoned':
+      { const toastEl=document.getElementById('toast')||document.getElementById('status-msg');
+        if(toastEl){toastEl.textContent='Tous les joueurs ont quitté — partie abandonnée !';toastEl.style.color='#fca5a5';toastEl.style.display='block';setTimeout(()=>{toastEl.style.display='none';},4000);} }
+      break;
+
     case 'error':
       console.warn('Server error:', msg.msg);
       break;

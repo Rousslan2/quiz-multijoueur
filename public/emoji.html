@@ -474,8 +474,13 @@ function handleMsg(msg) {
 
     case 'player_left':
       // Don't force redirect mid-game, just show a message
-      const statusEl = document.getElementById('answer-status');
-      if (statusEl) { statusEl.style.color = 'var(--muted)'; statusEl.textContent = (msg.name||'Un joueur') + ' a quitté.'; }
+      { const statusEl = document.getElementById('answer-status');
+        if (statusEl) { statusEl.style.color = 'var(--muted)'; statusEl.textContent = (msg.name||'Un joueur') + ' a quitté.'; } }
+      break;
+
+    case 'game_abandoned':
+      { const statusEl = document.getElementById('answer-status');
+        if (statusEl) { statusEl.style.color = '#fca5a5'; statusEl.textContent = 'Tous les joueurs ont quitté — partie abandonnée !'; } }
       break;
 
     case 'error':

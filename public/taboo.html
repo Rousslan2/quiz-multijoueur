@@ -503,6 +503,11 @@ function handleMsg(msg) {
         if(el)el.textContent=(msg.name||'Un joueur')+' a quitté la partie.'; }
       break;
 
+    case 'game_abandoned':
+      { const el=document.getElementById('msg-area')||document.getElementById('status-msg');
+        if(el){el.textContent='Tous les joueurs ont quitté — partie abandonnée !';el.style.color='#fca5a5';} }
+      break;
+
     case 'error':
       console.warn('Server error:', msg.msg);
       break;
