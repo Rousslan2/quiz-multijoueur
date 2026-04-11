@@ -370,6 +370,13 @@ function copyRoomCode(){
     setTimeout(()=>{h.textContent='Cliquer pour copier';h.style.color='';},1500);
   }).catch(()=>{});
 }
+function copyCode(){
+  if(!myCode)return;
+  navigator.clipboard.writeText(myCode).then(()=>{
+    const el=document.querySelector('#setup-status span');
+    if(el){const orig=el.textContent;el.textContent='Copié !';setTimeout(()=>{el.textContent=orig;},1200);}
+  }).catch(()=>{});
+}
 document.getElementById('inp-name').addEventListener('keydown',e=>{if(e.key==='Enter')doCreate();});
 document.getElementById('inp-code').addEventListener('input',e=>{e.target.value=e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,'');});
 document.getElementById('inp-code').addEventListener('keydown',e=>{if(e.key==='Enter')doJoin();});
@@ -468,8 +475,7 @@ function handle(msg){
   switch(msg.type){
     case 'created':
       mySlot=msg.slot;myCode=msg.code;
-      document.getElementById('room-code-display').textContent=msg.code;
-      show('s-wait');loadQR();
+      show('s-setup');
       break;
     case 'welcome': mySlot=msg.slot;myCode=msg.code||''; break;
     case 'error': showErr(msg.msg); break;
@@ -520,9 +526,13 @@ function render(st){
     const canStart=isP1&&n>=2;
     document.getElementById('btn-start').style.display=canStart?'':'none';
     if(isP1){
-      document.getElementById('setup-status').textContent=`${n} joueur${n>1?'s':''} — lance quand tu es prêt !`;
+      if(n<2){
+        document.getElementById('setup-status').innerHTML=`Code&nbsp;: <span onclick="copyCode()" title="Copier" style="font-family:monospace;font-weight:800;color:var(--primary);letter-spacing:.12em;cursor:pointer">${myCode}</span>&nbsp;— En attente de joueurs…`;
+      } else {
+        document.getElementById('setup-status').textContent=`${n} joueur${n>1?'s':''} — lance quand tu es prêt !`;
+      }
     } else {
-      document.getElementById('setup-status').textContent=`En attente que ${st.players[0]?.name||'Joueur 1'} lance...`;
+      document.getElementById('setup-status').textContent=`En attente que ${st.players[0]?.name||'Joueur 1'} lance…`;
     }
     document.querySelectorAll('.cat-btn,.diff-btn,.count-btn,.custom-toggle').forEach(el=>{el.disabled=!isP1;el.style.pointerEvents=isP1?'':'none';el.style.opacity=isP1?'':'0.5';});
     document.getElementById('btn-start').disabled=!canStart;

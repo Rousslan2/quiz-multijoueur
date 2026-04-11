@@ -312,6 +312,7 @@ wssQuiz.on('connection',ws=>{
         const name=String(d.name||'').trim().slice(0,20)||'Joueur';
         const code=genCode(quizRooms);
         const room=makeQuizRoom(code,name);
+        room.phase='SETUP'; // Show setup screen immediately for host
         quizRooms.set(code,room);
         myRoom=room;
         const slot=0;
@@ -326,7 +327,7 @@ wssQuiz.on('connection',ws=>{
         const room=quizRooms.get(code);
         if(!room){wsend(ws,{type:'error',msg:'Salle introuvable.'});return;}
         if(room.players.length>=4){wsend(ws,{type:'error',msg:'Partie pleine (4 joueurs max).'});return;}
-        if(room.phase!=='WAITING'){wsend(ws,{type:'error',msg:'La partie a déjà commencé.'});return;}
+        if(!['WAITING','SETUP'].includes(room.phase)){wsend(ws,{type:'error',msg:'La partie a déjà commencé.'});return;}
         const name=String(d.name||'').trim().slice(0,20)||'Joueur';
         const slot=room.players.length;
         room.players.push({ws,name,score:0,slot,jokers:{fifty:true,pass:true}});

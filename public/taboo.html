@@ -691,14 +691,18 @@ function showJoinT() {
 function createGame() {
   const name = document.getElementById('name-input').value.trim();
   if (!name) return;
-  myName = name; pendingAction = () => send({ type: 'create_taboo', name }); connect();
+  myName = name;
+  if (ws && ws.readyState === WebSocket.OPEN) { send({ type: 'create_taboo', name }); }
+  else { pendingAction = () => send({ type: 'create_taboo', name }); connect(); }
 }
 function joinGame() {
   const name = document.getElementById('name-input').value.trim();
   if (!name) return;
   const code = document.getElementById('code-input').value.trim().toUpperCase();
   if (!code) return;
-  myName = name; pendingAction = () => send({ type: 'join_taboo', name, code }); connect();
+  myName = name;
+  if (ws && ws.readyState === WebSocket.OPEN) { send({ type: 'join_taboo', name, code }); }
+  else { pendingAction = () => send({ type: 'join_taboo', name, code }); connect(); }
 }
 function copyCodeT() {
   if (!myRoomCode) return;

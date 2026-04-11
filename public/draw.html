@@ -765,6 +765,7 @@ function showGlobalCountdown(seconds, onDone) {
 
 // ── Score delta animation ─────────────────────────────────────────────────────
 let prevScores = [0, 0, 0, 0];
+let forceTimerSync = false;
 function showScoreDelta(slot, delta) {
   const el = document.getElementById('sc' + slot);
   if (!el) return;
@@ -812,6 +813,7 @@ function handle(msg) {
 
     case 'player_left':
       showToast((msg.name || 'Un joueur') + ' a quitté la partie.');
+      forceTimerSync = true; // resync timer sur le prochain draw_state
       break;
 
     case 'game_abandoned':
@@ -956,21 +958,24 @@ function renderState(st) {
   if (phase === 'DRAWING') {
     clearInterval(revealCountdownHandle);
     show('s-game');
-    // Réinitialiser uniquement si on entre en DRAWING depuis un autre état
-    if (lastPhase !== 'DRAWING') {
+    const enteringNewRound = (lastPhase !== 'DRAWING');
+    if (enteringNewRound) {
       guesses.length = 0;
       document.getElementById('guess-log').innerHTML = '';
       clearCanvas();
       prevScores = [...(scores || [0,0,0,0])];
-      // Sync timer avec le serveur si disponible
+      setTimeout(resizeCanvas, 50);
+    }
+    if (enteringNewRound || forceTimerSync) {
+      forceTimerSync = false;
+      // Sync timer depuis le timestamp serveur (anti-drift)
       if (roundStartTime && roundStartTime > 0) {
-        const elapsed = Math.floor((Date.now() - roundStartTime) / 1000);
-        const remaining = Math.max(1, 60 - elapsed);
+        const elapsed = Math.max(0, (Date.now() - roundStartTime) / 1000);
+        const remaining = Math.max(3, Math.min(60, 60 - elapsed));
         startTimer(remaining);
       } else {
         startTimer(timerSeconds || 60);
       }
-      setTimeout(resizeCanvas, 50);
     }
     lastPhase = 'DRAWING';
     // Afficher la catégorie du mot

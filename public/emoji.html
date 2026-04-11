@@ -664,14 +664,18 @@ function showJoinE() {
 function createGame() {
   const n = document.getElementById('name-input').value.trim();
   if (!n) return;
-  myName = n; pendingAction = () => send({ type: 'create_emoji', name: n }); connect();
+  myName = n;
+  if (ws && ws.readyState === WebSocket.OPEN) { send({ type: 'create_emoji', name: n }); }
+  else { pendingAction = () => send({ type: 'create_emoji', name: n }); connect(); }
 }
 function joinGame() {
   const n = document.getElementById('name-input').value.trim();
   if (!n) return;
   const c = document.getElementById('code-input').value.trim().toUpperCase();
   if (!c) return;
-  myName = n; pendingAction = () => send({ type: 'join_emoji', name: n, code: c }); connect();
+  myName = n;
+  if (ws && ws.readyState === WebSocket.OPEN) { send({ type: 'join_emoji', name: n, code: c }); }
+  else { pendingAction = () => send({ type: 'join_emoji', name: n, code: c }); connect(); }
 }
 function copyCodeE() {
   if (!myRoomCode) return;
