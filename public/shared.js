@@ -4,8 +4,10 @@
 const STORAGE_KEY_NAME = 'zapplay_pseudo';
 const STORAGE_KEY_HISTORY = 'zapplay_history';
 const STORAGE_KEY_SOCIAL = 'zapplay_social_v1';
+const STORAGE_KEY_PRESENCE = 'zapplay_presence_v1';
 const MAX_HISTORY = 50;
 const RESULT_DEDUP_WINDOW_MS = 4000;
+const PRESENCE_TTL_MS = 45000;
 let lastResultSignature = '';
 let lastResultSavedAt = 0;
 
@@ -190,6 +192,7 @@ let loungeSender = null;
 let loungeState = { roomCode:'', players:[], mySlot:-1, gameName:'' };
 let loungeReady = false;
 let loungeCollapsed = false;
+const loungeReadyByRoom = Object.create(null);
 
 function ensureLoungeUI(){
   if(loungeReady)return;
@@ -221,9 +224,14 @@ function ensureLoungeUI(){
     #zp-lounge-players{padding:8px;border-right:1px solid rgba(255,255,255,.08);overflow:auto}
     .zp-player{
       background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);
-      border-radius:10px;padding:7px 9px;margin-bottom:6px;cursor:pointer
+      border-radius:10px;padding:7px 9px;margin-bottom:6px;cursor:pointer;
+      display:flex;gap:8px;align-items:center
     }
     .zp-player.me{border-color:rgba(34,197,94,.4)}
+    .zp-player .a{
+      width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+      background:linear-gradient(135deg,#a78bfa,#7c3aed);color:#fff;font-size:.67rem;font-weight:800;flex-shrink:0
+    }
     .zp-player .n{font-size:.78rem;font-weight:700;color:#f1f5f9}
     .zp-player .m{font-size:.67rem;color:#94a3b8}
     #zp-lounge-chat{display:flex;flex-direction:column;min-height:170px}
@@ -240,6 +248,16 @@ function ensureLoungeUI(){
       border:none;border-radius:8px;background:#7c3aed;color:#fff;
       font-size:.78rem;padding:7px 10px;cursor:pointer
     }
+    #zp-lounge-foot{
+      display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 10px;
+      border-top:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.03)
+    }
+    #zp-lounge-ready-label{font-size:.72rem;color:#94a3b8}
+    #zp-lounge-ready-btn{
+      border:none;border-radius:8px;padding:7px 10px;background:rgba(34,197,94,.2);color:#86efac;
+      font-size:.75rem;font-weight:700;cursor:pointer
+    }
+    #zp-lounge-ready-btn.off{background:rgba(148,163,184,.2);color:#cbd5e1}
     #zp-player-modal{
       position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;z-index:260;
       align-items:center;justify-content:center
@@ -255,6 +273,8 @@ function ensureLoungeUI(){
       #zp-lounge{left:14px;right:14px;width:auto}
       #zp-lounge-body{grid-template-columns:1fr}
       #zp-lounge-players{border-right:none;border-bottom:1px solid rgba(255,255,255,.08)}
+      #zp-lounge-input input,#zp-lounge-input button,#zp-lounge-ready-btn{font-size:.9rem;padding:10px 11px}
+      #zp-lounge-msgs{max-height:32vh}
     }
   `;
   document.head.appendChild(css);
@@ -277,6 +297,10 @@ function ensureLoungeUI(){
             <button id="zp-lounge-send">Envoyer</button>
           </div>
         </div>
+      </div>
+      <div id="zp-lounge-foot">
+        <span id="zp-lounge-ready-label">Statut: en attente</span>
+        <button id="zp-lounge-ready-btn" type="button" class="off">Pas prêt</button>
       </div>
     </div>
     <div id="zp-player-modal">
@@ -302,6 +326,11 @@ function ensureLoungeUI(){
   document.getElementById('zp-lounge-toggle').addEventListener('click',()=>{
     setLoungeCollapsed(!loungeCollapsed);
   });
+  document.getElementById('zp-lounge-ready-btn').addEventListener('click',()=>{
+    const key = loungeState.roomCode || 'global';
+    loungeReadyByRoom[key] = !loungeReadyByRoom[key];
+    updateLoungeReadyUI();
+  });
   document.getElementById('zp-player-modal').addEventListener('click', e => {
     if(e.target.id==='zp-player-modal') e.currentTarget.classList.remove('show');
   });
@@ -314,6 +343,33 @@ function setLoungeCollapsed(collapsed){
   lounge.setAttribute('data-collapsed', loungeCollapsed?'1':'0');
   const btn = document.getElementById('zp-lounge-toggle');
   if(btn) btn.textContent = loungeCollapsed ? 'Ouvrir' : 'Réduire';
+}
+
+function playerQuickStats(playerName){
+  const key = normPseudo(playerName);
+  const history = getHistory();
+  let played = 0;
+  let wins = 0;
+  history.forEach(g=>{
+    const players = Array.isArray(g.players)?g.players:[];
+    const inGame = players.some(n=>normPseudo(n)===key);
+    if(!inGame)return;
+    played++;
+    if(normPseudo(g.winner||'')===key)wins++;
+  });
+  return {played,wins};
+}
+
+function updateLoungeReadyUI(){
+  const roomKey = loungeState.roomCode || 'global';
+  const isReady = !!loungeReadyByRoom[roomKey];
+  const lbl = document.getElementById('zp-lounge-ready-label');
+  const btn = document.getElementById('zp-lounge-ready-btn');
+  if(lbl) lbl.textContent = `Statut: ${isReady?'prêt ✅':'en attente'}`;
+  if(btn){
+    btn.classList.toggle('off', !isReady);
+    btn.textContent = isReady ? 'Prêt' : 'Pas prêt';
+  }
 }
 
 function showLounge(data){
@@ -332,12 +388,19 @@ function showLounge(data){
   const list = document.getElementById('zp-lounge-players');
   list.innerHTML = '';
   loungeState.players.forEach(p=>{
+    const st = playerQuickStats(p.name);
     const div = document.createElement('div');
     div.className = 'zp-player' + (p.slot===loungeState.mySlot?' me':'');
-    div.innerHTML = `<div class="n">${p.name}${p.slot===loungeState.mySlot?' (toi)':''}</div><div class="m">Slot ${p.slot+1}</div>`;
+    div.innerHTML = `
+      <div class="a">${initials(p.name)}</div>
+      <div>
+        <div class="n">${escapeHtml(p.name)}${p.slot===loungeState.mySlot?' (toi)':''}</div>
+        <div class="m">Slot ${p.slot+1} • ${st.wins}V / ${st.played}P</div>
+      </div>`;
     div.addEventListener('click',()=>showPlayerProfile(p));
     list.appendChild(div);
   });
+  updateLoungeReadyUI();
 }
 
 function hideLounge(){
@@ -377,7 +440,9 @@ function showPlayerProfile(player){
   const metaEl = document.getElementById('zp-player-meta');
   nameEl.textContent = player.name || 'Joueur';
   const me = player.slot===loungeState.mySlot?'Ton profil':'Joueur du salon';
-  metaEl.textContent = `${me} • Slot ${Number(player.slot)+1}`;
+  const st = playerQuickStats(player.name);
+  const presence = getOnlinePresenceMap()[normPseudo(player.name)] ? 'En ligne' : 'Hors ligne';
+  metaEl.textContent = `${me} • Slot ${Number(player.slot)+1} • ${st.wins}V/${st.played}P • ${presence}`;
   modal.classList.add('show');
 }
 
@@ -444,6 +509,19 @@ function renderHistoryWidget(containerId){
     if(history[i].isWinner)streak++;
     else break;
   }
+  const weekStart = Date.now() - (7*24*60*60*1000);
+  const weekGames = history.filter(g=>(g.date||0)>=weekStart);
+  const weekWins = weekGames.filter(g=>g.isWinner).length;
+  const weekPoints = weekGames.reduce((acc,g)=>acc + (g.isWinner?3:1),0);
+  const weekByGame = {};
+  weekGames.forEach(g=>{
+    if(!weekByGame[g.game])weekByGame[g.game]={id:g.game,name:g.gameName||g.game,wins:0,played:0,points:0};
+    weekByGame[g.game].played++;
+    if(g.isWinner)weekByGame[g.game].wins++;
+    weekByGame[g.game].points += g.isWinner?3:1;
+  });
+  const weeklyTop = Object.values(weekByGame).sort((a,b)=>b.points-a.points||b.wins-a.wins).slice(0,3);
+  const weekTier = weekPoints>=45?'Diamant':weekPoints>=30?'Or':weekPoints>=18?'Argent':'Bronze';
 
   let html=`
     <div style="display:flex;align-items:center;gap:12px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:12px;margin-bottom:12px">
@@ -497,6 +575,21 @@ function renderHistoryWidget(containerId){
     });
     html+=`</div>`;
   }
+
+  html+=`
+    <div style="background:rgba(56,189,248,.08);border:1px solid rgba(56,189,248,.2);border-radius:12px;padding:10px;margin:2px 0 10px">
+      <div style="display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:6px">
+        <div style="font-size:.74rem;color:#7dd3fc;text-transform:uppercase;letter-spacing:.04em;font-weight:700">Classement hebdo</div>
+        <div style="font-size:.72rem;color:#bae6fd">${weekTier} • ${weekPoints} pts</div>
+      </div>
+      <div style="font-size:.76rem;color:#bae6fd;margin-bottom:6px">${weekGames.length} partie(s) • ${weekWins} victoire(s) sur 7 jours</div>
+      <div style="display:grid;gap:5px">
+        ${weeklyTop.length?weeklyTop.map((g,i)=>`<div style="display:flex;justify-content:space-between;gap:8px;font-size:.74rem">
+          <span>${i+1}. ${(gameIcons[g.id]||'🎮')} ${escapeHtml(g.name||g.id)}</span>
+          <span style="color:#93c5fd">${g.points} pts</span>
+        </div>`).join(''):`<div style="font-size:.74rem;color:#94a3b8">Aucune partie cette semaine.</div>`}
+      </div>
+    </div>`;
 
   const recent=history.slice(0,8);
   html+=`<div style="display:flex;flex-direction:column;gap:6px">`;
@@ -578,6 +671,8 @@ function ensureSocialUser(store, pseudo){
       friends: [],
       incoming: [],
       outgoing: [],
+      invitesIn: [],
+      invitesOut: [],
       updatedAt: Date.now()
     };
   }
@@ -586,6 +681,8 @@ function ensureSocialUser(store, pseudo){
   if(!Array.isArray(u.friends))u.friends=[];
   if(!Array.isArray(u.incoming))u.incoming=[];
   if(!Array.isArray(u.outgoing))u.outgoing=[];
+  if(!Array.isArray(u.invitesIn))u.invitesIn=[];
+  if(!Array.isArray(u.invitesOut))u.invitesOut=[];
   if(typeof u.bio!=='string')u.bio='';
   u.updatedAt = Date.now();
   return u;
@@ -599,6 +696,112 @@ function getActiveSocialUser(store){
 function touchSocialProfile(name){
   const store = getSocialStore();
   ensureSocialUser(store, name || getSavedPseudo() || 'Joueur');
+  saveSocialStore(store);
+}
+
+function gameMetaById(id){
+  const map = {
+    quiz:{name:'Quiz Éclair',url:'quiz.html'},
+    draw:{name:'Dessin & Devine',url:'draw.html'},
+    p4:{name:'Puissance 4',url:'p4.html'},
+    morpion:{name:'Morpion',url:'morpion.html'},
+    taboo:{name:'Mots Interdits',url:'taboo.html'},
+    emoji:{name:'Devinette Emoji',url:'emoji.html'},
+    loup:{name:'Loup-Garou',url:'loup.html'},
+    uno:{name:'Uno',url:'uno.html'},
+    bomb:{name:'Word Bomb',url:'wordbomb.html'}
+  };
+  return map[id] || {name:id||'Jeu',url:'index.html'};
+}
+
+function getPresenceStore(){
+  try{
+    const raw = JSON.parse(localStorage.getItem(STORAGE_KEY_PRESENCE)||'{}');
+    if(raw && typeof raw==='object' && raw.users && typeof raw.users==='object')return raw;
+  }catch{}
+  return { users:{} };
+}
+
+function savePresenceStore(store){
+  localStorage.setItem(STORAGE_KEY_PRESENCE, JSON.stringify(store));
+}
+
+function touchPresence(){
+  const pseudo = getSavedPseudo() || 'Joueur';
+  const key = normPseudo(pseudo);
+  if(!key)return;
+  const store = getPresenceStore();
+  const now = Date.now();
+  store.users[key] = {
+    key,
+    pseudo,
+    lastSeen: now,
+    page: location.pathname.split('/').pop() || 'index.html'
+  };
+  Object.keys(store.users).forEach(k=>{
+    const p = store.users[k];
+    if(!p || !p.lastSeen || (now - p.lastSeen) > PRESENCE_TTL_MS*3){
+      delete store.users[k];
+    }
+  });
+  savePresenceStore(store);
+}
+
+function getOnlinePresenceMap(){
+  const store = getPresenceStore();
+  const now = Date.now();
+  const out = {};
+  Object.entries(store.users||{}).forEach(([k,v])=>{
+    if(v && (now - (v.lastSeen||0)) <= PRESENCE_TTL_MS){
+      out[k] = v;
+    }
+  });
+  return out;
+}
+
+function socialSendInvite(targetPseudo, gameId, code){
+  const toName = String(targetPseudo||'').trim().slice(0,20);
+  const game = String(gameId||'').trim();
+  if(!toName)return {ok:false,msg:'Choisis un ami.'};
+  if(!game)return {ok:false,msg:'Choisis un jeu.'};
+  const store = getSocialStore();
+  const me = getActiveSocialUser(store);
+  const to = ensureSocialUser(store, toName);
+  if(!to)return {ok:false,msg:'Ami introuvable.'};
+  if(me.key===to.key)return {ok:false,msg:'Action impossible.'};
+  const now = Date.now();
+  const inviteId = `${me.key}-${to.key}-${game}-${now}`;
+  const payload = {
+    id: inviteId,
+    from: me.key,
+    to: to.key,
+    game,
+    code: String(code||'').trim().toUpperCase().slice(0,8),
+    at: now
+  };
+  me.invitesOut = (me.invitesOut||[]).filter(x=>x.to!==to.key || x.game!==game);
+  to.invitesIn = (to.invitesIn||[]).filter(x=>x.from!==me.key || x.game!==game);
+  me.invitesOut.unshift(payload);
+  to.invitesIn.unshift(payload);
+  me.invitesOut = me.invitesOut.slice(0,20);
+  to.invitesIn = to.invitesIn.slice(0,20);
+  saveSocialStore(store);
+  return {ok:true,msg:`Invitation envoyée à ${to.pseudo} (${gameMetaById(game).name}).`};
+}
+
+function socialDismissInvite(inviteId, dir){
+  const store = getSocialStore();
+  const me = getActiveSocialUser(store);
+  const arrName = dir==='out' ? 'invitesOut' : 'invitesIn';
+  const inv = (me[arrName]||[]).find(x=>x.id===inviteId);
+  me[arrName] = (me[arrName]||[]).filter(x=>x.id!==inviteId);
+  if(inv){
+    const other = store.users[dir==='out' ? inv.to : inv.from];
+    if(other){
+      const otherArr = dir==='out' ? 'invitesIn' : 'invitesOut';
+      other[otherArr] = (other[otherArr]||[]).filter(x=>x.id!==inviteId);
+    }
+  }
   saveSocialStore(store);
 }
 
@@ -664,6 +867,7 @@ function renderSocialWidget(containerId){
   if(!container)return;
   const store = getSocialStore();
   const me = getActiveSocialUser(store);
+  const onlineMap = getOnlinePresenceMap();
   const incoming = me.incoming
     .map(x=>({at:x.at,user:store.users[x.from]}))
     .filter(x=>x.user)
@@ -676,6 +880,16 @@ function renderSocialWidget(containerId){
     .map(k=>store.users[k])
     .filter(Boolean)
     .sort((a,b)=>String(a.pseudo||'').localeCompare(String(b.pseudo||''),'fr'));
+  const invitesIn = (me.invitesIn||[])
+    .map(x=>({ ...x, user:store.users[x.from]}))
+    .filter(x=>x.user)
+    .sort((a,b)=>(b.at||0)-(a.at||0))
+    .slice(0,8);
+  const invitesOut = (me.invitesOut||[])
+    .map(x=>({ ...x, user:store.users[x.to]}))
+    .filter(x=>x.user)
+    .sort((a,b)=>(b.at||0)-(a.at||0))
+    .slice(0,8);
 
   container.innerHTML = `
     <div style="display:grid;gap:10px">
@@ -695,6 +909,29 @@ function renderSocialWidget(containerId){
         </div>
         <div id="zp-friend-feedback" style="font-size:.72rem;color:#94a3b8;margin-top:6px;min-height:16px"></div>
       </div>
+      <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:10px">
+        <div style="font-size:.72rem;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Invitation rapide</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <select id="zp-invite-friend" style="flex:1;min-width:130px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);border-radius:9px;color:#f1f5f9;padding:8px 10px">
+            <option value="">Ami</option>
+            ${friends.map(f=>`<option value="${escapeHtml(f.pseudo||'')}">${escapeHtml(f.pseudo||'Joueur')}</option>`).join('')}
+          </select>
+          <select id="zp-invite-game" style="flex:1;min-width:130px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);border-radius:9px;color:#f1f5f9;padding:8px 10px">
+            <option value="bomb">Word Bomb</option>
+            <option value="quiz">Quiz Éclair</option>
+            <option value="draw">Dessin & Devine</option>
+            <option value="p4">Puissance 4</option>
+            <option value="morpion">Morpion</option>
+            <option value="taboo">Mots Interdits</option>
+            <option value="emoji">Devinette Emoji</option>
+            <option value="loup">Loup-Garou</option>
+            <option value="uno">Uno</option>
+          </select>
+          <input id="zp-invite-code" maxlength="8" placeholder="Code salle (optionnel)" style="width:150px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);border-radius:9px;color:#f1f5f9;padding:8px 10px">
+          <button id="zp-invite-send" style="border:none;border-radius:9px;padding:8px 12px;background:#22c55e;color:#fff;font-size:.75rem;cursor:pointer">Inviter</button>
+        </div>
+        <div id="zp-invite-feedback" style="font-size:.72rem;color:#94a3b8;margin-top:6px;min-height:16px"></div>
+      </div>
       <div style="display:grid;gap:8px;grid-template-columns:repeat(auto-fit,minmax(200px,1fr))">
         <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:10px">
           <div style="font-size:.72rem;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Demandes reçues (${incoming.length})</div>
@@ -703,6 +940,16 @@ function renderSocialWidget(containerId){
         <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:10px">
           <div style="font-size:.72rem;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Demandes envoyées (${outgoing.length})</div>
           <div id="zp-outgoing-list" style="display:grid;gap:6px"></div>
+        </div>
+      </div>
+      <div style="display:grid;gap:8px;grid-template-columns:repeat(auto-fit,minmax(200px,1fr))">
+        <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:10px">
+          <div style="font-size:.72rem;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Invitations reçues (${invitesIn.length})</div>
+          <div id="zp-inv-in-list" style="display:grid;gap:6px"></div>
+        </div>
+        <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:10px">
+          <div style="font-size:.72rem;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Invitations envoyées (${invitesOut.length})</div>
+          <div id="zp-inv-out-list" style="display:grid;gap:6px"></div>
         </div>
       </div>
       <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:10px">
@@ -715,6 +962,8 @@ function renderSocialWidget(containerId){
   const inList = container.querySelector('#zp-incoming-list');
   const outList = container.querySelector('#zp-outgoing-list');
   const frList = container.querySelector('#zp-friends-list');
+  const invInList = container.querySelector('#zp-inv-in-list');
+  const invOutList = container.querySelector('#zp-inv-out-list');
   if(incoming.length===0) inList.innerHTML = `<div style="font-size:.78rem;color:#64748b">Aucune demande reçue.</div>`;
   else inList.innerHTML = incoming.map(({user})=>`
     <div style="display:flex;justify-content:space-between;gap:6px;align-items:center;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:7px">
@@ -738,12 +987,42 @@ function renderSocialWidget(containerId){
   else frList.innerHTML = friends.map(user=>`
     <div style="display:flex;justify-content:space-between;gap:6px;align-items:center;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:7px">
       <div style="min-width:0">
-        <div style="font-size:.8rem;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(user.pseudo||'Joueur')}</div>
+        <div style="font-size:.8rem;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${onlineMap[user.key]?'<span style="color:#22c55e">●</span>':'<span style="color:#64748b">●</span>'} ${escapeHtml(user.pseudo||'Joueur')}</div>
         <div style="font-size:.7rem;color:#94a3b8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml((user.bio||'').trim()||'Aucune bio')}</div>
       </div>
       <button data-remove="${escapeHtml(user.key)}" style="border:none;border-radius:7px;padding:5px 8px;background:rgba(239,68,68,.18);color:#fca5a5;font-size:.72rem;cursor:pointer">Retirer</button>
     </div>
   `).join('');
+
+  if(invitesIn.length===0) invInList.innerHTML = `<div style="font-size:.78rem;color:#64748b">Aucune invitation reçue.</div>`;
+  else invInList.innerHTML = invitesIn.map(inv=>{
+    const meta = gameMetaById(inv.game);
+    const myName = encodeURIComponent(me.pseudo||getSavedPseudo()||'Joueur');
+    const codeParam = inv.code ? `&code=${encodeURIComponent(inv.code)}` : '';
+    const joinUrl = `${meta.url}?name=${myName}${codeParam}`;
+    return `<div style="display:flex;justify-content:space-between;gap:6px;align-items:center;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:7px">
+      <div style="min-width:0">
+        <div style="font-size:.79rem;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(inv.user.pseudo||'Joueur')}</div>
+        <div style="font-size:.7rem;color:#94a3b8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(meta.name)}${inv.code?` • ${escapeHtml(inv.code)}`:''}</div>
+      </div>
+      <div style="display:flex;gap:5px;flex-shrink:0">
+        <a href="${joinUrl}" style="text-decoration:none;border:none;border-radius:7px;padding:5px 8px;background:rgba(34,197,94,.18);color:#86efac;font-size:.72rem;cursor:pointer">Rejoindre</a>
+        <button data-inv-drop="${escapeHtml(inv.id)}" data-dir="in" style="border:none;border-radius:7px;padding:5px 8px;background:rgba(148,163,184,.18);color:#cbd5e1;font-size:.72rem;cursor:pointer">Fermer</button>
+      </div>
+    </div>`;
+  }).join('');
+
+  if(invitesOut.length===0) invOutList.innerHTML = `<div style="font-size:.78rem;color:#64748b">Aucune invitation envoyée.</div>`;
+  else invOutList.innerHTML = invitesOut.map(inv=>{
+    const meta = gameMetaById(inv.game);
+    return `<div style="display:flex;justify-content:space-between;gap:6px;align-items:center;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:7px">
+      <div style="min-width:0">
+        <div style="font-size:.79rem;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(inv.user.pseudo||'Joueur')}</div>
+        <div style="font-size:.7rem;color:#94a3b8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(meta.name)}${inv.code?` • ${escapeHtml(inv.code)}`:''}</div>
+      </div>
+      <button data-inv-drop="${escapeHtml(inv.id)}" data-dir="out" style="border:none;border-radius:7px;padding:5px 8px;background:rgba(148,163,184,.18);color:#cbd5e1;font-size:.72rem;cursor:pointer">Annuler</button>
+    </div>`;
+  }).join('');
 
   container.querySelector('#zp-profile-save')?.addEventListener('click',()=>{
     const pseudo = String(container.querySelector('#zp-profile-pseudo')?.value||'').trim().slice(0,20);
@@ -766,6 +1045,8 @@ function renderSocialWidget(containerId){
         u.friends = u.friends.map(k=>k===oldKey?newKey:k);
         u.incoming = u.incoming.map(r=>r.from===oldKey?{from:newKey,at:r.at}:r);
         u.outgoing = u.outgoing.map(r=>r.to===oldKey?{to:newKey,at:r.at}:r);
+        u.invitesIn = (u.invitesIn||[]).map(r=>r.from===oldKey?{...r,from:newKey}:r.to===oldKey?{...r,to:newKey}:r);
+        u.invitesOut = (u.invitesOut||[]).map(r=>r.from===oldKey?{...r,from:newKey}:r.to===oldKey?{...r,to:newKey}:r);
       });
     }
     oldMe.pseudo = pseudo;
@@ -780,6 +1061,18 @@ function renderSocialWidget(containerId){
     const target = String(container.querySelector('#zp-friend-target')?.value||'').trim();
     const out = socialSendFriendRequest(target);
     const fb = container.querySelector('#zp-friend-feedback');
+    if(fb){
+      fb.textContent = out.msg;
+      fb.style.color = out.ok ? '#86efac' : '#fca5a5';
+    }
+    if(out.ok) renderSocialWidget(containerId);
+  });
+  container.querySelector('#zp-invite-send')?.addEventListener('click',()=>{
+    const target = String(container.querySelector('#zp-invite-friend')?.value||'').trim();
+    const game = String(container.querySelector('#zp-invite-game')?.value||'').trim();
+    const code = String(container.querySelector('#zp-invite-code')?.value||'').trim();
+    const out = socialSendInvite(target, game, code);
+    const fb = container.querySelector('#zp-invite-feedback');
     if(fb){
       fb.textContent = out.msg;
       fb.style.color = out.ok ? '#86efac' : '#fca5a5';
@@ -811,6 +1104,12 @@ function renderSocialWidget(containerId){
       renderSocialWidget(containerId);
     });
   });
+  container.querySelectorAll('[data-inv-drop]').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      socialDismissInvite(btn.getAttribute('data-inv-drop')||'', btn.getAttribute('data-dir')||'in');
+      renderSocialWidget(containerId);
+    });
+  });
 }
 
 // ═══════════════════════════════════════════════════════
@@ -828,9 +1127,17 @@ function init(){
   if(!isIndex){injectLoader();loaderShownAt=Date.now();}
   autoFillPseudo();
   hookPseudoInputs();
+  touchPresence();
+  setInterval(()=>{
+    if(document.visibilityState!=='hidden') touchPresence();
+  },15000);
+  document.addEventListener('visibilitychange',()=>{
+    if(document.visibilityState!=='hidden') touchPresence();
+  });
   if(isIndex){
     renderHistoryWidget('history-widget');
     renderSocialWidget('social-widget');
+    setInterval(()=>renderSocialWidget('social-widget'),12000);
   }
   // Auto-hide loader after 5s max
   if(!isIndex)setTimeout(hideLoader,8000);

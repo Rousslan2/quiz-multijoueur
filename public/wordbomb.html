@@ -118,6 +118,23 @@ input:focus{border-color:var(--primary)}
 @keyframes bombshake{0%{transform:translateX(0)}25%{transform:translateX(-1.4px)}50%{transform:translateX(1.4px)}100%{transform:translateX(0)}}
 @keyframes sparkpulse{0%,100%{opacity:.65}50%{opacity:1}}
 #status{text-align:center;color:var(--muted);min-height:20px}
+#feedback{
+  text-align:center;min-height:18px;font-size:.84rem;font-weight:700;
+  color:#cbd5e1;transition:opacity .15s
+}
+#feedback.ok{color:#86efac}
+#feedback.warn{color:#fde68a}
+#feedback.bad{color:#fca5a5}
+#combo-pill{
+  display:inline-flex;align-items:center;justify-content:center;
+  border-radius:999px;padding:5px 10px;font-size:.74rem;font-weight:800;
+  background:rgba(34,197,94,.15);border:1px solid rgba(34,197,94,.35);color:#86efac
+}
+#combo-pill.hidden{display:none}
+#word.shake{animation:wshake .22s linear}
+@keyframes wshake{
+  0%{transform:translateX(0)}25%{transform:translateX(-2px)}50%{transform:translateX(2px)}100%{transform:translateX(0)}
+}
 #score-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
 .row{
   padding:9px;border:1px solid var(--border);background:rgba(255,255,255,.04);
@@ -133,6 +150,12 @@ input:focus{border-color:var(--primary)}
 #action{display:flex;gap:8px}
 #gcount{position:fixed;inset:0;background:rgba(15,12,41,.8);display:none;align-items:center;justify-content:center;z-index:500}
 #gcount span{font-size:6rem;font-weight:800;color:#f59e0b}
+@media (max-width:760px){
+  #app{padding-top:52px;padding-bottom:10px}
+  .btn{padding:12px 14px;font-size:.95rem}
+  #action{position:sticky;bottom:0;background:linear-gradient(180deg,rgba(36,36,62,0),rgba(36,36,62,.92) 28%,rgba(36,36,62,.98));padding-top:8px}
+  #word{font-size:1rem;padding:12px 11px}
+}
 </style>
 </head>
 <body>
@@ -180,9 +203,11 @@ input:focus{border-color:var(--primary)}
         <div id="time-left">--.-s</div>
         <div id="syllable">--</div>
         <div id="status"></div>
+        <div id="feedback"></div>
       </div>
       <div class="card"><div id="score-list"></div></div>
       <div class="card" style="display:flex;flex-direction:column;gap:8px">
+        <div style="display:flex;justify-content:center"><div id="combo-pill" class="hidden">Combo x1</div></div>
         <div id="action">
           <input id="word" placeholder="Mot contenant la syllabe..." maxlength="40">
           <button class="btn btn-buzz" onclick="sendWord()">Valider</button>
@@ -206,8 +231,10 @@ input:focus{border-color:var(--primary)}
 const WS_URL = `${location.protocol==='https:'?'wss':'ws'}://${location.host}/ws/bomb`;
 let ws=null,mySlot=-1,myCode='',myName='',state=null,pendingAction=null,timerInt=null,lastPhase='';
 let activeTurnEndsAt=0;
+let activeTimerKey='';
 let soundOn=true,audioCtx=null,lastTickSecond=-1,lastRecentKey='';
 let fuseOsc=null,fuseGain=null,fuseLfo=null,fuseLfoGain=null;
+let feedbackTimeout=null,myCombo=0;
 function $(id){return document.getElementById(id);}
 function send(o){ if(ws&&ws.readyState===1) ws.send(JSON.stringify(o)); }
 function bindLoungeSender(){ if(window.ZapPlay)ZapPlay.setLoungeSender(text=>send({type:'lounge_chat',text})); else setTimeout(bindLoungeSender,120); }
@@ -290,15 +317,65 @@ function sendWord(){
 }
 function restart(){ send({type:'restart_bomb'}); }
 function copyCode(){ if(!myCode)return; navigator.clipboard.writeText(myCode).catch(()=>{}); }
+function setFeedback(text,type=''){
+  const el=$('feedback');
+  if(!el)return;
+  el.textContent=text||'';
+  el.className=type||'';
+  if(feedbackTimeout){clearTimeout(feedbackTimeout);feedbackTimeout=null;}
+  if(text){
+    feedbackTimeout=setTimeout(()=>{
+      if(el.textContent===text){el.textContent='';el.className='';}
+    },1700);
+  }
+}
+function renderCombo(){
+  const el=$('combo-pill');
+  if(!el)return;
+  if(myCombo>=2){
+    el.classList.remove('hidden');
+    el.textContent=`Combo x${myCombo}`;
+  }else{
+    el.classList.add('hidden');
+    el.textContent='Combo x1';
+  }
+}
+function resetCombo(){
+  myCombo=0;
+  renderCombo();
+}
+function bumpCombo(){
+  myCombo=Math.max(1,myCombo+1);
+  renderCombo();
+}
+function shakeWordInput(){
+  const input=$('word');
+  if(!input)return;
+  input.classList.remove('shake');
+  void input.offsetWidth;
+  input.classList.add('shake');
+}
 
 function handle(m){
   if(m.type==='created_bomb'){mySlot=m.slot;myCode=m.code;showGame();}
   if(m.type==='welcome_bomb'){mySlot=m.slot;myCode=m.code;showGame();}
-  if(m.type==='error'){$('err').textContent=m.msg; $('status').textContent=m.msg;}
+  if(m.type==='error'){
+    $('err').textContent=m.msg;
+    setFeedback(m.msg,'bad');
+    shakeWordInput();
+    resetCombo();
+  }
   if(m.type==='countdown')showCountdown(m.seconds||3);
   if(m.type==='player_left')$('status').textContent=(m.name||'Un joueur')+' a quitté.';
   if(m.type==='lounge_chat' && window.ZapPlay)ZapPlay.addLoungeMessage(m);
-  if(m.type==='bomb_state'){state=m; render();}
+  if(m.type==='bomb_state'){
+    if(m.timeoutName){
+      setFeedback(`${m.timeoutName} a explosé 💥`,'warn');
+      if(m.timeoutSlot===mySlot)resetCombo();
+    }
+    state=m;
+    render();
+  }
 }
 function showGame(){ $('name-screen').classList.add('hidden'); $('game-screen').classList.remove('hidden'); }
 function showCountdown(n){
@@ -319,6 +396,7 @@ function render(){
     $('players').innerHTML=players.map(p=>`<span class="chip">${p.name}${p.slot===0?' 👑':''}</span>`).join('');
     $('start-btn').classList.toggle('hidden', !(mySlot===0 && players.length>=2));
     stopTimer();
+    resetCombo();
     return;
   }
   if(state.phase==='PLAYING'){
@@ -341,12 +419,18 @@ function render(){
     const rec=state.recentWords||[];
     const last = rec.length ? rec[rec.length-1] : null;
     const k = last ? `${last.name}::${last.word}` : '';
-    if(k && k!==lastRecentKey && last.name===myName) SND.good();
+    if(k && k!==lastRecentKey && last.name===myName){
+      SND.good();
+      bumpCombo();
+      setFeedback(`✅ Mot validé (+1) • Combo x${Math.max(1,myCombo)}`,'ok');
+    }
     lastRecentKey = k;
     $('recent').innerHTML = rec.length ? rec.slice().reverse().map(r=>`<div class="r"><b>${r.name}</b> : ${r.word}</div>`).join('') : '<div class="r">Aucun mot pour le moment.</div>';
     const turnEndsAt = Number(state.turnEndsAt||0);
-    if(turnEndsAt !== activeTurnEndsAt){
-      startTimer(turnEndsAt);
+    const turnMs = Number(state.turnMs||12000);
+    const timerKey = `${state.turn}|${state.syllable||''}|${turnEndsAt}`;
+    if(timerKey !== activeTimerKey){
+      startTimer(turnEndsAt, turnMs, timerKey);
     }
     return;
   }
@@ -354,6 +438,7 @@ function render(){
     if(window.ZapPlay)ZapPlay.hideLounge();
     setScreen('over');
     stopTimer();
+    resetCombo();
     const winName = state.winnerSlot>=0 ? (players.find(p=>p.slot===state.winnerSlot)?.name||'') : '';
     $('over-title').textContent = state.winnerSlot>=0 ? `🏆 ${winName} gagne !` : 'Égalité !';
     if(lastPhase!=='GAME_OVER' && window.ZapPlay){
@@ -363,19 +448,28 @@ function render(){
   }
   lastPhase=state.phase;
 }
-function startTimer(endTs){
+function startTimer(endTs, turnMs, timerKey){
   stopTimer();
   activeTurnEndsAt = Number(endTs||0);
+  activeTimerKey = String(timerKey||activeTurnEndsAt||'');
+  const roundMs = Number(turnMs||12000);
   if(!endTs){
     $('bomb-timer-fill').style.width='100%';
     if($('time-left')) $('time-left').textContent='--.-s';
     return;
   }
+  // Robustesse: si l'horloge client/serveur diffère, on anime quand même localement.
+  const now = Date.now();
+  let initialLeft = Number(endTs) - now;
+  if(!Number.isFinite(initialLeft) || initialLeft < 250 || initialLeft > (roundMs + 5000)){
+    initialLeft = roundMs;
+  }
+  const localEndTs = now + initialLeft;
   startFuseSound();
   lastTickSecond=-1;
   timerInt=setInterval(()=>{
-    const left=Math.max(0,endTs-Date.now());
-    const ratio=Math.max(0,Math.min(1,left/(state?.turnMs||12000)));
+    const left=Math.max(0,localEndTs-Date.now());
+    const ratio=Math.max(0,Math.min(1,left/roundMs));
     $('bomb-timer-fill').style.width=(ratio*100).toFixed(1)+'%';
     if($('time-left')) $('time-left').textContent=(left/1000).toFixed(1)+'s';
     const sec=Math.ceil(left/1000);
@@ -385,19 +479,28 @@ function startTimer(endTs){
     updateFuseSound(ratio);
     if(bw) bw.classList.toggle('danger', sec<=4);
     if(sec<=5 && sec>0 && sec!==lastTickSecond){ SND.tick(); lastTickSecond=sec; }
-    if(left<=0){ stopFuseSound(); SND.boom(); stopTimer(); }
+    if(left<=0){
+      $('bomb-timer-fill').style.width='0%';
+      if($('time-left')) $('time-left').textContent='0.0s';
+      stopFuseSound();
+      SND.boom();
+      stopTimer(false);
+    }
   },100);
 }
-function stopTimer(){
+function stopTimer(resetVisual=true){
   if(timerInt){clearInterval(timerInt);timerInt=null;}
   activeTurnEndsAt = 0;
+  activeTimerKey = '';
   stopFuseSound();
   const bw=$('bomb-wrap'),f=$('bomb-fuse'),sp=$('bomb-spark');
   if(bw) bw.classList.remove('danger');
   if(f) f.style.width='34px';
   if(sp) sp.style.left='calc(50% + 34px)';
-  if($('bomb-timer-fill')) $('bomb-timer-fill').style.width='100%';
-  if($('time-left')) $('time-left').textContent='--.-s';
+  if(resetVisual){
+    if($('bomb-timer-fill')) $('bomb-timer-fill').style.width='100%';
+    if($('time-left')) $('time-left').textContent='--.-s';
+  }
 }
 const p=new URLSearchParams(location.search);
 if(p.get('name'))$('name').value=p.get('name');
