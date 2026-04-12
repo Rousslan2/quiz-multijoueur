@@ -93,6 +93,14 @@
       color:#ef4444;background:rgba(239,68,68,.1);
       border-top:1px solid rgba(239,68,68,.2);display:none;
     }
+    @media (max-width: 640px){
+      #chat-fab{right:12px;bottom:12px;width:48px;height:48px}
+      #chat-panel{
+        right:10px;left:10px;bottom:68px;
+        width:auto;max-width:none;border-radius:14px;
+      }
+      #chat-messages{max-height:38vh;min-height:130px}
+    }
   `;
   document.head.appendChild(style);
 
@@ -248,6 +256,12 @@
   closeBtn.addEventListener('click', () => {
     isOpen = false;
     panel.classList.remove('open');
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && isOpen) {
+      isOpen = false;
+      panel.classList.remove('open');
+    }
   });
 
   // ── Init ─────────────────────────────────────────────────────────────────────

@@ -167,6 +167,19 @@ function clearHistory(){
   localStorage.removeItem(STORAGE_KEY_HISTORY);
 }
 
+function exportHistory(){
+  const payload={exportedAt:Date.now(),history:getHistory()};
+  const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;
+  a.download='zapplay-history.json';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
 function getStats(){
   const h=getHistory();
   const pseudo=getSavedPseudo();
@@ -198,6 +211,15 @@ function renderHistoryWidget(containerId){
 
   const gameIcons={quiz:'⚡',draw:'✏️',p4:'🟠',morpion:'✖️',taboo:'🚫',emoji:'🌟',verite:'❤️',loup:'🐺',uno:'🃏'};
   const winRate=stats.games?Math.round(stats.wins/stats.games*100):0;
+  const topGames=Object.entries(stats.byGame)
+    .map(([id,v])=>({id,...v,rate:v.played?Math.round(v.wins/v.played*100):0}))
+    .sort((a,b)=>b.wins-a.wins||b.rate-a.rate)
+    .slice(0,4);
+  let streak=0;
+  for(let i=0;i<history.length;i++){
+    if(history[i].isWinner)streak++;
+    else break;
+  }
 
   let html=`
     <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap">
@@ -213,12 +235,31 @@ function renderHistoryWidget(containerId){
         <div style="font-size:1.6rem;font-weight:800;color:#fbbf24">${winRate}%</div>
         <div style="font-size:.72rem;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em">Win rate</div>
       </div>
+      <div style="flex:1;min-width:80px;background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.25);border-radius:12px;padding:12px;text-align:center">
+        <div style="font-size:1.6rem;font-weight:800;color:#60a5fa">${streak}</div>
+        <div style="font-size:.72rem;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em">Série</div>
+      </div>
     </div>
-    <div style="display:flex;justify-content:flex-end;margin:-2px 0 10px">
+    <div style="display:flex;justify-content:space-between;gap:8px;align-items:center;margin:-2px 0 10px">
+      <button id="zp-export-history-btn" style="background:rgba(59,130,246,.12);border:1px solid rgba(59,130,246,.3);color:#93c5fd;border-radius:8px;padding:6px 10px;font-size:.72rem;cursor:pointer">
+        Exporter JSON
+      </button>
       <button id="zp-clear-history-btn" style="background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.3);color:#fca5a5;border-radius:8px;padding:6px 10px;font-size:.72rem;cursor:pointer">
         Effacer l'historique
       </button>
     </div>`;
+
+  if(topGames.length){
+    html+=`<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px">`;
+    topGames.forEach(g=>{
+      const icon=gameIcons[g.id]||'🎮';
+      html+=`<div style="flex:1;min-width:130px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:8px 10px">
+        <div style="font-size:.76rem;font-weight:700;display:flex;align-items:center;gap:6px">${icon} ${g.name||g.id}</div>
+        <div style="font-size:.68rem;color:#94a3b8;margin-top:2px">${g.wins}V / ${g.played}P • ${g.rate}%</div>
+      </div>`;
+    });
+    html+=`</div>`;
+  }
 
   const recent=history.slice(0,8);
   html+=`<div style="display:flex;flex-direction:column;gap:6px">`;
@@ -249,9 +290,14 @@ function renderHistoryWidget(containerId){
   }
 
   container.innerHTML=html;
+  const exportBtn=document.getElementById('zp-export-history-btn');
+  if(exportBtn){
+    exportBtn.addEventListener('click',()=>exportHistory());
+  }
   const clearBtn=document.getElementById('zp-clear-history-btn');
   if(clearBtn){
     clearBtn.addEventListener('click',()=>{
+      if(!confirm('Effacer tout l’historique des parties ?'))return;
       clearHistory();
       renderHistoryWidget(containerId);
     });
@@ -283,7 +329,7 @@ function init(){
 window.ZapPlay={
   getSavedPseudo,savePseudo,
   hideLoader,showLoader,
-  saveGameResult,getHistory,getStats,renderHistoryWidget,clearHistory
+  saveGameResult,getHistory,getStats,renderHistoryWidget,clearHistory,exportHistory
 };
 
 })();
