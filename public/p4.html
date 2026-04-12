@@ -138,6 +138,8 @@
     align-items: center;
     gap: 16px;
     width: 100%;
+    max-width: 430px;
+    margin: 0 auto;
   }
 
   .info-box {
@@ -205,6 +207,7 @@
     width: 100%;
     flex: 1;
     min-height: 0;
+    justify-content: center;
   }
 
   /* COL BUTTONS */
@@ -212,6 +215,8 @@
     display: flex;
     gap: 4px;
     width: 100%;
+    max-width: 430px;
+    margin: 0 auto;
   }
 
   .col-btn {
@@ -244,12 +249,13 @@
     grid-template-rows: repeat(6, 1fr);
     gap: 4px;
     width: 100%;
-    flex: 1;
-    min-height: 0;
+    max-width: 430px;
+    aspect-ratio: 7 / 6;
     background: rgba(0,0,0,.35);
     border-radius: 14px;
     padding: 8px;
     border: 1px solid var(--border);
+    margin: 0 auto;
   }
 
   .cell {
@@ -297,6 +303,15 @@
     text-align: center;
     color: var(--gold);
     text-shadow: 0 0 20px rgba(251,191,36,.5);
+  }
+  #gameover-screen {
+    width: 100%;
+    max-width: 430px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
   }
 
   /* ERROR */
