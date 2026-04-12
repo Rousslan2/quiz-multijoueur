@@ -17,7 +17,6 @@ const wssP4      = new WebSocket.Server({ noServer: true });
 const wssMorpion = new WebSocket.Server({ noServer: true });
 const wssTaboo   = new WebSocket.Server({ noServer: true });
 const wssEmoji   = new WebSocket.Server({ noServer: true });
-const wssVerite  = new WebSocket.Server({ noServer: true });
 const wssChat    = new WebSocket.Server({ noServer: true });
 const wssLobby   = new WebSocket.Server({ noServer: true });
 const wssLoup    = new WebSocket.Server({ noServer: true });
@@ -27,7 +26,7 @@ server.on('upgrade', (req, socket, head) => {
   const routes = {
     '/ws/quiz':wssQuiz,'/ws/draw':wssDraw,'/ws/p4':wssP4,
     '/ws/morpion':wssMorpion,'/ws/taboo':wssTaboo,'/ws/emoji':wssEmoji,
-    '/ws/verite':wssVerite,'/ws/chat':wssChat,'/ws/lobby':wssLobby,
+    '/ws/chat':wssChat,'/ws/lobby':wssLobby,
     '/ws/loup':wssLoup,'/ws/uno':wssUno
   };
   const h = routes[req.url];
@@ -55,13 +54,13 @@ app.get('/api/ip', (_, res) => res.json({ ip: getLocalIP(), port: PORT }));
 // ── Rooms API ─────────────────────────────────────────────────────────────────
 const GAME_NAMES = {
   quiz:'Quiz Éclair', draw:'Dessin & Devine', p4:'Puissance 4',
-  morpion:'Morpion', taboo:'Mots Interdits', emoji:'Devinette Emoji', verite:'Vérité ou Défi',
+  morpion:'Morpion', taboo:'Mots Interdits', emoji:'Devinette Emoji',
   loup:'Loup-Garou', uno:'Uno'
 };
 
 function getRoomsSnapshot() {
   const all = [];
-  const maps = { quiz:quizRooms, draw:drawRooms, p4:p4Rooms, morpion:morpionRooms, taboo:tabooRooms, emoji:emojiRooms, verite:veriteRooms, loup:loupRooms, uno:unoRooms };
+  const maps = { quiz:quizRooms, draw:drawRooms, p4:p4Rooms, morpion:morpionRooms, taboo:tabooRooms, emoji:emojiRooms, loup:loupRooms, uno:unoRooms };
   for (const [game, map] of Object.entries(maps)) {
     for (const [code, room] of map) {
       all.push({
@@ -1243,160 +1242,6 @@ wssEmoji.on('connection',ws=>{
       case 'restart_emoji':{
         if(!player||!myRoom||myRoom.phase!=='GAME_OVER')return;
         myRoom.scores=[0,0,0,0];myRoom.phase='READY';bcast(myRoom.players,eSnap(myRoom));
-        broadcastLobby();
-        break;
-      }
-    }
-  });
-});
-
-// ════════════════════════════════════════════════════════
-//  VÉRITÉ OU DÉFI
-// ════════════════════════════════════════════════════════
-
-const VERITE_CARTES=[
-  {type:'verite',text:'Quelle est ta peur secrète ?',cat:'facile'},
-  {type:'verite',text:'Quelle est la chose la plus embarrassante que tu aies jamais faite ?',cat:'facile'},
-  {type:'verite',text:'Quel est ton souvenir préféré avec moi ?',cat:'romantique'},
-  {type:'verite',text:'Qu\'est-ce qui te fait le plus rire ?',cat:'facile'},
-  {type:'verite',text:'Si tu pouvais changer une chose dans ta vie, ce serait quoi ?',cat:'facile'},
-  {type:'verite',text:'Quelle est ton émission de télé honteuse préférée ?',cat:'facile'},
-  {type:'verite',text:'Quel est le moment où tu as réalisé que tu étais amoureux(se) de moi ?',cat:'romantique'},
-  {type:'verite',text:'Quelle est la chose que tu trouves la plus belle chez moi ?',cat:'romantique'},
-  {type:'verite',text:'Quel est ton rêve pour notre futur ensemble ?',cat:'romantique'},
-  {type:'verite',text:'Quel talent secret voudrais-tu avoir ?',cat:'facile'},
-  {type:'verite',text:'Quelle est ta chanson honteuse à chanter sous la douche ?',cat:'facile'},
-  {type:'verite',text:'Qu\'est-ce que tu aimes le plus dans notre relation ?',cat:'romantique'},
-  {type:'verite',text:'Si tu étais un super-héros, quel serait ton pouvoir ?',cat:'facile'},
-  {type:'verite',text:'Quelle est la chose la plus stupide que tu aies jamais crue ?',cat:'facile'},
-  {type:'verite',text:'Quel compliment veux-tu entendre plus souvent ?',cat:'romantique'},
-  {type:'defi',text:'Imite un animal pendant 30 secondes !',cat:'facile'},
-  {type:'defi',text:'Chante le refrain d\'une chanson de ton choix !',cat:'facile'},
-  {type:'defi',text:'Fais rire l\'autre joueur en 30 secondes !',cat:'facile'},
-  {type:'defi',text:'Dis "Je t\'aime" dans 3 langues différentes !',cat:'romantique'},
-  {type:'defi',text:'Danse pendant 20 secondes !',cat:'facile'},
-  {type:'defi',text:'Donne 3 raisons pour lesquelles tu aimes l\'autre !',cat:'romantique'},
-  {type:'defi',text:'Écris un poème de 4 vers pour l\'autre !',cat:'romantique'},
-  {type:'defi',text:'Parle avec un accent anglais pendant 2 minutes !',cat:'fun'},
-  {type:'defi',text:'Dessine un portrait de l\'autre joueur en 1 minute !',cat:'facile'},
-  {type:'defi',text:'Nomme 10 pays en 20 secondes !',cat:'facile'},
-  {type:'defi',text:'Dis la chose que tu admires le plus chez ton partenaire !',cat:'romantique'},
-  {type:'defi',text:'Imite l\'autre joueur le mieux possible !',cat:'fun'},
-  {type:'defi',text:'Racontez un souvenir heureux ensemble !',cat:'romantique'},
-  {type:'defi',text:'Fais 10 pompes ou 20 sauts !',cat:'facile'},
-  {type:'defi',text:'Envoie un message trop mignon à l\'autre sans explication !',cat:'romantique'},
-  {type:'defi',text:'Fais le bruit le plus bizarre possible pendant 10 secondes !',cat:'fun'},
-  {type:'defi',text:'Décris ta journée idéale avec l\'autre joueur !',cat:'romantique'},
-  {type:'verite',text:'Quelle est la chose dont tu es le plus fier(e) dans ta vie ?',cat:'facile'},
-  {type:'verite',text:'Si tu avais 1 million d\'euros, que ferais-tu ?',cat:'facile'},
-  {type:'verite',text:'Quelle est ta plus grande qualité selon toi ?',cat:'facile'},
-  {type:'verite',text:'Quel est le meilleur voyage que tu aies fait ?',cat:'facile'},
-  {type:'defi',text:'Pose 3 questions originales à l\'autre joueur !',cat:'romantique'},
-  {type:'defi',text:'Mime ton film préféré sans parler !',cat:'facile'},
-  {type:'defi',text:'Invente un surnom affectueux pour l\'autre !',cat:'romantique'},
-  {type:'defi',text:'Complimente l\'autre joueur pendant 1 minute sans s\'arrêter !',cat:'romantique'},
-];
-
-const veriteRooms = new Map();
-
-function makeVeriteRoom(code, host) {
-  return { code, host, players:[], phase:'WAITING', turn:0, turnNum:0, maxTurns:20, card:null, scores:[0,0,0,0], deck:[], timer:null };
-}
-function vSnap(room,extra={}){return{type:'verite_state',phase:room.phase,players:room.players.map(p=>({name:p.name,slot:p.slot})),scores:[...room.scores],turn:room.turn,turnNum:room.turnNum,maxTurns:room.maxTurns,card:room.card,code:room.code,...extra};}
-
-wssVerite.on('connection',ws=>{
-  makeWS(wssVerite).alive(ws);
-  let myRoom = null;
-  ws.on('close',()=>{
-    makeWS(wssVerite).clear(ws);
-    if(!myRoom)return;
-    const idx=myRoom.players.findIndex(p=>p.ws===ws);if(idx<0)return;
-    const name=myRoom.players[idx].name;
-    myRoom.players.splice(idx,1);myRoom.players.forEach((p,i)=>p.slot=i);
-    clearTimeout(myRoom.timer);
-    if(myRoom.players.length===0){veriteRooms.delete(myRoom.code);broadcastLobby();return;}
-    bcast(myRoom.players,{type:'player_left',name});
-    if(myRoom.players.length<2){
-      myRoom.phase='WAITING';myRoom.scores=[0,0,0,0];myRoom.turnNum=0;
-    } else if(['CHOOSING','CARD'].includes(myRoom.phase)){
-      // Ajuster le tour au joueur suivant
-      myRoom.turn=myRoom.turn%myRoom.players.length;
-      myRoom.card=null;myRoom.phase='CHOOSING';
-      bcast(myRoom.players,vSnap(myRoom));
-    } else {
-      if(myRoom.phase==='GAME_OVER')myRoom.phase='WAITING';
-      bcast(myRoom.players,vSnap(myRoom));
-    }
-    broadcastLobby();
-  });
-  ws.on('message',raw=>{
-    let d;try{d=JSON.parse(raw);}catch{return;}
-    const player=myRoom?myRoom.players.find(p=>p.ws===ws):null;
-    switch(d.type){
-      case 'create_verite':{
-        const name=String(d.name||'').trim().slice(0,20)||'Joueur';
-        const code=genCode(veriteRooms);
-        const room=makeVeriteRoom(code,name);
-        veriteRooms.set(code,room);
-        myRoom=room;
-        room.players.push({ws,name,slot:0});
-        wsend(ws,{type:'created_verite',code,slot:0,name});
-        wsend(ws,vSnap(room));
-        broadcastLobby();
-        break;
-      }
-      case 'join_verite':{
-        const code=String(d.code||'').trim().toUpperCase();
-        const room=veriteRooms.get(code);
-        if(!room){wsend(ws,{type:'error',msg:'Salle introuvable.'});return;}
-        if(room.players.length>=4){wsend(ws,{type:'error',msg:'Partie pleine (4 joueurs max).'});return;}
-        if(room.phase!=='WAITING'){wsend(ws,{type:'error',msg:'La partie a déjà commencé.'});return;}
-        const name=String(d.name||'').trim().slice(0,20)||'Joueur';
-        const slot=room.players.length;room.players.push({ws,name,slot});
-        myRoom=room;
-        wsend(ws,{type:'welcome_verite',slot,name,code});
-        bcast(room.players,vSnap(room));
-        broadcastLobby();
-        break;
-      }
-      case 'start_verite':{
-        if(!player||!myRoom||player.slot!==0||!['WAITING','READY','GAME_OVER'].includes(myRoom.phase))return;
-        if(myRoom.players.length<2){wsend(ws,{type:'error',msg:'Il faut au moins 2 joueurs.'});return;}
-        myRoom.scores=[0,0,0,0];myRoom.turn=0;myRoom.turnNum=0;myRoom.card=null;
-        myRoom.deck=shuffle([...VERITE_CARTES]);
-        myRoom.phase='COUNTDOWN';bcast(myRoom.players,{type:'countdown',seconds:3});
-        clearTimeout(myRoom.timer);myRoom.timer=setTimeout(()=>{myRoom.phase='CHOOSING';bcast(myRoom.players,vSnap(myRoom));broadcastLobby();},3000);
-        broadcastLobby();
-        break;
-      }
-      case 'choose':{
-        if(!player||!myRoom||player.slot!==myRoom.turn||myRoom.phase!=='CHOOSING')return;
-        const cat=d.choice;
-        const pool=myRoom.deck.filter(c=>cat==='random'?true:c.type===cat);
-        const cards=pool.length?pool:myRoom.deck;
-        myRoom.card=cards[Math.floor(Math.random()*cards.length)];
-        myRoom.phase='CARD';bcast(myRoom.players,vSnap(myRoom));
-        break;
-      }
-      case 'done':{
-        if(!player||!myRoom||player.slot!==myRoom.turn||myRoom.phase!=='CARD')return;
-        if(d.completed)myRoom.scores[myRoom.turn]+=1;
-        myRoom.turnNum++;
-        if(myRoom.turnNum>=myRoom.maxTurns){
-          myRoom.phase='GAME_OVER';
-          let win=-1,best=-1;
-          myRoom.players.forEach(p=>{const s=myRoom.scores[p.slot]??0;if(s>best){best=s;win=p.slot;}else if(s===best){win=-1;}});
-          bcast(myRoom.players,{...vSnap(myRoom),winnerSlot:win});broadcastLobby();
-        } else{
-          myRoom.turn=(myRoom.turn+1)%myRoom.players.length;
-          myRoom.card=null;myRoom.phase='CHOOSING';bcast(myRoom.players,vSnap(myRoom));
-        }
-        break;
-      }
-      case 'restart_verite':{
-        if(!player||!myRoom||myRoom.phase!=='GAME_OVER')return;
-        myRoom.scores=[0,0,0,0];myRoom.turn=0;myRoom.turnNum=0;myRoom.card=null;
-        myRoom.deck=shuffle([...VERITE_CARTES]);myRoom.phase='CHOOSING';bcast(myRoom.players,vSnap(myRoom));
         broadcastLobby();
         break;
       }
