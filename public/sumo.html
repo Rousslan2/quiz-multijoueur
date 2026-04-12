@@ -36,9 +36,10 @@ input{width:100%;background:rgba(255,255,255,.08);border:1px solid var(--border)
 #score-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
 .row{padding:9px;border:1px solid var(--border);background:rgba(255,255,255,.04);border-radius:10px;font-size:.82rem}
 .row.turn{border-color:#fbbf24}.row.dead{opacity:.55}
-#controls-mobile{display:none;grid-template-columns:repeat(3,54px);grid-template-rows:repeat(3,54px);gap:6px;justify-content:center}
+#controls-mobile{display:none;grid-template-columns:repeat(4,54px);grid-template-rows:repeat(3,54px);gap:6px;justify-content:center}
 .mbtn{border:none;border-radius:10px;background:rgba(255,255,255,.12);color:#fff;font-size:1.1rem}
 #dash-btn{grid-column:3;grid-row:2;background:rgba(249,115,22,.4)}
+#punch-btn{grid-column:4;grid-row:2;background:rgba(244,63,94,.45)}
 #gcount{position:fixed;inset:0;background:rgba(15,12,41,.8);display:none;align-items:center;justify-content:center;z-index:500}
 #gcount span{font-size:6rem;font-weight:800;color:#f59e0b}
 @media(max-width:760px){#controls-mobile{display:grid}}
@@ -81,9 +82,9 @@ input{width:100%;background:rgba(255,255,255,.08);border:1px solid var(--border)
       </div>
       <div class="card"><div id="score-list"></div></div>
       <div id="controls-mobile" class="card">
-        <button class="mbtn" data-dir="up">▲</button><div></div><div></div>
-        <button class="mbtn" data-dir="left">◀</button><button class="mbtn" data-dir="down">▼</button><button id="dash-btn" class="mbtn">⚡</button>
-        <div></div><button class="mbtn" data-dir="right">▶</button><div></div>
+        <button class="mbtn" data-dir="up">▲</button><div></div><div></div><div></div>
+        <button class="mbtn" data-dir="left">◀</button><button class="mbtn" data-dir="down">▼</button><button id="dash-btn" class="mbtn">⚡</button><button id="punch-btn" class="mbtn">👊</button>
+        <div></div><button class="mbtn" data-dir="right">▶</button><div></div><div></div>
       </div>
     </div>
 
@@ -98,7 +99,7 @@ input{width:100%;background:rgba(255,255,255,.08);border:1px solid var(--border)
 <script>
 const WS_URL = `${location.protocol==='https:'?'wss':'ws'}://${location.host}/ws/sumo`;
 let ws=null,mySlot=-1,myCode='',myName='',state=null,pendingAction=null,lastPhase='';
-let keys={up:false,down:false,left:false,right:false},dashQueued=false,inputInt=null;
+let keys={up:false,down:false,left:false,right:false},dashQueued=false,punchQueued=false,inputInt=null;
 const $ = id => document.getElementById(id);
 function send(o){ if(ws&&ws.readyState===1) ws.send(JSON.stringify(o)); }
 function bindLoungeSender(){ if(window.ZapPlay)ZapPlay.setLoungeSender(text=>send({type:'lounge_chat',text})); else setTimeout(bindLoungeSender,120); }
@@ -201,9 +202,23 @@ function drawArena(){
   const colors=['#a78bfa','#22c55e','#f97316','#60a5fa'];
   (state.players||[]).forEach(p=>{
     const x=cx + Number(p.x||0)*1.25, y=cy + Number(p.y||0)*1.25;
+    const fx = Number(p.faceX||1), fy = Number(p.faceY||0);
+    const fmag = Math.hypot(fx,fy)||1;
+    const nx = fx/fmag, ny = fy/fmag;
     ctx.beginPath(); ctx.arc(x,y,pr,0,Math.PI*2);
     ctx.fillStyle=p.alive?(colors[p.slot%colors.length]||'#fff'):'rgba(148,163,184,.4)';
     ctx.fill(); ctx.lineWidth=2; ctx.strokeStyle='rgba(255,255,255,.9)'; ctx.stroke();
+    // mains: deux petites sphères orientées vers l'avant
+    const handDist = pr + (p.punching?11:6);
+    const sideX = -ny, sideY = nx;
+    const hx1 = x + nx*handDist + sideX*6;
+    const hy1 = y + ny*handDist + sideY*6;
+    const hx2 = x + nx*handDist - sideX*6;
+    const hy2 = y + ny*handDist - sideY*6;
+    ctx.beginPath(); ctx.arc(hx1,hy1,p.punching?6:4,0,Math.PI*2);
+    ctx.arc(hx2,hy2,p.punching?6:4,0,Math.PI*2);
+    ctx.fillStyle = p.punching ? 'rgba(254,205,211,.95)' : 'rgba(255,255,255,.8)';
+    ctx.fill();
     if(p.slot===mySlot){ ctx.beginPath(); ctx.arc(x,y,pr+4,0,Math.PI*2); ctx.strokeStyle='#fbbf24'; ctx.lineWidth=2; ctx.stroke(); }
     ctx.fillStyle='#fff'; ctx.font='12px Segoe UI'; ctx.textAlign='center'; ctx.fillText(String(p.name||''),x,y-pr-8);
   });
@@ -212,8 +227,9 @@ function drawArena(){
 function sendInput(){
   if(!state || state.phase!=='PLAYING') return;
   let x=(keys.right?1:0)-(keys.left?1:0), y=(keys.down?1:0)-(keys.up?1:0);
-  send({type:'sumo_input',x,y,dash:dashQueued});
+  send({type:'sumo_input',x,y,dash:dashQueued,punch:punchQueued});
   dashQueued=false;
+  punchQueued=false;
 }
 function ensureInputLoop(){ if(inputInt)return; inputInt=setInterval(sendInput,60); }
 function onKey(e,down){
@@ -223,6 +239,7 @@ function onKey(e,down){
   if(k==='arrowleft'||k==='q'||k==='a')keys.left=down;
   if(k==='arrowright'||k==='d')keys.right=down;
   if(down && (k===' '||k==='shift')) dashQueued=true;
+  if(down && (k==='f'||k==='enter')) punchQueued=true;
 }
 window.addEventListener('keydown',e=>onKey(e,true));
 window.addEventListener('keyup',e=>onKey(e,false));
@@ -236,6 +253,7 @@ document.querySelectorAll('[data-dir]').forEach(btn=>{
   btn.addEventListener('mousedown',on); btn.addEventListener('mouseup',off); btn.addEventListener('mouseleave',off);
 });
 $('dash-btn').addEventListener('click',()=>{dashQueued=true;});
+$('punch-btn').addEventListener('click',()=>{punchQueued=true;});
 
 const p=new URLSearchParams(location.search);
 if(p.get('name'))$('name').value=p.get('name');

@@ -2114,14 +2114,19 @@ wssBomb.on('connection', ws => {
 //  SUMO ARENA
 // ════════════════════════════════════════════════════════
 const sumoRooms = new Map();
-const SUMO_RING_R = 170;
-const SUMO_PLAYER_R = 16;
+const SUMO_RING_R = 164;
+const SUMO_PLAYER_R = 18;
 const SUMO_TICK_MS = 50;
-const SUMO_MAX_SPEED = 6.8;
-const SUMO_ACCEL = 0.75;
-const SUMO_FRICTION = 0.88;
-const SUMO_DASH_BOOST = 5.2;
+const SUMO_MAX_SPEED = 7.6;
+const SUMO_ACCEL = 0.95;
+const SUMO_FRICTION = 0.9;
+const SUMO_DASH_BOOST = 6.6;
 const SUMO_DASH_CD_MS = 1200;
+const SUMO_COLLISION_PUSH = 1.15;
+const SUMO_PUNCH_RANGE = 68;
+const SUMO_PUNCH_DOT = 0.42;
+const SUMO_PUNCH_FORCE = 7.2;
+const SUMO_PUNCH_CD_MS = 760;
 
 function makeSumoRoom(code, host){
   return {
@@ -2142,6 +2147,8 @@ function sumoResetPlayers(room){
     p.x=sp.x; p.y=sp.y; p.vx=0; p.vy=0;
     p.alive=true; p.lives=3; p.score=0;
     p.input={x:0,y:0}; p.dash=false; p.lastDashAt=0;
+    p.punch=false; p.lastPunchAt=0; p.punchUntil=0;
+    p.faceX=1; p.faceY=0;
   });
 }
 function sumoAlive(room){ return room.players.filter(p=>p.alive); }
@@ -2152,7 +2159,9 @@ function sumoSnap(room){
     winnerSlot:room.winnerSlot??-1, winnerName:room.winnerName||null,
     players:room.players.map(p=>({
       name:p.name, slot:p.slot, alive:p.alive, lives:p.lives, score:p.score,
-      x:Math.round((p.x||0)*10)/10, y:Math.round((p.y||0)*10)/10
+      x:Math.round((p.x||0)*10)/10, y:Math.round((p.y||0)*10)/10,
+      faceX:Math.round((p.faceX||0)*100)/100, faceY:Math.round((p.faceY||0)*100)/100,
+      punching: (p.punchUntil||0) > Date.now()
     }))
   };
 }
@@ -2193,12 +2202,39 @@ function sumoTick(room){
     const iy = Math.max(-1, Math.min(1, Number(p.input?.y||0)));
     p.vx = (p.vx||0) + ix*SUMO_ACCEL;
     p.vy = (p.vy||0) + iy*SUMO_ACCEL;
+    if(Math.hypot(ix,iy)>0.15){
+      const m=Math.hypot(ix,iy)||1;
+      p.faceX=ix/m; p.faceY=iy/m;
+    }else if(Math.hypot(p.vx||0,p.vy||0)>0.35){
+      const m=Math.hypot(p.vx||0,p.vy||0)||1;
+      p.faceX=(p.vx||0)/m; p.faceY=(p.vy||0)/m;
+    }
     if(p.dash && (now-(p.lastDashAt||0))>=SUMO_DASH_CD_MS){
       const mag = Math.hypot(ix,iy)||1;
       p.vx += (ix/mag)*SUMO_DASH_BOOST;
       p.vy += (iy/mag)*SUMO_DASH_BOOST;
       p.lastDashAt=now;
       p.dash=false;
+    }
+    if(p.punch && (now-(p.lastPunchAt||0))>=SUMO_PUNCH_CD_MS){
+      p.lastPunchAt = now;
+      p.punchUntil = now + 170;
+      room.players.forEach(t=>{
+        if(!t.alive || t===p) return;
+        const dx=(t.x||0)-(p.x||0), dy=(t.y||0)-(p.y||0);
+        const dist=Math.hypot(dx,dy)||0.0001;
+        if(dist > SUMO_PUNCH_RANGE) return;
+        const nx=dx/dist, ny=dy/dist;
+        const dot = nx*(p.faceX||1) + ny*(p.faceY||0);
+        if(dot < SUMO_PUNCH_DOT) return;
+        const force = SUMO_PUNCH_FORCE * Math.max(0.25, dot);
+        t.vx = (t.vx||0) + nx*force;
+        t.vy = (t.vy||0) + ny*force;
+        p.vx = (p.vx||0) - nx*1.1;
+        p.vy = (p.vy||0) - ny*1.1;
+        p.score = (p.score||0) + 1;
+      });
+      p.punch=false;
     }
     p.vx *= SUMO_FRICTION;
     p.vy *= SUMO_FRICTION;
@@ -2225,8 +2261,8 @@ function sumoTick(room){
         a.x -= nx*(overlap/2); a.y -= ny*(overlap/2);
         b.x += nx*(overlap/2); b.y += ny*(overlap/2);
         const avx=a.vx||0, avy=a.vy||0, bvx=b.vx||0, bvy=b.vy||0;
-        a.vx = avx - nx*0.6; a.vy = avy - ny*0.6;
-        b.vx = bvx + nx*0.6; b.vy = bvy + ny*0.6;
+        a.vx = avx - nx*SUMO_COLLISION_PUSH; a.vy = avy - ny*SUMO_COLLISION_PUSH;
+        b.vx = bvx + nx*SUMO_COLLISION_PUSH; b.vy = bvy + ny*SUMO_COLLISION_PUSH;
       }
     }
   }
@@ -2286,7 +2322,7 @@ wssSumo.on('connection', ws => {
         const name = String(d.name||'').trim().slice(0,20)||'Joueur';
         const code = genCode(sumoRooms);
         const room = makeSumoRoom(code,name);
-        room.players.push({ws,name,slot:0,alive:true,lives:3,score:0,x:0,y:0,vx:0,vy:0,input:{x:0,y:0},dash:false,lastDashAt:0});
+        room.players.push({ws,name,slot:0,alive:true,lives:3,score:0,x:0,y:0,vx:0,vy:0,input:{x:0,y:0},dash:false,lastDashAt:0,punch:false,lastPunchAt:0,punchUntil:0,faceX:1,faceY:0});
         sumoRooms.set(code,room);
         myRoom=room;
         wsend(ws,{type:'created_sumo',code,slot:0,name});
@@ -2302,7 +2338,7 @@ wssSumo.on('connection', ws => {
         if(room.phase!=='WAITING'){wsend(ws,{type:'error',msg:'La partie a déjà commencé.'});return;}
         const name = String(d.name||'').trim().slice(0,20)||'Joueur';
         const slot = room.players.length;
-        room.players.push({ws,name,slot,alive:true,lives:3,score:0,x:0,y:0,vx:0,vy:0,input:{x:0,y:0},dash:false,lastDashAt:0});
+        room.players.push({ws,name,slot,alive:true,lives:3,score:0,x:0,y:0,vx:0,vy:0,input:{x:0,y:0},dash:false,lastDashAt:0,punch:false,lastPunchAt:0,punchUntil:0,faceX:1,faceY:0});
         myRoom=room;
         wsend(ws,{type:'welcome_sumo',code,slot,name});
         sumoBcast(room);
@@ -2328,6 +2364,7 @@ wssSumo.on('connection', ws => {
           y: Math.max(-1,Math.min(1,Number(d.y||0)))
         };
         if(d.dash) player.dash = true;
+        if(d.punch) player.punch = true;
         break;
       }
       case 'restart_sumo': {
