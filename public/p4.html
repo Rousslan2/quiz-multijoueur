@@ -383,25 +383,17 @@
     <div id="status">En attente...</div>
     <div id="error-msg"></div>
 
-    <!-- WAITING -->
+    <!-- WAITING / READY -->
     <div id="waiting-screen" class="hidden">
       <div id="room-code-box" onclick="copyRoomCodeP4()" title="Cliquer pour copier"
         style="text-align:center;background:rgba(167,139,250,.1);border:2px solid rgba(167,139,250,.35);
-               border-radius:12px;padding:12px 20px;cursor:pointer;margin-bottom:10px">
+               border-radius:12px;padding:12px 20px;cursor:pointer">
         <div style="font-size:.68rem;color:#94a3b8;text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px">Code de la salle</div>
         <div id="p4-code-display" style="font-size:2.4rem;font-weight:800;letter-spacing:.2em;color:#a78bfa;font-family:monospace;line-height:1">----</div>
         <div id="p4-copy-hint" style="font-size:.68rem;color:#94a3b8;margin-top:4px">Cliquer pour copier</div>
       </div>
-      <div class="info-box">
-        <div class="label">Rejoins via cette adresse</div>
-        <div class="url" id="ip-url">chargement...</div>
-      </div>
-      <img id="qr-img" src="" alt="QR Code" onerror="this.style.display='none'">
-    </div>
-
-    <!-- READY -->
-    <div id="ready-screen" class="hidden">
-      <button class="btn btn-primary" id="start-btn" onclick="startGame()">Lancer la partie</button>
+      <div id="p4-wait-sub" style="color:var(--muted);font-size:.9rem;text-align:center">En attente d'un adversaire…</div>
+      <button class="btn btn-primary" id="start-btn" onclick="startGame()" style="display:none;max-width:260px">Lancer la partie !</button>
     </div>
 
     <!-- GAME OVER -->
@@ -495,6 +487,9 @@
       $('game-screen').style.display = 'flex';
     } else if (msg.type === 'welcome_p4') {
       mySlot = msg.slot; myRoomCode = msg.code||'';
+      $('p4-code-display').textContent = myRoomCode;
+      $('name-screen').style.display = 'none';
+      $('game-screen').style.display = 'flex';
     } else if (msg.type === 'p4_state') {
       renderState(msg);
     } else if (msg.type === 'player_left') {
@@ -536,30 +531,21 @@
 
     // Hide all sub-screens
     $('waiting-screen').classList.add('hidden');
-    $('ready-screen').classList.add('hidden');
     $('gameover-screen').classList.add('hidden');
     $('grid-area').classList.add('hidden');
 
-    if (phase === 'WAITING') {
-      if (mySlot === 0) {
-        $('waiting-screen').classList.remove('hidden'); loadWaitingInfo();
-        if (players.length >= 2) {
-          $('ready-screen').classList.remove('hidden');
-          $('start-btn').disabled = false;
-          $('status').textContent = 'Prêt à lancer !';
-        } else {
-          $('status').textContent = 'En attente d\'un adversaire...';
-        }
+    if (phase === 'WAITING' || phase === 'READY') {
+      $('waiting-screen').classList.remove('hidden');
+      const n = players.length;
+      const isP1 = mySlot === 0;
+      if (n >= 2) {
+        $('p4-wait-sub').textContent = players.map(p => p.name).join(' vs ');
+        $('start-btn').style.display = isP1 ? '' : 'none';
+        $('status').textContent = isP1 ? 'Lance quand tu es prêt !' : 'En attente que l\'hôte lance…';
       } else {
-        $('status').textContent = 'En attente que l\'hôte lance la partie...';
-      }
-    } else if (phase === 'READY') {
-      $('status').textContent = 'Prêt ! En attente du lancement...';
-      if (mySlot === 0) {
-        $('ready-screen').classList.remove('hidden');
-        $('start-btn').disabled = false;
-      } else {
-        $('status').textContent = 'Prêt ! En attente que l\'hôte lance la partie...';
+        $('p4-wait-sub').textContent = 'En attente d\'un adversaire…';
+        $('start-btn').style.display = 'none';
+        $('status').textContent = 'En attente d\'un adversaire…';
       }
     } else if (phase === 'PLAYING') {
       $('grid-area').classList.remove('hidden');
@@ -633,25 +619,6 @@
     }
   }
 
-  let waitingLoaded = false;
-  function loadWaitingInfo() {
-    if (waitingLoaded) return;
-    waitingLoaded = true;
-    fetch('/api/ip')
-      .then(r => r.text())
-      .then(ip => { $('ip-url').textContent = `http://${ip.trim()}`; })
-      .catch(() => { $('ip-url').textContent = 'indisponible'; });
-
-    fetch('/api/qr')
-      .then(r => r.blob())
-      .then(blob => {
-        const url = URL.createObjectURL(blob);
-        $('qr-img').src = url;
-        $('qr-img').style.display = '';
-      })
-      .catch(() => { $('qr-img').style.display = 'none'; });
-  }
-
   let pendingAction = null;
 
   function showJoinP4() {
@@ -707,7 +674,6 @@
   }
 
   function restartGame() {
-    waitingLoaded = false;
     send({ type: 'restart_p4' });
   }
 

@@ -110,9 +110,13 @@ input[type=text]::placeholder{color:var(--muted)}
 
 <!-- WAIT -->
 <div id="s-wait" class="screen">
-  <div style="font-size:.85rem;color:var(--muted);text-transform:uppercase;letter-spacing:.07em">Code de la salle</div>
-  <div id="wait-code">----</div>
-  <div id="wait-msg" style="color:var(--muted);font-size:.9rem">En attente des joueurs (4 min, 10 max)…</div>
+  <div style="font-size:.85rem;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;text-align:center">Code de la salle</div>
+  <div onclick="copyCode()" title="Cliquer pour copier"
+    style="background:rgba(167,139,250,.1);border:2px solid rgba(167,139,250,.35);border-radius:12px;padding:12px 20px;cursor:pointer;text-align:center">
+    <div id="wait-code" style="font-size:3rem;font-weight:800;letter-spacing:.18em;color:var(--primary);font-family:monospace">----</div>
+    <div id="wait-copy-hint" style="font-size:.7rem;color:var(--muted);margin-top:2px">Cliquer pour copier</div>
+  </div>
+  <div id="wait-msg" style="color:var(--muted);font-size:.9rem;text-align:center">En attente des joueurs (4 min, 10 max)…</div>
   <div id="wait-players"></div>
   <button id="start-btn" class="btn btn-primary" style="max-width:280px" onclick="doStart()">Démarrer la partie</button>
   <div id="wait-err" style="color:#fca5a5;font-size:.85rem;min-height:18px"></div>
@@ -199,6 +203,14 @@ function connect(onOpen) {
 }
 
 function send(obj) { if (ws && ws.readyState === 1) ws.send(JSON.stringify(obj)); }
+
+function copyCode() {
+  if (!myCode) return;
+  navigator.clipboard.writeText(myCode).then(() => {
+    const h = document.getElementById('wait-copy-hint');
+    if (h) { h.textContent = 'Copié !'; h.style.color = '#22c55e'; setTimeout(() => { h.textContent = 'Cliquer pour copier'; h.style.color = ''; }, 1500); }
+  }).catch(() => {});
+}
 
 function doCreate() {
   const name = document.getElementById('inp-name').value.trim();
