@@ -93,6 +93,23 @@ canvas{width:100%;height:100%;display:block;touch-action:none}
 .size-btn{width:32px;height:32px;border-radius:8px;border:2px solid var(--border);background:var(--card);cursor:pointer;display:flex;align-items:center;justify-content:center;touch-action:manipulation;transition:border-color .15s}
 .size-btn.active{border-color:var(--orange)}
 .size-dot{background:#000;border-radius:50%}
+.presets{display:flex;gap:5px}
+.preset-btn{
+  background:var(--card);border:2px solid var(--border);border-radius:8px;
+  padding:5px 8px;color:var(--text);font-size:.75rem;cursor:pointer;
+  touch-action:manipulation;transition:border-color .15s;white-space:nowrap
+}
+.preset-btn.active{border-color:var(--orange);color:#fff}
+#btn-fill{
+  background:rgba(34,197,94,.12);border:2px solid rgba(34,197,94,.28);border-radius:8px;
+  padding:5px 10px;color:#86efac;font-size:.78rem;cursor:pointer;touch-action:manipulation;
+  transition:border-color .15s,background .15s
+}
+#btn-fill.active{
+  border-color:#22c55e;
+  background:rgba(34,197,94,.22);
+  color:#dcfce7;
+}
 #btn-erase{background:var(--card);border:2px solid var(--border);border-radius:8px;padding:5px 10px;color:var(--text);font-size:.78rem;cursor:pointer;touch-action:manipulation;transition:border-color .15s}
 #btn-erase.active{border-color:#fff}
 #btn-clear{background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.3);border-radius:8px;padding:5px 10px;color:#fca5a5;font-size:.78rem;cursor:pointer;touch-action:manipulation}
@@ -184,7 +201,8 @@ canvas{width:100%;height:100%;display:block;touch-action:none}
 #toolbar::-webkit-scrollbar-thumb{background:rgba(255,255,255,.15);border-radius:3px}
 .colors{display:flex;gap:5px;flex-shrink:0}
 .sizes{display:flex;gap:5px;flex-shrink:0}
-#btn-erase,#btn-undo,#btn-hint,#btn-clear{flex-shrink:0;white-space:nowrap}
+.presets{display:flex;gap:5px;flex-shrink:0}
+#btn-fill,#btn-erase,#btn-undo,#btn-hint,#btn-clear,.preset-btn{flex-shrink:0;white-space:nowrap}
 
 /* Score delta pop */
 .score-delta{
@@ -331,6 +349,14 @@ canvas{width:100%;height:100%;display:block;touch-action:none}
       <button class="size-btn" data-size="8"><div class="size-dot" style="width:10px;height:10px"></div></button>
       <button class="size-btn" data-size="18"><div class="size-dot" style="width:18px;height:18px"></div></button>
     </div>
+    <div class="presets" id="preset-row">
+      <button class="preset-btn active" data-preset="free">✏️ Main</button>
+      <button class="preset-btn" data-preset="circle">◯ Rond</button>
+      <button class="preset-btn" data-preset="square">▢ Carré</button>
+      <button class="preset-btn" data-preset="triangle">△ Triangle</button>
+      <button class="preset-btn" data-preset="star">★ Étoile</button>
+    </div>
+    <button id="btn-fill" onclick="toggleFill()">Remplissage</button>
     <button id="btn-erase" onclick="toggleErase()">Gomme</button>
     <button id="btn-undo" onclick="doUndo()">&#8617; Annuler</button>
     <button id="btn-hint" onclick="doHint()">Indice (-1pt)</button>
@@ -599,6 +625,8 @@ let drawing = false;
 let currentColor = '#1a1a1a';
 let currentSize = 3;
 let erasing = false;
+let currentPreset = 'free';
+let presetFill = false;
 let lastX = 0, lastY = 0;
 let pendingPts = [], sendHandle = null;
 
@@ -645,6 +673,123 @@ function drawSegment(x1, y1, x2, y2, color, size, erase) {
   ctx.globalCompositeOperation = 'source-over';
 }
 
+function polylineToPts(points, color, size, erase) {
+  const pts = [];
+  for (let i = 0; i < points.length - 1; i++) {
+    pts.push({ x: points[i].x, y: points[i].y, x2: points[i+1].x, y2: points[i+1].y, c: color, s: size, e: erase });
+  }
+  if (pts.length) pts[0].start = 1;
+  return pts;
+}
+
+function polygonPoints(cx, cy, r, sides, rot = -Math.PI / 2) {
+  const pts = [];
+  for (let i = 0; i < sides; i++) {
+    const a = rot + i * (Math.PI * 2 / sides);
+    pts.push({ x: cx + Math.cos(a) * r, y: cy + Math.sin(a) * r });
+  }
+  pts.push(pts[0]);
+  return pts;
+}
+
+function starPoints(cx, cy, outerR, innerR, rot = -Math.PI / 2) {
+  const pts = [];
+  for (let i = 0; i < 10; i++) {
+    const isOuter = i % 2 === 0;
+    const r = isOuter ? outerR : innerR;
+    const a = rot + i * (Math.PI / 5);
+    pts.push({ x: cx + Math.cos(a) * r, y: cy + Math.sin(a) * r });
+  }
+  pts.push(pts[0]);
+  return pts;
+}
+
+function fillPolygonToPts(points, color, size, erase) {
+  const clean = points.slice(0, -1);
+  if (clean.length < 3) return [];
+  let minY = Infinity, maxY = -Infinity;
+  clean.forEach(p => { if (p.y < minY) minY = p.y; if (p.y > maxY) maxY = p.y; });
+  const gap = Math.max(1.6, size * 0.8);
+  const segs = [];
+  for (let y = minY; y <= maxY; y += gap) {
+    const xs = [];
+    for (let i = 0; i < clean.length; i++) {
+      const a = clean[i];
+      const b = clean[(i + 1) % clean.length];
+      const yMin = Math.min(a.y, b.y);
+      const yMax = Math.max(a.y, b.y);
+      if (y >= yMin && y < yMax && a.y !== b.y) {
+        const t = (y - a.y) / (b.y - a.y);
+        xs.push(a.x + t * (b.x - a.x));
+      }
+    }
+    xs.sort((u, v) => u - v);
+    for (let i = 0; i + 1 < xs.length; i += 2) {
+      segs.push({ x: xs[i], y, x2: xs[i + 1], y2: y, c: color, s: size, e: erase });
+    }
+  }
+  if (segs.length) segs[0].start = 1;
+  return segs;
+}
+
+function buildPresetStroke(preset, x, y, baseSize, color, erase, fill) {
+  const line = Math.max(2, baseSize);
+  const r = 10 + baseSize * 1.8;
+  if (preset === 'circle') {
+    const points = [];
+    const seg = 24;
+    for (let i = 0; i <= seg; i++) {
+      const a = -Math.PI / 2 + i * (Math.PI * 2 / seg);
+      points.push({ x: x + Math.cos(a) * r, y: y + Math.sin(a) * r });
+    }
+    if (fill) return fillPolygonToPts(points, color, Math.max(2, line * 0.7), erase);
+    return polylineToPts(points, color, line, erase);
+  }
+  if (preset === 'square') {
+    const points = [
+      { x: x - r, y: y - r }, { x: x + r, y: y - r },
+      { x: x + r, y: y + r }, { x: x - r, y: y + r },
+      { x: x - r, y: y - r }
+    ];
+    if (fill) return fillPolygonToPts(points, color, Math.max(2, line * 0.7), erase);
+    return polylineToPts(points, color, line, erase);
+  }
+  if (preset === 'triangle') {
+    const points = polygonPoints(x, y, r * 1.15, 3);
+    if (fill) return fillPolygonToPts(points, color, Math.max(2, line * 0.7), erase);
+    return polylineToPts(points, color, line, erase);
+  }
+  if (preset === 'star') {
+    const points = starPoints(x, y, r, r * 0.45);
+    if (fill) return fillPolygonToPts(points, color, Math.max(2, line * 0.65), erase);
+    return polylineToPts(points, color, line, erase);
+  }
+  return [];
+}
+
+function stampPreset(x, y) {
+  const color = erasing ? '#fff' : currentColor;
+  const pts = buildPresetStroke(currentPreset, x, y, currentSize, color, erasing, presetFill);
+  if (!pts.length) return;
+  applyPts(pts);
+  send({ type: 'draw_pts', pts });
+}
+
+function setPreset(preset) {
+  currentPreset = preset;
+  document.querySelectorAll('.preset-btn').forEach(b => b.classList.toggle('active', b.dataset.preset === preset));
+  if (preset !== 'free' && erasing) {
+    erasing = false;
+    document.getElementById('btn-erase').classList.remove('active');
+  }
+}
+
+function toggleFill() {
+  presetFill = !presetFill;
+  const btn = document.getElementById('btn-fill');
+  if (btn) btn.classList.toggle('active', presetFill);
+}
+
 function flushPts() {
   if (pendingPts.length) {
     send({ type: 'draw_pts', pts: pendingPts });
@@ -660,9 +805,13 @@ function scheduleSend() {
 canvas.addEventListener('pointerdown', e => {
   if (!isDrawer) return;
   e.preventDefault();
+  const { x, y } = getPos(e);
+  if (currentPreset !== 'free') {
+    stampPreset(x, y);
+    return;
+  }
   canvas.setPointerCapture(e.pointerId);
   drawing = true;
-  const { x, y } = getPos(e);
   lastX = x; lastY = y;
   pendingPts.push({ x, y, x2: x, y2: y, c: erasing ? '#fff' : currentColor, s: currentSize, e: erasing, start: 1 });
   scheduleSend();
@@ -700,9 +849,16 @@ document.getElementById('size-row').addEventListener('click', e => {
   currentSize = Number(btn.dataset.size);
 });
 
+document.getElementById('preset-row').addEventListener('click', e => {
+  const btn = e.target.closest('.preset-btn');
+  if (!btn) return;
+  setPreset(btn.dataset.preset || 'free');
+});
+
 function toggleErase() {
   erasing = !erasing;
   document.getElementById('btn-erase').classList.toggle('active', erasing);
+  if (erasing) setPreset('free');
 }
 
 // ── Receive drawing ───────────────────────────────────────────────────────────
