@@ -194,6 +194,26 @@ function getStats(){
   return{pseudo,wins,losses,games,byGame};
 }
 
+function getProfileData(){
+  const history=getHistory();
+  const stats=getStats();
+  const pseudo=stats.pseudo||'Joueur';
+  const recent=history[0]||null;
+  const topGames=Object.entries(stats.byGame)
+    .map(([id,v])=>({id,...v,rate:v.played?Math.round(v.wins/v.played*100):0}))
+    .sort((a,b)=>b.wins-a.wins||b.rate-a.rate);
+  const best=topGames[0]||null;
+  return{pseudo,recent,best,stats};
+}
+
+function initials(name){
+  const n=String(name||'').trim();
+  if(!n)return'JP';
+  const parts=n.split(/\s+/).filter(Boolean);
+  if(parts.length===1)return parts[0].slice(0,2).toUpperCase();
+  return (parts[0][0]+parts[1][0]).toUpperCase();
+}
+
 function renderHistoryWidget(containerId){
   const container=document.getElementById(containerId);
   if(!container)return;
@@ -211,6 +231,9 @@ function renderHistoryWidget(containerId){
 
   const gameIcons={quiz:'⚡',draw:'✏️',p4:'🟠',morpion:'✖️',taboo:'🚫',emoji:'🌟',verite:'❤️',loup:'🐺',uno:'🃏'};
   const winRate=stats.games?Math.round(stats.wins/stats.games*100):0;
+  const profile=getProfileData();
+  const recentResult=profile.recent?`${profile.recent.isWinner?'Victoire':'Défaite'} · ${profile.recent.gameName||profile.recent.game}`:'Aucune partie';
+  const bestGame=profile.best?`${gameIcons[profile.best.id]||'🎮'} ${profile.best.name||profile.best.id}`:'-';
   const topGames=Object.entries(stats.byGame)
     .map(([id,v])=>({id,...v,rate:v.played?Math.round(v.wins/v.played*100):0}))
     .sort((a,b)=>b.wins-a.wins||b.rate-a.rate)
@@ -222,6 +245,19 @@ function renderHistoryWidget(containerId){
   }
 
   let html=`
+    <div style="display:flex;align-items:center;gap:12px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:12px;margin-bottom:12px">
+      <div style="width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,#a78bfa,#7c3aed);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800">
+        ${initials(profile.pseudo)}
+      </div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:.92rem;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${profile.pseudo}</div>
+        <div style="font-size:.72rem;color:#94a3b8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Dernier résultat: ${recentResult}</div>
+      </div>
+      <div style="text-align:right;flex-shrink:0">
+        <div style="font-size:.68rem;color:#64748b;text-transform:uppercase;letter-spacing:.04em">Meilleur jeu</div>
+        <div style="font-size:.78rem;font-weight:700">${bestGame}</div>
+      </div>
+    </div>
     <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap">
       <div style="flex:1;min-width:80px;background:rgba(167,139,250,.1);border:1px solid rgba(167,139,250,.25);border-radius:12px;padding:12px;text-align:center">
         <div style="font-size:1.6rem;font-weight:800;color:#a78bfa">${stats.games}</div>
