@@ -276,9 +276,6 @@
         <div id="verite-code-display" style="font-size:2.2rem;font-weight:800;letter-spacing:.2em;color:#a78bfa;font-family:monospace;line-height:1">----</div>
         <div id="verite-copy-hint" style="font-size:.65rem;color:#94a3b8;margin-top:3px">Cliquer pour copier</div>
       </div>
-      <p>Partage ce lien à ton adversaire</p>
-      <div class="qr-box"><canvas id="qr-canvas"></canvas></div>
-      <div id="url-display"></div>
     </div>
   </div>
 
@@ -474,7 +471,6 @@ function renderState() {
         ? players.map(p => p.name).join(' · ') : 'En attente de joueurs...';
       toggleEl('start-btn', mySlot === 0 && players.length >= 2);
       toggleEl('ready-wait', mySlot !== 0 || players.length < 2);
-      if (mySlot === 0 && players.length < 2) renderQR();
       break;
 
     case 'READY':
@@ -554,18 +550,6 @@ function renderState() {
 }
 
 /* ─── QR ─────────────────────────────────────────────── */
-function renderQR() {
-  const url = location.href;
-  document.getElementById('url-display').textContent = url;
-  const canvas = document.getElementById('qr-canvas');
-  const img = new Image();
-  img.crossOrigin = 'anonymous';
-  img.onload = () => {
-    canvas.width = img.width; canvas.height = img.height;
-    canvas.getContext('2d').drawImage(img, 0, 0);
-  };
-  img.src = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(url)}`;
-}
 
 /* ─── Helpers ────────────────────────────────────────── */
 function showScreen(id) {

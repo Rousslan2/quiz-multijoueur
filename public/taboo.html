@@ -318,9 +318,7 @@
         <div id="taboo-code-display" style="font-size:2.2rem;font-weight:800;letter-spacing:.2em;color:#a78bfa;font-family:monospace;line-height:1">----</div>
         <div id="taboo-copy-hint" style="font-size:.65rem;color:#94a3b8;margin-top:3px">Cliquer pour copier</div>
       </div>
-      <p>Partage ce lien à ton adversaire</p>
-      <div class="qr-box"><canvas id="qr-canvas"></canvas></div>
-      <div id="url-display"></div>
+      <p>Partage le code à tes amis</p>
     </div>
   </div>
 
@@ -531,7 +529,6 @@ function renderState() {
       if (mySlot === 0 && players.length < 2) {
         // Host alone — stay on waiting screen so room code is visible
         showScreen('screen-waiting');
-        renderQR();
       } else {
         showScreen('screen-ready');
         document.getElementById('ready-players').textContent = players.length >= 2
@@ -661,21 +658,6 @@ function stopTimer() {
   }
 }
 
-/* ─── QR Code ────────────────────────────────────────── */
-function renderQR() {
-  const url = location.href;
-  document.getElementById('url-display').textContent = url;
-  // Simple QR via Google Charts API
-  const canvas = document.getElementById('qr-canvas');
-  const img = new Image();
-  img.crossOrigin = 'anonymous';
-  const enc = encodeURIComponent(url);
-  img.onload = () => {
-    canvas.width = img.width; canvas.height = img.height;
-    canvas.getContext('2d').drawImage(img, 0, 0);
-  };
-  img.src = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${enc}`;
-}
 
 /* ─── Screen management ──────────────────────────────── */
 function showScreen(id) {

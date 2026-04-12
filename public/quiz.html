@@ -30,9 +30,6 @@ input[type=text]::placeholder{color:var(--muted)}
 #err{color:#fca5a5;font-size:.85rem;text-align:center;min-height:18px}
 /* Wait */
 #s-wait{justify-content:center;align-items:center;gap:18px;text-align:center}
-#qr-box{width:160px;height:160px;background:var(--card);border:1px solid var(--border);border-radius:var(--r);display:flex;align-items:center;justify-content:center;overflow:hidden}
-#qr-box svg{width:100%;height:100%}
-#qr-url{font-size:.8rem;color:var(--muted);margin-top:-10px;font-family:monospace}
 #wait-msg h2{font-size:1.2rem;font-weight:700}
 #wait-msg p{color:var(--muted);margin-top:6px;font-size:.9rem}
 /* Setup */
@@ -168,9 +165,7 @@ input[type=text]::placeholder{color:var(--muted)}
     </div>
     <div id="copy-hint-quiz" style="font-size:.72rem;color:var(--muted);margin-top:6px">Cliquer pour copier</div>
   </div>
-  <div id="qr-box"><span style="color:var(--muted);font-size:.75rem">chargement...</span></div>
-  <div id="qr-url"></div>
-  <div id="wait-msg"><h2 id="wait-title">En attente...</h2><p>En attente de joueurs (1-4)</p><p style="color:var(--muted);font-size:.85rem" id="wait-count">1 joueur connecté</p></div>
+  <div id="wait-msg"><h2 id="wait-title">En attente...</h2><p id="wait-count" style="color:var(--muted);font-size:.9rem">1 joueur connecté</p></div>
 </div>
 
 <!-- SETUP -->
@@ -433,11 +428,6 @@ function addCustomQ(){const text=document.getElementById('cq-text').value.trim()
 function removeCustomQ(i){customQuestions.splice(i,1);renderCustomList();}
 function renderCustomList(){document.getElementById('custom-list').innerHTML=customQuestions.map((q,i)=>`<div class="cq-item"><span>${q.text}</span><button class="cq-del" onclick="removeCustomQ(${i})">✕</button></div>`).join('');}
 
-// ── QR / IP ───────────────────────────────────────────────────────────────────
-async function loadQR(){
-  try{const r=await fetch('/api/qr');if(!r.ok)throw 0;document.getElementById('qr-box').innerHTML=await r.text();}catch{document.getElementById('qr-box').innerHTML='<span style="color:var(--muted);font-size:.7rem">QR indispo</span>';}
-  try{const r=await fetch('/api/ip');const d=await r.json();document.getElementById('qr-url').textContent=`http://${d.ip}:${d.port}/quiz.html`;}catch{}
-}
 
 // ── Countdown ─────────────────────────────────────────────────────────────────
 function showCountdown(n){const el=document.getElementById('cdown');const num=document.getElementById('cnum');el.style.display='flex';let c=n;function tick(){if(c<=0){el.style.display='none';SND.start();return;}num.textContent=c--;SND.count();setTimeout(tick,1000);}tick();}
@@ -476,7 +466,7 @@ function handle(msg){
     case 'created_quiz':
       mySlot=msg.slot;myCode=msg.code;
       document.getElementById('room-code-display').textContent=msg.code;
-      show('s-wait');loadQR();
+      show('s-wait');
       break;
     case 'welcome_quiz': mySlot=msg.slot;myCode=msg.code||''; break;
     case 'error': showErr(msg.msg); break;
@@ -513,7 +503,7 @@ function renderScoreboard(st){
 function render(st){
   const me=st.players.find(p=>p.slot===mySlot);
   if(st.phase==='WAITING'){
-    show('s-wait');loadQR();
+    show('s-wait');
     const c=st.players.length;
     document.getElementById('wait-count').textContent=c+' joueur'+(c>1?'s':'')+' connecté'+(c>1?'s':'');
     return;
