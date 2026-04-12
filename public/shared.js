@@ -92,7 +92,7 @@ function injectLoader(){
   document.body.prepend(loader);
 }
 
-const MIN_LOADER_MS=3000;
+const MIN_LOADER_MS=1500;
 let loaderShownAt=0;
 
 function hideLoader(){
