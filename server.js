@@ -1133,6 +1133,48 @@ const EMOJI_PUZZLES=[
 ];
 
 function emojiNorm(s){return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();}
+function emojiLoose(s){
+  return emojiNorm(s)
+    .replace(/[’'`´-]/g,'')
+    .replace(/\s+/g,'')
+    .replace(/[^a-z0-9]/g,'');
+}
+function levenshtein(a,b){
+  const m=a.length,n=b.length;
+  if(!m)return n;
+  if(!n)return m;
+  const dp=Array.from({length:m+1},()=>Array(n+1).fill(0));
+  for(let i=0;i<=m;i++)dp[i][0]=i;
+  for(let j=0;j<=n;j++)dp[0][j]=j;
+  for(let i=1;i<=m;i++){
+    for(let j=1;j<=n;j++){
+      const cost=a[i-1]===b[j-1]?0:1;
+      dp[i][j]=Math.min(
+        dp[i-1][j]+1,
+        dp[i][j-1]+1,
+        dp[i-1][j-1]+cost
+      );
+    }
+  }
+  return dp[m][n];
+}
+function emojiIsCorrect(guess, answer){
+  const g=emojiLoose(guess);
+  const a=emojiLoose(answer);
+  if(!g||!a)return false;
+  if(g===a)return true;
+  const maxLen=Math.max(g.length,a.length);
+  const lenDiff=Math.abs(g.length-a.length);
+  if(maxLen>=8){
+    if(lenDiff>2)return false;
+    return levenshtein(g,a)<=2;
+  }
+  if(maxLen>=5){
+    if(lenDiff>1)return false;
+    return levenshtein(g,a)<=1;
+  }
+  return false;
+}
 
 const emojiRooms = new Map();
 
@@ -1245,7 +1287,7 @@ wssEmoji.on('connection',ws=>{
         if(myRoom.answeredSlots.has(player.slot))return; // already answered
         const text=String(d.text||'').trim();if(!text)return;
         const p=myRoom.puzzles[myRoom.qIndex];
-        const correct=emojiNorm(text)===emojiNorm(p.answer);
+        const correct=emojiIsCorrect(text,p.answer);
         if(correct){
           myRoom.answeredSlots.add(player.slot);
           const now=Date.now();
