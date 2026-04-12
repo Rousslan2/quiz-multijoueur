@@ -196,9 +196,15 @@ canvas{width:100%;height:100%;display:block;touch-action:none}
 }
 
 /* Toolbar scrollable on mobile */
-#toolbar{display:flex;align-items:center;gap:8px;padding:6px 0;overflow-x:auto;flex-wrap:nowrap;-webkit-overflow-scrolling:touch}
-#toolbar::-webkit-scrollbar{height:3px}
-#toolbar::-webkit-scrollbar-thumb{background:rgba(255,255,255,.15);border-radius:3px}
+#toolbar{
+  display:flex;align-items:center;gap:8px;padding:6px 0 12px;
+  overflow-x:auto;flex-wrap:nowrap;-webkit-overflow-scrolling:touch;
+  scrollbar-width:auto;
+  scrollbar-color:rgba(167,139,250,.7) rgba(255,255,255,.12);
+}
+#toolbar::-webkit-scrollbar{height:9px}
+#toolbar::-webkit-scrollbar-track{background:rgba(255,255,255,.12);border-radius:999px}
+#toolbar::-webkit-scrollbar-thumb{background:rgba(167,139,250,.7);border-radius:999px}
 .colors{display:flex;gap:5px;flex-shrink:0}
 .sizes{display:flex;gap:5px;flex-shrink:0}
 .presets{display:flex;gap:5px;flex-shrink:0}
@@ -629,6 +635,10 @@ let currentPreset = 'free';
 let presetFill = false;
 let lastX = 0, lastY = 0;
 let pendingPts = [], sendHandle = null;
+let presetDragging = false;
+let presetPointerId = null;
+let presetStartX = 0, presetStartY = 0;
+let presetPreviewSnapshot = null;
 
 function resizeCanvas() {
   const wrap = document.getElementById('canvas-wrap');
@@ -709,7 +719,8 @@ function fillPolygonToPts(points, color, size, erase) {
   if (clean.length < 3) return [];
   let minY = Infinity, maxY = -Infinity;
   clean.forEach(p => { if (p.y < minY) minY = p.y; if (p.y > maxY) maxY = p.y; });
-  const gap = Math.max(1.6, size * 0.8);
+  // Dense scanlines to make fill look truly solid
+  const gap = Math.max(0.9, size * 0.3);
   const segs = [];
   for (let y = minY; y <= maxY; y += gap) {
     const xs = [];
@@ -732,9 +743,9 @@ function fillPolygonToPts(points, color, size, erase) {
   return segs;
 }
 
-function buildPresetStroke(preset, x, y, baseSize, color, erase, fill) {
+function buildPresetStroke(preset, x, y, baseSize, color, erase, fill, customRadius = null) {
   const line = Math.max(2, baseSize);
-  const r = 10 + baseSize * 1.8;
+  const r = customRadius !== null ? customRadius : (10 + baseSize * 1.8);
   if (preset === 'circle') {
     const points = [];
     const seg = 24;
@@ -742,7 +753,11 @@ function buildPresetStroke(preset, x, y, baseSize, color, erase, fill) {
       const a = -Math.PI / 2 + i * (Math.PI * 2 / seg);
       points.push({ x: x + Math.cos(a) * r, y: y + Math.sin(a) * r });
     }
-    if (fill) return fillPolygonToPts(points, color, Math.max(2, line * 0.7), erase);
+    if (fill) {
+      const fillPts = fillPolygonToPts(points, color, Math.max(2, line), erase);
+      const outlinePts = polylineToPts(points, color, line, erase);
+      return [...fillPts, ...outlinePts];
+    }
     return polylineToPts(points, color, line, erase);
   }
   if (preset === 'square') {
@@ -751,25 +766,49 @@ function buildPresetStroke(preset, x, y, baseSize, color, erase, fill) {
       { x: x + r, y: y + r }, { x: x - r, y: y + r },
       { x: x - r, y: y - r }
     ];
-    if (fill) return fillPolygonToPts(points, color, Math.max(2, line * 0.7), erase);
+    if (fill) {
+      const fillPts = fillPolygonToPts(points, color, Math.max(2, line), erase);
+      const outlinePts = polylineToPts(points, color, line, erase);
+      return [...fillPts, ...outlinePts];
+    }
     return polylineToPts(points, color, line, erase);
   }
   if (preset === 'triangle') {
     const points = polygonPoints(x, y, r * 1.15, 3);
-    if (fill) return fillPolygonToPts(points, color, Math.max(2, line * 0.7), erase);
+    if (fill) {
+      const fillPts = fillPolygonToPts(points, color, Math.max(2, line), erase);
+      const outlinePts = polylineToPts(points, color, line, erase);
+      return [...fillPts, ...outlinePts];
+    }
     return polylineToPts(points, color, line, erase);
   }
   if (preset === 'star') {
     const points = starPoints(x, y, r, r * 0.45);
-    if (fill) return fillPolygonToPts(points, color, Math.max(2, line * 0.65), erase);
+    if (fill) {
+      const fillPts = fillPolygonToPts(points, color, Math.max(2, line), erase);
+      const outlinePts = polylineToPts(points, color, line, erase);
+      return [...fillPts, ...outlinePts];
+    }
     return polylineToPts(points, color, line, erase);
   }
   return [];
 }
 
-function stampPreset(x, y) {
+function getPresetRadius(fromX, fromY, toX, toY) {
+  const d = Math.hypot(toX - fromX, toY - fromY);
+  const minR = 8 + currentSize;
+  const maxR = Math.min(canvas.width, canvas.height) * 0.28;
+  return Math.max(minR, Math.min(maxR, d || minR));
+}
+
+function getPresetPts(centerX, centerY, radius = null) {
   const color = erasing ? '#fff' : currentColor;
-  const pts = buildPresetStroke(currentPreset, x, y, currentSize, color, erasing, presetFill);
+  const pts = buildPresetStroke(currentPreset, centerX, centerY, currentSize, color, erasing, presetFill, radius);
+  return pts;
+}
+
+function stampPreset(x, y, radius = null) {
+  const pts = getPresetPts(x, y, radius);
   if (!pts.length) return;
   applyPts(pts);
   send({ type: 'draw_pts', pts });
@@ -807,7 +846,18 @@ canvas.addEventListener('pointerdown', e => {
   e.preventDefault();
   const { x, y } = getPos(e);
   if (currentPreset !== 'free') {
-    stampPreset(x, y);
+    presetDragging = true;
+    presetPointerId = e.pointerId;
+    presetStartX = x;
+    presetStartY = y;
+    try {
+      presetPreviewSnapshot = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    } catch {
+      presetPreviewSnapshot = null;
+    }
+    canvas.setPointerCapture(e.pointerId);
+    const previewPts = getPresetPts(x, y);
+    if (previewPts.length) applyPts(previewPts);
     return;
   }
   canvas.setPointerCapture(e.pointerId);
@@ -818,6 +868,15 @@ canvas.addEventListener('pointerdown', e => {
 });
 
 canvas.addEventListener('pointermove', e => {
+  if (presetDragging && currentPreset !== 'free' && e.pointerId === presetPointerId) {
+    e.preventDefault();
+    const { x, y } = getPos(e);
+    const r = getPresetRadius(presetStartX, presetStartY, x, y);
+    if (presetPreviewSnapshot) ctx.putImageData(presetPreviewSnapshot, 0, 0);
+    const pts = getPresetPts(presetStartX, presetStartY, r);
+    if (pts.length) applyPts(pts);
+    return;
+  }
   if (!isDrawer || !drawing) return;
   e.preventDefault();
   const { x, y } = getPos(e);
@@ -827,8 +886,30 @@ canvas.addEventListener('pointermove', e => {
   scheduleSend();
 });
 
-canvas.addEventListener('pointerup', () => { drawing = false; flushPts(); });
-canvas.addEventListener('pointercancel', () => { drawing = false; });
+canvas.addEventListener('pointerup', e => {
+  if (presetDragging && e.pointerId === presetPointerId) {
+    const { x, y } = getPos(e);
+    const r = getPresetRadius(presetStartX, presetStartY, x, y);
+    if (presetPreviewSnapshot) ctx.putImageData(presetPreviewSnapshot, 0, 0);
+    stampPreset(presetStartX, presetStartY, r);
+    presetDragging = false;
+    presetPointerId = null;
+    presetPreviewSnapshot = null;
+    return;
+  }
+  drawing = false;
+  flushPts();
+});
+canvas.addEventListener('pointercancel', e => {
+  if (presetDragging && e.pointerId === presetPointerId) {
+    if (presetPreviewSnapshot) ctx.putImageData(presetPreviewSnapshot, 0, 0);
+    presetDragging = false;
+    presetPointerId = null;
+    presetPreviewSnapshot = null;
+    return;
+  }
+  drawing = false;
+});
 
 // ── Toolbar ───────────────────────────────────────────────────────────────────
 document.getElementById('color-row').addEventListener('click', e => {
