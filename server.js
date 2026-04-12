@@ -1888,12 +1888,12 @@ wssUno.on('connection', ws => {
 //  WORD BOMB
 // ════════════════════════════════════════════════════════
 const bombRooms = new Map();
-const BOMB_SYLLABLES = [
+const BOMB_SYLLABLES_EASY = [
   'an','on','ou','in','re','ra','ro','ta','te','to','ma','me','mi','mo',
   'la','le','li','lo','cha','che','chi','cho','tra','tri','tro','pro','pre',
-  'bra','ble','bar','bel','ver','vou','jeu','air','eur','son','sur','mont',
-  'tion','ment','ette','able','eur','ique'
+  'bra','ble','bar','bel','ver','vou','jeu','air','eur','son','sur','mont'
 ];
+const BOMB_SYLLABLES_HARD = ['tion','ment','ette','able','ique','eur','isme','oire','ence','ance','eau'];
 
 function bombNorm(s){
   return String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
@@ -1918,7 +1918,7 @@ function makeBombRoom(code, host){
   return {
     code, host, players:[], phase:'WAITING',
     turn:0, syllable:'', used:new Set(), recentWords:[],
-    timer:null, turnEndsAt:0, turnMs:12000
+    timer:null, turnEndsAt:0, turnMs:12000, successfulWords:0
   };
 }
 function bombLivePlayers(room){ return room.players.filter(p=>p.alive); }
@@ -1945,8 +1945,22 @@ function bombSnap(room){
 function bombBcast(room, extra={}){
   bcast(room.players, {...bombSnap(room), ...extra});
 }
-function bombPickSyllable(){
-  return BOMB_SYLLABLES[Math.floor(Math.random()*BOMB_SYLLABLES.length)];
+function bombCurrentTurnMs(room){
+  const solved = Number(room?.successfulWords||0);
+  const alive = bombLivePlayers(room).length;
+  const steps = Math.floor(solved / 2);
+  let ms = 12000 - (steps * 800);
+  if(alive<=2) ms = Math.min(ms, 6000);
+  return Math.max(5500, ms);
+}
+function bombPickSyllable(room){
+  const solved = Number(room?.successfulWords||0);
+  const easyWeight = solved < 6 ? 3 : (solved < 12 ? 2 : 1);
+  const hardWeight = solved < 6 ? 1 : (solved < 12 ? 2 : 3);
+  const pool = [];
+  for(let i=0;i<easyWeight;i++) pool.push(...BOMB_SYLLABLES_EASY);
+  for(let i=0;i<hardWeight;i++) pool.push(...BOMB_SYLLABLES_HARD);
+  return pool[Math.floor(Math.random()*pool.length)];
 }
 function bombCheckGameOver(room){
   const alive = bombLivePlayers(room);
@@ -1963,7 +1977,8 @@ function bombCheckGameOver(room){
 function bombStartTurn(room){
   if(room.phase!=='PLAYING')return;
   if(bombCheckGameOver(room))return;
-  room.syllable = bombPickSyllable();
+  room.turnMs = bombCurrentTurnMs(room);
+  room.syllable = bombPickSyllable(room);
   room.turnEndsAt = Date.now() + room.turnMs;
   clearTimeout(room.timer);
   room.timer = setTimeout(()=>bombTimeout(room), room.turnMs);
@@ -2045,7 +2060,7 @@ wssBomb.on('connection', ws => {
         if(!myRoom||!player||player.slot!==0||myRoom.phase!=='WAITING')return;
         if(myRoom.players.length<2){wsend(ws,{type:'error',msg:'Il faut au moins 2 joueurs.'});return;}
         myRoom.players.forEach(p=>{p.lives=3;p.score=0;p.alive=true;});
-        myRoom.used.clear(); myRoom.recentWords=[]; myRoom.turn=0;
+        myRoom.used.clear(); myRoom.recentWords=[]; myRoom.turn=0; myRoom.successfulWords=0; myRoom.turnMs=12000;
         myRoom.phase='COUNTDOWN';
         bcast(myRoom.players,{type:'countdown',seconds:3});
         clearTimeout(myRoom.timer);
@@ -2073,6 +2088,7 @@ wssBomb.on('connection', ws => {
         myRoom.used.add(norm);
         myRoom.recentWords.push({name:player.name,word:rawWord});
         if(myRoom.recentWords.length>16) myRoom.recentWords.shift();
+        myRoom.successfulWords = (myRoom.successfulWords||0) + 1;
         player.score=(player.score||0)+1;
         myRoom.turn = bombNextAliveSlot(myRoom, player.slot);
         bombStartTurn(myRoom);
@@ -2082,6 +2098,7 @@ wssBomb.on('connection', ws => {
         if(!myRoom||!player||myRoom.phase!=='GAME_OVER')return;
         myRoom.phase='WAITING';
         myRoom.used.clear(); myRoom.recentWords=[]; myRoom.syllable=''; myRoom.turn=0; myRoom.turnEndsAt=0;
+        myRoom.successfulWords=0; myRoom.turnMs=12000;
         myRoom.players.forEach(p=>{p.lives=3;p.score=0;p.alive=true;});
         clearTimeout(myRoom.timer);
         bombBcast(myRoom);
