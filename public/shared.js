@@ -129,20 +129,29 @@ function getHistory(){
   catch{return[];}
 }
 
-function saveGameResult(data){
+function buildResultSignature(data){
   const players=(data.players||[]).join('|');
-  const signature=[data.game||'?',data.winner||'?',data.myName||getSavedPseudo(),data.myScore??0,players].join('::');
+  return [data.game||'?',data.winner||'?',data.myName||getSavedPseudo(),data.myScore??0,players].join('::');
+}
+
+function saveGameResult(data){
+  const signature=buildResultSignature(data);
   const now=Date.now();
   if(signature===lastResultSignature && (now-lastResultSavedAt)<RESULT_DEDUP_WINDOW_MS){
     return;
   }
+  const history=getHistory();
+  const first=history[0];
+  if(first && first.signature===signature && (now-(first.date||0))<RESULT_DEDUP_WINDOW_MS){
+    return;
+  }
   lastResultSignature=signature;
   lastResultSavedAt=now;
-  const history=getHistory();
   history.unshift({
     game:data.game||'?',
     gameName:data.gameName||data.game||'?',
     date:now,
+    signature,
     players:data.players||[],
     winner:data.winner||null,
     myName:data.myName||getSavedPseudo(),
@@ -152,6 +161,10 @@ function saveGameResult(data){
   });
   if(history.length>MAX_HISTORY)history.length=MAX_HISTORY;
   localStorage.setItem(STORAGE_KEY_HISTORY,JSON.stringify(history));
+}
+
+function clearHistory(){
+  localStorage.removeItem(STORAGE_KEY_HISTORY);
 }
 
 function getStats(){
@@ -200,6 +213,11 @@ function renderHistoryWidget(containerId){
         <div style="font-size:1.6rem;font-weight:800;color:#fbbf24">${winRate}%</div>
         <div style="font-size:.72rem;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em">Win rate</div>
       </div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;margin:-2px 0 10px">
+      <button id="zp-clear-history-btn" style="background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.3);color:#fca5a5;border-radius:8px;padding:6px 10px;font-size:.72rem;cursor:pointer">
+        Effacer l'historique
+      </button>
     </div>`;
 
   const recent=history.slice(0,8);
@@ -231,6 +249,13 @@ function renderHistoryWidget(containerId){
   }
 
   container.innerHTML=html;
+  const clearBtn=document.getElementById('zp-clear-history-btn');
+  if(clearBtn){
+    clearBtn.addEventListener('click',()=>{
+      clearHistory();
+      renderHistoryWidget(containerId);
+    });
+  }
 }
 
 // ═══════════════════════════════════════════════════════
@@ -258,7 +283,7 @@ function init(){
 window.ZapPlay={
   getSavedPseudo,savePseudo,
   hideLoader,showLoader,
-  saveGameResult,getHistory,getStats,renderHistoryWidget
+  saveGameResult,getHistory,getStats,renderHistoryWidget,clearHistory
 };
 
 })();
