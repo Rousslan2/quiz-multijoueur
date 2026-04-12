@@ -203,7 +203,7 @@ function setErr(msg) {
 
 function connect(onOpen) {
   ws = new WebSocket(WS_URL);
-  ws.onopen = () => { dot.classList.add('ok'); if (onOpen) onOpen(); };
+  ws.onopen = () => { dot.classList.add('ok'); if(window.ZapPlay)ZapPlay.hideLoader(); if (onOpen) onOpen(); };
   ws.onclose = () => { dot.classList.remove('ok'); };
   ws.onmessage = e => { try { handle(JSON.parse(e.data)); } catch {} };
 }
@@ -220,12 +220,14 @@ function copyCode() {
 
 function doCreate() {
   const name = document.getElementById('inp-name').value.trim();
+  if(window.ZapPlay)ZapPlay.savePseudo(name);
   if (!name) { setErr('Entre ton prénom !'); return; }
   connect(() => send({ type:'create_loup', name }));
 }
 
 function doJoin() {
   const name = document.getElementById('inp-name').value.trim();
+  if(window.ZapPlay)ZapPlay.savePseudo(name);
   const code = document.getElementById('inp-code').value.trim().toUpperCase();
   if (!name) { setErr('Entre ton prénom !'); return; }
   if (!code) { setErr('Entre le code de la salle !'); return; }
@@ -353,6 +355,12 @@ function handle(m) {
   }
   if (m.type === 'loup_over') {
     clearVoteTimer();
+    if(window.ZapPlay){
+      const pNames=roomPlayers.map(p=>p.name);
+      const isLoup=myRole==='loup-garou';
+      const isMyWin=(m.winner==='loups'&&isLoup)||(m.winner==='village'&&!isLoup);
+      ZapPlay.saveGameResult({game:'loup',gameName:'Loup-Garou',players:pNames,winner:m.winner==='loups'?'Les Loups':'Le Village',myName:pNames[mySlot]||'',myScore:0,isWinner:isMyWin});
+    }
     const icon = m.winner === 'loups' ? '&#x1F43A;' : '&#x1F3D8;';
     const title = m.winner === 'loups' ? 'Les Loups ont gagné !' : 'Le Village a gagné !';
     document.getElementById('over-icon').innerHTML = icon;
@@ -542,5 +550,7 @@ document.getElementById('inp-code').addEventListener('input', e => {
   e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,'');
 });
 </script>
+<script src="shared.js"></script>
+<script src="chat.js"></script>
 </body>
 </html>

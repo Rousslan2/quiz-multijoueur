@@ -478,6 +478,7 @@
 
     ws.onopen = () => {
       setConnected(true);
+      if(window.ZapPlay)ZapPlay.hideLoader();
       if (reconnectTimer) { clearInterval(reconnectTimer); reconnectTimer = null; }
       if (pendingAction) { pendingAction(); pendingAction = null; }
     };
@@ -653,6 +654,11 @@
       $('status').textContent = '';
       $('gameover-screen').classList.remove('hidden');
       $('gameover-screen').style.display = 'flex';
+      if(window.ZapPlay){
+        const pNames=players.map(p=>p.name);
+        const isMyWin=finalMsg.includes('Tu as gagné');
+        ZapPlay.saveGameResult({game:'morpion',gameName:'Morpion',players:pNames,winner:finalMsg,myName:playerName,myScore:wins?(wins[mySlot]||0):0,isWinner:isMyWin});
+      }
     }
   }
 
@@ -707,14 +713,18 @@
   function createGame() {
     const name = $('name-input').value.trim();
     if (!name) { showError('Entre un pseudo !'); return; }
-    playerName = name; pendingAction = () => send({ type: 'create_morpion', name }); connect();
+    playerName = name;
+    if(window.ZapPlay)ZapPlay.savePseudo(name);
+    pendingAction = () => send({ type: 'create_morpion', name }); connect();
   }
   function joinGame() {
     const name = $('name-input').value.trim();
     if (!name) { showError('Entre un pseudo !'); return; }
     const code = $('code-input').value.trim().toUpperCase();
     if (!code) { showError('Entre le code !'); return; }
-    playerName = name; pendingAction = () => send({ type: 'join_morpion', name, code }); connect();
+    playerName = name;
+    if(window.ZapPlay)ZapPlay.savePseudo(name);
+    pendingAction = () => send({ type: 'join_morpion', name, code }); connect();
   }
   function copyRoomCodeM() {
     if (!myRoomCode) return;
@@ -758,6 +768,7 @@
 
   $('name-input').focus();
 </script>
+<script src="shared.js"></script>
 <script src="chat.js"></script>
 </body>
 </html>

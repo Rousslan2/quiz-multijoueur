@@ -297,6 +297,7 @@ function connect(){
   ws=new WebSocket(WS_URL);
   ws.onopen=()=>{
     document.getElementById('dot').classList.add('ok');
+    if(window.ZapPlay)ZapPlay.hideLoader();
     if(reconnectAction){reconnectAction();reconnectAction=null;}
   };
   ws.onclose=()=>{document.getElementById('dot').classList.remove('ok');setTimeout(connect,2000);};
@@ -347,7 +348,7 @@ function doCreate(){
   SND.init();
   const n=document.getElementById('inp-name').value.trim();
   if(!n){showErr('Entre ton prénom !');return;}
-  myName=n;send({type:'create_quiz',name:n});
+  myName=n;if(window.ZapPlay)ZapPlay.savePseudo(n);send({type:'create_quiz',name:n});
 }
 function doJoin(){
   SND.init();
@@ -355,7 +356,7 @@ function doJoin(){
   if(!n){showErr('Entre ton prénom !');return;}
   const c=document.getElementById('inp-code').value.trim().toUpperCase();
   if(!c){showErr('Entre le code de la salle !');return;}
-  myName=n;send({type:'join_quiz',name:n,code:c});
+  myName=n;if(window.ZapPlay)ZapPlay.savePseudo(n);send({type:'join_quiz',name:n,code:c});
 }
 function copyRoomCode(){
   if(!myCode)return;
@@ -610,8 +611,15 @@ function renderGameOver(st){
     d.innerHTML='<div class="fs-name">'+p.name+'</div><div class="fs-pts">'+p.score+'</div><div class="fs-wins">'+wins+' victoire'+(wins!==1?'s':'')+'</div>';
     sc.appendChild(d);
   });
+  if(window.ZapPlay){
+    const pNames=st.players.map(p=>p.name);
+    const ws2=st.winnerSlot??-1;
+    const wName=ws2>=0?(st.players[ws2]?.name||'?'):'Égalité';
+    ZapPlay.saveGameResult({game:'quiz',gameName:'Quiz Éclair',players:pNames,winner:wName,myName,myScore:st.players.find(p=>p.slot===mySlot)?.score??0,isWinner:ws2===mySlot});
+  }
 }
 </script>
+<script src="shared.js"></script>
 <script src="chat.js"></script>
 </body>
 </html>

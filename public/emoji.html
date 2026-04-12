@@ -389,6 +389,7 @@ function connect() {
   ws = new WebSocket(`${location.protocol==='https:'?'wss':'ws'}://${location.host}/ws/emoji`);
   ws.onopen = () => {
     document.getElementById('dot').classList.add('ok');
+    if(window.ZapPlay)ZapPlay.hideLoader();
     if (pendingAction) { pendingAction(); pendingAction = null; }
   };
   ws.onclose = () => {
@@ -625,6 +626,12 @@ function renderState() {
       if (winnerSlot < 0) document.getElementById('go-winner').textContent = '🤝 Égalité !';
       else if (winnerSlot === mySlot) document.getElementById('go-winner').textContent = '🏆 Tu remportes la partie !';
       else document.getElementById('go-winner').textContent = '🏆 ' + (players.find(p => p.slot === winnerSlot)?.name || '?') + ' remporte la partie !';
+      if(window.ZapPlay){
+        const pNames=players.map(p=>p.name);
+        const ws3=state.winnerSlot??-1;
+        const wName=ws3>=0?(players.find(p=>p.slot===ws3)?.name||'?'):'Égalité';
+        ZapPlay.saveGameResult({game:'emoji',gameName:'Devinette Emoji',players:pNames,winner:wName,myName,myScore:scores?.[mySlot]??0,isWinner:ws3===mySlot});
+      }
       break;
   }
 }
@@ -654,6 +661,7 @@ function createGame() {
   const n = document.getElementById('name-input').value.trim();
   if (!n) return;
   myName = n;
+  if(window.ZapPlay)ZapPlay.savePseudo(n);
   if (ws && ws.readyState === WebSocket.OPEN) { send({ type: 'create_emoji', name: n }); }
   else { pendingAction = () => send({ type: 'create_emoji', name: n }); connect(); }
 }
@@ -663,6 +671,7 @@ function joinGame() {
   const c = document.getElementById('code-input').value.trim().toUpperCase();
   if (!c) return;
   myName = n;
+  if(window.ZapPlay)ZapPlay.savePseudo(n);
   if (ws && ws.readyState === WebSocket.OPEN) { send({ type: 'join_emoji', name: n, code: c }); }
   else { pendingAction = () => send({ type: 'join_emoji', name: n, code: c }); connect(); }
 }
@@ -698,6 +707,7 @@ document.addEventListener('keydown', e => {
 /* ─── Init ───────────────────────────────────────────── */
 connect();
 </script>
+<script src="shared.js"></script>
 <script src="chat.js"></script>
 </body>
 </html>

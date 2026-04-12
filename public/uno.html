@@ -316,7 +316,7 @@ function copyCode() {
 
 function connect(onOpen) {
   ws = new WebSocket(WS_URL);
-  ws.onopen = () => { dot.classList.add('ok'); if (onOpen) onOpen(); };
+  ws.onopen = () => { dot.classList.add('ok'); if(window.ZapPlay)ZapPlay.hideLoader(); if (onOpen) onOpen(); };
   ws.onclose = () => { dot.classList.remove('ok'); };
   ws.onmessage = e => { try { handle(JSON.parse(e.data)); } catch(err) { console.error(err); } };
   ws.onerror = () => {};
@@ -327,12 +327,14 @@ function send(obj) { if (ws && ws.readyState === 1) ws.send(JSON.stringify(obj))
 // ── Actions ───────────────────────────────────────────────────────────────────
 function doCreate() {
   const name = document.getElementById('inp-name').value.trim();
+  if(window.ZapPlay)ZapPlay.savePseudo(name);
   if (!name) { setErr('Entre ton prénom !'); return; }
   connect(() => send({ type:'create_uno', name }));
 }
 
 function doJoin() {
   const name = document.getElementById('inp-name').value.trim();
+  if(window.ZapPlay)ZapPlay.savePseudo(name);
   const code = document.getElementById('inp-code').value.trim().toUpperCase();
   if (!name) { setErr('Entre ton prénom !'); return; }
   if (!code) { setErr('Entre le code de la salle !'); return; }
@@ -436,6 +438,10 @@ function handle(m) {
 
     case 'uno_over':
       const isMe = m.winnerSlot === mySlot;
+      if(window.ZapPlay){
+        const pNames=gameState?gameState.players.map(p=>p.name):[];
+        ZapPlay.saveGameResult({game:'uno',gameName:'Uno',players:pNames,winner:m.winnerName||'?',myName:pNames[mySlot]||'',myScore:0,isWinner:isMe});
+      }
       document.getElementById('over-icon').textContent = isMe ? '🎉' : '😔';
       document.getElementById('over-title').textContent = isMe ? 'Tu as gagné !' : (m.winnerName || 'Quelqu\'un') + ' a gagné !';
       document.getElementById('over-sub').textContent = isMe ? 'Bravo, tu as vidé ta main !' : 'Meilleure chance la prochaine fois !';
@@ -674,5 +680,7 @@ document.getElementById('inp-code').addEventListener('input', e => {
 });
 document.getElementById('inp-code').addEventListener('keydown', e => { if (e.key === 'Enter') doJoin(); });
 </script>
+<script src="shared.js"></script>
+<script src="chat.js"></script>
 </body>
 </html>

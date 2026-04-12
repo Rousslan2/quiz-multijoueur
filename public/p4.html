@@ -452,6 +452,7 @@
 
     ws.onopen = () => {
       setConnected(true);
+      if(window.ZapPlay)ZapPlay.hideLoader();
       if (reconnectTimer) { clearInterval(reconnectTimer); reconnectTimer = null; }
       if (pendingAction) { pendingAction(); pendingAction = null; }
     };
@@ -596,6 +597,12 @@
 
       $('status').textContent = '';
       $('gameover-screen').classList.remove('hidden');
+      if(window.ZapPlay){
+        const pNames=players.map(p=>p.name);
+        const isWin=isWinner;
+        const wn=winnerName;
+        ZapPlay.saveGameResult({game:'p4',gameName:'Puissance 4',players:pNames,winner:winLine?wn:'Égalité',myName:playerName,myScore:wins?wins[mySlot]||0:0,isWinner:isWin});
+      }
     }
   }
 
@@ -654,6 +661,7 @@
     const name = $('name-input').value.trim();
     if (!name) { showError('Entre un pseudo !'); return; }
     playerName = name;
+    if(window.ZapPlay)ZapPlay.savePseudo(name);
     pendingAction = () => send({ type: 'create_p4', name });
     connect();
   }
@@ -663,6 +671,7 @@
     const code = $('code-input').value.trim().toUpperCase();
     if (!code) { showError('Entre le code !'); return; }
     playerName = name;
+    if(window.ZapPlay)ZapPlay.savePseudo(name);
     pendingAction = () => send({ type: 'join_p4', name, code });
     connect();
   }
@@ -709,6 +718,7 @@
   // Auto-focus name input
   $('name-input').focus();
 </script>
+<script src="shared.js"></script>
 <script src="chat.js"></script>
 </body>
 </html>

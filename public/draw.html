@@ -384,6 +384,7 @@ function connect() {
   ws = new WebSocket(WS_URL);
   ws.onopen = () => {
     document.getElementById('dot').classList.add('ok');
+    if(window.ZapPlay)ZapPlay.hideLoader();
     if (reconnectAction) { reconnectAction(); reconnectAction = null; }
   };
   ws.onclose = () => { document.getElementById('dot').classList.remove('ok'); setTimeout(connect, 2000); };
@@ -420,14 +421,18 @@ function showJoinInput(){
 function doCreate(){
   const n=document.getElementById('inp-name').value.trim();
   if(!n){showErr('Entre ton prénom !');return;}
-  myName=n;send({type:'create_draw',name:n});
+  myName=n;
+  if(window.ZapPlay)ZapPlay.savePseudo(n);
+  send({type:'create_draw',name:n});
 }
 function doJoin() {
   const n = document.getElementById('inp-name').value.trim();
   if (!n) { showErr('Entre ton prénom !'); return; }
   const c = document.getElementById('inp-code').value.trim().toUpperCase();
   if (!c) { showErr('Entre le code de la salle !'); return; }
-  myName = n; send({ type: 'join_draw', name: n, code: c });
+  myName = n;
+  if(window.ZapPlay)ZapPlay.savePseudo(n);
+  send({ type: 'join_draw', name: n, code: c });
 }
 function copyRoomCode(){
   if(!myCode)return;
@@ -1068,7 +1073,14 @@ function renderState(st) {
     show('s-gameover');
     stopTimer();
     clearInterval(revealCountdownHandle);
-    if (lastPhase !== 'GAME_OVER') launchConfetti();
+    if (lastPhase !== 'GAME_OVER') {
+      launchConfetti();
+      if(window.ZapPlay){
+        const pNames=players.map(p=>p.name);
+        const wName=winnerSlot>=0?(players.find(p=>p.slot===winnerSlot)?.name||'?'):'Égalité';
+        ZapPlay.saveGameResult({game:'draw',gameName:'Dessin & Devine',players:pNames,winner:wName,myName,myScore:scores?.[mySlot]??0,isWinner:winnerSlot===mySlot});
+      }
+    }
     lastPhase = 'GAME_OVER';
 
     const winsArr = wins || [];
@@ -1094,6 +1106,7 @@ function renderState(st) {
   }
 }
 </script>
+<script src="shared.js"></script>
 <script src="chat.js"></script>
 </body>
 </html>

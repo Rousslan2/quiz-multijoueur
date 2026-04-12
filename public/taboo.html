@@ -435,6 +435,7 @@ function connect() {
   ws = new WebSocket(`${location.protocol==='https:'?'wss':'ws'}://${location.host}/ws/taboo`);
   ws.onopen = () => {
     document.getElementById('dot').classList.add('ok');
+    if(window.ZapPlay)ZapPlay.hideLoader();
     if (pendingAction) { pendingAction(); pendingAction = null; }
   };
   ws.onclose = () => {
@@ -644,6 +645,10 @@ function renderState() {
       document.getElementById('go-score-p1').textContent = `${p1.name} : ${scores[1] ?? 0} pts`;
       const winner = scores[0] > scores[1] ? p0.name : scores[1] > scores[0] ? p1.name : null;
       document.getElementById('go-winner').textContent = winner ? `🏆 ${winner} remporte la partie !` : '🤝 Égalité !';
+      if(window.ZapPlay){
+        const pNames=players.map(p=>p.name);
+        ZapPlay.saveGameResult({game:'taboo',gameName:'Mots Interdits',players:pNames,winner:winner||'Égalité',myName,myScore:scores[mySlot]??0,isWinner:winner===myName});
+      }
       break;
   }
 }
@@ -707,6 +712,7 @@ function createGame() {
   const name = document.getElementById('name-input').value.trim();
   if (!name) return;
   myName = name;
+  if(window.ZapPlay)ZapPlay.savePseudo(name);
   if (ws && ws.readyState === WebSocket.OPEN) { send({ type: 'create_taboo', name }); }
   else { pendingAction = () => send({ type: 'create_taboo', name }); connect(); }
 }
@@ -716,6 +722,7 @@ function joinGame() {
   const code = document.getElementById('code-input').value.trim().toUpperCase();
   if (!code) return;
   myName = name;
+  if(window.ZapPlay)ZapPlay.savePseudo(name);
   if (ws && ws.readyState === WebSocket.OPEN) { send({ type: 'join_taboo', name, code }); }
   else { pendingAction = () => send({ type: 'join_taboo', name, code }); connect(); }
 }
@@ -758,6 +765,7 @@ document.addEventListener('keydown', e => {
 showScreen('screen-name');
 connect();
 </script>
+<script src="shared.js"></script>
 <script src="chat.js"></script>
 </body>
 </html>

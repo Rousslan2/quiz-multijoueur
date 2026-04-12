@@ -124,7 +124,7 @@
 
   // ── State ────────────────────────────────────────────────────────────────────
   let ws = null;
-  let myName = localStorage.getItem('chat_name') || '';
+  let myName = localStorage.getItem('chat_name') || (window.ZapPlay?ZapPlay.getSavedPseudo():'') || '';
   let unread = 0;
   let isOpen = false;
   let connected = false;
@@ -140,7 +140,10 @@
   const input     = document.getElementById('chat-input');
   const sendBtn   = document.getElementById('chat-send');
 
-  if (myName) nameInput.value = myName;
+  if (myName) {
+    nameInput.value = myName;
+    document.getElementById('chat-name-row').style.display = 'none';
+  }
 
   // ── WebSocket ────────────────────────────────────────────────────────────────
   function connect() {
