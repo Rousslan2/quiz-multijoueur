@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ZapPlay — Word Bomb</title>
+<style>
+:root{--primary:#a78bfa;--buzz:#f97316;--ok:#22c55e;--bad:#ef4444;--text:#f1f5f9;--muted:#94a3b8;--card:rgba(255,255,255,.07);--border:rgba(255,255,255,.13)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:linear-gradient(135deg,#0f0c29,#302b63,#24243e);color:var(--text);height:100dvh;overflow:hidden}
+#app{max-width:700px;margin:0 auto;height:100dvh;padding:56px 12px 14px;display:flex;flex-direction:column;gap:10px}
+#back{position:fixed;top:8px;left:8px;background:none;border:none;color:var(--muted);cursor:pointer;padding:6px 10px}
+#dot{position:fixed;top:10px;right:12px;width:8px;height:8px;border-radius:50%;background:var(--bad)}#dot.ok{background:var(--ok)}
+h1{text-align:center;font-size:1.7rem;background:linear-gradient(135deg,var(--primary),var(--buzz));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px}
+.hidden{display:none!important}
+.btn{border:none;border-radius:10px;padding:11px 14px;font-weight:700;cursor:pointer}
+.btn-primary{background:var(--primary);color:#fff}.btn-buzz{background:var(--buzz);color:#fff}.btn-muted{background:rgba(255,255,255,.12);color:var(--text)}
+input{width:100%;background:rgba(255,255,255,.08);border:1px solid var(--border);border-radius:10px;color:var(--text);padding:11px 12px;outline:none}
+input:focus{border-color:var(--primary)}
+#name-screen{display:flex;flex-direction:column;gap:10px;max-width:420px;width:100%;margin:0 auto}
+#join-area{display:none;gap:8px;flex-direction:column}
+#game-screen{display:flex;flex-direction:column;gap:10px;flex:1;min-height:0}
+#waiting{display:flex;flex-direction:column;gap:10px;align-items:center}
+#players{display:flex;flex-wrap:wrap;gap:8px}
+.chip{padding:5px 10px;border-radius:999px;background:rgba(255,255,255,.08);border:1px solid var(--border);font-size:.8rem}
+#syllable{font-size:2.2rem;font-weight:800;text-align:center;letter-spacing:.06em;color:#fde68a}
+#timer{height:8px;border-radius:999px;background:rgba(255,255,255,.12);overflow:hidden}
+#timer-fill{height:100%;width:100%;background:linear-gradient(90deg,#22c55e,#f59e0b,#ef4444)}
+#status{text-align:center;color:var(--muted);min-height:20px}
+#score-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.row{padding:8px;border:1px solid var(--border);background:rgba(255,255,255,.04);border-radius:10px;font-size:.86rem}
+.row.turn{border-color:var(--gold,#fbbf24);box-shadow:0 0 0 1px rgba(251,191,36,.3) inset}
+.row.dead{opacity:.5}
+#recent{display:flex;flex-direction:column;gap:4px;max-height:120px;overflow:auto}
+.r{font-size:.8rem;color:var(--muted)}
+#action{display:flex;gap:8px}
+#gcount{position:fixed;inset:0;background:rgba(15,12,41,.8);display:none;align-items:center;justify-content:center;z-index:500}
+#gcount span{font-size:6rem;font-weight:800;color:#f59e0b}
+</style>
+</head>
+<body>
+<div id="gcount"><span id="gnum">3</span></div>
+<button id="back" onclick="location.href='index.html'">← Accueil</button>
+<div id="dot"></div>
+<div id="app">
+  <h1>💣 Word Bomb</h1>
+
+  <div id="name-screen">
+    <div class="card" style="display:flex;flex-direction:column;gap:8px">
+      <input id="name" maxlength="20" placeholder="Ton pseudo">
+      <button class="btn btn-primary" onclick="createGame()">Créer une salle</button>
+      <button class="btn btn-buzz" onclick="toggleJoin()">Rejoindre (code)</button>
+      <div id="join-area">
+        <input id="code" maxlength="4" placeholder="Code (ABCD)" style="text-transform:uppercase;letter-spacing:.14em;text-align:center">
+        <button class="btn btn-buzz" onclick="joinGame()">Rejoindre</button>
+      </div>
+      <div id="err" style="color:#fca5a5;font-size:.82rem;min-height:18px;text-align:center"></div>
+    </div>
+  </div>
+
+  <div id="game-screen" class="hidden">
+    <div id="waiting" class="card hidden">
+      <div id="code-box" onclick="copyCode()" style="cursor:pointer;text-align:center">
+        <div style="font-size:.72rem;color:var(--muted)">Code de la salle</div>
+        <div id="room-code" style="font-size:2.1rem;font-family:monospace;letter-spacing:.2em;color:var(--primary);font-weight:800">----</div>
+      </div>
+      <div id="players"></div>
+      <button id="start-btn" class="btn btn-primary hidden" onclick="startGame()">Lancer la partie</button>
+    </div>
+
+    <div id="playing" class="hidden" style="display:flex;flex-direction:column;gap:10px;min-height:0;flex:1">
+      <div class="card">
+        <div id="syllable">--</div>
+        <div id="timer"><div id="timer-fill"></div></div>
+        <div id="status"></div>
+      </div>
+      <div class="card"><div id="score-list"></div></div>
+      <div class="card" style="display:flex;flex-direction:column;gap:8px">
+        <div id="action">
+          <input id="word" placeholder="Mot contenant la syllabe..." maxlength="40">
+          <button class="btn btn-buzz" onclick="sendWord()">Valider</button>
+        </div>
+      </div>
+      <div class="card" style="min-height:0;flex:1">
+        <div style="font-size:.78rem;color:var(--muted);margin-bottom:6px">Mots récents</div>
+        <div id="recent"></div>
+      </div>
+    </div>
+
+    <div id="over" class="card hidden" style="text-align:center;display:flex;flex-direction:column;gap:10px">
+      <div id="over-title" style="font-size:1.3rem;font-weight:800"></div>
+      <button class="btn btn-primary" onclick="restart()">Rejouer</button>
+      <button class="btn btn-muted" onclick="location.href='index.html'">Accueil</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const WS_URL = `${location.protocol==='https:'?'wss':'ws'}://${location.host}/ws/bomb`;
+let ws=null,mySlot=-1,myCode='',myName='',state=null,pendingAction=null,timerInt=null,lastPhase='';
+function $(id){return document.getElementById(id);}
+function send(o){ if(ws&&ws.readyState===1) ws.send(JSON.stringify(o)); }
+function bindLoungeSender(){ if(window.ZapPlay)ZapPlay.setLoungeSender(text=>send({type:'lounge_chat',text})); else setTimeout(bindLoungeSender,120); }
+bindLoungeSender();
+function connect(){
+  ws=new WebSocket(WS_URL);
+  ws.onopen=()=>{ $('dot').classList.add('ok'); if(window.ZapPlay)ZapPlay.hideLoader(); if(pendingAction){pendingAction();pendingAction=null;} };
+  ws.onclose=()=>{ $('dot').classList.remove('ok'); setTimeout(connect,2000); };
+  ws.onmessage=e=>{ let m; try{m=JSON.parse(e.data);}catch{return;} handle(m); };
+}
+connect();
+function toggleJoin(){ $('join-area').style.display = $('join-area').style.display==='flex' ? 'none' : 'flex'; }
+function createGame(){
+  const n=$('name').value.trim(); if(!n){$('err').textContent='Entre ton pseudo';return;}
+  myName=n; if(window.ZapPlay)ZapPlay.savePseudo(n);
+  const action=()=>send({type:'create_bomb',name:n});
+  if(ws&&ws.readyState===1) action();
+  else { pendingAction=action; if(!ws||ws.readyState===3) connect(); }
+}
+function joinGame(){
+  const n=$('name').value.trim(); const c=$('code').value.trim().toUpperCase();
+  if(!n||!c){$('err').textContent='Nom + code requis';return;}
+  myName=n; if(window.ZapPlay)ZapPlay.savePseudo(n);
+  const action=()=>send({type:'join_bomb',name:n,code:c});
+  if(ws&&ws.readyState===1) action();
+  else { pendingAction=action; if(!ws||ws.readyState===3) connect(); }
+}
+function startGame(){ send({type:'start_bomb'}); }
+function sendWord(){
+  const w=$('word').value.trim(); if(!w)return;
+  send({type:'bomb_word',word:w}); $('word').value='';
+}
+function restart(){ send({type:'restart_bomb'}); }
+function copyCode(){ if(!myCode)return; navigator.clipboard.writeText(myCode).catch(()=>{}); }
+
+function handle(m){
+  if(m.type==='created_bomb'){mySlot=m.slot;myCode=m.code;showGame();}
+  if(m.type==='welcome_bomb'){mySlot=m.slot;myCode=m.code;showGame();}
+  if(m.type==='error'){$('err').textContent=m.msg; $('status').textContent=m.msg;}
+  if(m.type==='countdown')showCountdown(m.seconds||3);
+  if(m.type==='player_left')$('status').textContent=(m.name||'Un joueur')+' a quitté.';
+  if(m.type==='lounge_chat' && window.ZapPlay)ZapPlay.addLoungeMessage(m);
+  if(m.type==='bomb_state'){state=m; render();}
+}
+function showGame(){ $('name-screen').classList.add('hidden'); $('game-screen').classList.remove('hidden'); }
+function showCountdown(n){
+  const g=$('gcount'),num=$('gnum'); g.style.display='flex'; num.textContent=n;
+  let c=n; const t=setInterval(()=>{c--; if(c<=0){clearInterval(t); g.style.display='none';} else num.textContent=c;},1000);
+}
+function setScreen(id){
+  ['waiting','playing','over'].forEach(x=>$(x).classList.add('hidden'));
+  $(id).classList.remove('hidden');
+}
+function render(){
+  if(!state)return;
+  $('room-code').textContent = state.code||myCode||'----';
+  const players=state.players||[];
+  if(state.phase==='WAITING'){
+    if(window.ZapPlay)ZapPlay.showLounge({players,mySlot,roomCode:state.code||myCode,gameName:'Word Bomb'});
+    setScreen('waiting');
+    $('players').innerHTML=players.map(p=>`<span class="chip">${p.name}${p.slot===0?' 👑':''}</span>`).join('');
+    $('start-btn').classList.toggle('hidden', !(mySlot===0 && players.length>=2));
+    stopTimer();
+    return;
+  }
+  if(state.phase==='PLAYING'){
+    if(window.ZapPlay)ZapPlay.hideLounge();
+    setScreen('playing');
+    $('syllable').textContent=state.syllable||'--';
+    const me=players.find(p=>p.slot===mySlot);
+    const canPlay = me && me.alive && state.turn===mySlot;
+    $('word').disabled=!canPlay;
+    if(canPlay) $('word').focus();
+    $('status').textContent = canPlay ? 'À toi ! Trouve un mot.' : `Tour de ${players.find(p=>p.slot===state.turn)?.name||'?'}`;
+    $('score-list').innerHTML=players.map(p=>{
+      const lives='❤️'.repeat(Math.max(0,p.lives||0)) || '☠️';
+      const cls=['row',p.slot===state.turn?'turn':'',!p.alive?'dead':''].join(' ');
+      return `<div class="${cls}">${p.name} · ${lives} · ${p.score||0} pts</div>`;
+    }).join('');
+    const rec=state.recentWords||[];
+    $('recent').innerHTML = rec.length ? rec.slice().reverse().map(r=>`<div class="r"><b>${r.name}</b> : ${r.word}</div>`).join('') : '<div class="r">Aucun mot pour le moment.</div>';
+    startTimer(state.turnEndsAt||0);
+    return;
+  }
+  if(state.phase==='GAME_OVER'){
+    if(window.ZapPlay)ZapPlay.hideLounge();
+    setScreen('over');
+    stopTimer();
+    const winName = state.winnerSlot>=0 ? (players.find(p=>p.slot===state.winnerSlot)?.name||'') : '';
+    $('over-title').textContent = state.winnerSlot>=0 ? `🏆 ${winName} gagne !` : 'Égalité !';
+    if(lastPhase!=='GAME_OVER' && window.ZapPlay){
+      const pNames=players.map(p=>p.name);
+      ZapPlay.saveGameResult({game:'bomb',gameName:'Word Bomb',players:pNames,winner:winName||'Égalité',myName,myScore:players.find(p=>p.slot===mySlot)?.score||0,isWinner:state.winnerSlot===mySlot});
+    }
+  }
+  lastPhase=state.phase;
+}
+function startTimer(endTs){
+  stopTimer();
+  if(!endTs){$('timer-fill').style.width='100%';return;}
+  timerInt=setInterval(()=>{
+    const left=Math.max(0,endTs-Date.now());
+    const ratio=Math.max(0,Math.min(1,left/(state?.turnMs||12000)));
+    $('timer-fill').style.width=(ratio*100).toFixed(1)+'%';
+    if(left<=0)stopTimer();
+  },100);
+}
+function stopTimer(){ if(timerInt){clearInterval(timerInt);timerInt=null;} }
+const p=new URLSearchParams(location.search);
+if(p.get('name'))$('name').value=p.get('name');
+if(p.get('code')){ $('code').value=p.get('code').toUpperCase(); $('join-area').style.display='flex'; }
+if(p.get('create')==='1'&&p.get('name')){
+  const n=p.get('name'); $('name').value=n; myName=n;
+  pendingAction=()=>send({type:'create_bomb',name:n}); connect();
+}
+$('name').addEventListener('keydown',e=>{if(e.key==='Enter')createGame();});
+$('code').addEventListener('input',e=>{e.target.value=e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,'');});
+$('code').addEventListener('keydown',e=>{if(e.key==='Enter')joinGame();});
+$('word').addEventListener('keydown',e=>{if(e.key==='Enter')sendWord();});
+</script>
+<script src="shared.js"></script>
+<script src="chat.js"></script>
+</body>
+</html>

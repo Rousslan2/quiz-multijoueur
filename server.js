@@ -10,13 +10,14 @@ const app    = express();
 const server = http.createServer(app);
 const PORT   = process.env.PORT || 3001;
 
-// ── 11 WebSocket servers ──────────────────────────────────────────────────────
+// ── 12 WebSocket servers ──────────────────────────────────────────────────────
 const wssQuiz    = new WebSocket.Server({ noServer: true });
 const wssDraw    = new WebSocket.Server({ noServer: true });
 const wssP4      = new WebSocket.Server({ noServer: true });
 const wssMorpion = new WebSocket.Server({ noServer: true });
 const wssTaboo   = new WebSocket.Server({ noServer: true });
 const wssEmoji   = new WebSocket.Server({ noServer: true });
+const wssBomb    = new WebSocket.Server({ noServer: true });
 const wssChat    = new WebSocket.Server({ noServer: true });
 const wssLobby   = new WebSocket.Server({ noServer: true });
 const wssLoup    = new WebSocket.Server({ noServer: true });
@@ -26,7 +27,7 @@ server.on('upgrade', (req, socket, head) => {
   const routes = {
     '/ws/quiz':wssQuiz,'/ws/draw':wssDraw,'/ws/p4':wssP4,
     '/ws/morpion':wssMorpion,'/ws/taboo':wssTaboo,'/ws/emoji':wssEmoji,
-    '/ws/chat':wssChat,'/ws/lobby':wssLobby,
+    '/ws/bomb':wssBomb,'/ws/chat':wssChat,'/ws/lobby':wssLobby,
     '/ws/loup':wssLoup,'/ws/uno':wssUno
   };
   const h = routes[req.url];
@@ -55,12 +56,12 @@ app.get('/api/ip', (_, res) => res.json({ ip: getLocalIP(), port: PORT }));
 const GAME_NAMES = {
   quiz:'Quiz Éclair', draw:'Dessin & Devine', p4:'Puissance 4',
   morpion:'Morpion', taboo:'Mots Interdits', emoji:'Devinette Emoji',
-  loup:'Loup-Garou', uno:'Uno'
+  loup:'Loup-Garou', uno:'Uno', bomb:'Word Bomb'
 };
 
 function getRoomsSnapshot() {
   const all = [];
-  const maps = { quiz:quizRooms, draw:drawRooms, p4:p4Rooms, morpion:morpionRooms, taboo:tabooRooms, emoji:emojiRooms, loup:loupRooms, uno:unoRooms };
+  const maps = { quiz:quizRooms, draw:drawRooms, p4:p4Rooms, morpion:morpionRooms, taboo:tabooRooms, emoji:emojiRooms, loup:loupRooms, uno:unoRooms, bomb:bombRooms };
   for (const [game, map] of Object.entries(maps)) {
     for (const [code, room] of map) {
       all.push({
@@ -69,7 +70,7 @@ function getRoomsSnapshot() {
         gameName: GAME_NAMES[game],
         host: room.host,
         players: room.players.map(p => p.name),
-        maxPlayers: game==='loup'?10:game==='uno'?4:4,
+        maxPlayers: game==='loup'?10:game==='bomb'?6:game==='uno'?4:4,
         status: ['WAITING','SETUP'].includes(room.phase) ? 'waiting' : 'playing'
       });
     }
@@ -1876,6 +1877,196 @@ wssUno.on('connection', ws => {
           bcast(myRoom.players, { type:'uno_caught', catcher:player.name, target:target.name, targetSlot });
           unoBcastAll(myRoom);
         }
+        break;
+      }
+    }
+  });
+});
+
+// ════════════════════════════════════════════════════════
+//  WORD BOMB
+// ════════════════════════════════════════════════════════
+const bombRooms = new Map();
+const BOMB_SYLLABLES = [
+  'an','on','ou','in','re','ra','ro','ta','te','to','ma','me','mi','mo',
+  'la','le','li','lo','cha','che','chi','cho','tra','tri','tro','pro','pre',
+  'bra','ble','bar','bel','ver','vou','jeu','air','eur','son','sur','mont',
+  'tion','ment','ette','able','eur','ique'
+];
+
+function bombNorm(s){
+  return String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
+}
+function makeBombRoom(code, host){
+  return {
+    code, host, players:[], phase:'WAITING',
+    turn:0, syllable:'', used:new Set(), recentWords:[],
+    timer:null, turnEndsAt:0, turnMs:12000
+  };
+}
+function bombLivePlayers(room){ return room.players.filter(p=>p.alive); }
+function bombNextAliveSlot(room, fromSlot){
+  const alive = bombLivePlayers(room);
+  if(!alive.length)return -1;
+  let idx = room.players.findIndex(p=>p.slot===fromSlot);
+  if(idx<0)idx=0;
+  for(let i=1;i<=room.players.length;i++){
+    const p = room.players[(idx+i)%room.players.length];
+    if(p && p.alive)return p.slot;
+  }
+  return alive[0].slot;
+}
+function bombSnap(room){
+  return {
+    type:'bomb_state',
+    phase:room.phase, code:room.code, turn:room.turn, syllable:room.syllable,
+    turnEndsAt:room.turnEndsAt||0, turnMs:room.turnMs,
+    recentWords:room.recentWords.slice(-10),
+    players:room.players.map(p=>({name:p.name,slot:p.slot,alive:p.alive,lives:p.lives,score:p.score}))
+  };
+}
+function bombBcast(room, extra={}){
+  bcast(room.players, {...bombSnap(room), ...extra});
+}
+function bombPickSyllable(){
+  return BOMB_SYLLABLES[Math.floor(Math.random()*BOMB_SYLLABLES.length)];
+}
+function bombCheckGameOver(room){
+  const alive = bombLivePlayers(room);
+  if(alive.length<=1){
+    room.phase='GAME_OVER';
+    clearTimeout(room.timer);
+    const winner = alive[0] || null;
+    bombBcast(room, { winnerSlot:winner?winner.slot:-1, winnerName:winner?winner.name:null });
+    broadcastLobby();
+    return true;
+  }
+  return false;
+}
+function bombStartTurn(room){
+  if(room.phase!=='PLAYING')return;
+  if(bombCheckGameOver(room))return;
+  room.syllable = bombPickSyllable();
+  room.turnEndsAt = Date.now() + room.turnMs;
+  clearTimeout(room.timer);
+  room.timer = setTimeout(()=>bombTimeout(room), room.turnMs);
+  bombBcast(room);
+}
+function bombTimeout(room){
+  if(room.phase!=='PLAYING')return;
+  const p = room.players.find(x=>x.slot===room.turn);
+  if(!p || !p.alive)return;
+  p.lives = Math.max(0, (p.lives||0) - 1);
+  if(p.lives===0)p.alive=false;
+  bombBcast(room, { timeoutSlot:p.slot, timeoutName:p.name });
+  if(bombCheckGameOver(room))return;
+  room.turn = bombNextAliveSlot(room, p.slot);
+  bombStartTurn(room);
+}
+
+wssBomb.on('connection', ws => {
+  makeWS(wssBomb).alive(ws);
+  let myRoom = null;
+  ws.on('close', () => {
+    makeWS(wssBomb).clear(ws);
+    if(!myRoom)return;
+    const idx=myRoom.players.findIndex(p=>p.ws===ws); if(idx<0)return;
+    const left=myRoom.players[idx];
+    myRoom.players.splice(idx,1);
+    myRoom.players.forEach((p,i)=>p.slot=i);
+    if(myRoom.players.length===0){
+      clearTimeout(myRoom.timer); bombRooms.delete(myRoom.code); broadcastLobby(); return;
+    }
+    if(myRoom.phase==='PLAYING' || myRoom.phase==='COUNTDOWN'){
+      const turnWasLeft = myRoom.turn===left.slot;
+      if(turnWasLeft) myRoom.turn = 0;
+      myRoom.turn = bombNextAliveSlot(myRoom, myRoom.turn);
+      if(myRoom.phase==='PLAYING') bombStartTurn(myRoom);
+    }
+    bcast(myRoom.players,{type:'player_left',name:left.name});
+    if(myRoom.phase!=='PLAYING') bombBcast(myRoom);
+    if(myRoom.phase==='GAME_OVER') bombCheckGameOver(myRoom);
+    if(myRoom.phase==='WAITING' && myRoom.players[0]) myRoom.host=myRoom.players[0].name;
+    broadcastLobby();
+  });
+  ws.on('message', raw => {
+    let d; try { d = JSON.parse(raw); } catch { return; }
+    const player = myRoom ? myRoom.players.find(p=>p.ws===ws) : null;
+    switch (d.type) {
+      case 'lounge_chat': {
+        handleLoungeChat(myRoom, ws, d);
+        break;
+      }
+      case 'create_bomb': {
+        const name=String(d.name||'').trim().slice(0,20)||'Joueur';
+        const code=genCode(bombRooms);
+        const room=makeBombRoom(code,name);
+        room.players.push({ws,name,slot:0,alive:true,lives:3,score:0});
+        bombRooms.set(code,room);
+        myRoom=room;
+        wsend(ws,{type:'created_bomb',code,slot:0,name});
+        bombBcast(room);
+        broadcastLobby();
+        break;
+      }
+      case 'join_bomb': {
+        const code=String(d.code||'').trim().toUpperCase();
+        const room=bombRooms.get(code);
+        if(!room){wsend(ws,{type:'error',msg:'Salle introuvable.'});return;}
+        if(room.players.length>=6){wsend(ws,{type:'error',msg:'Salle pleine (6 max).'});return;}
+        if(room.phase!=='WAITING'){wsend(ws,{type:'error',msg:'La partie a déjà commencé.'});return;}
+        const name=String(d.name||'').trim().slice(0,20)||'Joueur';
+        const slot=room.players.length;
+        room.players.push({ws,name,slot,alive:true,lives:3,score:0});
+        myRoom=room;
+        wsend(ws,{type:'welcome_bomb',code,slot,name});
+        bombBcast(room);
+        broadcastLobby();
+        break;
+      }
+      case 'start_bomb': {
+        if(!myRoom||!player||player.slot!==0||myRoom.phase!=='WAITING')return;
+        if(myRoom.players.length<2){wsend(ws,{type:'error',msg:'Il faut au moins 2 joueurs.'});return;}
+        myRoom.players.forEach(p=>{p.lives=3;p.score=0;p.alive=true;});
+        myRoom.used.clear(); myRoom.recentWords=[]; myRoom.turn=0;
+        myRoom.phase='COUNTDOWN';
+        bcast(myRoom.players,{type:'countdown',seconds:3});
+        clearTimeout(myRoom.timer);
+        myRoom.timer=setTimeout(()=>{
+          myRoom.phase='PLAYING';
+          myRoom.turn = bombNextAliveSlot(myRoom, -1);
+          bombStartTurn(myRoom);
+          broadcastLobby();
+        },3000);
+        broadcastLobby();
+        break;
+      }
+      case 'bomb_word': {
+        if(!myRoom||!player||myRoom.phase!=='PLAYING')return;
+        if(!player.alive){wsend(ws,{type:'error',msg:'Tu es éliminé pour cette manche.'});return;}
+        if(myRoom.turn!==player.slot){wsend(ws,{type:'error',msg:"Ce n'est pas ton tour."});return;}
+        const rawWord=String(d.word||'').trim().slice(0,40);
+        const norm=bombNorm(rawWord);
+        const syll=bombNorm(myRoom.syllable);
+        if(norm.length<3){wsend(ws,{type:'error',msg:'Mot trop court.'});return;}
+        if(!norm.includes(syll)){wsend(ws,{type:'error',msg:`Le mot doit contenir "${myRoom.syllable}".`});return;}
+        if(myRoom.used.has(norm)){wsend(ws,{type:'error',msg:'Mot déjà utilisé.'});return;}
+        myRoom.used.add(norm);
+        myRoom.recentWords.push({name:player.name,word:rawWord});
+        if(myRoom.recentWords.length>16) myRoom.recentWords.shift();
+        player.score=(player.score||0)+1;
+        myRoom.turn = bombNextAliveSlot(myRoom, player.slot);
+        bombStartTurn(myRoom);
+        break;
+      }
+      case 'restart_bomb': {
+        if(!myRoom||!player||myRoom.phase!=='GAME_OVER')return;
+        myRoom.phase='WAITING';
+        myRoom.used.clear(); myRoom.recentWords=[]; myRoom.syllable=''; myRoom.turn=0; myRoom.turnEndsAt=0;
+        myRoom.players.forEach(p=>{p.lives=3;p.score=0;p.alive=true;});
+        clearTimeout(myRoom.timer);
+        bombBcast(myRoom);
+        broadcastLobby();
         break;
       }
     }

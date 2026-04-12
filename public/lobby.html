@@ -204,6 +204,7 @@ select option{background:#1e1b4b;color:var(--text)}
         <option value="emoji">&#127775; Devinette Emoji</option>
         <option value="loup">&#x1F43A; Loup-Garou</option>
         <option value="uno">&#x1F0CF; Uno</option>
+        <option value="bomb">💣 Word Bomb</option>
       </select>
       <input type="text" id="inp-create-name" placeholder="Votre prénom" maxlength="20" autocomplete="off">
       <button class="btn btn-primary" onclick="doCreate()">Créer la salle</button>
@@ -245,11 +246,11 @@ select option{background:#1e1b4b;color:var(--text)}
 const GAME_URLS = {
   quiz:'quiz.html', draw:'draw.html', p4:'p4.html',
   morpion:'morpion.html', taboo:'taboo.html', emoji:'emoji.html',
-  loup:'loup.html', uno:'uno.html'
+  loup:'loup.html', uno:'uno.html', bomb:'wordbomb.html'
 };
 const GAME_ICONS = {
   quiz:'⚡', draw:'✏️', p4:'🟠', morpion:'✖️', taboo:'🚫', emoji:'🌟',
-  loup:'🐺', uno:'🃏'
+  loup:'🐺', uno:'🃏', bomb:'💣'
 };
 
 let createdCode = null;
