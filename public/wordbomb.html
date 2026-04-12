@@ -44,8 +44,6 @@ input:focus{border-color:var(--primary)}
   font-size:2.35rem;font-weight:900;text-align:center;letter-spacing:.08em;color:#fde68a;
   text-shadow:0 0 20px rgba(251,191,36,.22)
 }
-#timer{height:8px;border-radius:999px;background:rgba(255,255,255,.12);overflow:hidden}
-#timer-fill{height:100%;width:100%;background:linear-gradient(90deg,#22c55e,#f59e0b,#ef4444)}
 #bomb-timer{
   width:min(230px,72vw);
   height:10px;
@@ -181,7 +179,6 @@ input:focus{border-color:var(--primary)}
         <div id="bomb-timer"><div id="bomb-timer-fill"></div></div>
         <div id="time-left">--.-s</div>
         <div id="syllable">--</div>
-        <div id="timer"><div id="timer-fill"></div></div>
         <div id="status"></div>
       </div>
       <div class="card"><div id="score-list"></div></div>
@@ -208,6 +205,7 @@ input:focus{border-color:var(--primary)}
 <script>
 const WS_URL = `${location.protocol==='https:'?'wss':'ws'}://${location.host}/ws/bomb`;
 let ws=null,mySlot=-1,myCode='',myName='',state=null,pendingAction=null,timerInt=null,lastPhase='';
+let activeTurnEndsAt=0;
 let soundOn=true,audioCtx=null,lastTickSecond=-1,lastRecentKey='';
 let fuseOsc=null,fuseGain=null,fuseLfo=null,fuseLfoGain=null;
 function $(id){return document.getElementById(id);}
@@ -346,7 +344,10 @@ function render(){
     if(k && k!==lastRecentKey && last.name===myName) SND.good();
     lastRecentKey = k;
     $('recent').innerHTML = rec.length ? rec.slice().reverse().map(r=>`<div class="r"><b>${r.name}</b> : ${r.word}</div>`).join('') : '<div class="r">Aucun mot pour le moment.</div>';
-    startTimer(state.turnEndsAt||0);
+    const turnEndsAt = Number(state.turnEndsAt||0);
+    if(turnEndsAt !== activeTurnEndsAt){
+      startTimer(turnEndsAt);
+    }
     return;
   }
   if(state.phase==='GAME_OVER'){
@@ -364,8 +365,8 @@ function render(){
 }
 function startTimer(endTs){
   stopTimer();
+  activeTurnEndsAt = Number(endTs||0);
   if(!endTs){
-    $('timer-fill').style.width='100%';
     $('bomb-timer-fill').style.width='100%';
     if($('time-left')) $('time-left').textContent='--.-s';
     return;
@@ -375,7 +376,6 @@ function startTimer(endTs){
   timerInt=setInterval(()=>{
     const left=Math.max(0,endTs-Date.now());
     const ratio=Math.max(0,Math.min(1,left/(state?.turnMs||12000)));
-    $('timer-fill').style.width=(ratio*100).toFixed(1)+'%';
     $('bomb-timer-fill').style.width=(ratio*100).toFixed(1)+'%';
     if($('time-left')) $('time-left').textContent=(left/1000).toFixed(1)+'s';
     const sec=Math.ceil(left/1000);
@@ -390,12 +390,12 @@ function startTimer(endTs){
 }
 function stopTimer(){
   if(timerInt){clearInterval(timerInt);timerInt=null;}
+  activeTurnEndsAt = 0;
   stopFuseSound();
   const bw=$('bomb-wrap'),f=$('bomb-fuse'),sp=$('bomb-spark');
   if(bw) bw.classList.remove('danger');
   if(f) f.style.width='34px';
   if(sp) sp.style.left='calc(50% + 34px)';
-  if($('timer-fill')) $('timer-fill').style.width='100%';
   if($('bomb-timer-fill')) $('bomb-timer-fill').style.width='100%';
   if($('time-left')) $('time-left').textContent='--.-s';
 }

@@ -3,6 +3,7 @@
 
 const STORAGE_KEY_NAME = 'zapplay_pseudo';
 const STORAGE_KEY_HISTORY = 'zapplay_history';
+const STORAGE_KEY_SOCIAL = 'zapplay_social_v1';
 const MAX_HISTORY = 50;
 const RESULT_DEDUP_WINDOW_MS = 4000;
 let lastResultSignature = '';
@@ -22,6 +23,7 @@ function savePseudo(name){
   if(!clean)return;
   localStorage.setItem(STORAGE_KEY_NAME,clean);
   localStorage.setItem('chat_name',clean);
+  touchSocialProfile(clean);
 }
 
 function autoFillPseudo(){
@@ -540,6 +542,278 @@ function renderHistoryWidget(containerId){
 }
 
 // ═══════════════════════════════════════════════════════
+//  3c. PROFIL & AMIS (local multi-pseudos)
+// ═══════════════════════════════════════════════════════
+
+function normPseudo(name){
+  return String(name||'')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g,'')
+    .replace(/\s+/g,' ');
+}
+
+function getSocialStore(){
+  try{
+    const raw = JSON.parse(localStorage.getItem(STORAGE_KEY_SOCIAL)||'{}');
+    if(raw && raw.users && typeof raw.users==='object') return raw;
+  }catch{}
+  return { users:{} };
+}
+
+function saveSocialStore(store){
+  localStorage.setItem(STORAGE_KEY_SOCIAL, JSON.stringify(store));
+}
+
+function ensureSocialUser(store, pseudo){
+  const clean = String(pseudo||'').trim().slice(0,20) || 'Joueur';
+  const key = normPseudo(clean);
+  if(!key)return null;
+  if(!store.users[key]){
+    store.users[key] = {
+      key,
+      pseudo: clean,
+      bio: '',
+      friends: [],
+      incoming: [],
+      outgoing: [],
+      updatedAt: Date.now()
+    };
+  }
+  const u = store.users[key];
+  u.pseudo = clean || u.pseudo || 'Joueur';
+  if(!Array.isArray(u.friends))u.friends=[];
+  if(!Array.isArray(u.incoming))u.incoming=[];
+  if(!Array.isArray(u.outgoing))u.outgoing=[];
+  if(typeof u.bio!=='string')u.bio='';
+  u.updatedAt = Date.now();
+  return u;
+}
+
+function getActiveSocialUser(store){
+  const pseudo = getSavedPseudo() || 'Joueur';
+  return ensureSocialUser(store, pseudo);
+}
+
+function touchSocialProfile(name){
+  const store = getSocialStore();
+  ensureSocialUser(store, name || getSavedPseudo() || 'Joueur');
+  saveSocialStore(store);
+}
+
+function socialSendFriendRequest(targetPseudo){
+  const toName = String(targetPseudo||'').trim().slice(0,20);
+  if(!toName)return {ok:false,msg:'Entre un pseudo.'};
+  const store = getSocialStore();
+  const me = getActiveSocialUser(store);
+  const to = ensureSocialUser(store, toName);
+  if(!to)return {ok:false,msg:'Pseudo invalide.'};
+  if(me.key===to.key)return {ok:false,msg:'Tu ne peux pas t’ajouter toi-même.'};
+  if(me.friends.includes(to.key))return {ok:false,msg:'Déjà en amis.'};
+  if(me.outgoing.some(x=>x.to===to.key))return {ok:false,msg:'Demande déjà envoyée.'};
+  if(me.incoming.some(x=>x.from===to.key))return {ok:false,msg:'Cette personne t’a déjà demandé en ami.'};
+  const now = Date.now();
+  me.outgoing.unshift({to:to.key,at:now});
+  to.incoming.unshift({from:me.key,at:now});
+  saveSocialStore(store);
+  return {ok:true,msg:`Demande envoyée à ${to.pseudo}.`};
+}
+
+function socialAccept(fromKey){
+  const store = getSocialStore();
+  const me = getActiveSocialUser(store);
+  const from = store.users[fromKey];
+  if(!from)return;
+  me.incoming = me.incoming.filter(x=>x.from!==fromKey);
+  from.outgoing = from.outgoing.filter(x=>x.to!==me.key);
+  if(!me.friends.includes(fromKey))me.friends.push(fromKey);
+  if(!from.friends.includes(me.key))from.friends.push(me.key);
+  saveSocialStore(store);
+}
+
+function socialDecline(fromKey){
+  const store = getSocialStore();
+  const me = getActiveSocialUser(store);
+  const from = store.users[fromKey];
+  me.incoming = me.incoming.filter(x=>x.from!==fromKey);
+  if(from)from.outgoing = from.outgoing.filter(x=>x.to!==me.key);
+  saveSocialStore(store);
+}
+
+function socialCancel(toKey){
+  const store = getSocialStore();
+  const me = getActiveSocialUser(store);
+  const to = store.users[toKey];
+  me.outgoing = me.outgoing.filter(x=>x.to!==toKey);
+  if(to)to.incoming = to.incoming.filter(x=>x.from!==me.key);
+  saveSocialStore(store);
+}
+
+function socialRemoveFriend(friendKey){
+  const store = getSocialStore();
+  const me = getActiveSocialUser(store);
+  const f = store.users[friendKey];
+  me.friends = me.friends.filter(x=>x!==friendKey);
+  if(f)f.friends = f.friends.filter(x=>x!==me.key);
+  saveSocialStore(store);
+}
+
+function renderSocialWidget(containerId){
+  const container = document.getElementById(containerId);
+  if(!container)return;
+  const store = getSocialStore();
+  const me = getActiveSocialUser(store);
+  const incoming = me.incoming
+    .map(x=>({at:x.at,user:store.users[x.from]}))
+    .filter(x=>x.user)
+    .sort((a,b)=>b.at-a.at);
+  const outgoing = me.outgoing
+    .map(x=>({at:x.at,user:store.users[x.to]}))
+    .filter(x=>x.user)
+    .sort((a,b)=>b.at-a.at);
+  const friends = me.friends
+    .map(k=>store.users[k])
+    .filter(Boolean)
+    .sort((a,b)=>String(a.pseudo||'').localeCompare(String(b.pseudo||''),'fr'));
+
+  container.innerHTML = `
+    <div style="display:grid;gap:10px">
+      <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:10px">
+        <div style="font-size:.72rem;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Mon profil</div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <input id="zp-profile-pseudo" maxlength="20" value="${escapeHtml(me.pseudo||'')}" placeholder="Pseudo" style="flex:1;min-width:120px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);border-radius:9px;color:#f1f5f9;padding:8px 10px">
+          <button id="zp-profile-save" style="border:none;border-radius:9px;padding:8px 12px;background:#7c3aed;color:#fff;font-size:.75rem;cursor:pointer">Enregistrer</button>
+        </div>
+        <textarea id="zp-profile-bio" maxlength="120" placeholder="Petite bio (optionnel)" style="margin-top:8px;width:100%;min-height:58px;resize:vertical;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);border-radius:9px;color:#f1f5f9;padding:8px 10px;font-family:inherit;font-size:.8rem">${escapeHtml(me.bio||'')}</textarea>
+      </div>
+      <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:10px">
+        <div style="font-size:.72rem;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Ajouter un ami</div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <input id="zp-friend-target" maxlength="20" placeholder="Pseudo du joueur" style="flex:1;min-width:120px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);border-radius:9px;color:#f1f5f9;padding:8px 10px">
+          <button id="zp-friend-send" style="border:none;border-radius:9px;padding:8px 12px;background:#f97316;color:#fff;font-size:.75rem;cursor:pointer">Envoyer</button>
+        </div>
+        <div id="zp-friend-feedback" style="font-size:.72rem;color:#94a3b8;margin-top:6px;min-height:16px"></div>
+      </div>
+      <div style="display:grid;gap:8px;grid-template-columns:repeat(auto-fit,minmax(200px,1fr))">
+        <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:10px">
+          <div style="font-size:.72rem;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Demandes reçues (${incoming.length})</div>
+          <div id="zp-incoming-list" style="display:grid;gap:6px"></div>
+        </div>
+        <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:10px">
+          <div style="font-size:.72rem;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Demandes envoyées (${outgoing.length})</div>
+          <div id="zp-outgoing-list" style="display:grid;gap:6px"></div>
+        </div>
+      </div>
+      <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:10px">
+        <div style="font-size:.72rem;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Mes amis (${friends.length})</div>
+        <div id="zp-friends-list" style="display:grid;gap:6px"></div>
+      </div>
+    </div>
+  `;
+
+  const inList = container.querySelector('#zp-incoming-list');
+  const outList = container.querySelector('#zp-outgoing-list');
+  const frList = container.querySelector('#zp-friends-list');
+  if(incoming.length===0) inList.innerHTML = `<div style="font-size:.78rem;color:#64748b">Aucune demande reçue.</div>`;
+  else inList.innerHTML = incoming.map(({user})=>`
+    <div style="display:flex;justify-content:space-between;gap:6px;align-items:center;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:7px">
+      <div style="font-size:.8rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(user.pseudo||'Joueur')}</div>
+      <div style="display:flex;gap:5px">
+        <button data-accept="${escapeHtml(user.key)}" style="border:none;border-radius:7px;padding:5px 8px;background:rgba(34,197,94,.18);color:#86efac;font-size:.72rem;cursor:pointer">Accepter</button>
+        <button data-decline="${escapeHtml(user.key)}" style="border:none;border-radius:7px;padding:5px 8px;background:rgba(239,68,68,.18);color:#fca5a5;font-size:.72rem;cursor:pointer">Refuser</button>
+      </div>
+    </div>
+  `).join('');
+
+  if(outgoing.length===0) outList.innerHTML = `<div style="font-size:.78rem;color:#64748b">Aucune demande envoyée.</div>`;
+  else outList.innerHTML = outgoing.map(({user})=>`
+    <div style="display:flex;justify-content:space-between;gap:6px;align-items:center;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:7px">
+      <div style="font-size:.8rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(user.pseudo||'Joueur')}</div>
+      <button data-cancel="${escapeHtml(user.key)}" style="border:none;border-radius:7px;padding:5px 8px;background:rgba(148,163,184,.18);color:#cbd5e1;font-size:.72rem;cursor:pointer">Annuler</button>
+    </div>
+  `).join('');
+
+  if(friends.length===0) frList.innerHTML = `<div style="font-size:.78rem;color:#64748b">Pas encore d'amis.</div>`;
+  else frList.innerHTML = friends.map(user=>`
+    <div style="display:flex;justify-content:space-between;gap:6px;align-items:center;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:7px">
+      <div style="min-width:0">
+        <div style="font-size:.8rem;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(user.pseudo||'Joueur')}</div>
+        <div style="font-size:.7rem;color:#94a3b8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml((user.bio||'').trim()||'Aucune bio')}</div>
+      </div>
+      <button data-remove="${escapeHtml(user.key)}" style="border:none;border-radius:7px;padding:5px 8px;background:rgba(239,68,68,.18);color:#fca5a5;font-size:.72rem;cursor:pointer">Retirer</button>
+    </div>
+  `).join('');
+
+  container.querySelector('#zp-profile-save')?.addEventListener('click',()=>{
+    const pseudo = String(container.querySelector('#zp-profile-pseudo')?.value||'').trim().slice(0,20);
+    const bio = String(container.querySelector('#zp-profile-bio')?.value||'').trim().slice(0,120);
+    if(!pseudo)return;
+    const s = getSocialStore();
+    const oldMe = getActiveSocialUser(s);
+    const newKey = normPseudo(pseudo);
+    if(newKey!==oldMe.key){
+      const existing = s.users[newKey];
+      if(existing && existing.key!==oldMe.key){
+        alert('Ce pseudo existe déjà localement. Choisis un autre pseudo.');
+        return;
+      }
+      const oldKey = oldMe.key;
+      delete s.users[oldKey];
+      oldMe.key = newKey;
+      s.users[newKey] = oldMe;
+      Object.values(s.users).forEach(u=>{
+        u.friends = u.friends.map(k=>k===oldKey?newKey:k);
+        u.incoming = u.incoming.map(r=>r.from===oldKey?{from:newKey,at:r.at}:r);
+        u.outgoing = u.outgoing.map(r=>r.to===oldKey?{to:newKey,at:r.at}:r);
+      });
+    }
+    oldMe.pseudo = pseudo;
+    oldMe.bio = bio;
+    savePseudo(pseudo);
+    saveSocialStore(s);
+    renderSocialWidget(containerId);
+    renderHistoryWidget('history-widget');
+  });
+
+  container.querySelector('#zp-friend-send')?.addEventListener('click',()=>{
+    const target = String(container.querySelector('#zp-friend-target')?.value||'').trim();
+    const out = socialSendFriendRequest(target);
+    const fb = container.querySelector('#zp-friend-feedback');
+    if(fb){
+      fb.textContent = out.msg;
+      fb.style.color = out.ok ? '#86efac' : '#fca5a5';
+    }
+    if(out.ok) renderSocialWidget(containerId);
+  });
+
+  container.querySelectorAll('[data-accept]').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      socialAccept(btn.getAttribute('data-accept')||'');
+      renderSocialWidget(containerId);
+    });
+  });
+  container.querySelectorAll('[data-decline]').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      socialDecline(btn.getAttribute('data-decline')||'');
+      renderSocialWidget(containerId);
+    });
+  });
+  container.querySelectorAll('[data-cancel]').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      socialCancel(btn.getAttribute('data-cancel')||'');
+      renderSocialWidget(containerId);
+    });
+  });
+  container.querySelectorAll('[data-remove]').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      socialRemoveFriend(btn.getAttribute('data-remove')||'');
+      renderSocialWidget(containerId);
+    });
+  });
+}
+
+// ═══════════════════════════════════════════════════════
 //  4. INIT
 // ═══════════════════════════════════════════════════════
 
@@ -556,6 +830,7 @@ function init(){
   hookPseudoInputs();
   if(isIndex){
     renderHistoryWidget('history-widget');
+    renderSocialWidget('social-widget');
   }
   // Auto-hide loader after 5s max
   if(!isIndex)setTimeout(hideLoader,8000);
@@ -565,6 +840,7 @@ window.ZapPlay={
   getSavedPseudo,savePseudo,
   hideLoader,showLoader,
   saveGameResult,getHistory,getStats,renderHistoryWidget,clearHistory,exportHistory,
+  renderSocialWidget,
   showLounge,hideLounge,setLoungeSender,addLoungeMessage
 };
 
