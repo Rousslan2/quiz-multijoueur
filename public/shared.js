@@ -867,32 +867,9 @@ function renderSocialWidget(containerId){
   if(!container)return;
   const store = getSocialStore();
   const me = getActiveSocialUser(store);
-  const onlineMap = getOnlinePresenceMap();
-  const incoming = me.incoming
-    .map(x=>({at:x.at,user:store.users[x.from]}))
-    .filter(x=>x.user)
-    .sort((a,b)=>b.at-a.at);
-  const outgoing = me.outgoing
-    .map(x=>({at:x.at,user:store.users[x.to]}))
-    .filter(x=>x.user)
-    .sort((a,b)=>b.at-a.at);
-  const friends = me.friends
-    .map(k=>store.users[k])
-    .filter(Boolean)
-    .sort((a,b)=>String(a.pseudo||'').localeCompare(String(b.pseudo||''),'fr'));
-  const invitesIn = (me.invitesIn||[])
-    .map(x=>({ ...x, user:store.users[x.from]}))
-    .filter(x=>x.user)
-    .sort((a,b)=>(b.at||0)-(a.at||0))
-    .slice(0,8);
-  const invitesOut = (me.invitesOut||[])
-    .map(x=>({ ...x, user:store.users[x.to]}))
-    .filter(x=>x.user)
-    .sort((a,b)=>(b.at||0)-(a.at||0))
-    .slice(0,8);
 
   container.innerHTML = `
-    <div style="display:grid;gap:10px">
+    <div style="display:grid;gap:10px;max-width:520px">
       <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:10px">
         <div style="font-size:.72rem;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Mon profil</div>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
@@ -902,127 +879,10 @@ function renderSocialWidget(containerId){
         <textarea id="zp-profile-bio" maxlength="120" placeholder="Petite bio (optionnel)" style="margin-top:8px;width:100%;min-height:58px;resize:vertical;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);border-radius:9px;color:#f1f5f9;padding:8px 10px;font-family:inherit;font-size:.8rem">${escapeHtml(me.bio||'')}</textarea>
       </div>
       <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:10px">
-        <div style="font-size:.72rem;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Ajouter un ami</div>
-        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-          <input id="zp-friend-target" maxlength="20" placeholder="Pseudo du joueur" style="flex:1;min-width:120px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);border-radius:9px;color:#f1f5f9;padding:8px 10px">
-          <button id="zp-friend-send" style="border:none;border-radius:9px;padding:8px 12px;background:#f97316;color:#fff;font-size:.75rem;cursor:pointer">Envoyer</button>
-        </div>
-        <div id="zp-friend-feedback" style="font-size:.72rem;color:#94a3b8;margin-top:6px;min-height:16px"></div>
-      </div>
-      <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:10px">
-        <div style="font-size:.72rem;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Invitation rapide</div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <select id="zp-invite-friend" style="flex:1;min-width:130px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);border-radius:9px;color:#f1f5f9;padding:8px 10px">
-            <option value="">Ami</option>
-            ${friends.map(f=>`<option value="${escapeHtml(f.pseudo||'')}">${escapeHtml(f.pseudo||'Joueur')}</option>`).join('')}
-          </select>
-          <select id="zp-invite-game" style="flex:1;min-width:130px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);border-radius:9px;color:#f1f5f9;padding:8px 10px">
-            <option value="bomb">Word Bomb</option>
-            <option value="quiz">Quiz Éclair</option>
-            <option value="draw">Dessin & Devine</option>
-            <option value="p4">Puissance 4</option>
-            <option value="morpion">Morpion</option>
-            <option value="taboo">Mots Interdits</option>
-            <option value="emoji">Devinette Emoji</option>
-            <option value="loup">Loup-Garou</option>
-            <option value="uno">Uno</option>
-          </select>
-          <input id="zp-invite-code" maxlength="8" placeholder="Code salle (optionnel)" style="width:150px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);border-radius:9px;color:#f1f5f9;padding:8px 10px">
-          <button id="zp-invite-send" style="border:none;border-radius:9px;padding:8px 12px;background:#22c55e;color:#fff;font-size:.75rem;cursor:pointer">Inviter</button>
-        </div>
-        <div id="zp-invite-feedback" style="font-size:.72rem;color:#94a3b8;margin-top:6px;min-height:16px"></div>
-      </div>
-      <div style="display:grid;gap:8px;grid-template-columns:repeat(auto-fit,minmax(200px,1fr))">
-        <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:10px">
-          <div style="font-size:.72rem;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Demandes reçues (${incoming.length})</div>
-          <div id="zp-incoming-list" style="display:grid;gap:6px"></div>
-        </div>
-        <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:10px">
-          <div style="font-size:.72rem;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Demandes envoyées (${outgoing.length})</div>
-          <div id="zp-outgoing-list" style="display:grid;gap:6px"></div>
-        </div>
-      </div>
-      <div style="display:grid;gap:8px;grid-template-columns:repeat(auto-fit,minmax(200px,1fr))">
-        <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:10px">
-          <div style="font-size:.72rem;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Invitations reçues (${invitesIn.length})</div>
-          <div id="zp-inv-in-list" style="display:grid;gap:6px"></div>
-        </div>
-        <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:10px">
-          <div style="font-size:.72rem;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Invitations envoyées (${invitesOut.length})</div>
-          <div id="zp-inv-out-list" style="display:grid;gap:6px"></div>
-        </div>
-      </div>
-      <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:10px">
-        <div style="font-size:.72rem;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Mes amis (${friends.length})</div>
-        <div id="zp-friends-list" style="display:grid;gap:6px"></div>
+        <div style="font-size:.78rem;color:#cbd5e1">La section amis et demandes d’ami a été désactivée.</div>
       </div>
     </div>
   `;
-
-  const inList = container.querySelector('#zp-incoming-list');
-  const outList = container.querySelector('#zp-outgoing-list');
-  const frList = container.querySelector('#zp-friends-list');
-  const invInList = container.querySelector('#zp-inv-in-list');
-  const invOutList = container.querySelector('#zp-inv-out-list');
-  if(incoming.length===0) inList.innerHTML = `<div style="font-size:.78rem;color:#64748b">Aucune demande reçue.</div>`;
-  else inList.innerHTML = incoming.map(({user})=>`
-    <div style="display:flex;justify-content:space-between;gap:6px;align-items:center;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:7px">
-      <div style="font-size:.8rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(user.pseudo||'Joueur')}</div>
-      <div style="display:flex;gap:5px">
-        <button data-accept="${escapeHtml(user.key)}" style="border:none;border-radius:7px;padding:5px 8px;background:rgba(34,197,94,.18);color:#86efac;font-size:.72rem;cursor:pointer">Accepter</button>
-        <button data-decline="${escapeHtml(user.key)}" style="border:none;border-radius:7px;padding:5px 8px;background:rgba(239,68,68,.18);color:#fca5a5;font-size:.72rem;cursor:pointer">Refuser</button>
-      </div>
-    </div>
-  `).join('');
-
-  if(outgoing.length===0) outList.innerHTML = `<div style="font-size:.78rem;color:#64748b">Aucune demande envoyée.</div>`;
-  else outList.innerHTML = outgoing.map(({user})=>`
-    <div style="display:flex;justify-content:space-between;gap:6px;align-items:center;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:7px">
-      <div style="font-size:.8rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(user.pseudo||'Joueur')}</div>
-      <button data-cancel="${escapeHtml(user.key)}" style="border:none;border-radius:7px;padding:5px 8px;background:rgba(148,163,184,.18);color:#cbd5e1;font-size:.72rem;cursor:pointer">Annuler</button>
-    </div>
-  `).join('');
-
-  if(friends.length===0) frList.innerHTML = `<div style="font-size:.78rem;color:#64748b">Pas encore d'amis.</div>`;
-  else frList.innerHTML = friends.map(user=>`
-    <div style="display:flex;justify-content:space-between;gap:6px;align-items:center;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:7px">
-      <div style="min-width:0">
-        <div style="font-size:.8rem;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${onlineMap[user.key]?'<span style="color:#22c55e">●</span>':'<span style="color:#64748b">●</span>'} ${escapeHtml(user.pseudo||'Joueur')}</div>
-        <div style="font-size:.7rem;color:#94a3b8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml((user.bio||'').trim()||'Aucune bio')}</div>
-      </div>
-      <button data-remove="${escapeHtml(user.key)}" style="border:none;border-radius:7px;padding:5px 8px;background:rgba(239,68,68,.18);color:#fca5a5;font-size:.72rem;cursor:pointer">Retirer</button>
-    </div>
-  `).join('');
-
-  if(invitesIn.length===0) invInList.innerHTML = `<div style="font-size:.78rem;color:#64748b">Aucune invitation reçue.</div>`;
-  else invInList.innerHTML = invitesIn.map(inv=>{
-    const meta = gameMetaById(inv.game);
-    const myName = encodeURIComponent(me.pseudo||getSavedPseudo()||'Joueur');
-    const codeParam = inv.code ? `&code=${encodeURIComponent(inv.code)}` : '';
-    const joinUrl = `${meta.url}?name=${myName}${codeParam}`;
-    return `<div style="display:flex;justify-content:space-between;gap:6px;align-items:center;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:7px">
-      <div style="min-width:0">
-        <div style="font-size:.79rem;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(inv.user.pseudo||'Joueur')}</div>
-        <div style="font-size:.7rem;color:#94a3b8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(meta.name)}${inv.code?` • ${escapeHtml(inv.code)}`:''}</div>
-      </div>
-      <div style="display:flex;gap:5px;flex-shrink:0">
-        <a href="${joinUrl}" style="text-decoration:none;border:none;border-radius:7px;padding:5px 8px;background:rgba(34,197,94,.18);color:#86efac;font-size:.72rem;cursor:pointer">Rejoindre</a>
-        <button data-inv-drop="${escapeHtml(inv.id)}" data-dir="in" style="border:none;border-radius:7px;padding:5px 8px;background:rgba(148,163,184,.18);color:#cbd5e1;font-size:.72rem;cursor:pointer">Fermer</button>
-      </div>
-    </div>`;
-  }).join('');
-
-  if(invitesOut.length===0) invOutList.innerHTML = `<div style="font-size:.78rem;color:#64748b">Aucune invitation envoyée.</div>`;
-  else invOutList.innerHTML = invitesOut.map(inv=>{
-    const meta = gameMetaById(inv.game);
-    return `<div style="display:flex;justify-content:space-between;gap:6px;align-items:center;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:7px">
-      <div style="min-width:0">
-        <div style="font-size:.79rem;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(inv.user.pseudo||'Joueur')}</div>
-        <div style="font-size:.7rem;color:#94a3b8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(meta.name)}${inv.code?` • ${escapeHtml(inv.code)}`:''}</div>
-      </div>
-      <button data-inv-drop="${escapeHtml(inv.id)}" data-dir="out" style="border:none;border-radius:7px;padding:5px 8px;background:rgba(148,163,184,.18);color:#cbd5e1;font-size:.72rem;cursor:pointer">Annuler</button>
-    </div>`;
-  }).join('');
 
   container.querySelector('#zp-profile-save')?.addEventListener('click',()=>{
     const pseudo = String(container.querySelector('#zp-profile-pseudo')?.value||'').trim().slice(0,20);
@@ -1042,11 +902,11 @@ function renderSocialWidget(containerId){
       oldMe.key = newKey;
       s.users[newKey] = oldMe;
       Object.values(s.users).forEach(u=>{
-        u.friends = u.friends.map(k=>k===oldKey?newKey:k);
-        u.incoming = u.incoming.map(r=>r.from===oldKey?{from:newKey,at:r.at}:r);
-        u.outgoing = u.outgoing.map(r=>r.to===oldKey?{to:newKey,at:r.at}:r);
-        u.invitesIn = (u.invitesIn||[]).map(r=>r.from===oldKey?{...r,from:newKey}:r.to===oldKey?{...r,to:newKey}:r);
-        u.invitesOut = (u.invitesOut||[]).map(r=>r.from===oldKey?{...r,from:newKey}:r.to===oldKey?{...r,to:newKey}:r);
+        if(Array.isArray(u.friends))u.friends = u.friends.map(k=>k===oldKey?newKey:k);
+        if(Array.isArray(u.incoming))u.incoming = u.incoming.map(r=>r.from===oldKey?{from:newKey,at:r.at}:r);
+        if(Array.isArray(u.outgoing))u.outgoing = u.outgoing.map(r=>r.to===oldKey?{to:newKey,at:r.at}:r);
+        if(Array.isArray(u.invitesIn))u.invitesIn = u.invitesIn.map(r=>r.from===oldKey?{...r,from:newKey}:r.to===oldKey?{...r,to:newKey}:r);
+        if(Array.isArray(u.invitesOut))u.invitesOut = u.invitesOut.map(r=>r.from===oldKey?{...r,from:newKey}:r.to===oldKey?{...r,to:newKey}:r);
       });
     }
     oldMe.pseudo = pseudo;
@@ -1055,60 +915,6 @@ function renderSocialWidget(containerId){
     saveSocialStore(s);
     renderSocialWidget(containerId);
     renderHistoryWidget('history-widget');
-  });
-
-  container.querySelector('#zp-friend-send')?.addEventListener('click',()=>{
-    const target = String(container.querySelector('#zp-friend-target')?.value||'').trim();
-    const out = socialSendFriendRequest(target);
-    const fb = container.querySelector('#zp-friend-feedback');
-    if(fb){
-      fb.textContent = out.msg;
-      fb.style.color = out.ok ? '#86efac' : '#fca5a5';
-    }
-    if(out.ok) renderSocialWidget(containerId);
-  });
-  container.querySelector('#zp-invite-send')?.addEventListener('click',()=>{
-    const target = String(container.querySelector('#zp-invite-friend')?.value||'').trim();
-    const game = String(container.querySelector('#zp-invite-game')?.value||'').trim();
-    const code = String(container.querySelector('#zp-invite-code')?.value||'').trim();
-    const out = socialSendInvite(target, game, code);
-    const fb = container.querySelector('#zp-invite-feedback');
-    if(fb){
-      fb.textContent = out.msg;
-      fb.style.color = out.ok ? '#86efac' : '#fca5a5';
-    }
-    if(out.ok) renderSocialWidget(containerId);
-  });
-
-  container.querySelectorAll('[data-accept]').forEach(btn=>{
-    btn.addEventListener('click',()=>{
-      socialAccept(btn.getAttribute('data-accept')||'');
-      renderSocialWidget(containerId);
-    });
-  });
-  container.querySelectorAll('[data-decline]').forEach(btn=>{
-    btn.addEventListener('click',()=>{
-      socialDecline(btn.getAttribute('data-decline')||'');
-      renderSocialWidget(containerId);
-    });
-  });
-  container.querySelectorAll('[data-cancel]').forEach(btn=>{
-    btn.addEventListener('click',()=>{
-      socialCancel(btn.getAttribute('data-cancel')||'');
-      renderSocialWidget(containerId);
-    });
-  });
-  container.querySelectorAll('[data-remove]').forEach(btn=>{
-    btn.addEventListener('click',()=>{
-      socialRemoveFriend(btn.getAttribute('data-remove')||'');
-      renderSocialWidget(containerId);
-    });
-  });
-  container.querySelectorAll('[data-inv-drop]').forEach(btn=>{
-    btn.addEventListener('click',()=>{
-      socialDismissInvite(btn.getAttribute('data-inv-drop')||'', btn.getAttribute('data-dir')||'in');
-      renderSocialWidget(containerId);
-    });
   });
 }
 
