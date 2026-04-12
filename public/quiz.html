@@ -306,6 +306,11 @@ function connect(){
 }
 connect();
 function send(d){if(ws&&ws.readyState===WebSocket.OPEN)ws.send(JSON.stringify(d));}
+function bindLoungeSender(){
+  if(window.ZapPlay)ZapPlay.setLoungeSender(text=>send({type:'lounge_chat',text}));
+  else setTimeout(bindLoungeSender,120);
+}
+bindLoungeSender();
 
 // ── URL params auto-action ────────────────────────────────────────────────────
 (function(){
@@ -476,6 +481,9 @@ function handle(msg){
       if(msg.name){showErr((msg.name)+' a quitté.');}
       // stay in current screen if still playing, go home only if waiting
       break;
+    case 'lounge_chat':
+      if(window.ZapPlay)ZapPlay.addLoungeMessage(msg);
+      break;
     case 'game_abandoned':
       showErr('Tous les autres joueurs ont quitté — partie abandonnée !');
       break;
@@ -504,12 +512,14 @@ function renderScoreboard(st){
 function render(st){
   const me=st.players.find(p=>p.slot===mySlot);
   if(st.phase==='WAITING'){
+    if(window.ZapPlay)ZapPlay.showLounge({players:st.players,mySlot,roomCode:st.code||myCode,gameName:'Quiz Éclair'});
     show('s-wait');
     const c=st.players.length;
     document.getElementById('wait-count').textContent=c+' joueur'+(c>1?'s':'')+' connecté'+(c>1?'s':'');
     return;
   }
   if(st.phase==='SETUP'){
+    if(window.ZapPlay)ZapPlay.showLounge({players:st.players,mySlot,roomCode:st.code||myCode,gameName:'Quiz Éclair'});
     show('s-setup');
     const isP1=mySlot===0;
     const n=st.players.length;
@@ -528,8 +538,9 @@ function render(st){
     document.getElementById('btn-start').disabled=!canStart;
     return;
   }
-  if(st.phase==='GAME_OVER'){renderGameOver(st);return;}
-  if(st.phase==='COUNTDOWN')return;
+  if(st.phase==='GAME_OVER'){if(window.ZapPlay)ZapPlay.hideLounge();renderGameOver(st);return;}
+  if(st.phase==='COUNTDOWN'){if(window.ZapPlay)ZapPlay.hideLounge();return;}
+  if(window.ZapPlay)ZapPlay.hideLounge();
   show('s-game');
   renderScoreboard(st);
 

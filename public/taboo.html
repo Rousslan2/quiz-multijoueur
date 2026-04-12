@@ -467,6 +467,11 @@ function connect() {
 function send(obj) {
   if (ws && ws.readyState === 1) ws.send(JSON.stringify(obj));
 }
+function bindLoungeSender(){
+  if(window.ZapPlay)ZapPlay.setLoungeSender(text=>send({type:'lounge_chat',text}));
+  else setTimeout(bindLoungeSender,120);
+}
+bindLoungeSender();
 
 /* ─── Global countdown ───────────────────────────────── */
 let gcountHandle = null;
@@ -529,6 +534,9 @@ function handleMsg(msg) {
       { const el=document.getElementById('msg-area')||document.getElementById('status-msg');
         if(el){el.textContent='Tous les joueurs ont quitté — partie abandonnée !';el.style.color='#fca5a5';} }
       break;
+    case 'lounge_chat':
+      if(window.ZapPlay)ZapPlay.addLoungeMessage(msg);
+      break;
 
     case 'countdown':
       showGlobalCountdown(msg.seconds || 3);
@@ -554,6 +562,7 @@ function renderState() {
   // Screens
   switch (phase) {
     case 'WAITING':
+      if(window.ZapPlay)ZapPlay.showLounge({players,mySlot,roomCode:state.code||myRoomCode,gameName:'Mots Interdits'});
       if (mySlot === 0 && players.length < 2) {
         // Host alone — stay on waiting screen so room code is visible
         showScreen('screen-waiting');
@@ -575,6 +584,7 @@ function renderState() {
       break;
 
     case 'READY':
+      if(window.ZapPlay)ZapPlay.showLounge({players,mySlot,roomCode:state.code||myRoomCode,gameName:'Mots Interdits'});
       showScreen('screen-ready');
       document.getElementById('ready-players').textContent = `${players.map(p=>p.name).join(' vs ')}`;
       if (mySlot === 0) {
@@ -587,6 +597,7 @@ function renderState() {
       break;
 
     case 'PLAYING':
+      if(window.ZapPlay)ZapPlay.hideLounge();
       showScreen('screen-playing');
       document.getElementById('turn-info').textContent =
         `Tour ${round}/${maxRounds} — ${mySlot === describerSlot ? 'C\'est à toi de décrire !' : `C\'est à ${players[describerSlot]?.name ?? '?'} de décrire`}`;
@@ -622,6 +633,7 @@ function renderState() {
       break;
 
     case 'REVEAL': {
+      if(window.ZapPlay)ZapPlay.hideLounge();
       stopTimer();
       showScreen('screen-reveal');
       const revealWord = state.revealWord || '';
@@ -639,6 +651,7 @@ function renderState() {
     }
 
     case 'GAME_OVER':
+      if(window.ZapPlay)ZapPlay.hideLounge();
       stopTimer();
       showScreen('screen-gameover');
       document.getElementById('go-score-p0').textContent = `${p0.name} : ${scores[0] ?? 0} pts`;

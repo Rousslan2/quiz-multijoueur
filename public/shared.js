@@ -180,6 +180,182 @@ function exportHistory(){
   URL.revokeObjectURL(url);
 }
 
+// ═══════════════════════════════════════════════════════
+//  3b. SALON PRÉ-PARTIE (Joueurs + Profil + Chat room)
+// ═══════════════════════════════════════════════════════
+
+let loungeSender = null;
+let loungeState = { roomCode:'', players:[], mySlot:-1, gameName:'' };
+let loungeReady = false;
+
+function ensureLoungeUI(){
+  if(loungeReady)return;
+  loungeReady = true;
+  const css = document.createElement('style');
+  css.textContent = `
+    #zp-lounge{
+      position:fixed;left:14px;right:14px;bottom:14px;z-index:220;
+      background:rgba(12,10,30,.96);border:1px solid rgba(167,139,250,.25);
+      border-radius:14px;box-shadow:0 10px 34px rgba(0,0,0,.45);
+      display:none;overflow:hidden;backdrop-filter:blur(10px);
+      font-family:'Segoe UI',system-ui,sans-serif;
+    }
+    #zp-lounge.show{display:block}
+    #zp-lounge-head{
+      display:flex;align-items:center;justify-content:space-between;
+      padding:8px 10px;background:rgba(167,139,250,.1);border-bottom:1px solid rgba(167,139,250,.2);
+    }
+    #zp-lounge-head .t{font-size:.78rem;color:#c4b5fd;font-weight:700}
+    #zp-lounge-head .s{font-size:.7rem;color:#94a3b8}
+    #zp-lounge-body{display:grid;grid-template-columns:1fr 1fr;gap:0;max-height:42vh}
+    #zp-lounge-players{padding:8px;border-right:1px solid rgba(255,255,255,.08);overflow:auto}
+    .zp-player{
+      background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);
+      border-radius:10px;padding:7px 9px;margin-bottom:6px;cursor:pointer
+    }
+    .zp-player.me{border-color:rgba(34,197,94,.4)}
+    .zp-player .n{font-size:.78rem;font-weight:700;color:#f1f5f9}
+    .zp-player .m{font-size:.67rem;color:#94a3b8}
+    #zp-lounge-chat{display:flex;flex-direction:column;min-height:170px}
+    #zp-lounge-msgs{flex:1;overflow:auto;padding:8px;display:flex;flex-direction:column;gap:5px}
+    .zp-chat{font-size:.74rem}
+    .zp-chat .who{color:#a78bfa;font-weight:700}
+    .zp-chat .txt{color:#e2e8f0}
+    #zp-lounge-input{display:flex;gap:6px;padding:8px;border-top:1px solid rgba(255,255,255,.08)}
+    #zp-lounge-input input{
+      flex:1;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);
+      border-radius:8px;padding:7px 9px;color:#f1f5f9;font-size:.78rem;outline:none
+    }
+    #zp-lounge-input button{
+      border:none;border-radius:8px;background:#7c3aed;color:#fff;
+      font-size:.78rem;padding:7px 10px;cursor:pointer
+    }
+    #zp-player-modal{
+      position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;z-index:260;
+      align-items:center;justify-content:center
+    }
+    #zp-player-modal.show{display:flex}
+    #zp-player-card{
+      width:min(360px,92vw);background:#16122f;border:1px solid rgba(167,139,250,.3);
+      border-radius:14px;padding:14px
+    }
+    #zp-player-card .n{font-size:1rem;font-weight:800}
+    #zp-player-card .m{font-size:.78rem;color:#94a3b8;margin-top:4px}
+    @media (max-width: 760px){
+      #zp-lounge-body{grid-template-columns:1fr}
+      #zp-lounge-players{border-right:none;border-bottom:1px solid rgba(255,255,255,.08)}
+    }
+  `;
+  document.head.appendChild(css);
+  const wrap = document.createElement('div');
+  wrap.innerHTML = `
+    <div id="zp-lounge">
+      <div id="zp-lounge-head">
+        <div>
+          <div class="t" id="zp-lounge-title">Salon</div>
+          <div class="s" id="zp-lounge-sub">En attente…</div>
+        </div>
+      </div>
+      <div id="zp-lounge-body">
+        <div id="zp-lounge-players"></div>
+        <div id="zp-lounge-chat">
+          <div id="zp-lounge-msgs"></div>
+          <div id="zp-lounge-input">
+            <input id="zp-lounge-text" maxlength="200" placeholder="Message salon..." />
+            <button id="zp-lounge-send">Envoyer</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div id="zp-player-modal">
+      <div id="zp-player-card">
+        <div class="n" id="zp-player-name">Joueur</div>
+        <div class="m" id="zp-player-meta"></div>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(wrap);
+
+  const sendBtn = document.getElementById('zp-lounge-send');
+  const input = document.getElementById('zp-lounge-text');
+  function sendLounge(){
+    const text = input.value.trim();
+    if(!text || !loungeSender)return;
+    loungeSender(text);
+    input.value='';
+  }
+  sendBtn.addEventListener('click', sendLounge);
+  input.addEventListener('keydown', e => { if(e.key==='Enter') sendLounge(); });
+  document.getElementById('zp-player-modal').addEventListener('click', e => {
+    if(e.target.id==='zp-player-modal') e.currentTarget.classList.remove('show');
+  });
+}
+
+function showLounge(data){
+  ensureLoungeUI();
+  loungeState = {
+    roomCode: data.roomCode || loungeState.roomCode || '',
+    players: data.players || [],
+    mySlot: Number.isInteger(data.mySlot)?data.mySlot:loungeState.mySlot,
+    gameName: data.gameName || loungeState.gameName || ''
+  };
+  const lounge = document.getElementById('zp-lounge');
+  lounge.classList.add('show');
+  document.getElementById('zp-lounge-title').textContent = `Salon ${loungeState.gameName||''}`.trim();
+  document.getElementById('zp-lounge-sub').textContent = `Code: ${loungeState.roomCode||'----'} • ${loungeState.players.length} joueur(s)`;
+
+  const list = document.getElementById('zp-lounge-players');
+  list.innerHTML = '';
+  loungeState.players.forEach(p=>{
+    const div = document.createElement('div');
+    div.className = 'zp-player' + (p.slot===loungeState.mySlot?' me':'');
+    div.innerHTML = `<div class="n">${p.name}${p.slot===loungeState.mySlot?' (toi)':''}</div><div class="m">Slot ${p.slot+1}</div>`;
+    div.addEventListener('click',()=>showPlayerProfile(p));
+    list.appendChild(div);
+  });
+}
+
+function hideLounge(){
+  const lounge = document.getElementById('zp-lounge');
+  if(lounge) lounge.classList.remove('show');
+}
+
+function setLoungeSender(fn){
+  loungeSender = fn;
+}
+
+function escapeHtml(value){
+  return String(value||'')
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;')
+    .replace(/'/g,'&#39;');
+}
+
+function addLoungeMessage(msg){
+  ensureLoungeUI();
+  const box = document.getElementById('zp-lounge-msgs');
+  const row = document.createElement('div');
+  row.className = 'zp-chat';
+  const who = msg.name || 'Joueur';
+  row.innerHTML = `<span class="who">${who}</span> <span class="txt">${escapeHtml(msg.text||'')}</span>`;
+  box.appendChild(row);
+  while(box.children.length>80) box.removeChild(box.firstChild);
+  box.scrollTop = box.scrollHeight;
+}
+
+function showPlayerProfile(player){
+  ensureLoungeUI();
+  const modal = document.getElementById('zp-player-modal');
+  const nameEl = document.getElementById('zp-player-name');
+  const metaEl = document.getElementById('zp-player-meta');
+  nameEl.textContent = player.name || 'Joueur';
+  const me = player.slot===loungeState.mySlot?'Ton profil':'Joueur du salon';
+  metaEl.textContent = `${me} • Slot ${Number(player.slot)+1}`;
+  modal.classList.add('show');
+}
+
 function getStats(){
   const h=getHistory();
   const pseudo=getSavedPseudo();
@@ -365,7 +541,8 @@ function init(){
 window.ZapPlay={
   getSavedPseudo,savePseudo,
   hideLoader,showLoader,
-  saveGameResult,getHistory,getStats,renderHistoryWidget,clearHistory,exportHistory
+  saveGameResult,getHistory,getStats,renderHistoryWidget,clearHistory,exportHistory,
+  showLounge,hideLounge,setLoungeSender,addLoungeMessage
 };
 
 })();

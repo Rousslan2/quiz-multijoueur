@@ -393,6 +393,11 @@ function connect() {
 }
 connect();
 function send(d) { if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(d)); }
+function bindLoungeSender(){
+  if(window.ZapPlay)ZapPlay.setLoungeSender(text=>send({type:'lounge_chat',text}));
+  else setTimeout(bindLoungeSender,120);
+}
+bindLoungeSender();
 
 // ── URL params ────────────────────────────────────────────────────────────────
 (function(){
@@ -831,6 +836,9 @@ function handle(msg) {
     case 'game_abandoned':
       showToast('Tous les autres joueurs ont quitté — partie abandonnée !', 'warn');
       break;
+    case 'lounge_chat':
+      if(window.ZapPlay)ZapPlay.addLoungeMessage(msg);
+      break;
 
     case 'draw_countdown':
       // Countdown avant le début de la partie
@@ -937,6 +945,7 @@ function renderState(st) {
   }
 
   if (phase === 'WAITING') {
+    if(window.ZapPlay)ZapPlay.showLounge({players,mySlot,roomCode:st.code||myCode,gameName:'Dessin & Devine'});
     clearInterval(revealCountdownHandle);
     show('s-ready');
     const isP1 = mySlot === 0;
@@ -952,6 +961,7 @@ function renderState(st) {
   }
 
   if (phase === 'READY') {
+    if(window.ZapPlay)ZapPlay.showLounge({players,mySlot,roomCode:st.code||myCode,gameName:'Dessin & Devine'});
     clearInterval(revealCountdownHandle);
     show('s-ready');
     const isP1 = mySlot === 0;
@@ -968,6 +978,7 @@ function renderState(st) {
   }
 
   if (phase === 'DRAWING') {
+    if(window.ZapPlay)ZapPlay.hideLounge();
     clearInterval(revealCountdownHandle);
     show('s-game');
     const enteringNewRound = (lastPhase !== 'DRAWING');
@@ -1033,6 +1044,7 @@ function renderState(st) {
   }
 
   if (phase === 'ROUND_OVER') {
+    if(window.ZapPlay)ZapPlay.hideLounge();
     show('s-reveal');
     stopTimer();
     if (lastPhase !== 'ROUND_OVER') {
@@ -1070,6 +1082,7 @@ function renderState(st) {
   }
 
   if (phase === 'GAME_OVER') {
+    if(window.ZapPlay)ZapPlay.hideLounge();
     show('s-gameover');
     stopTimer();
     clearInterval(revealCountdownHandle);

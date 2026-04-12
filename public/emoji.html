@@ -418,6 +418,11 @@ function connect() {
 function send(obj) {
   if (ws && ws.readyState === 1) ws.send(JSON.stringify(obj));
 }
+function bindLoungeSender(){
+  if(window.ZapPlay)ZapPlay.setLoungeSender(text=>send({type:'lounge_chat',text}));
+  else setTimeout(bindLoungeSender,120);
+}
+bindLoungeSender();
 
 /* ─── Message handler ────────────────────────────────── */
 function handleMsg(msg) {
@@ -480,6 +485,9 @@ function handleMsg(msg) {
     case 'game_abandoned':
       { const statusEl = document.getElementById('answer-status');
         if (statusEl) { statusEl.style.color = '#fca5a5'; statusEl.textContent = 'Tous les joueurs ont quitté — partie abandonnée !'; } }
+      break;
+    case 'lounge_chat':
+      if(window.ZapPlay)ZapPlay.addLoungeMessage(msg);
       break;
 
     case 'error':
@@ -544,6 +552,7 @@ function renderState() {
 
   switch (phase) {
     case 'WAITING':
+      if(window.ZapPlay)ZapPlay.showLounge({players,mySlot,roomCode:state.code||myRoomCode,gameName:'Devinette Emoji'});
       hideCountdown();
       if (mySlot === 0 && players.length < 2) {
         // Host alone — stay on waiting screen so room code is visible
@@ -558,6 +567,7 @@ function renderState() {
       break;
 
     case 'READY':
+      if(window.ZapPlay)ZapPlay.showLounge({players,mySlot,roomCode:state.code||myRoomCode,gameName:'Devinette Emoji'});
       hideCountdown();
       showScreen('screen-ready');
       document.getElementById('ready-players').textContent = players.map(p => p.name).join(' · ');
@@ -566,10 +576,12 @@ function renderState() {
       break;
 
     case 'COUNTDOWN':
+      if(window.ZapPlay)ZapPlay.hideLounge();
       showScreen('screen-playing');
       break;
 
     case 'QUESTION':
+      if(window.ZapPlay)ZapPlay.hideLounge();
       hideCountdown();
       showScreen('screen-playing');
       if (puzzle) {
@@ -590,6 +602,7 @@ function renderState() {
       break;
 
     case 'REVEAL':
+      if(window.ZapPlay)ZapPlay.hideLounge();
       hideCountdown();
       showScreen('screen-reveal');
       if (puzzle) {
@@ -608,6 +621,7 @@ function renderState() {
       break;
 
     case 'GAME_OVER':
+      if(window.ZapPlay)ZapPlay.hideLounge();
       hideCountdown();
       showScreen('screen-gameover');
       const sorted = [...players].sort((a, b) => (scores?.[b.slot] ?? 0) - (scores?.[a.slot] ?? 0));

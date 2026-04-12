@@ -105,6 +105,14 @@ function bcast(players, data) {
   players.forEach(p => { if(p.ws.readyState===WebSocket.OPEN) p.ws.send(m); });
 }
 function wsend(ws, data) { if(ws.readyState===WebSocket.OPEN) ws.send(JSON.stringify(data)); }
+function handleLoungeChat(room, ws, d){
+  if(!room)return;
+  const sender=room.players.find(p=>p.ws===ws);
+  if(!sender)return;
+  const text=String(d.text||'').trim().slice(0,200);
+  if(!text)return;
+  bcast(room.players,{type:'lounge_chat',name:sender.name,slot:sender.slot,text,time:Date.now(),code:room.code});
+}
 
 function genCode(existingMap) {
   let code;
@@ -307,6 +315,10 @@ wssQuiz.on('connection',ws=>{
   ws.on('message',raw=>{
     let d;try{d=JSON.parse(raw);}catch{return;}
     switch(d.type){
+      case 'lounge_chat':{
+        handleLoungeChat(myRoom,ws,d);
+        break;
+      }
       case 'create_quiz':{
         const name=String(d.name||'').trim().slice(0,20)||'Joueur';
         const code=genCode(quizRooms);
@@ -560,6 +572,10 @@ wssDraw.on('connection',ws=>{
     let d;try{d=JSON.parse(raw);}catch{return;}
     const player=myRoom?myRoom.players.find(p=>p.ws===ws):null;
     switch(d.type){
+      case 'lounge_chat':{
+        handleLoungeChat(myRoom,ws,d);
+        break;
+      }
       case 'create_draw':{
         const name=String(d.name||'').trim().slice(0,20)||'Joueur';
         const code=genCode(drawRooms);
@@ -709,6 +725,10 @@ wssP4.on('connection',ws=>{
     let d;try{d=JSON.parse(raw);}catch{return;}
     const player=myRoom?myRoom.players.find(p=>p.ws===ws):null;
     switch(d.type){
+      case 'lounge_chat':{
+        handleLoungeChat(myRoom,ws,d);
+        break;
+      }
       case 'create_p4':{
         const name=String(d.name||'').trim().slice(0,20)||'Joueur';
         const code=genCode(p4Rooms);
@@ -808,6 +828,10 @@ wssMorpion.on('connection',ws=>{
     let d;try{d=JSON.parse(raw);}catch{return;}
     const player=myRoom?myRoom.players.find(p=>p.ws===ws):null;
     switch(d.type){
+      case 'lounge_chat':{
+        handleLoungeChat(myRoom,ws,d);
+        break;
+      }
       case 'create_morpion':{
         const name=String(d.name||'').trim().slice(0,20)||'Joueur';
         const code=genCode(morpionRooms);
@@ -1001,6 +1025,10 @@ wssTaboo.on('connection',ws=>{
     let d;try{d=JSON.parse(raw);}catch{return;}
     const player=myRoom?myRoom.players.find(p=>p.ws===ws):null;
     switch(d.type){
+      case 'lounge_chat':{
+        handleLoungeChat(myRoom,ws,d);
+        break;
+      }
       case 'create_taboo':{
         const name=String(d.name||'').trim().slice(0,20)||'Joueur';
         const code=genCode(tabooRooms);
@@ -1171,6 +1199,10 @@ wssEmoji.on('connection',ws=>{
     let d;try{d=JSON.parse(raw);}catch{return;}
     const player=myRoom?myRoom.players.find(p=>p.ws===ws):null;
     switch(d.type){
+      case 'lounge_chat':{
+        handleLoungeChat(myRoom,ws,d);
+        break;
+      }
       case 'create_emoji':{
         const name=String(d.name||'').trim().slice(0,20)||'Joueur';
         const code=genCode(emojiRooms);
@@ -1415,6 +1447,10 @@ wssLoup.on('connection', ws => {
     let d; try { d = JSON.parse(raw); } catch { return; }
     const player = myRoom ? myRoom.players.find(p => p.ws === ws) : null;
     switch (d.type) {
+      case 'lounge_chat': {
+        handleLoungeChat(myRoom, ws, d);
+        break;
+      }
       case 'create_loup': {
         const name = String(d.name||'').trim().slice(0,20)||'Joueur';
         const code = genCode(loupRooms);
@@ -1635,6 +1671,10 @@ wssUno.on('connection', ws => {
     let d; try { d = JSON.parse(raw); } catch { return; }
     const player = myRoom ? myRoom.players.find(p => p.ws === ws) : null;
     switch (d.type) {
+      case 'lounge_chat': {
+        handleLoungeChat(myRoom, ws, d);
+        break;
+      }
       case 'create_uno': {
         const name = String(d.name||'').trim().slice(0,20)||'Joueur';
         const code = genCode(unoRooms);

@@ -209,6 +209,11 @@ function connect(onOpen) {
 }
 
 function send(obj) { if (ws && ws.readyState === 1) ws.send(JSON.stringify(obj)); }
+function bindLoungeSender(){
+  if(window.ZapPlay)ZapPlay.setLoungeSender(text=>send({type:'lounge_chat',text}));
+  else setTimeout(bindLoungeSender,120);
+}
+bindLoungeSender();
 
 function copyCode() {
   if (!myCode) return;
@@ -275,6 +280,9 @@ function handle(m) {
   }
   if (m.type === 'player_left') {
     document.getElementById('wait-err').textContent = m.name + ' a quitté la partie.';
+  }
+  if (m.type === 'lounge_chat') {
+    if(window.ZapPlay)ZapPlay.addLoungeMessage(m);
   }
   if (m.type === 'role_assigned') {
     myRole = m.role;
@@ -383,12 +391,15 @@ function updateState(m) {
   const phase = m.phase;
   // Update wait screen
   if (phase === 'WAITING') {
+    if(window.ZapPlay)ZapPlay.showLounge({players:m.players,mySlot,roomCode:m.code||myCode,gameName:'Loup-Garou'});
     const wp = document.getElementById('wait-players');
     wp.innerHTML = m.players.map((p, i) =>
       `<span class="player-chip${i===0?' host':''}">${esc(p.name)}${i===0?' &#x1F451;':''}</span>`
     ).join('');
     if (isHost) document.getElementById('start-btn').style.display = m.players.length >= 4 ? 'block' : 'none';
     if (currentPhase !== 'WAITING') show('s-wait');
+  } else {
+    if(window.ZapPlay)ZapPlay.hideLounge();
   }
   if (phase === 'NIGHT') {
     const np = m.nightPhase;

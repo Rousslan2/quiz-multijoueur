@@ -445,6 +445,11 @@
       ws.send(JSON.stringify(obj));
     }
   }
+  function bindLoungeSender(){
+    if(window.ZapPlay)ZapPlay.setLoungeSender(text=>send({type:'lounge_chat',text}));
+    else setTimeout(bindLoungeSender,120);
+  }
+  bindLoungeSender();
 
   function connect() {
     if (ws) { try { ws.close(); } catch(e) {} }
@@ -522,6 +527,8 @@
       showError(`${msg.name} a quitté la partie.`);
     } else if (msg.type === 'game_abandoned') {
       showError('Tous les autres joueurs ont quitté — partie abandonnée !');
+    } else if (msg.type === 'lounge_chat') {
+      if(window.ZapPlay)ZapPlay.addLoungeMessage(msg);
     } else if (msg.type === 'error') {
       showError(msg.msg);
     }
@@ -560,6 +567,7 @@
     $('grid-area').classList.add('hidden');
 
     if (phase === 'WAITING' || phase === 'READY') {
+      if(window.ZapPlay)ZapPlay.showLounge({players,mySlot,roomCode:state.code||myRoomCode,gameName:'Puissance 4'});
       $('waiting-screen').classList.remove('hidden');
       const n = players.length;
       const isP1 = mySlot === 0;
@@ -573,12 +581,14 @@
         $('status').textContent = 'En attente d\'un adversaire…';
       }
     } else if (phase === 'PLAYING') {
+      if(window.ZapPlay)ZapPlay.hideLounge();
       $('grid-area').classList.remove('hidden');
       const isMyTurn = turn === mySlot;
       const turnName = players && players[turn] ? players[turn].name : '?';
       $('status').textContent = isMyTurn ? 'C\'est ton tour !' : `Tour de ${turnName}...`;
       renderBoard(board, null, turn, players);
     } else if (phase === 'GAME_OVER') {
+      if(window.ZapPlay)ZapPlay.hideLounge();
       $('grid-area').classList.remove('hidden');
       renderBoard(board, winLine, -1, players);
 
