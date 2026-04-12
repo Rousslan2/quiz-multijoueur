@@ -203,7 +203,7 @@ function send(obj) { if (ws && ws.readyState === 1) ws.send(JSON.stringify(obj))
 function doCreate() {
   const name = document.getElementById('inp-name').value.trim();
   if (!name) { setErr('Entre ton prénom !'); return; }
-  connect(() => send({ type:'create', name }));
+  connect(() => send({ type:'create_loup', name }));
 }
 
 function doJoin() {
@@ -225,7 +225,7 @@ function handle(m) {
     document.getElementById('start-btn').style.display = 'block';
     show('s-wait');
   }
-  if (m.type === 'joined_loup') {
+  if (m.type === 'welcome_loup') {
     mySlot = m.slot; myCode = m.code;
     document.getElementById('wait-code').textContent = m.code;
     show('s-wait');
@@ -337,13 +337,13 @@ function handle(m) {
 function updateState(m) {
   const phase = m.phase;
   // Update wait screen
-  if (phase === 'LOBBY') {
+  if (phase === 'WAITING') {
     const wp = document.getElementById('wait-players');
     wp.innerHTML = m.players.map((p, i) =>
       `<span class="player-chip${i===0?' host':''}">${esc(p.name)}${i===0?' &#x1F451;':''}</span>`
     ).join('');
     if (isHost) document.getElementById('start-btn').style.display = m.players.length >= 4 ? 'block' : 'none';
-    if (currentPhase !== 'LOBBY') show('s-wait');
+    if (currentPhase !== 'WAITING') show('s-wait');
   }
   if (phase === 'NIGHT') {
     const np = m.nightPhase;

@@ -71,7 +71,7 @@ function getRoomsSnapshot() {
         host: room.host,
         players: room.players.map(p => p.name),
         maxPlayers: game==='loup'?10:game==='uno'?4:4,
-        status: room.phase === 'LOBBY' || room.phase === 'WAITING' ? 'waiting' : 'playing'
+        status: ['WAITING','SETUP'].includes(room.phase) ? 'waiting' : 'playing'
       });
     }
   }
@@ -308,38 +308,36 @@ wssQuiz.on('connection',ws=>{
   ws.on('message',raw=>{
     let d;try{d=JSON.parse(raw);}catch{return;}
     switch(d.type){
-      case 'create':{
+      case 'create_quiz':{
         const name=String(d.name||'').trim().slice(0,20)||'Joueur';
         const code=genCode(quizRooms);
         const room=makeQuizRoom(code,name);
-        room.phase='SETUP'; // Show setup screen immediately for host
         quizRooms.set(code,room);
         myRoom=room;
         const slot=0;
         room.players.push({ws,name,score:0,slot,jokers:{fifty:true,pass:true}});
-        wsend(ws,{type:'created',code,slot,name});
+        wsend(ws,{type:'created_quiz',code,slot,name});
         wsend(ws,qSnap(room));
         broadcastLobby();
         break;
       }
-      case 'join':{
+      case 'join_quiz':{
         const code=String(d.code||'').trim().toUpperCase();
         const room=quizRooms.get(code);
         if(!room){wsend(ws,{type:'error',msg:'Salle introuvable.'});return;}
         if(room.players.length>=4){wsend(ws,{type:'error',msg:'Partie pleine (4 joueurs max).'});return;}
-        if(!['WAITING','SETUP'].includes(room.phase)){wsend(ws,{type:'error',msg:'La partie a déjà commencé.'});return;}
+        if(room.phase!=='WAITING'){wsend(ws,{type:'error',msg:'La partie a déjà commencé.'});return;}
         const name=String(d.name||'').trim().slice(0,20)||'Joueur';
         const slot=room.players.length;
         room.players.push({ws,name,score:0,slot,jokers:{fifty:true,pass:true}});
         myRoom=room;
-        wsend(ws,{type:'welcome',slot,name,code});
-        // Move to SETUP as soon as 2+ players; host can start whenever ready
+        wsend(ws,{type:'welcome_quiz',slot,name,code});
         if(room.players.length>=2){room.phase='SETUP';}
         bcast(room.players,qSnap(room));
         broadcastLobby();
         break;
       }
-      case 'start':{
+      case 'start_quiz':{
         if(!myRoom)return;
         const p=myRoom.players.find(x=>x.ws===ws);if(!p||p.slot!==0)return;
         if(!['SETUP','GAME_OVER'].includes(myRoom.phase))return;
@@ -395,7 +393,7 @@ wssQuiz.on('connection',ws=>{
         }
         break;
       }
-      case 'restart':{
+      case 'restart_quiz':{
         if(!myRoom)return;
         const p=myRoom.players.find(x=>x.ws===ws);if(!p||myRoom.phase!=='GAME_OVER')return;
         myRoom.phase='SETUP';bcast(myRoom.players,qSnap(myRoom));
@@ -729,6 +727,7 @@ wssP4.on('connection',ws=>{
         const room=p4Rooms.get(code);
         if(!room){wsend(ws,{type:'error',msg:'Salle introuvable.'});return;}
         if(room.players.length>=2){wsend(ws,{type:'error',msg:'Partie pleine (2 joueurs max).'});return;}
+        if(room.phase!=='WAITING'){wsend(ws,{type:'error',msg:'La partie a déjà commencé.'});return;}
         const name=String(d.name||'').trim().slice(0,20)||'Joueur';
         const slot=room.players.length;room.players.push({ws,name,slot});
         myRoom=room;
@@ -825,6 +824,7 @@ wssMorpion.on('connection',ws=>{
         const room=morpionRooms.get(code);
         if(!room){wsend(ws,{type:'error',msg:'Salle introuvable.'});return;}
         if(room.players.length>=2){wsend(ws,{type:'error',msg:'Partie pleine (2 joueurs max).'});return;}
+        if(room.phase!=='WAITING'){wsend(ws,{type:'error',msg:'La partie a déjà commencé.'});return;}
         const name=String(d.name||'').trim().slice(0,20)||'Joueur';
         const slot=room.players.length;morpionRooms.get(code).players.push({ws,name,slot});
         myRoom=room;
@@ -1016,6 +1016,7 @@ wssTaboo.on('connection',ws=>{
         const room=tabooRooms.get(code);
         if(!room){wsend(ws,{type:'error',msg:'Salle introuvable.'});return;}
         if(room.players.length>=4){wsend(ws,{type:'error',msg:'Partie pleine (4 joueurs max).'});return;}
+        if(room.phase!=='WAITING'){wsend(ws,{type:'error',msg:'La partie a déjà commencé.'});return;}
         const name=String(d.name||'').trim().slice(0,20)||'Joueur';
         const slot=room.players.length;room.players.push({ws,name,slot});
         myRoom=room;
@@ -1404,7 +1405,7 @@ wssVerite.on('connection',ws=>{
 const loupRooms = new Map();
 
 function makeLoupRoom(code, host) {
-  return { code, host, players:[], phase:'LOBBY',
+  return { code, host, players:[], phase:'WAITING',
            votes:{}, nightKill:null, savedSlot:null, witchKillSlot:null,
            witchUsedSave:false, witchUsedKill:false,
            timer:null, round:0 };
@@ -1556,14 +1557,14 @@ wssLoup.on('connection', ws => {
     myRoom.players.splice(idx, 1);
     myRoom.players.forEach((p, i) => p.slot = i);
     if (myRoom.players.length === 0) { clearTimeout(myRoom.timer); loupRooms.delete(myRoom.code); }
-    else { myRoom.phase = 'LOBBY'; bcast(myRoom.players, { type:'player_left', name }); loupBcastAll(myRoom); }
+    else { myRoom.phase = 'WAITING'; bcast(myRoom.players, { type:'player_left', name }); loupBcastAll(myRoom); }
     broadcastLobby();
   });
   ws.on('message', raw => {
     let d; try { d = JSON.parse(raw); } catch { return; }
     const player = myRoom ? myRoom.players.find(p => p.ws === ws) : null;
     switch (d.type) {
-      case 'create': {
+      case 'create_loup': {
         const name = String(d.name||'').trim().slice(0,20)||'Joueur';
         const code = genCode(loupRooms);
         const room = makeLoupRoom(code, name);
@@ -1580,18 +1581,18 @@ wssLoup.on('connection', ws => {
         const room = loupRooms.get(code);
         if (!room) { wsend(ws, { type:'error', msg:'Salle introuvable.' }); return; }
         if (room.players.length >= 10) { wsend(ws, { type:'error', msg:'Salle pleine (10 max).' }); return; }
-        if (room.phase !== 'LOBBY') { wsend(ws, { type:'error', msg:'Partie déjà en cours.' }); return; }
+        if (room.phase !== 'WAITING') { wsend(ws, { type:'error', msg:'La partie a déjà commencé.' }); return; }
         const name = String(d.name||'').trim().slice(0,20)||'Joueur';
         const slot = room.players.length;
         room.players.push({ ws, name, slot, alive:true, role:null });
         myRoom = room;
-        wsend(ws, { type:'joined_loup', slot, name, code });
+        wsend(ws, { type:'welcome_loup', slot, name, code });
         loupBcastAll(room);
         broadcastLobby();
         break;
       }
       case 'start_loup': {
-        if (!player || !myRoom || player.slot !== 0 || myRoom.phase !== 'LOBBY') return;
+        if (!player || !myRoom || player.slot !== 0 || myRoom.phase !== 'WAITING') return;
         if (myRoom.players.length < 4) { wsend(ws, { type:'error', msg:'Il faut au moins 4 joueurs.' }); return; }
         // Assign roles
         const n = myRoom.players.length;
@@ -1676,7 +1677,7 @@ wssLoup.on('connection', ws => {
 const unoRooms = new Map();
 
 function makeUnoRoom(code, host) {
-  return { code, host, players:[], phase:'LOBBY',
+  return { code, host, players:[], phase:'WAITING',
            deck:[], pile:[], hands:{},
            turn:0, direction:1, drawStack:0,
            currentColor:'rouge',
@@ -1771,7 +1772,7 @@ wssUno.on('connection', ws => {
     myRoom.players.splice(idx, 1);
     myRoom.players.forEach((p, i) => p.slot = i);
     if (myRoom.players.length === 0) { clearTimeout(myRoom.timer); unoRooms.delete(myRoom.code); }
-    else { myRoom.phase = 'LOBBY'; bcast(myRoom.players, { type:'player_left', name }); unoBcastAll(myRoom); }
+    else { myRoom.phase = 'WAITING'; bcast(myRoom.players, { type:'player_left', name }); unoBcastAll(myRoom); }
     broadcastLobby();
   });
   ws.on('message', raw => {
@@ -1785,7 +1786,7 @@ wssUno.on('connection', ws => {
         unoRooms.set(code, room);
         myRoom = room;
         room.players.push({ ws, name, slot:0 });
-        wsend(ws, { type:'uno_created', code, slot:0, name });
+        wsend(ws, { type:'created_uno', code, slot:0, name });
         wsend(ws, unoSnap(room, 0));
         broadcastLobby();
         break;
@@ -1793,21 +1794,21 @@ wssUno.on('connection', ws => {
       case 'join_uno': {
         const code = String(d.code||'').trim().toUpperCase();
         const room = unoRooms.get(code);
-        if (!room) { wsend(ws, { type:'uno_error', msg:'Salle introuvable.' }); return; }
-        if (room.players.length >= 4) { wsend(ws, { type:'uno_error', msg:'Salle pleine (4 max).' }); return; }
-        if (room.phase !== 'LOBBY') { wsend(ws, { type:'uno_error', msg:'Partie déjà en cours.' }); return; }
+        if (!room) { wsend(ws, { type:'error', msg:'Salle introuvable.' }); return; }
+        if (room.players.length >= 4) { wsend(ws, { type:'error', msg:'Salle pleine (4 max).' }); return; }
+        if (room.phase !== 'WAITING') { wsend(ws, { type:'error', msg:'La partie a déjà commencé.' }); return; }
         const name = String(d.name||'').trim().slice(0,20)||'Joueur';
         const slot = room.players.length;
         room.players.push({ ws, name, slot });
         myRoom = room;
-        wsend(ws, { type:'uno_joined', slot, name, code });
+        wsend(ws, { type:'welcome_uno', slot, name, code });
         unoBcastAll(room);
         broadcastLobby();
         break;
       }
       case 'start_uno': {
-        if (!player || !myRoom || player.slot !== 0 || myRoom.phase !== 'LOBBY') return;
-        if (myRoom.players.length < 2) { wsend(ws, { type:'uno_error', msg:'Il faut au moins 2 joueurs.' }); return; }
+        if (!player || !myRoom || player.slot !== 0 || myRoom.phase !== 'WAITING') return;
+        if (myRoom.players.length < 2) { wsend(ws, { type:'error', msg:'Il faut au moins 2 joueurs.' }); return; }
         myRoom.deck = buildUnoDeck();
         myRoom.hands = {};
         myRoom.players.forEach(p => { myRoom.hands[p.slot] = []; });
@@ -1826,15 +1827,15 @@ wssUno.on('connection', ws => {
       case 'play_uno': {
         if (!player || !myRoom || myRoom.phase !== 'PLAYING') return;
         if (myRoom.players[myRoom.turn]?.slot !== player.slot) {
-          wsend(ws, { type:'uno_error', msg:"Ce n'est pas ton tour." }); return;
+          wsend(ws, { type:'error', msg:"Ce n'est pas ton tour." }); return;
         }
         const hand = myRoom.hands[player.slot] || [];
         const ci = Number(d.cardIndex);
-        if (ci < 0 || ci >= hand.length) { wsend(ws, { type:'uno_error', msg:'Carte invalide.' }); return; }
+        if (ci < 0 || ci >= hand.length) { wsend(ws, { type:'error', msg:'Carte invalide.' }); return; }
         const card = hand[ci];
         const top = myRoom.pile[myRoom.pile.length-1];
         if (!unoCanPlay(card, top, myRoom.currentColor, myRoom.drawStack)) {
-          wsend(ws, { type:'uno_error', msg:'Carte non jouable.' }); return;
+          wsend(ws, { type:'error', msg:'Carte non jouable.' }); return;
         }
 
         // Remove card from hand
@@ -1896,7 +1897,7 @@ wssUno.on('connection', ws => {
       case 'draw_uno': {
         if (!player || !myRoom || myRoom.phase !== 'PLAYING') return;
         if (myRoom.players[myRoom.turn]?.slot !== player.slot) {
-          wsend(ws, { type:'uno_error', msg:"Ce n'est pas ton tour." }); return;
+          wsend(ws, { type:'error', msg:"Ce n'est pas ton tour." }); return;
         }
         const drawCount = myRoom.drawStack > 0 ? myRoom.drawStack : 1;
         unoDrawCards(myRoom, player.slot, drawCount);

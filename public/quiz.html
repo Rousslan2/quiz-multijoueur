@@ -325,7 +325,7 @@ function send(d){if(ws&&ws.readyState===WebSocket.OPEN)ws.send(JSON.stringify(d)
     const name=p.get('name');
     document.getElementById('inp-name').value=name;
     const tryCreate=()=>{
-      if(ws&&ws.readyState===WebSocket.OPEN){SND.init();myName=name;send({type:'create',name});}
+      if(ws&&ws.readyState===WebSocket.OPEN){SND.init();myName=name;send({type:'create_quiz',name});}
       else reconnectAction=tryCreate;
     };
     setTimeout(tryCreate,300);
@@ -352,7 +352,7 @@ function doCreate(){
   SND.init();
   const n=document.getElementById('inp-name').value.trim();
   if(!n){showErr('Entre ton prénom !');return;}
-  myName=n;send({type:'create',name:n});
+  myName=n;send({type:'create_quiz',name:n});
 }
 function doJoin(){
   SND.init();
@@ -360,7 +360,7 @@ function doJoin(){
   if(!n){showErr('Entre ton prénom !');return;}
   const c=document.getElementById('inp-code').value.trim().toUpperCase();
   if(!c){showErr('Entre le code de la salle !');return;}
-  myName=n;send({type:'join',name:n,code:c});
+  myName=n;send({type:'join_quiz',name:n,code:c});
 }
 function copyRoomCode(){
   if(!myCode)return;
@@ -382,11 +382,11 @@ document.getElementById('inp-code').addEventListener('input',e=>{e.target.value=
 document.getElementById('inp-code').addEventListener('keydown',e=>{if(e.key==='Enter')doJoin();});
 function doBuzz(){send({type:'buzz'});}
 function doAnswer(i){send({type:'answer',index:i});}
-function doRestart(){send({type:'restart'});}
+function doRestart(){send({type:'restart_quiz'});}
 function doStart(){
   const cats=[...document.querySelectorAll('.cat-btn.on')].map(b=>b.dataset.cat);
   const diff=Number(document.querySelector('.diff-btn.on').dataset.diff);
-  send({type:'start',categories:cats,difficulty:diff,custom:customQuestions,count:selectedCount});
+  send({type:'start_quiz',categories:cats,difficulty:diff,custom:customQuestions,count:selectedCount});
 }
 function showErr(msg){const el=document.getElementById('err');el.textContent=msg;setTimeout(()=>{if(el.textContent===msg)el.textContent='';},3000);}
 
@@ -473,11 +473,12 @@ function launchConfetti() {
 // ── Messages ──────────────────────────────────────────────────────────────────
 function handle(msg){
   switch(msg.type){
-    case 'created':
+    case 'created_quiz':
       mySlot=msg.slot;myCode=msg.code;
-      show('s-setup');
+      document.getElementById('room-code-display').textContent=msg.code;
+      show('s-wait');loadQR();
       break;
-    case 'welcome': mySlot=msg.slot;myCode=msg.code||''; break;
+    case 'welcome_quiz': mySlot=msg.slot;myCode=msg.code||''; break;
     case 'error': showErr(msg.msg); break;
     case 'countdown': showCountdown(msg.seconds); break;
     case 'player_left':
@@ -512,11 +513,9 @@ function renderScoreboard(st){
 function render(st){
   const me=st.players.find(p=>p.slot===mySlot);
   if(st.phase==='WAITING'){
-    if(mySlot===0){
-      show('s-wait');loadQR();
-      const c=st.players.length;
-      document.getElementById('wait-count').textContent=c+' joueur'+(c>1?'s':'')+' connecté'+(c>1?'s':'');
-    }
+    show('s-wait');loadQR();
+    const c=st.players.length;
+    document.getElementById('wait-count').textContent=c+' joueur'+(c>1?'s':'')+' connecté'+(c>1?'s':'');
     return;
   }
   if(st.phase==='SETUP'){

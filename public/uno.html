@@ -353,19 +353,18 @@ function doCatchUno(targetSlot) {
 // ── Handle messages ───────────────────────────────────────────────────────────
 function handle(m) {
   switch (m.type) {
-    case 'uno_created':
+    case 'created_uno':
       mySlot = m.slot; myCode = m.code; isHost = true;
       document.getElementById('wait-code').textContent = m.code;
       show('s-wait');
       break;
 
-    case 'uno_joined':
+    case 'welcome_uno':
       mySlot = m.slot; myCode = m.code;
       document.getElementById('wait-code').textContent = m.code;
       show('s-wait');
       break;
 
-    case 'uno_error':
     case 'error':
       setErr(m.msg);
       setWaitErr(m.msg);
@@ -422,7 +421,7 @@ function handle(m) {
 
 // ── Render game ───────────────────────────────────────────────────────────────
 function renderGame(m) {
-  if (m.phase === 'LOBBY') {
+  if (m.phase === 'WAITING') {
     const wp = document.getElementById('wait-players');
     wp.innerHTML = m.players.map((p, i) =>
       `<span class="player-chip${i===0?' host':''}">${esc(p.name)}${i===0?' &#x1F451;':''}</span>`
