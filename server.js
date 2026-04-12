@@ -1058,7 +1058,7 @@ wssTaboo.on('connection',ws=>{
       case 'start_taboo':{
         if(!player||!myRoom||player.slot!==0||!['WAITING','READY','GAME_OVER'].includes(myRoom.phase))return;
         if(myRoom.players.length<2){wsend(ws,{type:'error',msg:'Il faut au moins 2 joueurs.'});return;}
-        myRoom.scores=[0,0];myRoom.round=0;myRoom.usedCards=[];
+        myRoom.scores=[0,0,0,0];myRoom.round=0;myRoom.usedCards=[];
         myRoom.phase='COUNTDOWN';bcast(myRoom.players,{type:'countdown',seconds:3});
         clearTimeout(myRoom.timer);myRoom.timer=setTimeout(()=>tStartRound(myRoom),3000);
         broadcastLobby();
