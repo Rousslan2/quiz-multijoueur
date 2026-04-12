@@ -11,7 +11,7 @@ const app    = express();
 const server = http.createServer(app);
 const PORT   = process.env.PORT || 3001;
 
-// ── 12 WebSocket servers ──────────────────────────────────────────────────────
+// ── 13 WebSocket servers ──────────────────────────────────────────────────────
 const wssQuiz    = new WebSocket.Server({ noServer: true });
 const wssDraw    = new WebSocket.Server({ noServer: true });
 const wssP4      = new WebSocket.Server({ noServer: true });
@@ -19,6 +19,7 @@ const wssMorpion = new WebSocket.Server({ noServer: true });
 const wssTaboo   = new WebSocket.Server({ noServer: true });
 const wssEmoji   = new WebSocket.Server({ noServer: true });
 const wssBomb    = new WebSocket.Server({ noServer: true });
+const wssSumo    = new WebSocket.Server({ noServer: true });
 const wssChat    = new WebSocket.Server({ noServer: true });
 const wssLobby   = new WebSocket.Server({ noServer: true });
 const wssLoup    = new WebSocket.Server({ noServer: true });
@@ -28,7 +29,7 @@ server.on('upgrade', (req, socket, head) => {
   const routes = {
     '/ws/quiz':wssQuiz,'/ws/draw':wssDraw,'/ws/p4':wssP4,
     '/ws/morpion':wssMorpion,'/ws/taboo':wssTaboo,'/ws/emoji':wssEmoji,
-    '/ws/bomb':wssBomb,'/ws/chat':wssChat,'/ws/lobby':wssLobby,
+    '/ws/bomb':wssBomb,'/ws/sumo':wssSumo,'/ws/chat':wssChat,'/ws/lobby':wssLobby,
     '/ws/loup':wssLoup,'/ws/uno':wssUno
   };
   const h = routes[req.url];
@@ -57,12 +58,12 @@ app.get('/api/ip', (_, res) => res.json({ ip: getLocalIP(), port: PORT }));
 const GAME_NAMES = {
   quiz:'Quiz Éclair', draw:'Dessin & Devine', p4:'Puissance 4',
   morpion:'Morpion', taboo:'Mots Interdits', emoji:'Devinette Emoji',
-  loup:'Loup-Garou', uno:'Uno', bomb:'Word Bomb'
+  loup:'Loup-Garou', uno:'Uno', bomb:'Word Bomb', sumo:'Sumo Arena'
 };
 
 function getRoomsSnapshot() {
   const all = [];
-  const maps = { quiz:quizRooms, draw:drawRooms, p4:p4Rooms, morpion:morpionRooms, taboo:tabooRooms, emoji:emojiRooms, loup:loupRooms, uno:unoRooms, bomb:bombRooms };
+  const maps = { quiz:quizRooms, draw:drawRooms, p4:p4Rooms, morpion:morpionRooms, taboo:tabooRooms, emoji:emojiRooms, loup:loupRooms, uno:unoRooms, bomb:bombRooms, sumo:sumoRooms };
   for (const [game, map] of Object.entries(maps)) {
     for (const [code, room] of map) {
       all.push({
@@ -71,7 +72,7 @@ function getRoomsSnapshot() {
         gameName: GAME_NAMES[game],
         host: room.host,
         players: room.players.map(p => p.name),
-        maxPlayers: game==='loup'?10:game==='bomb'?6:game==='uno'?4:4,
+        maxPlayers: game==='loup'?10:game==='bomb'?6:game==='sumo'?4:game==='uno'?4:4,
         status: ['WAITING','SETUP'].includes(room.phase) ? 'waiting' : 'playing'
       });
     }
@@ -2102,6 +2103,240 @@ wssBomb.on('connection', ws => {
         myRoom.players.forEach(p=>{p.lives=3;p.score=0;p.alive=true;});
         clearTimeout(myRoom.timer);
         bombBcast(myRoom);
+        broadcastLobby();
+        break;
+      }
+    }
+  });
+});
+
+// ════════════════════════════════════════════════════════
+//  SUMO ARENA
+// ════════════════════════════════════════════════════════
+const sumoRooms = new Map();
+const SUMO_RING_R = 170;
+const SUMO_PLAYER_R = 16;
+const SUMO_TICK_MS = 50;
+const SUMO_MAX_SPEED = 6.8;
+const SUMO_ACCEL = 0.75;
+const SUMO_FRICTION = 0.88;
+const SUMO_DASH_BOOST = 5.2;
+const SUMO_DASH_CD_MS = 1200;
+
+function makeSumoRoom(code, host){
+  return {
+    code, host, players:[], phase:'WAITING',
+    tick:null, winnerSlot:-1, winnerName:null, startedAt:0
+  };
+}
+function sumoSpawnPos(slot, total){
+  const a = (Math.PI*2*(slot%Math.max(total,1)))/Math.max(total,1);
+  const r = 85;
+  return { x:Math.cos(a)*r, y:Math.sin(a)*r };
+}
+function sumoResetPlayers(room){
+  const total = room.players.length || 1;
+  room.players.forEach((p,i)=>{
+    const sp = sumoSpawnPos(i,total);
+    p.slot=i;
+    p.x=sp.x; p.y=sp.y; p.vx=0; p.vy=0;
+    p.alive=true; p.lives=3; p.score=0;
+    p.input={x:0,y:0}; p.dash=false; p.lastDashAt=0;
+  });
+}
+function sumoAlive(room){ return room.players.filter(p=>p.alive); }
+function sumoSnap(room){
+  return {
+    type:'sumo_state',
+    phase:room.phase, code:room.code, ringR:SUMO_RING_R, playerR:SUMO_PLAYER_R,
+    winnerSlot:room.winnerSlot??-1, winnerName:room.winnerName||null,
+    players:room.players.map(p=>({
+      name:p.name, slot:p.slot, alive:p.alive, lives:p.lives, score:p.score,
+      x:Math.round((p.x||0)*10)/10, y:Math.round((p.y||0)*10)/10
+    }))
+  };
+}
+function sumoBcast(room, extra={}){
+  bcast(room.players, { ...sumoSnap(room), ...extra });
+}
+function sumoStop(room){
+  if(room.tick){ clearInterval(room.tick); room.tick=null; }
+}
+function sumoCheckEnd(room){
+  const alive = sumoAlive(room);
+  if(alive.length<=1){
+    room.phase='GAME_OVER';
+    room.winnerSlot = alive[0]?.slot ?? -1;
+    room.winnerName = alive[0]?.name ?? null;
+    sumoStop(room);
+    sumoBcast(room);
+    broadcastLobby();
+    return true;
+  }
+  return false;
+}
+function sumoStart(room){
+  room.phase='PLAYING';
+  room.winnerSlot=-1; room.winnerName=null; room.startedAt=Date.now();
+  sumoResetPlayers(room);
+  sumoStop(room);
+  room.tick = setInterval(()=>sumoTick(room), SUMO_TICK_MS);
+  sumoBcast(room);
+  broadcastLobby();
+}
+function sumoTick(room){
+  if(room.phase!=='PLAYING')return;
+  const now = Date.now();
+  room.players.forEach(p=>{
+    if(!p.alive)return;
+    const ix = Math.max(-1, Math.min(1, Number(p.input?.x||0)));
+    const iy = Math.max(-1, Math.min(1, Number(p.input?.y||0)));
+    p.vx = (p.vx||0) + ix*SUMO_ACCEL;
+    p.vy = (p.vy||0) + iy*SUMO_ACCEL;
+    if(p.dash && (now-(p.lastDashAt||0))>=SUMO_DASH_CD_MS){
+      const mag = Math.hypot(ix,iy)||1;
+      p.vx += (ix/mag)*SUMO_DASH_BOOST;
+      p.vy += (iy/mag)*SUMO_DASH_BOOST;
+      p.lastDashAt=now;
+      p.dash=false;
+    }
+    p.vx *= SUMO_FRICTION;
+    p.vy *= SUMO_FRICTION;
+    const sp = Math.hypot(p.vx,p.vy);
+    if(sp>SUMO_MAX_SPEED){
+      const k = SUMO_MAX_SPEED/sp;
+      p.vx*=k; p.vy*=k;
+    }
+    p.x += p.vx||0;
+    p.y += p.vy||0;
+  });
+  for(let i=0;i<room.players.length;i++){
+    const a = room.players[i];
+    if(!a?.alive)continue;
+    for(let j=i+1;j<room.players.length;j++){
+      const b = room.players[j];
+      if(!b?.alive)continue;
+      const dx=(b.x||0)-(a.x||0), dy=(b.y||0)-(a.y||0);
+      const dist=Math.hypot(dx,dy)||0.0001;
+      const minDist=SUMO_PLAYER_R*2;
+      if(dist<minDist){
+        const nx=dx/dist, ny=dy/dist;
+        const overlap=minDist-dist;
+        a.x -= nx*(overlap/2); a.y -= ny*(overlap/2);
+        b.x += nx*(overlap/2); b.y += ny*(overlap/2);
+        const avx=a.vx||0, avy=a.vy||0, bvx=b.vx||0, bvy=b.vy||0;
+        a.vx = avx - nx*0.6; a.vy = avy - ny*0.6;
+        b.vx = bvx + nx*0.6; b.vy = bvy + ny*0.6;
+      }
+    }
+  }
+  const outNow = [];
+  room.players.forEach((p,idx)=>{
+    if(!p?.alive)return;
+    const d=Math.hypot(p.x||0,p.y||0);
+    if(d > (SUMO_RING_R + SUMO_PLAYER_R)){
+      p.lives = Math.max(0, (p.lives||0)-1);
+      if(p.lives<=0){ p.alive=false; outNow.push({slot:p.slot,name:p.name,ko:true}); }
+      else{
+        const sp = sumoSpawnPos(idx, room.players.length||1);
+        p.x=sp.x; p.y=sp.y; p.vx=0; p.vy=0;
+        outNow.push({slot:p.slot,name:p.name,ko:false});
+      }
+    }
+  });
+  if(sumoCheckEnd(room))return;
+  sumoBcast(room, outNow.length?{sumoOut:outNow}:{} );
+}
+
+wssSumo.on('connection', ws => {
+  makeWS(wssSumo).alive(ws);
+  let myRoom = null;
+  ws.on('close', () => {
+    makeWS(wssSumo).clear(ws);
+    if(!myRoom)return;
+    const idx = myRoom.players.findIndex(p=>p.ws===ws);
+    if(idx<0)return;
+    const left = myRoom.players[idx];
+    myRoom.players.splice(idx,1);
+    myRoom.players.forEach((p,i)=>p.slot=i);
+    if(myRoom.players.length===0){
+      sumoStop(myRoom);
+      sumoRooms.delete(myRoom.code);
+      broadcastLobby();
+      return;
+    }
+    if(myRoom.phase==='PLAYING'){
+      if(sumoCheckEnd(myRoom))return;
+      sumoBcast(myRoom,{type:'player_left',name:left.name});
+    }else{
+      if(myRoom.phase==='WAITING' && myRoom.players[0]) myRoom.host=myRoom.players[0].name;
+      sumoBcast(myRoom,{type:'player_left',name:left.name});
+    }
+    broadcastLobby();
+  });
+  ws.on('message', raw => {
+    let d; try{ d=JSON.parse(raw); }catch{ return; }
+    const player = myRoom ? myRoom.players.find(p=>p.ws===ws) : null;
+    switch(d.type){
+      case 'lounge_chat': {
+        handleLoungeChat(myRoom, ws, d);
+        break;
+      }
+      case 'create_sumo': {
+        const name = String(d.name||'').trim().slice(0,20)||'Joueur';
+        const code = genCode(sumoRooms);
+        const room = makeSumoRoom(code,name);
+        room.players.push({ws,name,slot:0,alive:true,lives:3,score:0,x:0,y:0,vx:0,vy:0,input:{x:0,y:0},dash:false,lastDashAt:0});
+        sumoRooms.set(code,room);
+        myRoom=room;
+        wsend(ws,{type:'created_sumo',code,slot:0,name});
+        sumoBcast(room);
+        broadcastLobby();
+        break;
+      }
+      case 'join_sumo': {
+        const code = String(d.code||'').trim().toUpperCase();
+        const room = sumoRooms.get(code);
+        if(!room){wsend(ws,{type:'error',msg:'Salle introuvable.'});return;}
+        if(room.players.length>=4){wsend(ws,{type:'error',msg:'Salle pleine (4 max).'});return;}
+        if(room.phase!=='WAITING'){wsend(ws,{type:'error',msg:'La partie a déjà commencé.'});return;}
+        const name = String(d.name||'').trim().slice(0,20)||'Joueur';
+        const slot = room.players.length;
+        room.players.push({ws,name,slot,alive:true,lives:3,score:0,x:0,y:0,vx:0,vy:0,input:{x:0,y:0},dash:false,lastDashAt:0});
+        myRoom=room;
+        wsend(ws,{type:'welcome_sumo',code,slot,name});
+        sumoBcast(room);
+        broadcastLobby();
+        break;
+      }
+      case 'start_sumo': {
+        if(!myRoom||!player||player.slot!==0||myRoom.phase!=='WAITING')return;
+        if(myRoom.players.length<2){wsend(ws,{type:'error',msg:'Il faut au moins 2 joueurs.'});return;}
+        bcast(myRoom.players,{type:'countdown',seconds:3});
+        myRoom.phase='COUNTDOWN';
+        broadcastLobby();
+        setTimeout(()=>{
+          if(!myRoom || myRoom.phase!=='COUNTDOWN')return;
+          sumoStart(myRoom);
+        },3000);
+        break;
+      }
+      case 'sumo_input': {
+        if(!myRoom||!player||myRoom.phase!=='PLAYING')return;
+        player.input = {
+          x: Math.max(-1,Math.min(1,Number(d.x||0))),
+          y: Math.max(-1,Math.min(1,Number(d.y||0)))
+        };
+        if(d.dash) player.dash = true;
+        break;
+      }
+      case 'restart_sumo': {
+        if(!myRoom||!player||myRoom.phase!=='GAME_OVER')return;
+        myRoom.phase='WAITING';
+        myRoom.winnerSlot=-1; myRoom.winnerName=null;
+        sumoStop(myRoom);
+        sumoResetPlayers(myRoom);
+        sumoBcast(myRoom);
         broadcastLobby();
         break;
       }

@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ZapPlay — Sumo Arena</title>
+<style>
+:root{
+  --primary:#a78bfa;--buzz:#f97316;--ok:#22c55e;--bad:#ef4444;
+  --text:#f1f5f9;--muted:#94a3b8;--card:rgba(255,255,255,.07);--border:rgba(255,255,255,.13)
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  font-family:'Segoe UI',system-ui,sans-serif;
+  background:linear-gradient(135deg,#0f0c29,#302b63,#24243e);
+  color:var(--text);height:100dvh;overflow:hidden
+}
+#app{max-width:900px;margin:0 auto;height:100dvh;padding:56px 12px 14px;display:flex;flex-direction:column;gap:10px}
+#back{position:fixed;top:8px;left:8px;background:none;border:none;color:var(--muted);cursor:pointer;padding:6px 10px}
+#dot{position:fixed;top:10px;right:12px;width:8px;height:8px;border-radius:50%;background:var(--bad)}#dot.ok{background:var(--ok)}
+h1{text-align:center;font-size:1.9rem;background:linear-gradient(135deg,var(--primary),var(--buzz));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.card{background:linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,.04));border:1px solid var(--border);border-radius:14px;padding:12px;backdrop-filter:blur(8px)}
+.hidden{display:none!important}
+.btn{border:none;border-radius:10px;padding:11px 14px;font-weight:700;cursor:pointer}
+.btn-primary{background:var(--primary);color:#fff}.btn-buzz{background:var(--buzz);color:#fff}.btn-muted{background:rgba(255,255,255,.12);color:var(--text)}
+input{width:100%;background:rgba(255,255,255,.08);border:1px solid var(--border);border-radius:10px;color:var(--text);padding:11px 12px;outline:none}
+#name-screen{display:flex;flex-direction:column;gap:10px;max-width:420px;width:100%;margin:0 auto}
+#join-area{display:none;gap:8px;flex-direction:column}
+#game-screen{display:flex;flex-direction:column;gap:10px;flex:1;min-height:0}
+#waiting{display:flex;flex-direction:column;gap:10px;align-items:center}
+#players{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+#players .chip{padding:6px 11px;border-radius:999px;background:rgba(255,255,255,.08);border:1px solid var(--border);font-size:.8rem}
+#arena-wrap{display:flex;justify-content:center}
+#arena{width:min(92vw,520px);height:min(92vw,520px);max-width:520px;max-height:520px;background:rgba(0,0,0,.22);border:1px solid rgba(255,255,255,.18);border-radius:14px}
+#status{text-align:center;color:var(--muted);min-height:18px}
+#score-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.row{padding:9px;border:1px solid var(--border);background:rgba(255,255,255,.04);border-radius:10px;font-size:.82rem}
+.row.turn{border-color:#fbbf24}.row.dead{opacity:.55}
+#controls-mobile{display:none;grid-template-columns:repeat(3,54px);grid-template-rows:repeat(3,54px);gap:6px;justify-content:center}
+.mbtn{border:none;border-radius:10px;background:rgba(255,255,255,.12);color:#fff;font-size:1.1rem}
+#dash-btn{grid-column:3;grid-row:2;background:rgba(249,115,22,.4)}
+#gcount{position:fixed;inset:0;background:rgba(15,12,41,.8);display:none;align-items:center;justify-content:center;z-index:500}
+#gcount span{font-size:6rem;font-weight:800;color:#f59e0b}
+@media(max-width:760px){#controls-mobile{display:grid}}
+</style>
+</head>
+<body>
+<div id="gcount"><span id="gnum">3</span></div>
+<button id="back" onclick="location.href='index.html'">← Accueil</button>
+<div id="dot"></div>
+<div id="app">
+  <h1>🥋 Sumo Arena</h1>
+
+  <div id="name-screen">
+    <div class="card" style="display:flex;flex-direction:column;gap:8px">
+      <input id="name" maxlength="20" placeholder="Ton pseudo">
+      <button class="btn btn-primary" onclick="createGame()">Créer une salle</button>
+      <button class="btn btn-buzz" onclick="toggleJoin()">Rejoindre (code)</button>
+      <div id="join-area">
+        <input id="code" maxlength="4" placeholder="Code (ABCD)" style="text-transform:uppercase;letter-spacing:.14em;text-align:center">
+        <button class="btn btn-buzz" onclick="joinGame()">Rejoindre</button>
+      </div>
+      <div id="err" style="color:#fca5a5;font-size:.82rem;min-height:18px;text-align:center"></div>
+    </div>
+  </div>
+
+  <div id="game-screen" class="hidden">
+    <div id="waiting" class="card hidden">
+      <div id="code-box" onclick="copyCode()" style="cursor:pointer;text-align:center">
+        <div style="font-size:.72rem;color:var(--muted)">Code de la salle</div>
+        <div id="room-code" style="font-size:2.1rem;font-family:monospace;letter-spacing:.2em;color:var(--primary);font-weight:800">----</div>
+      </div>
+      <div id="players"></div>
+      <button id="start-btn" class="btn btn-primary hidden" onclick="startGame()">Lancer le combat</button>
+    </div>
+
+    <div id="playing" class="hidden" style="display:flex;flex-direction:column;gap:10px;min-height:0;flex:1">
+      <div class="card">
+        <div id="arena-wrap"><canvas id="arena" width="520" height="520"></canvas></div>
+        <div id="status"></div>
+      </div>
+      <div class="card"><div id="score-list"></div></div>
+      <div id="controls-mobile" class="card">
+        <button class="mbtn" data-dir="up">▲</button><div></div><div></div>
+        <button class="mbtn" data-dir="left">◀</button><button class="mbtn" data-dir="down">▼</button><button id="dash-btn" class="mbtn">⚡</button>
+        <div></div><button class="mbtn" data-dir="right">▶</button><div></div>
+      </div>
+    </div>
+
+    <div id="over" class="card hidden" style="text-align:center;display:flex;flex-direction:column;gap:10px">
+      <div id="over-title" style="font-size:1.3rem;font-weight:800"></div>
+      <button class="btn btn-primary" onclick="restart()">Rejouer</button>
+      <button class="btn btn-muted" onclick="location.href='index.html'">Accueil</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const WS_URL = `${location.protocol==='https:'?'wss':'ws'}://${location.host}/ws/sumo`;
+let ws=null,mySlot=-1,myCode='',myName='',state=null,pendingAction=null,lastPhase='';
+let keys={up:false,down:false,left:false,right:false},dashQueued=false,inputInt=null;
+const $ = id => document.getElementById(id);
+function send(o){ if(ws&&ws.readyState===1) ws.send(JSON.stringify(o)); }
+function bindLoungeSender(){ if(window.ZapPlay)ZapPlay.setLoungeSender(text=>send({type:'lounge_chat',text})); else setTimeout(bindLoungeSender,120); }
+bindLoungeSender();
+
+function connect(){
+  ws=new WebSocket(WS_URL);
+  ws.onopen=()=>{ $('dot').classList.add('ok'); if(window.ZapPlay)ZapPlay.hideLoader(); if(pendingAction){pendingAction();pendingAction=null;} };
+  ws.onclose=()=>{ $('dot').classList.remove('ok'); setTimeout(connect,2000); };
+  ws.onmessage=e=>{ let m; try{m=JSON.parse(e.data);}catch{return;} handle(m); };
+}
+connect();
+
+function toggleJoin(){ $('join-area').style.display = $('join-area').style.display==='flex' ? 'none' : 'flex'; }
+function createGame(){
+  const n=$('name').value.trim(); if(!n){$('err').textContent='Entre ton pseudo';return;}
+  myName=n; if(window.ZapPlay)ZapPlay.savePseudo(n);
+  const action=()=>send({type:'create_sumo',name:n});
+  if(ws&&ws.readyState===1) action(); else { pendingAction=action; if(!ws||ws.readyState===3) connect(); }
+}
+function joinGame(){
+  const n=$('name').value.trim(); const c=$('code').value.trim().toUpperCase();
+  if(!n||!c){$('err').textContent='Nom + code requis';return;}
+  myName=n; if(window.ZapPlay)ZapPlay.savePseudo(n);
+  const action=()=>send({type:'join_sumo',name:n,code:c});
+  if(ws&&ws.readyState===1) action(); else { pendingAction=action; if(!ws||ws.readyState===3) connect(); }
+}
+function startGame(){ send({type:'start_sumo'}); }
+function restart(){ send({type:'restart_sumo'}); }
+function copyCode(){ if(!myCode)return; navigator.clipboard.writeText(myCode).catch(()=>{}); }
+
+function handle(m){
+  if(m.type==='created_sumo'){mySlot=m.slot;myCode=m.code;showGame();}
+  if(m.type==='welcome_sumo'){mySlot=m.slot;myCode=m.code;showGame();}
+  if(m.type==='error'){ $('err').textContent=m.msg; $('status').textContent=m.msg; }
+  if(m.type==='countdown')showCountdown(m.seconds||3);
+  if(m.type==='player_left')$('status').textContent=(m.name||'Un joueur')+' a quitté.';
+  if(m.type==='lounge_chat' && window.ZapPlay)ZapPlay.addLoungeMessage(m);
+  if(m.type==='sumo_state'){
+    if(m.sumoOut && Array.isArray(m.sumoOut) && m.sumoOut.length){
+      const txt = m.sumoOut.map(x=>`${x.name}${x.ko?' est éliminé':' sort du ring'}`).join(' • ');
+      $('status').textContent = txt;
+    }
+    state=m;
+    render();
+  }
+}
+function showGame(){ $('name-screen').classList.add('hidden'); $('game-screen').classList.remove('hidden'); ensureInputLoop(); }
+function showCountdown(n){
+  const g=$('gcount'),num=$('gnum'); g.style.display='flex'; num.textContent=n;
+  let c=n; const t=setInterval(()=>{c--; if(c<=0){clearInterval(t); g.style.display='none';} else num.textContent=c;},1000);
+}
+function setScreen(id){ ['waiting','playing','over'].forEach(x=>$(x).classList.add('hidden')); $(id).classList.remove('hidden'); }
+function render(){
+  if(!state)return;
+  $('room-code').textContent = state.code||myCode||'----';
+  const players=state.players||[];
+  if(state.phase==='WAITING'){
+    if(window.ZapPlay)ZapPlay.showLounge({players,mySlot,roomCode:state.code||myCode,gameName:'Sumo Arena'});
+    setScreen('waiting');
+    $('players').innerHTML=players.map(p=>`<span class="chip">${p.name}${p.slot===0?' 👑':''}</span>`).join('');
+    $('start-btn').classList.toggle('hidden', !(mySlot===0 && players.length>=2));
+    return;
+  }
+  if(state.phase==='PLAYING'){
+    if(window.ZapPlay)ZapPlay.hideLounge();
+    setScreen('playing');
+    $('score-list').innerHTML=players.map(p=>{
+      const cls=['row',!p.alive?'dead':''].join(' ');
+      return `<div class="${cls}">
+        <div style="font-weight:700">${p.name}${p.slot===mySlot?' (toi)':''}</div>
+        <div style="font-size:.74rem;color:#94a3b8">Vies: ${p.lives||0} • Score: ${p.score||0}</div>
+      </div>`;
+    }).join('');
+    drawArena();
+    return;
+  }
+  if(state.phase==='GAME_OVER'){
+    if(window.ZapPlay)ZapPlay.hideLounge();
+    setScreen('over');
+    const winName = state.winnerSlot>=0 ? (players.find(p=>p.slot===state.winnerSlot)?.name||'') : '';
+    $('over-title').textContent = state.winnerSlot>=0 ? `🏆 ${winName} gagne !` : 'Égalité !';
+    if(lastPhase!=='GAME_OVER' && window.ZapPlay){
+      const pNames=players.map(p=>p.name);
+      ZapPlay.saveGameResult({game:'sumo',gameName:'Sumo Arena',players:pNames,winner:winName||'Égalité',myName,myScore:players.find(p=>p.slot===mySlot)?.score||0,isWinner:state.winnerSlot===mySlot});
+    }
+  }
+  lastPhase=state.phase;
+}
+function drawArena(){
+  const cv=$('arena'),ctx=cv.getContext('2d'); if(!ctx||!state)return;
+  const W=cv.width,H=cv.height,cx=W/2,cy=H/2;
+  const ringR = Number(state.ringR||170)*1.25;
+  const pr = Math.max(10, Number(state.playerR||16)*1.05);
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle='rgba(15,12,41,.6)'; ctx.fillRect(0,0,W,H);
+  ctx.beginPath(); ctx.arc(cx,cy,ringR+16,0,Math.PI*2); ctx.fillStyle='rgba(255,255,255,.05)'; ctx.fill();
+  ctx.beginPath(); ctx.arc(cx,cy,ringR,0,Math.PI*2); ctx.fillStyle='rgba(249,115,22,.16)'; ctx.fill();
+  ctx.lineWidth=5; ctx.strokeStyle='rgba(251,191,36,.9)'; ctx.stroke();
+  const colors=['#a78bfa','#22c55e','#f97316','#60a5fa'];
+  (state.players||[]).forEach(p=>{
+    const x=cx + Number(p.x||0)*1.25, y=cy + Number(p.y||0)*1.25;
+    ctx.beginPath(); ctx.arc(x,y,pr,0,Math.PI*2);
+    ctx.fillStyle=p.alive?(colors[p.slot%colors.length]||'#fff'):'rgba(148,163,184,.4)';
+    ctx.fill(); ctx.lineWidth=2; ctx.strokeStyle='rgba(255,255,255,.9)'; ctx.stroke();
+    if(p.slot===mySlot){ ctx.beginPath(); ctx.arc(x,y,pr+4,0,Math.PI*2); ctx.strokeStyle='#fbbf24'; ctx.lineWidth=2; ctx.stroke(); }
+    ctx.fillStyle='#fff'; ctx.font='12px Segoe UI'; ctx.textAlign='center'; ctx.fillText(String(p.name||''),x,y-pr-8);
+  });
+}
+
+function sendInput(){
+  if(!state || state.phase!=='PLAYING') return;
+  let x=(keys.right?1:0)-(keys.left?1:0), y=(keys.down?1:0)-(keys.up?1:0);
+  send({type:'sumo_input',x,y,dash:dashQueued});
+  dashQueued=false;
+}
+function ensureInputLoop(){ if(inputInt)return; inputInt=setInterval(sendInput,60); }
+function onKey(e,down){
+  const k=e.key.toLowerCase();
+  if(k==='arrowup'||k==='z'||k==='w')keys.up=down;
+  if(k==='arrowdown'||k==='s')keys.down=down;
+  if(k==='arrowleft'||k==='q'||k==='a')keys.left=down;
+  if(k==='arrowright'||k==='d')keys.right=down;
+  if(down && (k===' '||k==='shift')) dashQueued=true;
+}
+window.addEventListener('keydown',e=>onKey(e,true));
+window.addEventListener('keyup',e=>onKey(e,false));
+document.querySelectorAll('[data-dir]').forEach(btn=>{
+  const dir=btn.getAttribute('data-dir');
+  const map={up:'up',down:'down',left:'left',right:'right'};
+  const key=map[dir];
+  const on=()=>{keys[key]=true;}; const off=()=>{keys[key]=false;};
+  btn.addEventListener('touchstart',e=>{e.preventDefault();on();},{passive:false});
+  btn.addEventListener('touchend',e=>{e.preventDefault();off();},{passive:false});
+  btn.addEventListener('mousedown',on); btn.addEventListener('mouseup',off); btn.addEventListener('mouseleave',off);
+});
+$('dash-btn').addEventListener('click',()=>{dashQueued=true;});
+
+const p=new URLSearchParams(location.search);
+if(p.get('name'))$('name').value=p.get('name');
+if(window.ZapPlay && !$('name').value){
+  const saved=window.ZapPlay.getSavedPseudo&&window.ZapPlay.getSavedPseudo();
+  if(saved) $('name').value=saved;
+}
+if(p.get('code')){ $('code').value=p.get('code').toUpperCase(); $('join-area').style.display='flex'; }
+if(p.get('create')==='1'&&p.get('name')){
+  const n=p.get('name'); $('name').value=n; myName=n;
+  const action=()=>send({type:'create_sumo',name:n});
+  if(ws&&ws.readyState===1) action();
+  else { pendingAction=action; if(!ws||ws.readyState===3) connect(); }
+}
+$('name').addEventListener('keydown',e=>{if(e.key==='Enter')createGame();});
+$('code').addEventListener('input',e=>{e.target.value=e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,'');});
+$('code').addEventListener('keydown',e=>{if(e.key==='Enter')joinGame();});
+</script>
+<script src="shared.js"></script>
+<script src="chat.js"></script>
+</body>
+</html>
