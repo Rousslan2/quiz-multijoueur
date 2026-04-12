@@ -4,6 +4,7 @@ const http      = require('http');
 const WebSocket = require('ws');
 const path      = require('path');
 const os        = require('os');
+const frenchWordsPkg = require('an-array-of-french-words');
 let QRCode; try { QRCode = require('qrcode'); } catch {}
 
 const app    = express();
@@ -1897,6 +1898,17 @@ const BOMB_SYLLABLES = [
 function bombNorm(s){
   return String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
 }
+function bombWordKey(s){
+  return bombNorm(s).replace(/[^a-z]/g,'');
+}
+const FRENCH_WORDS_ARRAY = Array.isArray(frenchWordsPkg)
+  ? frenchWordsPkg
+  : (Array.isArray(frenchWordsPkg?.default) ? frenchWordsPkg.default : []);
+const BOMB_DICT = new Set(FRENCH_WORDS_ARRAY.map(w=>bombWordKey(w)).filter(Boolean));
+function bombIsRealWord(word){
+  const key = bombWordKey(word);
+  return key.length >= 3 && BOMB_DICT.has(key);
+}
 function makeBombRoom(code, host){
   return {
     code, host, players:[], phase:'WAITING',
@@ -2046,10 +2058,12 @@ wssBomb.on('connection', ws => {
         if(!player.alive){wsend(ws,{type:'error',msg:'Tu es éliminé pour cette manche.'});return;}
         if(myRoom.turn!==player.slot){wsend(ws,{type:'error',msg:"Ce n'est pas ton tour."});return;}
         const rawWord=String(d.word||'').trim().slice(0,40);
+        if(!/^[A-Za-zÀ-ÿŒœ'’-]+$/.test(rawWord)){wsend(ws,{type:'error',msg:'Entre un seul vrai mot (lettres uniquement).'});return;}
         const norm=bombNorm(rawWord);
         const syll=bombNorm(myRoom.syllable);
         if(norm.length<3){wsend(ws,{type:'error',msg:'Mot trop court.'});return;}
         if(!norm.includes(syll)){wsend(ws,{type:'error',msg:`Le mot doit contenir "${myRoom.syllable}".`});return;}
+        if(!bombIsRealWord(rawWord)){wsend(ws,{type:'error',msg:'Ce mot n’existe pas dans le dictionnaire.'});return;}
         if(myRoom.used.has(norm)){wsend(ws,{type:'error',msg:'Mot déjà utilisé.'});return;}
         myRoom.used.add(norm);
         myRoom.recentWords.push({name:player.name,word:rawWord});
