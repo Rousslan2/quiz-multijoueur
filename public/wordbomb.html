@@ -10,6 +10,7 @@
 body{font-family:'Segoe UI',system-ui,sans-serif;background:linear-gradient(135deg,#0f0c29,#302b63,#24243e);color:var(--text);height:100dvh;overflow:hidden}
 #app{max-width:700px;margin:0 auto;height:100dvh;padding:56px 12px 14px;display:flex;flex-direction:column;gap:10px}
 #back{position:fixed;top:8px;left:8px;background:none;border:none;color:var(--muted);cursor:pointer;padding:6px 10px}
+#sound-btn{position:fixed;top:8px;right:34px;background:none;border:none;color:var(--muted);cursor:pointer;padding:6px 10px;font-size:1rem}
 #dot{position:fixed;top:10px;right:12px;width:8px;height:8px;border-radius:50%;background:var(--bad)}#dot.ok{background:var(--ok)}
 h1{text-align:center;font-size:1.7rem;background:linear-gradient(135deg,var(--primary),var(--buzz));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
 .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px}
@@ -27,6 +28,21 @@ input:focus{border-color:var(--primary)}
 #syllable{font-size:2.2rem;font-weight:800;text-align:center;letter-spacing:.06em;color:#fde68a}
 #timer{height:8px;border-radius:999px;background:rgba(255,255,255,.12);overflow:hidden}
 #timer-fill{height:100%;width:100%;background:linear-gradient(90deg,#22c55e,#f59e0b,#ef4444)}
+#bomb-wrap{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:4px}
+#bomb-shell{position:relative;width:90px;height:56px;display:flex;align-items:flex-end;justify-content:center}
+#bomb-body{font-size:2.4rem;line-height:1;filter:drop-shadow(0 0 10px rgba(0,0,0,.35))}
+#bomb-fuse{
+  position:absolute;top:1px;left:50%;transform-origin:left center;transform:translateX(4px);
+  width:34px;height:4px;border-radius:999px;background:linear-gradient(90deg,#f59e0b,#fb7185);transition:transform .12s linear
+}
+#bomb-spark{
+  position:absolute;top:-6px;left:calc(50% + 34px);font-size:.9rem;opacity:1;transform:translateX(-4px);
+  transition:left .12s linear,opacity .12s linear
+}
+#bomb-wrap.danger #bomb-body{animation:bombshake .18s linear infinite}
+#bomb-wrap.danger #bomb-spark{animation:sparkpulse .35s ease-in-out infinite}
+@keyframes bombshake{0%{transform:translateX(0)}25%{transform:translateX(-1.4px)}50%{transform:translateX(1.4px)}100%{transform:translateX(0)}}
+@keyframes sparkpulse{0%,100%{opacity:.65}50%{opacity:1}}
 #status{text-align:center;color:var(--muted);min-height:20px}
 #score-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
 .row{padding:8px;border:1px solid var(--border);background:rgba(255,255,255,.04);border-radius:10px;font-size:.86rem}
@@ -42,6 +58,7 @@ input:focus{border-color:var(--primary)}
 <body>
 <div id="gcount"><span id="gnum">3</span></div>
 <button id="back" onclick="location.href='index.html'">← Accueil</button>
+<button id="sound-btn" onclick="toggleSound()" title="Son">🔊</button>
 <div id="dot"></div>
 <div id="app">
   <h1>💣 Word Bomb</h1>
@@ -71,6 +88,13 @@ input:focus{border-color:var(--primary)}
 
     <div id="playing" class="hidden" style="display:flex;flex-direction:column;gap:10px;min-height:0;flex:1">
       <div class="card">
+        <div id="bomb-wrap">
+          <div id="bomb-shell">
+            <div id="bomb-fuse"></div>
+            <div id="bomb-spark">✨</div>
+            <div id="bomb-body">💣</div>
+          </div>
+        </div>
         <div id="syllable">--</div>
         <div id="timer"><div id="timer-fill"></div></div>
         <div id="status"></div>
@@ -99,10 +123,29 @@ input:focus{border-color:var(--primary)}
 <script>
 const WS_URL = `${location.protocol==='https:'?'wss':'ws'}://${location.host}/ws/bomb`;
 let ws=null,mySlot=-1,myCode='',myName='',state=null,pendingAction=null,timerInt=null,lastPhase='';
+let soundOn=true,audioCtx=null,lastTickSecond=-1,lastRecentKey='';
 function $(id){return document.getElementById(id);}
 function send(o){ if(ws&&ws.readyState===1) ws.send(JSON.stringify(o)); }
 function bindLoungeSender(){ if(window.ZapPlay)ZapPlay.setLoungeSender(text=>send({type:'lounge_chat',text})); else setTimeout(bindLoungeSender,120); }
 bindLoungeSender();
+function ensureAudio(){ if(!audioCtx){ try{ audioCtx=new (window.AudioContext||window.webkitAudioContext)(); }catch{} } }
+function tone(f,d=.08,t='sine',v=.15){
+  if(!soundOn)return; ensureAudio(); if(!audioCtx)return;
+  const o=audioCtx.createOscillator(),g=audioCtx.createGain();
+  o.connect(g); g.connect(audioCtx.destination); o.type=t; o.frequency.value=f;
+  g.gain.setValueAtTime(v,audioCtx.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+d);
+  o.start(); o.stop(audioCtx.currentTime+d+.01);
+}
+const SND={
+  tick(){tone(960,.05,'square',.1);},
+  good(){tone(520,.08); setTimeout(()=>tone(660,.09),90);},
+  boom(){tone(130,.15,'sawtooth',.22); setTimeout(()=>tone(85,.25,'sawtooth',.18),120);}
+};
+function toggleSound(){
+  soundOn=!soundOn;
+  $('sound-btn').textContent=soundOn?'🔊':'🔇';
+}
 function connect(){
   ws=new WebSocket(WS_URL);
   ws.onopen=()=>{ $('dot').classList.add('ok'); if(window.ZapPlay)ZapPlay.hideLoader(); if(pendingAction){pendingAction();pendingAction=null;} };
@@ -112,6 +155,7 @@ function connect(){
 connect();
 function toggleJoin(){ $('join-area').style.display = $('join-area').style.display==='flex' ? 'none' : 'flex'; }
 function createGame(){
+  ensureAudio();
   const n=$('name').value.trim(); if(!n){$('err').textContent='Entre ton pseudo';return;}
   myName=n; if(window.ZapPlay)ZapPlay.savePseudo(n);
   const action=()=>send({type:'create_bomb',name:n});
@@ -119,6 +163,7 @@ function createGame(){
   else { pendingAction=action; if(!ws||ws.readyState===3) connect(); }
 }
 function joinGame(){
+  ensureAudio();
   const n=$('name').value.trim(); const c=$('code').value.trim().toUpperCase();
   if(!n||!c){$('err').textContent='Nom + code requis';return;}
   myName=n; if(window.ZapPlay)ZapPlay.savePseudo(n);
@@ -128,6 +173,7 @@ function joinGame(){
 }
 function startGame(){ send({type:'start_bomb'}); }
 function sendWord(){
+  ensureAudio();
   const w=$('word').value.trim(); if(!w)return;
   send({type:'bomb_word',word:w}); $('word').value='';
 }
@@ -179,6 +225,10 @@ function render(){
       return `<div class="${cls}">${p.name} · ${lives} · ${p.score||0} pts</div>`;
     }).join('');
     const rec=state.recentWords||[];
+    const last = rec.length ? rec[rec.length-1] : null;
+    const k = last ? `${last.name}::${last.word}` : '';
+    if(k && k!==lastRecentKey && last.name===myName) SND.good();
+    lastRecentKey = k;
     $('recent').innerHTML = rec.length ? rec.slice().reverse().map(r=>`<div class="r"><b>${r.name}</b> : ${r.word}</div>`).join('') : '<div class="r">Aucun mot pour le moment.</div>';
     startTimer(state.turnEndsAt||0);
     return;
@@ -199,16 +249,33 @@ function render(){
 function startTimer(endTs){
   stopTimer();
   if(!endTs){$('timer-fill').style.width='100%';return;}
+  lastTickSecond=-1;
   timerInt=setInterval(()=>{
     const left=Math.max(0,endTs-Date.now());
     const ratio=Math.max(0,Math.min(1,left/(state?.turnMs||12000)));
     $('timer-fill').style.width=(ratio*100).toFixed(1)+'%';
-    if(left<=0)stopTimer();
+    const sec=Math.ceil(left/1000);
+    const bw=$('bomb-wrap'),f=$('bomb-fuse'),sp=$('bomb-spark');
+    if(f) f.style.transform = `translateX(4px) scaleX(${Math.max(.08,ratio).toFixed(3)})`;
+    if(sp) sp.style.left = `calc(50% + ${Math.round(34*ratio)}px)`;
+    if(bw) bw.classList.toggle('danger', sec<=4);
+    if(sec<=5 && sec>0 && sec!==lastTickSecond){ SND.tick(); lastTickSecond=sec; }
+    if(left<=0){ SND.boom(); stopTimer(); }
   },100);
 }
-function stopTimer(){ if(timerInt){clearInterval(timerInt);timerInt=null;} }
+function stopTimer(){
+  if(timerInt){clearInterval(timerInt);timerInt=null;}
+  const bw=$('bomb-wrap'),f=$('bomb-fuse'),sp=$('bomb-spark');
+  if(bw) bw.classList.remove('danger');
+  if(f) f.style.transform='translateX(4px) scaleX(1)';
+  if(sp) sp.style.left='calc(50% + 34px)';
+}
 const p=new URLSearchParams(location.search);
 if(p.get('name'))$('name').value=p.get('name');
+if(window.ZapPlay && !$('name').value){
+  const saved=window.ZapPlay.getSavedPseudo&&window.ZapPlay.getSavedPseudo();
+  if(saved) $('name').value=saved;
+}
 if(p.get('code')){ $('code').value=p.get('code').toUpperCase(); $('join-area').style.display='flex'; }
 if(p.get('create')==='1'&&p.get('name')){
   const n=p.get('name'); $('name').value=n; myName=n;
