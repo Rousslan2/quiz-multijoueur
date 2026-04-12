@@ -48,17 +48,26 @@ input:focus{border-color:var(--primary)}
 #timer-fill{height:100%;width:100%;background:linear-gradient(90deg,#22c55e,#f59e0b,#ef4444)}
 #bomb-timer{
   width:min(230px,72vw);
-  height:7px;
-  margin:0 auto 4px;
+  height:10px;
+  margin:0 auto 6px;
   border-radius:999px;
-  background:rgba(255,255,255,.14);
+  background:rgba(255,255,255,.18);
   overflow:hidden;
-  border:1px solid rgba(255,255,255,.15);
+  border:1px solid rgba(255,255,255,.3);
+  box-shadow:0 0 0 1px rgba(255,255,255,.08) inset, 0 4px 14px rgba(0,0,0,.25);
 }
 #bomb-timer-fill{
   height:100%;
   width:100%;
   background:linear-gradient(90deg,#22c55e,#f59e0b,#ef4444);
+}
+#time-left{
+  text-align:center;
+  font-weight:800;
+  color:#f8fafc;
+  margin:0 auto 6px;
+  font-variant-numeric:tabular-nums;
+  text-shadow:0 1px 6px rgba(0,0,0,.45);
 }
 #bomb-wrap{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:4px}
 #bomb-shell{position:relative;width:140px;height:92px;display:flex;align-items:flex-end;justify-content:center;perspective:500px}
@@ -170,6 +179,7 @@ input:focus{border-color:var(--primary)}
           </div>
         </div>
         <div id="bomb-timer"><div id="bomb-timer-fill"></div></div>
+        <div id="time-left">--.-s</div>
         <div id="syllable">--</div>
         <div id="timer"><div id="timer-fill"></div></div>
         <div id="status"></div>
@@ -354,7 +364,12 @@ function render(){
 }
 function startTimer(endTs){
   stopTimer();
-  if(!endTs){$('timer-fill').style.width='100%'; $('bomb-timer-fill').style.width='100%'; return;}
+  if(!endTs){
+    $('timer-fill').style.width='100%';
+    $('bomb-timer-fill').style.width='100%';
+    if($('time-left')) $('time-left').textContent='--.-s';
+    return;
+  }
   startFuseSound();
   lastTickSecond=-1;
   timerInt=setInterval(()=>{
@@ -362,6 +377,7 @@ function startTimer(endTs){
     const ratio=Math.max(0,Math.min(1,left/(state?.turnMs||12000)));
     $('timer-fill').style.width=(ratio*100).toFixed(1)+'%';
     $('bomb-timer-fill').style.width=(ratio*100).toFixed(1)+'%';
+    if($('time-left')) $('time-left').textContent=(left/1000).toFixed(1)+'s';
     const sec=Math.ceil(left/1000);
     const bw=$('bomb-wrap'),f=$('bomb-fuse'),sp=$('bomb-spark');
     if(f) f.style.width = `${Math.max(3,Math.round(34*ratio))}px`;
@@ -379,7 +395,9 @@ function stopTimer(){
   if(bw) bw.classList.remove('danger');
   if(f) f.style.width='34px';
   if(sp) sp.style.left='calc(50% + 34px)';
+  if($('timer-fill')) $('timer-fill').style.width='100%';
   if($('bomb-timer-fill')) $('bomb-timer-fill').style.width='100%';
+  if($('time-left')) $('time-left').textContent='--.-s';
 }
 const p=new URLSearchParams(location.search);
 if(p.get('name'))$('name').value=p.get('name');

@@ -1899,7 +1899,12 @@ function bombNorm(s){
   return String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
 }
 function bombWordKey(s){
-  return bombNorm(s).replace(/[^a-z]/g,'');
+  let v = bombNorm(s)
+    .replace(/œ/g,'oe')
+    .replace(/æ/g,'ae')
+    // Accepte les élisions fréquentes côté joueur: l'amour, d'accord, qu'on...
+    .replace(/^(?:l|d|j|m|n|s|t|c|qu)['’]/,'');
+  return v.replace(/[^a-z]/g,'');
 }
 const FRENCH_WORDS_ARRAY = Array.isArray(frenchWordsPkg)
   ? frenchWordsPkg
@@ -2063,7 +2068,7 @@ wssBomb.on('connection', ws => {
         const syll=bombNorm(myRoom.syllable);
         if(norm.length<3){wsend(ws,{type:'error',msg:'Mot trop court.'});return;}
         if(!norm.includes(syll)){wsend(ws,{type:'error',msg:`Le mot doit contenir "${myRoom.syllable}".`});return;}
-        if(!bombIsRealWord(rawWord)){wsend(ws,{type:'error',msg:'Ce mot n’existe pas dans le dictionnaire.'});return;}
+        if(!bombIsRealWord(rawWord)){wsend(ws,{type:'error',msg:"Mot inconnu du dictionnaire (essaie sans article: l', d')."});return;}
         if(myRoom.used.has(norm)){wsend(ws,{type:'error',msg:'Mot déjà utilisé.'});return;}
         myRoom.used.add(norm);
         myRoom.recentWords.push({name:player.name,word:rawWord});
