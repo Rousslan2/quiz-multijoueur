@@ -4,6 +4,7 @@
   "description": "Jeu de quiz multijoueur 2 joueurs - edition complete",
   "main": "server.js",
   "scripts": {
+    "build": "echo 'No build step'",
     "start": "node server.js"
   },
   "dependencies": {
