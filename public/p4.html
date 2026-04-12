@@ -341,9 +341,15 @@
   .input-field::placeholder { color: var(--muted); }
 
   .hidden { display: none !important; }
+  /* Global countdown overlay */
+  #gcount-overlay{position:fixed;inset:0;background:rgba(15,12,41,.85);display:none;align-items:center;justify-content:center;z-index:500;flex-direction:column;gap:12px;}
+  #gcount-num{font-size:9rem;font-weight:800;background:linear-gradient(135deg,#f97316,#fbbf24);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;line-height:1;animation:cdpulse .5s ease;}
+  #gcount-label{color:var(--muted);font-size:1rem;letter-spacing:.05em;}
+  @keyframes cdpulse{0%{transform:scale(1.3);opacity:.6}100%{transform:scale(1);opacity:1}}
 </style>
 </head>
 <body>
+<div id="gcount-overlay"><div id="gcount-num">3</div><div id="gcount-label">Préparez-vous !</div></div>
 
 <button id="home-btn" onclick="location.href='index.html'">← Accueil</button>
 <div id="dot"></div>
@@ -479,6 +485,22 @@
     }
   }
 
+  let gcountHandle = null;
+  function showGlobalCountdown(seconds) {
+    clearInterval(gcountHandle);
+    let n = seconds;
+    const overlay = document.getElementById('gcount-overlay');
+    const num = document.getElementById('gcount-num');
+    overlay.style.display = 'flex';
+    num.textContent = n;
+    gcountHandle = setInterval(() => {
+      n--;
+      if (n <= 0) { clearInterval(gcountHandle); overlay.style.display = 'none'; return; }
+      num.textContent = n;
+      num.style.animation = 'none'; void num.offsetWidth; num.style.animation = 'cdpulse .5s ease';
+    }, 1000);
+  }
+
   function handleMessage(msg) {
     if (msg.type === 'created_p4') {
       mySlot = msg.slot; myRoomCode = msg.code;
@@ -492,6 +514,8 @@
       $('game-screen').style.display = 'flex';
     } else if (msg.type === 'p4_state') {
       renderState(msg);
+    } else if (msg.type === 'countdown') {
+      showGlobalCountdown(msg.seconds || 3);
     } else if (msg.type === 'player_left') {
       // Le serveur envoie un p4_state avec phase WAITING qui mettra à jour l'UI
       showError(`${msg.name} a quitté la partie.`);

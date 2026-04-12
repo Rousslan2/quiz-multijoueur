@@ -167,9 +167,15 @@ input[type=text]::placeholder{color:var(--muted)}
 /* Card fly animation */
 @keyframes cardfly{0%{opacity:1;transform:scale(1) translateY(0)}100%{opacity:0;transform:scale(.3) translateY(-180px)}}
 .card-fly{animation:cardfly .4s ease forwards;pointer-events:none}
+/* Global countdown overlay */
+#gcount-overlay{position:fixed;inset:0;background:rgba(15,12,41,.85);display:none;align-items:center;justify-content:center;z-index:500;flex-direction:column;gap:12px;}
+#gcount-num{font-size:9rem;font-weight:800;background:linear-gradient(135deg,#f97316,#fbbf24);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;line-height:1;animation:cdpulse .5s ease;}
+#gcount-label{color:var(--muted);font-size:1rem;letter-spacing:.05em;}
+@keyframes cdpulse{0%{transform:scale(1.3);opacity:.6}100%{transform:scale(1);opacity:1}}
 </style>
 </head>
 <body>
+<div id="gcount-overlay"><div id="gcount-num">3</div><div id="gcount-label">Préparez-vous !</div></div>
 <div id="dot"></div>
 <button id="back-btn" onclick="location.href='index.html'">&#8592; Accueil</button>
 <div id="confetti-wrap"></div>
@@ -350,6 +356,23 @@ function doCatchUno(targetSlot) {
   send({ type:'catch_uno', targetSlot });
 }
 
+// ── Global countdown ──────────────────────────────────────────────────────────
+let gcountHandle = null;
+function showGlobalCountdown(seconds) {
+  clearInterval(gcountHandle);
+  let n = seconds;
+  const overlay = document.getElementById('gcount-overlay');
+  const num = document.getElementById('gcount-num');
+  overlay.style.display = 'flex';
+  num.textContent = n;
+  gcountHandle = setInterval(() => {
+    n--;
+    if (n <= 0) { clearInterval(gcountHandle); overlay.style.display = 'none'; return; }
+    num.textContent = n;
+    num.style.animation = 'none'; void num.offsetWidth; num.style.animation = 'cdpulse .5s ease';
+  }, 1000);
+}
+
 // ── Handle messages ───────────────────────────────────────────────────────────
 function handle(m) {
   switch (m.type) {
@@ -363,6 +386,10 @@ function handle(m) {
       mySlot = m.slot; myCode = m.code;
       document.getElementById('wait-code').textContent = m.code;
       show('s-wait');
+      break;
+
+    case 'countdown':
+      showGlobalCountdown(m.seconds || 3);
       break;
 
     case 'error':

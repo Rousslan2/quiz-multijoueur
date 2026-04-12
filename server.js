@@ -739,7 +739,9 @@ wssP4.on('connection',ws=>{
       case 'start_p4':{
         if(!player||!myRoom||player.slot!==0||!['WAITING','READY','GAME_OVER'].includes(myRoom.phase))return;
         if(myRoom.players.length<2){wsend(ws,{type:'error',msg:'Il faut 2 joueurs.'});return;}
-        myRoom.board=p4Board();myRoom.turn=0;myRoom.phase='PLAYING';bcast(myRoom.players,p4Snap(myRoom));
+        myRoom.board=p4Board();myRoom.turn=0;
+        myRoom.phase='COUNTDOWN';bcast(myRoom.players,{type:'countdown',seconds:3});
+        clearTimeout(myRoom.timer);myRoom.timer=setTimeout(()=>{myRoom.phase='PLAYING';bcast(myRoom.players,p4Snap(myRoom));broadcastLobby();},3000);
         broadcastLobby();
         break;
       }
@@ -836,10 +838,11 @@ wssMorpion.on('connection',ws=>{
       case 'start_morpion':{
         if(!player||!myRoom||player.slot!==0||!['WAITING','READY','ROUNDOVER'].includes(myRoom.phase))return;
         if(myRoom.players.length<2){wsend(ws,{type:'error',msg:'Il faut 2 joueurs.'});return;}
-        myRoom.board=Array(9).fill(0);myRoom.phase='PLAYING';
+        myRoom.board=Array(9).fill(0);
         const roundNum=myRoom.wins[0]+myRoom.wins[1]+myRoom.draws;
         myRoom.turn=roundNum%2;
-        bcast(myRoom.players,mSnap(myRoom));
+        myRoom.phase='COUNTDOWN';bcast(myRoom.players,{type:'countdown',seconds:3});
+        clearTimeout(myRoom.timer);myRoom.timer=setTimeout(()=>{myRoom.phase='PLAYING';bcast(myRoom.players,mSnap(myRoom));},3000);
         break;
       }
       case 'play':{
@@ -1028,7 +1031,9 @@ wssTaboo.on('connection',ws=>{
       case 'start_taboo':{
         if(!player||!myRoom||player.slot!==0||!['WAITING','READY','GAME_OVER'].includes(myRoom.phase))return;
         if(myRoom.players.length<2){wsend(ws,{type:'error',msg:'Il faut au moins 2 joueurs.'});return;}
-        myRoom.scores=[0,0];myRoom.round=0;myRoom.usedCards=[];tStartRound(myRoom);
+        myRoom.scores=[0,0];myRoom.round=0;myRoom.usedCards=[];
+        myRoom.phase='COUNTDOWN';bcast(myRoom.players,{type:'countdown',seconds:3});
+        clearTimeout(myRoom.timer);myRoom.timer=setTimeout(()=>tStartRound(myRoom),3000);
         broadcastLobby();
         break;
       }
@@ -1359,7 +1364,8 @@ wssVerite.on('connection',ws=>{
         if(myRoom.players.length<2){wsend(ws,{type:'error',msg:'Il faut au moins 2 joueurs.'});return;}
         myRoom.scores=[0,0,0,0];myRoom.turn=0;myRoom.turnNum=0;myRoom.card=null;
         myRoom.deck=shuffle([...VERITE_CARTES]);
-        myRoom.phase='CHOOSING';bcast(myRoom.players,vSnap(myRoom));
+        myRoom.phase='COUNTDOWN';bcast(myRoom.players,{type:'countdown',seconds:3});
+        clearTimeout(myRoom.timer);myRoom.timer=setTimeout(()=>{myRoom.phase='CHOOSING';bcast(myRoom.players,vSnap(myRoom));broadcastLobby();},3000);
         broadcastLobby();
         break;
       }
@@ -1594,25 +1600,30 @@ wssLoup.on('connection', ws => {
       case 'start_loup': {
         if (!player || !myRoom || player.slot !== 0 || myRoom.phase !== 'WAITING') return;
         if (myRoom.players.length < 4) { wsend(ws, { type:'error', msg:'Il faut au moins 4 joueurs.' }); return; }
-        // Assign roles
-        const n = myRoom.players.length;
-        const nLoups = Math.min(3, Math.max(1, Math.floor(n/3)));
-        const roles = [];
-        for (let i = 0; i < nLoups; i++) roles.push('loup-garou');
-        roles.push('voyante');
-        roles.push('sorciere');
-        while (roles.length < n) roles.push('villageois');
-        const shuffled = shuffle(roles);
-        myRoom.players.forEach((p, i) => p.role = shuffled[i]);
-        // Send each player their role
-        myRoom.players.forEach(p => wsend(p.ws, { type:'role_assigned', role:p.role, slot:p.slot }));
-        // Send loups list to all loups
-        const loupsList = myRoom.players.filter(p => p.role === 'loup-garou').map(p => ({ name:p.name, slot:p.slot }));
-        myRoom.players.filter(p => p.role === 'loup-garou').forEach(p => wsend(p.ws, { type:'loups_list', loups:loupsList }));
-        myRoom.phase = 'NIGHT';
-        loupBcastAll(myRoom);
+        bcast(myRoom.players, { type:'countdown', seconds:3 });
         clearTimeout(myRoom.timer);
-        myRoom.timer = setTimeout(() => loupStartNight(myRoom), 4000);
+        myRoom.timer = setTimeout(() => {
+          // Assign roles
+          const n = myRoom.players.length;
+          const nLoups = Math.min(3, Math.max(1, Math.floor(n/3)));
+          const roles = [];
+          for (let i = 0; i < nLoups; i++) roles.push('loup-garou');
+          roles.push('voyante');
+          roles.push('sorciere');
+          while (roles.length < n) roles.push('villageois');
+          const shuffled = shuffle(roles);
+          myRoom.players.forEach((p, i) => p.role = shuffled[i]);
+          // Send each player their role
+          myRoom.players.forEach(p => wsend(p.ws, { type:'role_assigned', role:p.role, slot:p.slot }));
+          // Send loups list to all loups
+          const loupsList = myRoom.players.filter(p => p.role === 'loup-garou').map(p => ({ name:p.name, slot:p.slot }));
+          myRoom.players.filter(p => p.role === 'loup-garou').forEach(p => wsend(p.ws, { type:'loups_list', loups:loupsList }));
+          myRoom.phase = 'NIGHT';
+          loupBcastAll(myRoom);
+          clearTimeout(myRoom.timer);
+          myRoom.timer = setTimeout(() => loupStartNight(myRoom), 4000);
+          broadcastLobby();
+        }, 3000);
         broadcastLobby();
         break;
       }
@@ -1819,8 +1830,10 @@ wssUno.on('connection', ws => {
         myRoom.pile = [first];
         myRoom.currentColor = first.color;
         myRoom.turn = 0; myRoom.direction = 1; myRoom.drawStack = 0; myRoom.unoAlert = {}; myRoom.unoCatchWindow = {};
-        myRoom.phase = 'PLAYING';
-        unoBcastAll(myRoom);
+        myRoom.phase = 'COUNTDOWN';
+        bcast(myRoom.players, { type:'countdown', seconds:3 });
+        clearTimeout(myRoom.timer);
+        myRoom.timer = setTimeout(() => { myRoom.phase = 'PLAYING'; unoBcastAll(myRoom); broadcastLobby(); }, 3000);
         broadcastLobby();
         break;
       }

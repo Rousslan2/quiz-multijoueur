@@ -280,9 +280,15 @@
 
   .hidden { display: none !important; }
   .grille-btn-wrap { display: flex; justify-content: center; }
+  /* Global countdown overlay */
+  #gcount-overlay{position:fixed;inset:0;background:rgba(15,12,41,.85);display:none;align-items:center;justify-content:center;z-index:500;flex-direction:column;gap:12px;}
+  #gcount-num{font-size:9rem;font-weight:800;background:linear-gradient(135deg,#f97316,#fbbf24);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;line-height:1;animation:cdpulse .5s ease;}
+  #gcount-label{color:var(--muted);font-size:1rem;letter-spacing:.05em;}
+  @keyframes cdpulse{0%{transform:scale(1.3);opacity:.6}100%{transform:scale(1);opacity:1}}
 </style>
 </head>
 <body>
+<div id="gcount-overlay"><div id="gcount-num">3</div><div id="gcount-label">Préparez-vous !</div></div>
 
 <button id="back-btn" onclick="location.href='index.html'">← Accueil</button>
 <div id="dot"></div>
@@ -461,6 +467,23 @@ function send(obj) {
   if (ws && ws.readyState === 1) ws.send(JSON.stringify(obj));
 }
 
+/* ─── Global countdown ───────────────────────────────── */
+let gcountHandle = null;
+function showGlobalCountdown(seconds) {
+  clearInterval(gcountHandle);
+  let n = seconds;
+  const overlay = document.getElementById('gcount-overlay');
+  const num = document.getElementById('gcount-num');
+  overlay.style.display = 'flex';
+  num.textContent = n;
+  gcountHandle = setInterval(() => {
+    n--;
+    if (n <= 0) { clearInterval(gcountHandle); overlay.style.display = 'none'; return; }
+    num.textContent = n;
+    num.style.animation = 'none'; void num.offsetWidth; num.style.animation = 'cdpulse .5s ease';
+  }, 1000);
+}
+
 /* ─── Message handler ────────────────────────────────── */
 function handleMsg(msg) {
   switch (msg.type) {
@@ -504,6 +527,10 @@ function handleMsg(msg) {
     case 'game_abandoned':
       { const el=document.getElementById('msg-area')||document.getElementById('status-msg');
         if(el){el.textContent='Tous les joueurs ont quitté — partie abandonnée !';el.style.color='#fca5a5';} }
+      break;
+
+    case 'countdown':
+      showGlobalCountdown(msg.seconds || 3);
       break;
 
     case 'error':
