@@ -223,6 +223,8 @@
     if (!n) return;
     myName = n;
     localStorage.setItem('chat_name', n);
+    if (window.ZapPlay) ZapPlay.savePseudo(n);
+    document.getElementById('chat-name-row').style.display = 'none';
     if (connected) {
       ws.send(JSON.stringify({ type: 'join_chat', name: myName }));
       enableInput(true);

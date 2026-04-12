@@ -4,6 +4,9 @@
 const STORAGE_KEY_NAME = 'zapplay_pseudo';
 const STORAGE_KEY_HISTORY = 'zapplay_history';
 const MAX_HISTORY = 50;
+const RESULT_DEDUP_WINDOW_MS = 4000;
+let lastResultSignature = '';
+let lastResultSavedAt = 0;
 
 // ═══════════════════════════════════════════════════════
 //  1. PSEUDOS PERSISTANTS
@@ -94,10 +97,13 @@ function injectLoader(){
 
 const MIN_LOADER_MS=1500;
 let loaderShownAt=0;
+let loaderHideScheduled=false;
 
 function hideLoader(){
   const el=document.getElementById('zp-loader');
   if(!el)return;
+  if(loaderHideScheduled)return;
+  loaderHideScheduled=true;
   const elapsed=Date.now()-loaderShownAt;
   const remaining=Math.max(0,MIN_LOADER_MS-elapsed);
   setTimeout(()=>{
@@ -109,6 +115,7 @@ function hideLoader(){
 function showLoader(){
   injectLoader();
   loaderShownAt=Date.now();
+  loaderHideScheduled=false;
   const el=document.getElementById('zp-loader');
   if(el)el.classList.remove('hide');
 }
@@ -123,11 +130,19 @@ function getHistory(){
 }
 
 function saveGameResult(data){
+  const players=(data.players||[]).join('|');
+  const signature=[data.game||'?',data.winner||'?',data.myName||getSavedPseudo(),data.myScore??0,players].join('::');
+  const now=Date.now();
+  if(signature===lastResultSignature && (now-lastResultSavedAt)<RESULT_DEDUP_WINDOW_MS){
+    return;
+  }
+  lastResultSignature=signature;
+  lastResultSavedAt=now;
   const history=getHistory();
   history.unshift({
     game:data.game||'?',
     gameName:data.gameName||data.game||'?',
-    date:Date.now(),
+    date:now,
     players:data.players||[],
     winner:data.winner||null,
     myName:data.myName||getSavedPseudo(),
