@@ -187,6 +187,7 @@ function exportHistory(){
 let loungeSender = null;
 let loungeState = { roomCode:'', players:[], mySlot:-1, gameName:'' };
 let loungeReady = false;
+let loungeCollapsed = false;
 
 function ensureLoungeUI(){
   if(loungeReady)return;
@@ -194,16 +195,23 @@ function ensureLoungeUI(){
   const css = document.createElement('style');
   css.textContent = `
     #zp-lounge{
-      position:fixed;left:14px;right:14px;bottom:14px;z-index:220;
+      position:fixed;right:14px;bottom:14px;z-index:220;
+      width:min(460px,calc(100vw - 28px));
       background:rgba(12,10,30,.96);border:1px solid rgba(167,139,250,.25);
       border-radius:14px;box-shadow:0 10px 34px rgba(0,0,0,.45);
       display:none;overflow:hidden;backdrop-filter:blur(10px);
       font-family:'Segoe UI',system-ui,sans-serif;
     }
     #zp-lounge.show{display:block}
+    #zp-lounge[data-collapsed="1"] #zp-lounge-body{display:none}
+    #zp-lounge[data-collapsed="1"] #zp-lounge-head{border-bottom:none}
     #zp-lounge-head{
       display:flex;align-items:center;justify-content:space-between;
       padding:8px 10px;background:rgba(167,139,250,.1);border-bottom:1px solid rgba(167,139,250,.2);
+    }
+    #zp-lounge-toggle{
+      border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.08);color:#e2e8f0;
+      border-radius:8px;padding:3px 8px;font-size:.72rem;cursor:pointer
     }
     #zp-lounge-head .t{font-size:.78rem;color:#c4b5fd;font-weight:700}
     #zp-lounge-head .s{font-size:.7rem;color:#94a3b8}
@@ -242,6 +250,7 @@ function ensureLoungeUI(){
     #zp-player-card .n{font-size:1rem;font-weight:800}
     #zp-player-card .m{font-size:.78rem;color:#94a3b8;margin-top:4px}
     @media (max-width: 760px){
+      #zp-lounge{left:14px;right:14px;width:auto}
       #zp-lounge-body{grid-template-columns:1fr}
       #zp-lounge-players{border-right:none;border-bottom:1px solid rgba(255,255,255,.08)}
     }
@@ -255,6 +264,7 @@ function ensureLoungeUI(){
           <div class="t" id="zp-lounge-title">Salon</div>
           <div class="s" id="zp-lounge-sub">En attente…</div>
         </div>
+        <button id="zp-lounge-toggle" type="button">Réduire</button>
       </div>
       <div id="zp-lounge-body">
         <div id="zp-lounge-players"></div>
@@ -275,6 +285,7 @@ function ensureLoungeUI(){
     </div>
   `;
   document.body.appendChild(wrap);
+  setLoungeCollapsed(window.matchMedia('(max-width:760px)').matches);
 
   const sendBtn = document.getElementById('zp-lounge-send');
   const input = document.getElementById('zp-lounge-text');
@@ -286,9 +297,21 @@ function ensureLoungeUI(){
   }
   sendBtn.addEventListener('click', sendLounge);
   input.addEventListener('keydown', e => { if(e.key==='Enter') sendLounge(); });
+  document.getElementById('zp-lounge-toggle').addEventListener('click',()=>{
+    setLoungeCollapsed(!loungeCollapsed);
+  });
   document.getElementById('zp-player-modal').addEventListener('click', e => {
     if(e.target.id==='zp-player-modal') e.currentTarget.classList.remove('show');
   });
+}
+
+function setLoungeCollapsed(collapsed){
+  loungeCollapsed = !!collapsed;
+  const lounge = document.getElementById('zp-lounge');
+  if(!lounge)return;
+  lounge.setAttribute('data-collapsed', loungeCollapsed?'1':'0');
+  const btn = document.getElementById('zp-lounge-toggle');
+  if(btn) btn.textContent = loungeCollapsed ? 'Ouvrir' : 'Réduire';
 }
 
 function showLounge(data){
