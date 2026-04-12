@@ -92,16 +92,23 @@ function injectLoader(){
   document.body.prepend(loader);
 }
 
+const MIN_LOADER_MS=3000;
+let loaderShownAt=0;
+
 function hideLoader(){
   const el=document.getElementById('zp-loader');
-  if(el){
+  if(!el)return;
+  const elapsed=Date.now()-loaderShownAt;
+  const remaining=Math.max(0,MIN_LOADER_MS-elapsed);
+  setTimeout(()=>{
     el.classList.add('hide');
     setTimeout(()=>el.remove(),500);
-  }
+  },remaining);
 }
 
 function showLoader(){
   injectLoader();
+  loaderShownAt=Date.now();
   const el=document.getElementById('zp-loader');
   if(el)el.classList.remove('hide');
 }
@@ -223,14 +230,14 @@ if(document.readyState==='loading'){
 
 function init(){
   const isIndex=location.pathname.endsWith('index.html')||location.pathname.endsWith('/');
-  if(!isIndex)injectLoader();
+  if(!isIndex){injectLoader();loaderShownAt=Date.now();}
   autoFillPseudo();
   hookPseudoInputs();
   if(isIndex){
     renderHistoryWidget('history-widget');
   }
   // Auto-hide loader after 5s max
-  if(!isIndex)setTimeout(hideLoader,5000);
+  if(!isIndex)setTimeout(hideLoader,8000);
 }
 
 window.ZapPlay={
