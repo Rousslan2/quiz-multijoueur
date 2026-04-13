@@ -38,8 +38,12 @@ input{width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--bor
 #place-tools{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:center;margin-top:10px}
 #status{text-align:center;font-weight:600;color:#a5f3fc;min-height:22px;font-size:.9rem}
 #score-row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+#target-row{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;align-items:center;margin:8px 0;min-height:36px}
 .pill{padding:6px 12px;border-radius:999px;background:rgba(255,255,255,.08);border:1px solid var(--border);font-size:.78rem}
 .pill.turn{border-color:var(--primary);box-shadow:0 0 12px rgba(56,189,248,.25)}
+.pill.dead{opacity:.45;text-decoration:line-through}
+.tgt{border:none;font:inherit;color:inherit;cursor:pointer;font-size:.78rem}
+.tgt:not(.turn):hover{background:rgba(255,255,255,.1)}
 #gcount{position:fixed;inset:0;background:rgba(15,23,42,.88);display:none;align-items:center;justify-content:center;z-index:400}
 #gcount span{font-size:5rem;font-weight:900;color:var(--buzz)}
 @media(max-width:640px){
@@ -55,7 +59,7 @@ input{width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--bor
 
 <div id="app">
   <h1>⚓ Bataille navale</h1>
-  <p class="sub">2 joueurs · grille 10×10 · flotte 5-4-3-3-2</p>
+  <p class="sub">2 à 4 joueurs · grille 10×10 · flotte 5-4-3-3-2 · dernier en jeu gagne</p>
 
   <div id="name-screen" class="card">
     <input id="name" maxlength="20" placeholder="Ton pseudo">
@@ -101,7 +105,8 @@ input{width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--bor
           <div id="grid-my" class="grid"></div>
         </div>
         <div>
-          <div class="board-title">Tirs (adversaire)</div>
+          <div class="board-title" id="opp-board-title">Tirs</div>
+          <div id="target-row"></div>
           <div id="grid-opp" class="grid"></div>
         </div>
       </div>
@@ -120,6 +125,7 @@ const WS_URL = `${location.protocol==='https:'?'wss':'ws'}://${location.host}/ws
 const SHIP_QUEUE = [5,4,3,3,2];
 const $ = id => document.getElementById(id);
 let ws=null,mySlot=-1,myCode='',myName='',state=null,pending=null,lastPhase='';
+let shotTarget=-1;
 let orientH = true;
 let remaining = [];
 let previewShips = [];
@@ -263,7 +269,7 @@ function render(){
     if(window.ZapPlay) ZapPlay.showLounge({players:pl,mySlot,roomCode:state.code||myCode,gameName:'Bataille navale'});
     hideAllPanels(); $('wait').classList.remove('hidden');
     $('plist').innerHTML=pl.map(p=>`<span class="pill">${p.name}${p.slot===0?' 👑':''}</span>`).join('');
-    $('btn-start').classList.toggle('hidden',!(mySlot===0&&pl.length>=2));
+    $('btn-start').classList.toggle('hidden',!(mySlot===0&&pl.length>=2&&pl.length<=4));
     lastPhase=phase;
     return;
   }
@@ -290,18 +296,51 @@ function render(){
     else $('over').classList.remove('hidden');
 
     const names=pl.map(p=>p.name);
+    const elim=state.eliminated||[];
+    const n=pl.length;
+    if(phase==='PLAYING'){
+      const alive=[];
+      for(let i=0;i<n;i++) if(i!==mySlot&&!elim[i]) alive.push(i);
+      if(alive.length===1) shotTarget=alive[0];
+      else if(shotTarget<0||shotTarget===mySlot||elim[shotTarget]) shotTarget=alive[0]??-1;
+    }
     $('score-row').innerHTML=pl.map((p,i)=>{
-      const on=state.turn===i&&phase==='PLAYING';
-      return `<span class="pill ${on?'turn':''}">${p.name}${on?' · à toi':''}</span>`;
+      const on=state.turn===i&&phase==='PLAYING'&&!elim[i];
+      const dead=elim[i];
+      return `<span class="pill ${on?'turn':''} ${dead?'dead':''}">${p.name}${dead?' ✕':''}${on?' · à toi':''}</span>`;
     }).join('');
 
     if(phase==='PLAYING'){
-      if(state.turn===mySlot) $('status').textContent='À toi — clique sur la grille adverse pour tirer.';
-      else $('status').textContent=`Tour de ${names[state.turn]}.`;
+      if(state.turn===mySlot){
+        $('status').textContent=n<=2?'À toi — clique sur la grille adverse pour tirer.':'À toi — choisis la cible (boutons), puis une case.';
+      }else $('status').textContent=`Tour de ${names[state.turn]}.`;
     }
 
     paintGrid($('grid-my'), state.myBoard, state.incoming, true);
-    paintGrid($('grid-opp'), null, null, false, state.oppView, phase==='PLAYING'&&state.turn===mySlot);
+    let tr='';
+    if(phase==='PLAYING'&&n>2){
+      for(let i=0;i<n;i++){
+        if(i===mySlot) continue;
+        if(elim[i]){ tr+=`<span class="pill dead">${names[i]} ✕</span>`; continue; }
+        const sel=i===shotTarget;
+        tr+=`<button type="button" class="pill tgt ${sel?'turn':''}" data-t="${i}">${names[i]}</button>`;
+      }
+      $('target-row').innerHTML=tr||'';
+      $('target-row').onclick=e=>{
+        const b=e.target.closest('[data-t]');
+        if(!b) return;
+        shotTarget=+b.dataset.t;
+        render();
+      };
+    }else{
+      $('target-row').innerHTML='';
+      $('target-row').onclick=null;
+    }
+    const oppView=(state.oppBoards&&shotTarget>=0)?state.oppBoards[shotTarget]:null;
+    const nm=shotTarget>=0?names[shotTarget]:'';
+    $('opp-board-title').textContent=n<=2?'Tirs (adversaire)':`Tirs sur ${nm}`;
+    const canFire=phase==='PLAYING'&&state.turn===mySlot&&!elim[mySlot]&&shotTarget>=0&&!elim[shotTarget];
+    paintGrid($('grid-opp'), null, null, false, oppView, canFire);
 
     if(phase==='GAME_OVER'){
       const w=state.winnerSlot;
@@ -320,7 +359,10 @@ function render(){
 function paintGrid(el, myBoard, incoming, isMine, oppView, canShoot){
   el.innerHTML='';
   const incMap=new Map();
-  (incoming||[]).forEach(s=>{ incMap.set(s.y*10+s.x,s.hit); });
+  (incoming||[]).forEach(s=>{
+    const k=s.y*10+s.x;
+    incMap.set(k, !!(incMap.get(k)||s.hit));
+  });
   for(let y=0;y<10;y++)for(let x=0;x<10;x++){
     const d=document.createElement('button');
     d.type='button';
@@ -340,7 +382,7 @@ function paintGrid(el, myBoard, incoming, isMine, oppView, canShoot){
       else if(v===2) d.classList.add('hit');
       if(canShoot && v===-2){
         d.classList.add('shootable');
-        d.addEventListener('click',()=>send({type:'naval_shot',x,y}));
+        d.addEventListener('click',()=>send({type:'naval_shot',x,y,target:shotTarget}));
       }else d.classList.add('disabled');
     }
     el.appendChild(d);
