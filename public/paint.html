@@ -30,8 +30,13 @@ input{width:100%;background:rgba(255,255,255,.08);border:1px solid var(--border)
 #waiting{display:flex;flex-direction:column;gap:10px;align-items:center}
 #players{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
 #players .chip{padding:6px 11px;border-radius:999px;background:rgba(255,255,255,.08);border:1px solid var(--border);font-size:.8rem}
-#arena-wrap{display:flex;justify-content:center;flex:1;min-height:0}
-#arena{width:min(92vw,500px);height:min(92vw,500px);max-width:500px;max-height:500px;background:#1e1b4b;border:2px solid rgba(255,255,255,.3);border-radius:8px;box-shadow:0 8px 32px rgba(0,0,0,.5)}
+#arena-wrap{display:flex;justify-content:center;align-items:center;flex:1;min-height:0;padding:4px}
+#arena{
+  width:min(96vw,760px);height:min(96vw,760px);max-width:760px;max-height:min(72dvh,760px);
+  aspect-ratio:1;border-radius:16px;
+  background:radial-gradient(ellipse 120% 100% at 50% 0%,rgba(167,139,250,.12),transparent 55%),#0f0d24;
+  border:2px solid rgba(167,139,250,.35);box-shadow:0 0 0 1px rgba(0,0,0,.4),0 12px 40px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.06)
+}
 #status{text-align:center;color:var(--muted);min-height:18px;font-size:.85rem}
 #score-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
 .row{padding:9px;border:1px solid var(--border);background:rgba(255,255,255,.04);border-radius:10px;font-size:.82rem;display:flex;justify-content:space-between}
@@ -45,6 +50,7 @@ input{width:100%;background:rgba(255,255,255,.08);border:1px solid var(--border)
 @media(max-width:760px){
   #controls-mobile{display:grid}
   #app{padding-top:48px}
+  #arena{max-height:min(58dvh,760px)}
 }
 </style>
 </head>
@@ -80,7 +86,7 @@ input{width:100%;background:rgba(255,255,255,.08);border:1px solid var(--border)
 
     <div id="playing" class="hidden" style="display:flex;flex-direction:column;gap:10px;min-height:0;flex:1">
       <div class="card" style="display:flex;flex-direction:column;flex:1;min-height:0;padding:8px">
-        <div id="arena-wrap"><canvas id="arena" width="600" height="600"></canvas></div>
+        <div id="arena-wrap"><canvas id="arena" width="800" height="800"></canvas></div>
         <div id="status" style="margin-top:6px"></div>
       </div>
       <div class="card" style="padding:8px"><div id="score-list"></div></div>
@@ -107,7 +113,34 @@ function bindLoungeSender(){ if(window.ZapPlay)ZapPlay.setLoungeSender(text=>sen
 bindLoungeSender();
 
 const COLORS = ['#a78bfa', '#22c55e', '#f97316', '#60a5fa'];
-const TRAIL_COLORS = ['rgba(167,139,250,0.5)', 'rgba(34,197,94,0.5)', 'rgba(249,115,22,0.5)', 'rgba(96,165,250,0.5)'];
+const TRAIL_COLORS = ['rgba(167,139,250,0.72)', 'rgba(34,197,94,0.72)', 'rgba(249,115,22,0.72)', 'rgba(96,165,250,0.72)'];
+const PLAYER_RGB = COLORS.map(h=>{
+  const n=h.slice(1);
+  return [parseInt(n.slice(0,2),16),parseInt(n.slice(2,4),16),parseInt(n.slice(4,6),16)];
+});
+const VOID_RGB = [18,16,42];
+
+let arenaDisplayCss = 520;
+let territoryBm = null;
+let lastGridStr = '';
+
+function rgbStr(r,g,b,a=1){ return `rgba(${r},${g},${b},${a})`; }
+
+function resizeArenaCanvas(){
+  const wrap=$('arena-wrap'), cv=$('arena');
+  if(!wrap||!cv)return;
+  const r=wrap.getBoundingClientRect();
+  const side=Math.floor(Math.min(r.width,r.height)-10);
+  const size=Math.max(300,Math.min(side,760));
+  arenaDisplayCss=size;
+  const dpr=Math.min(window.devicePixelRatio||1,2);
+  const px=Math.floor(size*dpr);
+  if(cv.width!==px||cv.height!==px){
+    cv.width=px; cv.height=px;
+    cv.style.width=size+'px'; cv.style.height=size+'px';
+  }
+}
+window.addEventListener('resize',()=>{ if(state&&state.phase==='PLAYING'){ resizeArenaCanvas(); drawArena(); } });
 
 function connect(){
   ws=new WebSocket(WS_URL);
@@ -172,6 +205,7 @@ function render(){
   if(state.phase==='PLAYING'){
     if(window.ZapPlay)ZapPlay.hideLounge();
     setScreen('playing');
+    resizeArenaCanvas();
     const totalCells = state.W * state.H;
     $('score-list').innerHTML=players.map(p=>{
       const cls=['row',!p.alive?'dead':''].join(' ');
@@ -197,47 +231,122 @@ function render(){
   lastPhase=state.phase;
 }
 
+function getTerritoryBitmap(W,H,gridStr){
+  if(gridStr===lastGridStr && territoryBm && territoryBm.width===W) return territoryBm;
+  lastGridStr=gridStr||'';
+  if(!territoryBm||territoryBm.width!==W||territoryBm.height!==H){
+    territoryBm=document.createElement('canvas');
+    territoryBm.width=W; territoryBm.height=H;
+  }
+  const c=territoryBm.getContext('2d');
+  const img=c.createImageData(W,H);
+  const d=img.data;
+  for(let i=0,pix=0;i<W*H;i++,pix+=4){
+    const ch=gridStr[i];
+    let r,g,b;
+    if(ch==='.'||ch===undefined||ch===''){
+      r=VOID_RGB[0]; g=VOID_RGB[1]; b=VOID_RGB[2];
+    }else{
+      const slot=parseInt(ch,10);
+      const rgb=PLAYER_RGB[slot]||VOID_RGB;
+      r=Math.min(255,rgb[0]+14); g=Math.min(255,rgb[1]+10); b=Math.min(255,rgb[2]+18);
+    }
+    d[pix]=r; d[pix+1]=g; d[pix+2]=b; d[pix+3]=255;
+  }
+  c.putImageData(img,0,0);
+  return territoryBm;
+}
+
+function roundRectPath(ctx,x,y,w,h,r){
+  const rad=Math.min(r,w/2,h/2);
+  ctx.moveTo(x+rad,y);
+  ctx.arcTo(x+w,y,x+w,y+h,rad);
+  ctx.arcTo(x+w,y+h,x,y+h,rad);
+  ctx.arcTo(x,y+h,x,y,rad);
+  ctx.arcTo(x,y,x+w,y,rad);
+  ctx.closePath();
+}
+
 function drawArena(){
   const cv=$('arena'),ctx=cv.getContext('2d'); if(!ctx||!state)return;
-  const W = state.W, H = state.H;
-  const cellSize = cv.width / W;
-  
+  const W=state.W,H=state.H;
+  const display=arenaDisplayCss||Math.min(cv.getBoundingClientRect().width,520);
+  const dpr=cv.width/display;
+  ctx.setTransform(1,0,0,1,0,0);
   ctx.clearRect(0,0,cv.width,cv.height);
-  
-  // Draw territory
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  const cellSize=display/W;
+
+  const bg=ctx.createRadialGradient(display*0.35,display*0.22,0,display*0.52,display*0.55,display*0.9);
+  bg.addColorStop(0,'#2a2452');
+  bg.addColorStop(0.45,'#15122e');
+  bg.addColorStop(1,'#0a0818');
+  ctx.fillStyle=bg;
+  ctx.fillRect(0,0,display,display);
+
   if(state.gridStr){
-    for(let y=0; y<H; y++){
-      for(let x=0; x<W; x++){
-        const char = state.gridStr[y*W + x];
-        if(char !== '.'){
-          ctx.fillStyle = COLORS[parseInt(char)];
-          ctx.fillRect(x*cellSize, y*cellSize, cellSize+0.5, cellSize+0.5); // +0.5 to prevent seams
-        }
-      }
-    }
+    const bm=getTerritoryBitmap(W,H,state.gridStr);
+    ctx.imageSmoothingEnabled=false;
+    ctx.drawImage(bm,0,0,W,H,0,0,display,display);
   }
 
-  // Draw trails and heads
-  (state.players||[]).forEach(p=>{
-    if(!p.alive) return;
-    
-    // Trail
-    ctx.fillStyle = TRAIL_COLORS[p.slot];
-    (p.trail||[]).forEach(t => {
-      ctx.fillRect(t.x*cellSize + cellSize*0.2, t.y*cellSize + cellSize*0.2, cellSize*0.6, cellSize*0.6);
-    });
+  ctx.strokeStyle='rgba(255,255,255,0.045)';
+  ctx.lineWidth=1;
+  for(let x=0;x<=W;x++){
+    ctx.beginPath();
+    ctx.moveTo(x*cellSize+0.5,0);
+    ctx.lineTo(x*cellSize+0.5,display);
+    ctx.stroke();
+  }
+  for(let y=0;y<=H;y++){
+    ctx.beginPath();
+    ctx.moveTo(0,y*cellSize+0.5);
+    ctx.lineTo(display,y*cellSize+0.5);
+    ctx.stroke();
+  }
 
-    // Head
-    ctx.fillStyle = '#fff';
-    ctx.fillRect(p.x*cellSize, p.y*cellSize, cellSize, cellSize);
-    ctx.fillStyle = COLORS[p.slot];
-    ctx.fillRect(p.x*cellSize + 2, p.y*cellSize + 2, cellSize - 4, cellSize - 4);
-    
-    // Highlight local player
-    if(p.slot === mySlot){
-      ctx.strokeStyle = '#fff';
-      ctx.lineWidth = 2;
-      ctx.strokeRect(p.x*cellSize - 2, p.y*cellSize - 2, cellSize + 4, cellSize + 4);
+  ctx.strokeStyle='rgba(167,139,250,0.4)';
+  ctx.lineWidth=2.5;
+  ctx.strokeRect(1.5,1.5,display-3,display-3);
+
+  (state.players||[]).forEach(p=>{
+    if(!p.alive)return;
+    const tw=cellSize*0.62, pad=(cellSize-tw)/2;
+    ctx.save();
+    ctx.shadowColor=COLORS[p.slot];
+    ctx.shadowBlur=Math.min(14,cellSize*1.1);
+    ctx.fillStyle=TRAIL_COLORS[p.slot];
+    (p.trail||[]).forEach(t=>{
+      ctx.beginPath();
+      roundRectPath(ctx,t.x*cellSize+pad,t.y*cellSize+pad,tw,tw,cellSize*0.18);
+      ctx.fill();
+    });
+    ctx.restore();
+
+    const px=p.x*cellSize, py=p.y*cellSize;
+    const inset=cellSize*0.1;
+    const hw=cellSize-2*inset, hh=hw, rad=cellSize*0.28;
+    const g=ctx.createRadialGradient(px+cellSize*0.35,py+cellSize*0.32,cellSize*0.08,px+cellSize*0.5,py+cellSize*0.5,cellSize*0.55);
+    const rgb=PLAYER_RGB[p.slot]||VOID_RGB;
+    g.addColorStop(0,'#ffffff');
+    g.addColorStop(0.25,rgbStr(rgb[0],rgb[1],rgb[2],1));
+    g.addColorStop(1,rgbStr(Math.max(0,rgb[0]-40),Math.max(0,rgb[1]-35),Math.max(0,rgb[2]-30),1));
+    ctx.fillStyle=g;
+    ctx.beginPath();
+    roundRectPath(ctx,px+inset,py+inset,hw,hh,rad);
+    ctx.fill();
+    ctx.strokeStyle='rgba(255,255,255,0.55)';
+    ctx.lineWidth=Math.max(1.2,cellSize*0.09);
+    ctx.stroke();
+
+    if(p.slot===mySlot){
+      ctx.strokeStyle='#fff';
+      ctx.lineWidth=Math.max(2,cellSize*0.12);
+      ctx.setLineDash([cellSize*0.22,cellSize*0.14]);
+      ctx.beginPath();
+      roundRectPath(ctx,px-cellSize*0.08,py-cellSize*0.08,cellSize+cellSize*0.16,cellSize+cellSize*0.16,rad+cellSize*0.12);
+      ctx.stroke();
+      ctx.setLineDash([]);
     }
   });
 }

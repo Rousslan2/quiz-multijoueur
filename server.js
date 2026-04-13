@@ -2433,9 +2433,9 @@ wssSumo.on('connection', ws => {
 //  PAINT.IO
 // ════════════════════════════════════════════════════════
 const paintRooms = new Map();
-const PAINT_W = 60;
-const PAINT_H = 60;
-const PAINT_TICK_MS = 120;
+const PAINT_W = 96;
+const PAINT_H = 96;
+const PAINT_TICK_MS = 100;
 
 function makePaintRoom(code, host){
   return {
@@ -2460,7 +2460,7 @@ function paintOpp(a,b){
   return (a==='up'&&b==='down') || (a==='down'&&b==='up') || (a==='left'&&b==='right') || (a==='right'&&b==='left');
 }
 function paintSpawn(slot){
-  const m = 6;
+  const m = Math.max(8, Math.floor(Math.min(PAINT_W, PAINT_H) * 0.08));
   const pts = [
     {x:m, y:m, dir:'right'},
     {x:PAINT_W-m-1, y:m, dir:'left'},
@@ -2519,8 +2519,8 @@ function paintCapture(room, slot, trail){
   }
   for(let x=0;x<PAINT_W;x++){ push(x,0); push(x,PAINT_H-1); }
   for(let y=0;y<PAINT_H;y++){ push(0,y); push(PAINT_W-1,y); }
-  while(q.length){
-    const id = q.shift();
+  for(let qi=0;qi<q.length;qi++){
+    const id = q[qi];
     const x = id % PAINT_W;
     const y = (id / PAINT_W) | 0;
     push(x+1,y); push(x-1,y); push(x,y+1); push(x,y-1);
