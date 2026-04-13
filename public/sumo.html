@@ -110,6 +110,7 @@ let keys={up:false,down:false,left:false,right:false},dashQueued=false,punchQueu
 let joyX=0,joyY=0,joyTouchId=null;
 let particles=[];
 let animFrame=null;
+let lastStateTime=0;
 const $ = id => document.getElementById(id);
 function send(o){ if(ws&&ws.readyState===1) ws.send(JSON.stringify(o)); }
 function bindLoungeSender(){ if(window.ZapPlay)ZapPlay.setLoungeSender(text=>send({type:'lounge_chat',text})); else setTimeout(bindLoungeSender,120); }
@@ -158,6 +159,7 @@ function handle(m){
       }
     }
     state=m;
+    lastStateTime=Date.now();
     render();
   }
 }
@@ -215,6 +217,10 @@ function drawArena(){
   const W=cv.width,H=cv.height,cx=W/2,cy=H/2;
   const ringR = Number(state.ringR||164)*1.25;
   const pr = Math.max(10, Number(state.playerR||18)*1.05);
+  
+  const dt = Math.max(0, Date.now() - lastStateTime);
+  const tickRatio = Math.min(dt / 40, 1.2);
+
   ctx.clearRect(0,0,W,H);
   
   // Sol hors du ring
@@ -255,7 +261,9 @@ function drawArena(){
 
   (state.players||[]).forEach(p=>{
     if(!p.alive) return;
-    const x=cx + Number(p.x||0)*1.25, y=cy + Number(p.y||0)*1.25;
+    const interpX = Number(p.x||0) + Number(p.vx||0) * tickRatio;
+    const interpY = Number(p.y||0) + Number(p.vy||0) * tickRatio;
+    const x=cx + interpX*1.25, y=cy + interpY*1.25;
     const fx = Number(p.faceX||1), fy = Number(p.faceY||0);
     const fmag = Math.hypot(fx,fy)||1;
     const nx = fx/fmag, ny = fy/fmag;
@@ -264,6 +272,19 @@ function drawArena(){
 
     if(speed > 1.5 && Math.random()<0.4) spawnDust(x - nx*pr, y - ny*pr);
     if(p.hit && Math.random()<0.3) spawnHit(x, y);
+
+    // Trail
+    if(speed > 2 && p.alive) {
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(x - (p.vx||0)*2, y - (p.vy||0)*2);
+      ctx.lineWidth = pr*1.2;
+      ctx.lineCap = 'round';
+      ctx.strokeStyle = beltColors[p.slot%beltColors.length]||'#fff';
+      ctx.globalAlpha = 0.25;
+      ctx.stroke();
+      ctx.globalAlpha = 1.0;
+    }
 
     ctx.save();
     ctx.translate(x, y);
@@ -312,10 +333,10 @@ function drawArena(){
     }
 
     // Pseudo
-    ctx.fillStyle='#fff'; ctx.font='bold 13px Segoe UI'; ctx.textAlign='center';
-    ctx.shadowColor='rgba(0,0,0,0.8)'; ctx.shadowBlur=4;
+    ctx.fillStyle='rgba(0,0,0,0.6)'; ctx.font='bold 13px Segoe UI'; ctx.textAlign='center';
+    ctx.fillText(String(p.name||''),x+1,y-pr-13);
+    ctx.fillStyle='#fff';
     ctx.fillText(String(p.name||''),x,y-pr-14);
-    ctx.shadowBlur=0;
   });
 }
 
@@ -326,7 +347,7 @@ function sendInput(){
   dashQueued=false;
   punchQueued=false;
 }
-function ensureInputLoop(){ if(inputInt)return; inputInt=setInterval(sendInput,60); }
+function ensureInputLoop(){ if(inputInt)return; inputInt=setInterval(sendInput,40); }
 function onKey(e,down){
   const k=e.key.toLowerCase();
   if(k==='arrowup'||k==='z'||k==='w')keys.up=down;

@@ -2116,17 +2116,17 @@ wssBomb.on('connection', ws => {
 const sumoRooms = new Map();
 const SUMO_RING_R = 164;
 const SUMO_PLAYER_R = 18;
-const SUMO_TICK_MS = 50;
-const SUMO_MAX_SPEED = 7.6;
-const SUMO_ACCEL = 0.95;
-const SUMO_FRICTION = 0.9;
-const SUMO_DASH_BOOST = 6.6;
-const SUMO_DASH_CD_MS = 1200;
-const SUMO_COLLISION_PUSH = 1.15;
-const SUMO_PUNCH_RANGE = 68;
-const SUMO_PUNCH_DOT = 0.42;
-const SUMO_PUNCH_FORCE = 7.2;
-const SUMO_PUNCH_CD_MS = 760;
+const SUMO_TICK_MS = 40;
+const SUMO_MAX_SPEED = 8.5;
+const SUMO_ACCEL = 1.2;
+const SUMO_FRICTION = 0.85;
+const SUMO_DASH_BOOST = 8.5;
+const SUMO_DASH_CD_MS = 900;
+const SUMO_COLLISION_PUSH = 1.8;
+const SUMO_PUNCH_RANGE = 85;
+const SUMO_PUNCH_DOT = 0.15;
+const SUMO_PUNCH_FORCE = 24.0;
+const SUMO_PUNCH_CD_MS = 600;
 
 function makeSumoRoom(code, host){
   return {
@@ -2229,11 +2229,11 @@ function sumoTick(room){
         const nx=dx/dist, ny=dy/dist;
         const dot = nx*(p.faceX||1) + ny*(p.faceY||0);
         if(dot < SUMO_PUNCH_DOT) return;
-        const force = SUMO_PUNCH_FORCE * Math.max(0.25, dot);
+        const force = SUMO_PUNCH_FORCE * Math.max(0.5, dot);
         t.vx = (t.vx||0) + nx*force;
         t.vy = (t.vy||0) + ny*force;
-        p.vx = (p.vx||0) - nx*1.1;
-        p.vy = (p.vy||0) - ny*1.1;
+        p.vx = (p.vx||0) - nx*2.0;
+        p.vy = (p.vy||0) - ny*2.0;
         p.score = (p.score||0) + 1;
         t.hitUntil = now + 300;
       });
