@@ -5,54 +5,207 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ZapPlay — Bataille navale</title>
 <style>
-:root{--primary:#38bdf8;--buzz:#f97316;--ok:#22c55e;--bad:#ef4444;--text:#f1f5f9;--muted:#94a3b8;--card:rgba(255,255,255,.07);--border:rgba(255,255,255,.13);--sea:#0c1929;--ship:#334155}
+:root{
+  --primary:#38bdf8;--buzz:#f97316;--ok:#22c55e;--bad:#ef4444;--text:#f1f5f9;--muted:#94a3b8;
+  --card:rgba(255,255,255,.07);--border:rgba(255,255,255,.13);
+}
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Segoe UI',system-ui,sans-serif;background:linear-gradient(160deg,#0f172a,#1e3a5f 45%,#0f172a);color:var(--text);min-height:100dvh}
+body{
+  font-family:'Segoe UI',system-ui,sans-serif;
+  background:radial-gradient(ellipse 100% 80% at 50% -20%,rgba(56,189,248,.12),transparent 50%),
+    linear-gradient(165deg,#0c1524 0%,#152a45 40%,#0a1628 100%);
+  color:var(--text);min-height:100dvh
+}
 #home{position:fixed;top:10px;left:10px;background:var(--card);border:1px solid var(--border);color:var(--text);padding:8px 12px;border-radius:8px;cursor:pointer;z-index:50}
 #dot{position:fixed;top:12px;right:12px;width:10px;height:10px;border-radius:50%;background:var(--bad);z-index:50}#dot.ok{background:var(--ok)}
-#app{max-width:920px;margin:0 auto;padding:52px 12px 20px}
-h1{text-align:center;font-size:1.5rem;font-weight:800;background:linear-gradient(90deg,var(--primary),#a5f3fc);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
-.sub{text-align:center;color:var(--muted);font-size:.85rem;margin-top:4px}
-.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px}
-.btn{border:none;border-radius:10px;padding:10px 14px;font-weight:700;cursor:pointer;font-size:.9rem}
+#app{max-width:1520px;margin:0 auto;padding:52px 16px 28px}
+h1{text-align:center;font-size:clamp(1.35rem,4vw,1.85rem);font-weight:800;background:linear-gradient(90deg,var(--primary),#e0f2fe);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.sub{text-align:center;color:var(--muted);font-size:.9rem;margin-top:6px}
+.card{background:linear-gradient(180deg,rgba(255,255,255,.09),rgba(255,255,255,.04));border:1px solid var(--border);border-radius:16px;padding:16px 18px;box-shadow:0 12px 40px rgba(0,0,0,.35)}
+.btn{border:none;border-radius:10px;padding:11px 16px;font-weight:700;cursor:pointer;font-size:.95rem}
 .btn-primary{background:var(--primary);color:#0f172a}.btn-buzz{background:var(--buzz);color:#fff}.btn-muted{background:rgba(255,255,255,.12);color:var(--text)}
-input{width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--border);background:rgba(255,255,255,.08);color:var(--text)}
+input{width:100%;padding:11px 12px;border-radius:10px;border:1px solid var(--border);background:rgba(255,255,255,.08);color:var(--text);font-size:1rem}
 .hidden{display:none!important}
-#name-screen{max-width:400px;margin:16px auto;display:flex;flex-direction:column;gap:10px}
+#name-screen{max-width:420px;margin:16px auto;display:flex;flex-direction:column;gap:10px}
 #join-area{display:none;flex-direction:column;gap:8px}
-#err{color:#fecaca;font-size:.82rem;text-align:center;min-height:18px}
-#game-screen{display:none;flex-direction:column;gap:12px}
+#err{color:#fecaca;font-size:.85rem;text-align:center;min-height:18px}
+#game-screen{display:none;flex-direction:column;gap:14px}
 #game-screen.on{display:flex}
-.board-wrap{display:flex;flex-wrap:wrap;gap:14px;justify-content:center;align-items:flex-start}
-.board-title{font-size:.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;text-align:center}
-.grid{display:grid;grid-template-columns:repeat(10,1fr);gap:2px;width:min(42vw,200px);aspect-ratio:1;background:#020617;padding:4px;border-radius:10px;border:1px solid var(--border)}
-.grid.placing{width:min(88vw,340px)}
-.cell{aspect-ratio:1;border-radius:3px;background:var(--sea);cursor:pointer;transition:background .12s,transform .1s;font-size:0}
-.cell:hover{background:#164e63}
-.cell.ship{background:linear-gradient(145deg,#475569,#1e293b)}
-.cell.miss{background:#1e293b}
-.cell.hit{background:linear-gradient(145deg,#dc2626,#991b1b)}
-.cell.unknown{background:#0f172a}
-.cell.shootable{outline:2px solid var(--primary);outline-offset:-1px}
-.cell.disabled{cursor:default;opacity:.85}
-#place-tools{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:center;margin-top:10px}
-#status{text-align:center;font-weight:600;color:#a5f3fc;min-height:22px;font-size:.9rem}
+.board-wrap{display:flex;flex-wrap:wrap;gap:28px;justify-content:center;align-items:flex-start}
+.board-title{font-size:.88rem;color:#e2e8f0;text-transform:uppercase;letter-spacing:.12em;margin-bottom:8px;text-align:center;font-weight:700;text-shadow:0 1px 2px rgba(0,0,0,.35)}
+/* Carte marine — cadre parchemin + grille océan */
+.map-chart{
+  position:relative;padding:18px 20px 22px;border-radius:20px;
+  background:
+    linear-gradient(165deg,#efe6d5 0%,#d9cbb3 35%,#c9b896 70%,#b8a684);
+  box-shadow:
+    0 22px 56px rgba(0,0,0,.5),
+    inset 0 2px 0 rgba(255,255,255,.45),
+    inset 0 -3px 12px rgba(0,0,0,.12);
+  border:1px solid rgba(90,74,58,.35);
+}
+.map-chart::before{
+  content:'';
+  position:absolute;inset:10px;border-radius:14px;pointer-events:none;
+  border:1px dashed rgba(90,74,58,.22);
+}
+.map-chart .compass{
+  position:absolute;top:10px;right:10px;bottom:auto;width:40px;height:40px;opacity:.52;pointer-events:none;
+  filter:drop-shadow(0 1px 1px rgba(0,0,0,.2));
+}
+/* Grilles très larges + eau réaliste */
+.grid{
+  display:grid;grid-template-columns:repeat(10,1fr);
+  gap:6px;aspect-ratio:1;
+  width:min(96vw,780px);min-width:min(96vw,300px);
+  padding:14px;
+  border-radius:16px;
+  border:4px solid #2a3f4f;
+  box-shadow:
+    inset 0 0 0 3px rgba(15,30,45,.9),
+    inset 0 0 40px rgba(0,40,80,.35),
+    0 12px 40px rgba(0,0,0,.5);
+  background:
+    radial-gradient(ellipse 120% 80% at 20% 15%,rgba(56,189,248,.12),transparent 55%),
+    radial-gradient(ellipse 90% 70% at 85% 75%,rgba(14,165,233,.08),transparent 50%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'%3E%3Cpath d='M0 50 Q25 45 50 50 T100 50' fill='none' stroke='%230ea5e9' stroke-opacity='.07' stroke-width='1.2'/%3E%3Cpath d='M0 70 Q30 65 60 72 T100 68' fill='none' stroke='%230891b2' stroke-opacity='.06' stroke-width='1'/%3E%3C/svg%3E") 0 0/100px 100px,
+    linear-gradient(180deg,rgba(8,80,120,.25) 0%,transparent 35%),
+    linear-gradient(165deg,#020617 0%,#0c4a6e 28%,#075985 55%,#0c1929 100%);
+}
+.grid.placing{width:min(98vw,860px)}
+#play .grid{width:min(96vw,740px)}
+.cell{
+  position:relative;aspect-ratio:1;border-radius:6px;
+  background:linear-gradient(160deg,rgba(6,40,62,.88),rgba(4,20,38,.94));
+  cursor:pointer;transition:transform .1s,box-shadow .15s;
+  border:1px solid rgba(56,189,248,.1);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.06);
+  overflow:visible;
+}
+.cell:not(.disabled):hover{transform:scale(1.04);box-shadow:0 0 0 2px rgba(56,189,248,.35);z-index:1}
+.cell.miss{
+  background:radial-gradient(circle at 35% 35%,rgba(255,255,255,.25),transparent 45%),
+    linear-gradient(145deg,#1e3a4a,#0f172a);
+}
+.cell.miss::after{
+  content:'';position:absolute;inset:18%;border-radius:50%;
+  border:3px solid rgba(148,163,184,.5);opacity:.9;
+}
+.cell.hit{
+  background:radial-gradient(circle at 50% 45%,#fecaca,#dc2626 35%,#7f1d1d 75%);
+  box-shadow:inset 0 -4px 12px rgba(0,0,0,.4),0 0 14px rgba(220,38,38,.5);
+}
+.cell.hit::after{
+  content:'';position:absolute;inset:22%;border-radius:50%;
+  background:radial-gradient(circle,#fef08a,#eab308 40%,transparent 70%);
+  opacity:.85;animation:hullHit .35s ease-out;
+}
+@keyframes hullHit{from{transform:scale(0);opacity:1}to{transform:scale(1);opacity:.85}}
+.cell.unknown{
+  background:linear-gradient(155deg,rgba(10,25,42,.95),rgba(3,12,24,.98));
+  border-color:rgba(71,85,105,.35);
+}
+.cell.shootable{outline:3px solid var(--primary);outline-offset:2px;box-shadow:0 0 16px rgba(56,189,248,.35)}
+.cell.disabled{cursor:default}
+.cell.disabled:not(.hit):not(.miss){opacity:.92}
+/* Navires SVG — vue de dessus */
+.cell .ship-svg{
+  position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+  width:108%;height:108%;z-index:1;pointer-events:none;
+  overflow:visible;
+  filter:drop-shadow(0 2px 3px rgba(0,0,0,.45));
+}
+.cell.ship-s0 .ship-svg{filter:drop-shadow(0 2px 3px rgba(0,0,0,.45)) hue-rotate(-6deg) saturate(.92)}
+.cell.ship-s1 .ship-svg{filter:drop-shadow(0 2px 3px rgba(0,0,0,.45)) hue-rotate(14deg) saturate(.88)}
+.cell.ship-s2 .ship-svg{filter:drop-shadow(0 2px 3px rgba(0,0,0,.45)) hue-rotate(195deg) saturate(.72)}
+.cell.ship-s3 .ship-svg{filter:drop-shadow(0 2px 3px rgba(0,0,0,.45)) hue-rotate(175deg) saturate(.68)}
+.cell.ship-s4 .ship-svg{filter:drop-shadow(0 2px 3px rgba(0,0,0,.45)) hue-rotate(22deg) saturate(.82)}
+.cell.hit .ship-svg,.cell.miss .ship-svg{opacity:.38}
+.cell.hit .ship-svg{filter:drop-shadow(0 1px 2px rgba(0,0,0,.5)) brightness(.75) saturate(.7)}
+.cell.hit .ship-svg.ship-wreck{
+  opacity:.9;z-index:0;
+  filter:drop-shadow(0 2px 5px rgba(0,0,0,.65)) brightness(.55) saturate(.75) contrast(1.05);
+}
+.cell.hit::after{z-index:3}
+#place-tools{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:center;margin-top:14px}
+#status{text-align:center;font-weight:600;color:#a5f3fc;min-height:24px;font-size:1rem}
 #score-row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
-#target-row{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;align-items:center;margin:8px 0;min-height:36px}
-.pill{padding:6px 12px;border-radius:999px;background:rgba(255,255,255,.08);border:1px solid var(--border);font-size:.78rem}
-.pill.turn{border-color:var(--primary);box-shadow:0 0 12px rgba(56,189,248,.25)}
+#target-row{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;align-items:center;margin:10px 0;min-height:40px}
+.pill{padding:8px 14px;border-radius:999px;background:rgba(255,255,255,.08);border:1px solid var(--border);font-size:.85rem}
+.pill.turn{border-color:var(--primary);box-shadow:0 0 14px rgba(56,189,248,.3)}
 .pill.dead{opacity:.45;text-decoration:line-through}
-.tgt{border:none;font:inherit;color:inherit;cursor:pointer;font-size:.78rem}
+.tgt{border:none;font:inherit;color:inherit;cursor:pointer;font-size:.85rem;padding:8px 14px;border-radius:999px}
 .tgt:not(.turn):hover{background:rgba(255,255,255,.1)}
 #gcount{position:fixed;inset:0;background:rgba(15,23,42,.88);display:none;align-items:center;justify-content:center;z-index:400}
 #gcount span{font-size:5rem;font-weight:900;color:var(--buzz)}
-@media(max-width:640px){
-  .grid{width:min(44vw,180px)}
-  .grid.placing{width:min(92vw,360px)}
+@media(max-width:720px){
+  #play .grid,.grid.placing{width:min(98vw,100%)}
+  .board-wrap{gap:18px}
+  .map-chart{padding:14px 12px 18px}
 }
 </style>
 </head>
 <body>
+<svg xmlns="http://www.w3.org/2000/svg" width="0" height="0" style="position:absolute;overflow:hidden" aria-hidden="true" focusable="false">
+  <defs>
+    <linearGradient id="navalHullGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#b4c4d4"/>
+      <stop offset="40%" stop-color="#73869a"/>
+      <stop offset="100%" stop-color="#3a4a5e"/>
+    </linearGradient>
+    <linearGradient id="navalDeckGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#334155"/>
+      <stop offset="100%" stop-color="#1e293b"/>
+    </linearGradient>
+    <symbol id="ship-h-l" viewBox="0 0 100 100">
+      <path fill="url(#navalHullGrad)" stroke="#0f172a" stroke-width="1.6" stroke-linejoin="round"
+        d="M 99 26 L 51 26 C 36 26 22 20 12 30 C 2 40 2 60 12 70 C 22 80 36 74 51 74 L 99 74 L 99 26 Z"/>
+      <path fill="url(#navalDeckGrad)" d="M 54 36 L 82 36 L 79 52 L 56 52 Z" opacity=".95"/>
+      <rect x="60" y="22" width="20" height="12" rx="1.5" fill="#64748b" stroke="#1e293b" stroke-width="0.8"/>
+    </symbol>
+    <symbol id="ship-h-r" viewBox="0 0 100 100">
+      <path fill="url(#navalHullGrad)" stroke="#0f172a" stroke-width="1.6" stroke-linejoin="round"
+        d="M 1 26 L 49 26 C 64 26 78 20 88 30 C 98 40 98 60 88 70 C 78 80 64 74 49 74 L 1 74 L 1 26 Z"/>
+      <path fill="url(#navalDeckGrad)" d="M 46 36 L 18 36 L 21 52 L 44 52 Z" opacity=".95"/>
+      <rect x="20" y="22" width="20" height="12" rx="1.5" fill="#64748b" stroke="#1e293b" stroke-width="0.8"/>
+    </symbol>
+    <symbol id="ship-h-c" viewBox="0 0 100 100">
+      <path fill="url(#navalHullGrad)" stroke="#0f172a" stroke-width="1.6" stroke-linejoin="round" d="M 0 26 L 100 26 L 100 74 L 0 74 Z"/>
+      <rect x="32" y="34" width="36" height="18" rx="2" fill="url(#navalDeckGrad)" opacity=".92"/>
+      <rect x="40" y="20" width="20" height="11" rx="1.5" fill="#64748b" stroke="#1e293b" stroke-width="0.8"/>
+      <line x1="8" y1="50" x2="92" y2="50" stroke="#1e293b" stroke-width="0.6" opacity=".35"/>
+    </symbol>
+    <symbol id="ship-v-t" viewBox="0 0 100 100">
+      <path fill="url(#navalHullGrad)" stroke="#0f172a" stroke-width="1.6" stroke-linejoin="round"
+        d="M 26 99 L 26 51 C 26 36 20 22 30 12 C 40 2 60 2 70 12 C 80 22 74 36 74 51 L 74 99 L 26 99 Z"/>
+      <path fill="url(#navalDeckGrad)" d="M 36 54 L 36 82 L 52 79 L 52 56 Z" opacity=".95"/>
+      <rect x="22" y="60" width="12" height="20" rx="1.5" fill="#64748b" stroke="#1e293b" stroke-width="0.8"/>
+    </symbol>
+    <symbol id="ship-v-b" viewBox="0 0 100 100">
+      <path fill="url(#navalHullGrad)" stroke="#0f172a" stroke-width="1.6" stroke-linejoin="round"
+        d="M 26 1 L 74 1 L 74 49 C 74 64 80 78 70 88 C 60 98 40 98 30 88 C 20 78 26 64 26 49 Z"/>
+      <path fill="url(#navalDeckGrad)" d="M 36 46 L 36 18 L 52 21 L 52 44 Z" opacity=".95"/>
+      <rect x="22" y="20" width="12" height="20" rx="1.5" fill="#64748b" stroke="#1e293b" stroke-width="0.8"/>
+    </symbol>
+    <symbol id="ship-v-c" viewBox="0 0 100 100">
+      <path fill="url(#navalHullGrad)" stroke="#0f172a" stroke-width="1.6" stroke-linejoin="round" d="M 26 0 L 74 0 L 74 100 L 26 100 Z"/>
+      <rect x="34" y="32" width="18" height="36" rx="2" fill="url(#navalDeckGrad)" opacity=".92"/>
+      <rect x="22" y="40" width="12" height="20" rx="1.5" fill="#64748b" stroke="#1e293b" stroke-width="0.8"/>
+      <line x1="50" y1="8" x2="50" y2="92" stroke="#1e293b" stroke-width="0.6" opacity=".35"/>
+    </symbol>
+    <symbol id="ship-dot" viewBox="0 0 100 100">
+      <ellipse cx="50" cy="50" rx="40" ry="30" fill="url(#navalHullGrad)" stroke="#0f172a" stroke-width="1.6"/>
+      <ellipse cx="50" cy="48" rx="22" ry="14" fill="url(#navalDeckGrad)" opacity=".9"/>
+      <rect x="41" y="30" width="18" height="10" rx="1.5" fill="#64748b" stroke="#1e293b" stroke-width="0.8"/>
+    </symbol>
+    <symbol id="ship-wreck" viewBox="0 0 100 100">
+      <path fill="#292524" stroke="#7f1d1d" stroke-width="1.2"
+        d="M 18 38 L 42 30 L 78 36 L 90 52 L 72 74 L 38 70 L 12 54 Z"/>
+      <path fill="#1c1917" opacity=".75" d="M 28 46 L 68 42 L 62 64 L 32 60 Z"/>
+      <path fill="#450a0a" opacity=".5" d="M 45 32 L 55 70 M 30 50 L 85 48"/>
+    </symbol>
+  </defs>
+</svg>
 <button id="home" onclick="location.href='index.html'">← Accueil</button>
 <div id="dot"></div>
 <div id="gcount"><span id="gnum">3</span></div>
@@ -82,8 +235,14 @@ input{width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--bor
     <div id="place" class="card hidden">
       <p style="text-align:center;font-size:.88rem;margin-bottom:8px">Place toute ta flotte sur la grille.</p>
       <div class="board-wrap" style="justify-content:center">
-        <div>
+        <div class="map-chart">
           <div class="board-title">Ma flotte</div>
+          <svg class="compass" viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <circle cx="40" cy="40" r="34" fill="rgba(255,255,255,.25)" stroke="#6b5344" stroke-width="1.8"/>
+            <polygon points="40,10 46,38 40,34 34,38" fill="#3d2e1f"/>
+            <polygon points="40,70 46,42 40,46 34,42" fill="#a89880" opacity=".6"/>
+            <text x="40" y="24" text-anchor="middle" font-size="11" fill="#4a3b2e" font-weight="800" font-family="Segoe UI,sans-serif">N</text>
+          </svg>
           <div id="grid-place" class="grid placing"></div>
         </div>
       </div>
@@ -100,13 +259,25 @@ input{width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--bor
       <div id="score-row"></div>
       <p id="status"></p>
       <div class="board-wrap">
-        <div>
+        <div class="map-chart">
           <div class="board-title">Ma flotte</div>
+          <svg class="compass" viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <circle cx="40" cy="40" r="34" fill="rgba(255,255,255,.25)" stroke="#6b5344" stroke-width="1.8"/>
+            <polygon points="40,10 46,38 40,34 34,38" fill="#3d2e1f"/>
+            <polygon points="40,70 46,42 40,46 34,42" fill="#a89880" opacity=".6"/>
+            <text x="40" y="24" text-anchor="middle" font-size="11" fill="#4a3b2e" font-weight="800" font-family="Segoe UI,sans-serif">N</text>
+          </svg>
           <div id="grid-my" class="grid"></div>
         </div>
-        <div>
+        <div class="map-chart">
           <div class="board-title" id="opp-board-title">Tirs</div>
           <div id="target-row"></div>
+          <svg class="compass" viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <circle cx="40" cy="40" r="34" fill="rgba(255,255,255,.25)" stroke="#6b5344" stroke-width="1.8"/>
+            <polygon points="40,10 46,38 40,34 34,38" fill="#3d2e1f"/>
+            <polygon points="40,70 46,42 40,46 34,42" fill="#a89880" opacity=".6"/>
+            <text x="40" y="24" text-anchor="middle" font-size="11" fill="#4a3b2e" font-weight="800" font-family="Segoe UI,sans-serif">N</text>
+          </svg>
           <div id="grid-opp" class="grid"></div>
         </div>
       </div>
@@ -123,6 +294,7 @@ input{width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--bor
 <script>
 const WS_URL = `${location.protocol==='https:'?'wss':'ws'}://${location.host}/ws/naval`;
 const SHIP_QUEUE = [5,4,3,3,2];
+const SHIP_SYM={ 'h-l':'ship-h-l','h-c':'ship-h-c','h-r':'ship-h-r','v-t':'ship-v-t','v-c':'ship-v-c','v-b':'ship-v-b','h-dot':'ship-dot','v-dot':'ship-dot'};
 const $ = id => document.getElementById(id);
 let ws=null,mySlot=-1,myCode='',myName='',state=null,pending=null,lastPhase='';
 let shotTarget=-1;
@@ -181,6 +353,58 @@ function showCd(n){
   let c=n; const t=setInterval(()=>{ c--; if(c<=0){clearInterval(t); g.style.display='none';} else s.textContent=c; },1000);
 }
 
+function previewToBoard(){
+  const b=Array(100).fill(-1);
+  previewShips.forEach((cells,si)=>{
+    cells.forEach(c=>{ b[c.y*10+c.x]=si; });
+  });
+  return b;
+}
+function navalHullSeg(board,x,y){
+  const i=y*10+x;
+  const sid=board[i];
+  if(sid===undefined||sid<0)return null;
+  const L=x>0&&board[i-1]===sid;
+  const R=x<9&&board[i+1]===sid;
+  const U=y>0&&board[i-10]===sid;
+  const D=y<9&&board[i+10]===sid;
+  if(L||R){
+    if(!L&&R)return 'h-l';
+    if(L&&R)return 'h-c';
+    if(L&&!R)return 'h-r';
+  }
+  if(U||D){
+    if(!U&&D)return 'v-t';
+    if(U&&D)return 'v-c';
+    if(U&&!D)return 'v-b';
+  }
+  return 'h-dot';
+}
+function appendHull(cell,seg,shipIdx){
+  cell.classList.add(seg,'ship-s'+shipIdx);
+  const sym=SHIP_SYM[seg]||'ship-h-c';
+  const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+  svg.setAttribute('class','ship-svg');
+  svg.setAttribute('viewBox','0 0 100 100');
+  svg.setAttribute('preserveAspectRatio','none');
+  svg.setAttribute('aria-hidden','true');
+  const use=document.createElementNS('http://www.w3.org/2000/svg','use');
+  use.setAttribute('href','#'+sym);
+  svg.appendChild(use);
+  cell.appendChild(svg);
+}
+function appendWreckSvg(cell){
+  const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+  svg.setAttribute('class','ship-svg ship-wreck');
+  svg.setAttribute('viewBox','0 0 100 100');
+  svg.setAttribute('preserveAspectRatio','xMidYMid meet');
+  svg.setAttribute('aria-hidden','true');
+  const use=document.createElementNS('http://www.w3.org/2000/svg','use');
+  use.setAttribute('href','#ship-wreck');
+  svg.appendChild(use);
+  cell.appendChild(svg);
+}
+
 function resetFleet(){
   remaining=[...SHIP_QUEUE];
   previewShips=[];
@@ -224,12 +448,14 @@ function canPut(cells){
 function renderPlaceGrid(){
   const g=$('grid-place');
   g.innerHTML='';
-  const mark=new Set();
-  previewShips.forEach(arr=>arr.forEach(c=>mark.add(c.y*10+c.x)));
+  const board=previewToBoard();
   for(let y=0;y<10;y++)for(let x=0;x<10;x++){
     const d=document.createElement('button');
     d.type='button';
-    d.className='cell'+(mark.has(y*10+x)?' ship':'');
+    d.className='cell';
+    const i=y*10+x;
+    const sid=board[i];
+    if(sid>=0) appendHull(d,navalHullSeg(board,x,y),sid);
     d.dataset.x=x; d.dataset.y=y;
     d.addEventListener('click',()=>onPlaceClick(x,y));
     g.appendChild(d);
@@ -369,17 +595,21 @@ function paintGrid(el, myBoard, incoming, isMine, oppView, canShoot){
     d.className='cell';
     const i=y*10+x;
     if(isMine){
-      const ship=myBoard&&myBoard[i]>=0;
+      const sid=myBoard&&myBoard[i];
+      const ship=sid!==undefined&&sid!==null&&sid>=0;
       const hit=incMap.has(i);
       const wasHit=hit&&incMap.get(i);
-      if(ship) d.classList.add('ship');
+      if(ship) appendHull(d,navalHullSeg(myBoard,x,y),sid);
       if(hit) d.classList.add(wasHit?'hit':'miss');
       d.classList.add('disabled');
     }else{
       const v=oppView?oppView[i]:-2;
       if(v===-2) d.classList.add('unknown');
       else if(v===-1) d.classList.add('miss');
-      else if(v===2) d.classList.add('hit');
+      else if(v===2){
+        d.classList.add('hit');
+        appendWreckSvg(d);
+      }
       if(canShoot && v===-2){
         d.classList.add('shootable');
         d.addEventListener('click',()=>send({type:'naval_shot',x,y,target:shotTarget}));
