@@ -2162,7 +2162,8 @@ function sumoSnap(room){
       x:Math.round((p.x||0)*10)/10, y:Math.round((p.y||0)*10)/10,
       vx:Math.round((p.vx||0)*10)/10, vy:Math.round((p.vy||0)*10)/10,
       faceX:Math.round((p.faceX||0)*100)/100, faceY:Math.round((p.faceY||0)*100)/100,
-      punching: (p.punchUntil||0) > Date.now()
+      punching: (p.punchUntil||0) > Date.now(),
+      hit: (p.hitUntil||0) > Date.now()
     }))
   };
 }
@@ -2234,6 +2235,7 @@ function sumoTick(room){
         p.vx = (p.vx||0) - nx*1.1;
         p.vy = (p.vy||0) - ny*1.1;
         p.score = (p.score||0) + 1;
+        t.hitUntil = now + 300;
       });
       p.punch=false;
     }
