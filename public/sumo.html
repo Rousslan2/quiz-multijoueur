@@ -36,13 +36,17 @@ input{width:100%;background:rgba(255,255,255,.08);border:1px solid var(--border)
 #score-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
 .row{padding:9px;border:1px solid var(--border);background:rgba(255,255,255,.04);border-radius:10px;font-size:.82rem}
 .row.turn{border-color:#fbbf24}.row.dead{opacity:.55}
-#controls-mobile{display:none;grid-template-columns:repeat(4,54px);grid-template-rows:repeat(3,54px);gap:6px;justify-content:center}
-.mbtn{border:none;border-radius:10px;background:rgba(255,255,255,.12);color:#fff;font-size:1.1rem}
-#dash-btn{grid-column:3;grid-row:2;background:rgba(249,115,22,.4)}
-#punch-btn{grid-column:4;grid-row:2;background:rgba(244,63,94,.45)}
 #gcount{position:fixed;inset:0;background:rgba(15,12,41,.8);display:none;align-items:center;justify-content:center;z-index:500}
 #gcount span{font-size:6rem;font-weight:800;color:#f59e0b}
-@media(max-width:760px){#controls-mobile{display:grid}}
+#mobile-ui{display:none;position:fixed;bottom:0;left:0;right:0;height:40vh;z-index:100;touch-action:none;pointer-events:none}
+#joy-zone{position:absolute;bottom:20px;left:20px;width:140px;height:140px;background:rgba(255,255,255,.1);border-radius:50%;pointer-events:auto}
+#joy-knob{position:absolute;top:50%;left:50%;width:60px;height:60px;margin:-30px 0 0 -30px;background:rgba(255,255,255,.3);border-radius:50%;pointer-events:none;transition:transform .05s}
+#action-zone{position:absolute;bottom:35px;right:20px;display:flex;gap:15px;pointer-events:auto}
+.act-btn{width:64px;height:64px;border-radius:50%;border:none;font-size:1.8rem;color:#fff;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.15);box-shadow:0 4px 12px rgba(0,0,0,.3);cursor:pointer}
+.act-btn:active{transform:scale(.9);background:rgba(255,255,255,.25)}
+#act-dash{background:rgba(249,115,22,.6)}
+#act-punch{background:rgba(244,63,94,.6)}
+@media(max-width:760px){#mobile-ui{display:block}}
 </style>
 </head>
 <body>
@@ -81,11 +85,6 @@ input{width:100%;background:rgba(255,255,255,.08);border:1px solid var(--border)
         <div id="status"></div>
       </div>
       <div class="card"><div id="score-list"></div></div>
-      <div id="controls-mobile" class="card">
-        <button class="mbtn" data-dir="up">▲</button><div></div><div></div><div></div>
-        <button class="mbtn" data-dir="left">◀</button><button class="mbtn" data-dir="down">▼</button><button id="dash-btn" class="mbtn">⚡</button><button id="punch-btn" class="mbtn">👊</button>
-        <div></div><button class="mbtn" data-dir="right">▶</button><div></div><div></div>
-      </div>
     </div>
 
     <div id="over" class="card hidden" style="text-align:center;display:flex;flex-direction:column;gap:10px">
@@ -96,10 +95,19 @@ input{width:100%;background:rgba(255,255,255,.08);border:1px solid var(--border)
   </div>
 </div>
 
+<div id="mobile-ui">
+  <div id="joy-zone"><div id="joy-knob"></div></div>
+  <div id="action-zone">
+    <button id="act-dash" class="act-btn">⚡</button>
+    <button id="act-punch" class="act-btn">👊</button>
+  </div>
+</div>
+
 <script>
 const WS_URL = `${location.protocol==='https:'?'wss':'ws'}://${location.host}/ws/sumo`;
 let ws=null,mySlot=-1,myCode='',myName='',state=null,pendingAction=null,lastPhase='';
 let keys={up:false,down:false,left:false,right:false},dashQueued=false,punchQueued=false,inputInt=null;
+let joyX=0,joyY=0,joyTouchId=null;
 const $ = id => document.getElementById(id);
 function send(o){ if(ws&&ws.readyState===1) ws.send(JSON.stringify(o)); }
 function bindLoungeSender(){ if(window.ZapPlay)ZapPlay.setLoungeSender(text=>send({type:'lounge_chat',text})); else setTimeout(bindLoungeSender,120); }
@@ -142,6 +150,10 @@ function handle(m){
     if(m.sumoOut && Array.isArray(m.sumoOut) && m.sumoOut.length){
       const txt = m.sumoOut.map(x=>`${x.name}${x.ko?' est éliminé':' sort du ring'}`).join(' • ');
       $('status').textContent = txt;
+      if(navigator.vibrate){
+        if(m.sumoOut.some(x=>x.slot===mySlot)) navigator.vibrate([100,50,100]);
+        else navigator.vibrate(50);
+      }
     }
     state=m;
     render();
@@ -205,6 +217,21 @@ function drawArena(){
     const fx = Number(p.faceX||1), fy = Number(p.faceY||0);
     const fmag = Math.hypot(fx,fy)||1;
     const nx = fx/fmag, ny = fy/fmag;
+    
+    // Trail
+    const spd = Math.hypot(p.vx||0, p.vy||0);
+    if(spd > 2 && p.alive) {
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(x - (p.vx||0)*2, y - (p.vy||0)*2);
+      ctx.lineWidth = pr*1.2;
+      ctx.lineCap = 'round';
+      ctx.strokeStyle = colors[p.slot%colors.length]||'#fff';
+      ctx.globalAlpha = 0.25;
+      ctx.stroke();
+      ctx.globalAlpha = 1.0;
+    }
+
     ctx.beginPath(); ctx.arc(x,y,pr,0,Math.PI*2);
     ctx.fillStyle=p.alive?(colors[p.slot%colors.length]||'#fff'):'rgba(148,163,184,.4)';
     ctx.fill(); ctx.lineWidth=2; ctx.strokeStyle='rgba(255,255,255,.9)'; ctx.stroke();
@@ -226,7 +253,7 @@ function drawArena(){
 
 function sendInput(){
   if(!state || state.phase!=='PLAYING') return;
-  let x=(keys.right?1:0)-(keys.left?1:0), y=(keys.down?1:0)-(keys.up?1:0);
+  let x=joyX||((keys.right?1:0)-(keys.left?1:0)), y=joyY||((keys.down?1:0)-(keys.up?1:0));
   send({type:'sumo_input',x,y,dash:dashQueued,punch:punchQueued});
   dashQueued=false;
   punchQueued=false;
@@ -243,17 +270,45 @@ function onKey(e,down){
 }
 window.addEventListener('keydown',e=>onKey(e,true));
 window.addEventListener('keyup',e=>onKey(e,false));
-document.querySelectorAll('[data-dir]').forEach(btn=>{
-  const dir=btn.getAttribute('data-dir');
-  const map={up:'up',down:'down',left:'left',right:'right'};
-  const key=map[dir];
-  const on=()=>{keys[key]=true;}; const off=()=>{keys[key]=false;};
-  btn.addEventListener('touchstart',e=>{e.preventDefault();on();},{passive:false});
-  btn.addEventListener('touchend',e=>{e.preventDefault();off();},{passive:false});
-  btn.addEventListener('mousedown',on); btn.addEventListener('mouseup',off); btn.addEventListener('mouseleave',off);
-});
-$('dash-btn').addEventListener('click',()=>{dashQueued=true;});
-$('punch-btn').addEventListener('click',()=>{punchQueued=true;});
+
+const vib = (ms) => { if(navigator.vibrate) navigator.vibrate(ms); };
+$('act-dash').addEventListener('touchstart', e => { e.preventDefault(); dashQueued=true; vib(30); }, {passive:false});
+$('act-punch').addEventListener('touchstart', e => { e.preventDefault(); punchQueued=true; vib(40); }, {passive:false});
+$('act-dash').addEventListener('mousedown', () => { dashQueued=true; });
+$('act-punch').addEventListener('mousedown', () => { punchQueued=true; });
+
+const joyZone = $('joy-zone'), joyKnob = $('joy-knob');
+const updateJoy = (t) => {
+  const rect = joyZone.getBoundingClientRect();
+  const cx = rect.left + rect.width/2, cy = rect.top + rect.height/2;
+  let dx = t.clientX - cx, dy = t.clientY - cy;
+  const maxR = rect.width/2;
+  const dist = Math.hypot(dx, dy);
+  if(dist > maxR) { dx = (dx/dist)*maxR; dy = (dy/dist)*maxR; }
+  joyX = dx / maxR; joyY = dy / maxR;
+  joyKnob.style.transform = `translate(${dx}px, ${dy}px)`;
+};
+const endJoy = (e) => {
+  e.preventDefault();
+  for(let t of e.changedTouches){
+    if(t.identifier === joyTouchId){
+      joyTouchId = null; joyX = 0; joyY = 0;
+      joyKnob.style.transform = `translate(0px, 0px)`;
+    }
+  }
+};
+joyZone.addEventListener('touchstart', e => {
+  e.preventDefault();
+  const t = e.changedTouches[0];
+  joyTouchId = t.identifier;
+  updateJoy(t);
+}, {passive: false});
+joyZone.addEventListener('touchmove', e => {
+  e.preventDefault();
+  for(let t of e.changedTouches) if(t.identifier === joyTouchId) updateJoy(t);
+}, {passive: false});
+joyZone.addEventListener('touchend', endJoy);
+joyZone.addEventListener('touchcancel', endJoy);
 
 const p=new URLSearchParams(location.search);
 if(p.get('name'))$('name').value=p.get('name');

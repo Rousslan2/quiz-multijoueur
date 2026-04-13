@@ -2160,6 +2160,7 @@ function sumoSnap(room){
     players:room.players.map(p=>({
       name:p.name, slot:p.slot, alive:p.alive, lives:p.lives, score:p.score,
       x:Math.round((p.x||0)*10)/10, y:Math.round((p.y||0)*10)/10,
+      vx:Math.round((p.vx||0)*10)/10, vy:Math.round((p.vy||0)*10)/10,
       faceX:Math.round((p.faceX||0)*100)/100, faceY:Math.round((p.faceY||0)*100)/100,
       punching: (p.punchUntil||0) > Date.now()
     }))
