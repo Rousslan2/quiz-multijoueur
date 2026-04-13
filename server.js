@@ -2430,6 +2430,324 @@ wssSumo.on('connection', ws => {
 });
 
 // ════════════════════════════════════════════════════════
+//  PAINT.IO
+// ════════════════════════════════════════════════════════
+const paintRooms = new Map();
+const PAINT_W = 60;
+const PAINT_H = 60;
+const PAINT_TICK_MS = 120;
+
+function makePaintRoom(code, host){
+  return {
+    code, host, phase:'WAITING',
+    players:[],
+    winnerSlot:-1,
+    tick:null,
+    grid:new Int8Array(PAINT_W * PAINT_H).fill(-1),
+  };
+}
+
+function paintInside(x,y){ return x>=0 && y>=0 && x<PAINT_W && y<PAINT_H; }
+function paintIdx(x,y){ return y * PAINT_W + x; }
+function paintDir(dir){
+  if(dir==='up') return {x:0,y:-1};
+  if(dir==='down') return {x:0,y:1};
+  if(dir==='left') return {x:-1,y:0};
+  if(dir==='right') return {x:1,y:0};
+  return {x:0,y:0};
+}
+function paintOpp(a,b){
+  return (a==='up'&&b==='down') || (a==='down'&&b==='up') || (a==='left'&&b==='right') || (a==='right'&&b==='left');
+}
+function paintSpawn(slot){
+  const m = 6;
+  const pts = [
+    {x:m, y:m, dir:'right'},
+    {x:PAINT_W-m-1, y:m, dir:'left'},
+    {x:m, y:PAINT_H-m-1, dir:'right'},
+    {x:PAINT_W-m-1, y:PAINT_H-m-1, dir:'left'},
+  ];
+  return pts[slot % 4];
+}
+function paintClaimStart(room, p){
+  for(let dy=-1; dy<=1; dy++){
+    for(let dx=-1; dx<=1; dx++){
+      const x = p.x + dx, y = p.y + dy;
+      if(paintInside(x,y)) room.grid[paintIdx(x,y)] = p.slot;
+    }
+  }
+}
+function paintScore(room, slot){
+  let n = 0;
+  for(let i=0;i<room.grid.length;i++) if(room.grid[i]===slot) n++;
+  return n;
+}
+function paintRecount(room){
+  room.players.forEach(p => { p.score = paintScore(room, p.slot); });
+}
+function paintResetPlayers(room){
+  room.grid.fill(-1);
+  room.players.forEach((p, i) => {
+    const sp = paintSpawn(i);
+    p.slot = i;
+    p.alive = true;
+    p.x = sp.x;
+    p.y = sp.y;
+    p.dir = sp.dir;
+    p.nextDir = sp.dir;
+    p.outside = false;
+    p.trail = [];
+    p.score = 0;
+    paintClaimStart(room, p);
+  });
+  paintRecount(room);
+}
+
+function paintCapture(room, slot, trail){
+  if(!trail || !trail.length) return;
+  const blocked = new Uint8Array(PAINT_W * PAINT_H);
+  const visited = new Uint8Array(PAINT_W * PAINT_H);
+  for(let i=0;i<room.grid.length;i++) if(room.grid[i]===slot) blocked[i]=1;
+  trail.forEach(t => { if(paintInside(t.x,t.y)) blocked[paintIdx(t.x,t.y)] = 1; });
+  const q = [];
+  function push(x,y){
+    if(!paintInside(x,y)) return;
+    const id = paintIdx(x,y);
+    if(visited[id] || blocked[id]) return;
+    visited[id] = 1;
+    q.push(id);
+  }
+  for(let x=0;x<PAINT_W;x++){ push(x,0); push(x,PAINT_H-1); }
+  for(let y=0;y<PAINT_H;y++){ push(0,y); push(PAINT_W-1,y); }
+  while(q.length){
+    const id = q.shift();
+    const x = id % PAINT_W;
+    const y = (id / PAINT_W) | 0;
+    push(x+1,y); push(x-1,y); push(x,y+1); push(x,y-1);
+  }
+  for(let i=0;i<room.grid.length;i++){
+    if(blocked[i] && room.grid[i]!==slot) room.grid[i] = slot;
+    else if(!visited[i] && room.grid[i]!==slot) room.grid[i] = slot;
+  }
+}
+
+function paintAlive(room){ return room.players.filter(p=>p.alive); }
+function paintEndIfNeeded(room){
+  const alive = paintAlive(room);
+  if(alive.length > 1) return false;
+  room.phase = 'GAME_OVER';
+  if(alive.length===1) room.winnerSlot = alive[0].slot;
+  else{
+    let best = -1, bestSlot = -1;
+    room.players.forEach(p => {
+      if(p.score > best){ best = p.score; bestSlot = p.slot; }
+    });
+    room.winnerSlot = bestSlot;
+  }
+  paintStop(room);
+  paintBcast(room);
+  broadcastLobby();
+  return true;
+}
+function paintSnap(room, extra={}){
+  const chars = new Array(room.grid.length);
+  for(let i=0;i<room.grid.length;i++){
+    const v = room.grid[i];
+    chars[i] = v<0 ? '.' : String(v);
+  }
+  return {
+    type:'paint_state',
+    phase:room.phase,
+    code:room.code,
+    W:PAINT_W,
+    H:PAINT_H,
+    winnerSlot:room.winnerSlot,
+    gridStr:chars.join(''),
+    players:room.players.map(p=>({
+      slot:p.slot,
+      name:p.name,
+      alive:!!p.alive,
+      score:p.score||0,
+      x:p.x, y:p.y,
+      trail:p.trail||[],
+    })),
+    ...extra,
+  };
+}
+function paintBcast(room, extra={}){ bcast(room.players, paintSnap(room, extra)); }
+function paintStop(room){ if(room.tick){ clearInterval(room.tick); room.tick=null; } }
+
+function paintTick(room){
+  if(room.phase!=='PLAYING') return;
+  const kills = [];
+  const dieSet = new Set();
+
+  for(const p of room.players){
+    if(!p.alive) continue;
+    if(p.nextDir && !paintOpp(p.dir, p.nextDir)) p.dir = p.nextDir;
+    const d = paintDir(p.dir);
+    if(!d.x && !d.y) continue;
+    const nx = p.x + d.x;
+    const ny = p.y + d.y;
+    if(!paintInside(nx, ny)){
+      dieSet.add(p.slot);
+      continue;
+    }
+
+    for(const o of room.players){
+      if(!o.alive) continue;
+      if(!Array.isArray(o.trail) || !o.trail.length) continue;
+      if(o.trail.some(t => t.x===nx && t.y===ny)){
+        if(o.slot===p.slot) dieSet.add(p.slot);
+        else dieSet.add(o.slot);
+      }
+    }
+
+    p.x = nx; p.y = ny;
+    const owner = room.grid[paintIdx(nx,ny)];
+    if(owner===p.slot){
+      if(p.outside && p.trail.length){
+        paintCapture(room, p.slot, p.trail);
+      }
+      p.outside = false;
+      p.trail = [];
+    }else{
+      p.outside = true;
+      if(!p.trail.some(t => t.x===nx && t.y===ny)) p.trail.push({x:nx,y:ny});
+    }
+  }
+
+  for(let i=0;i<room.players.length;i++){
+    for(let j=i+1;j<room.players.length;j++){
+      const a = room.players[i], b = room.players[j];
+      if(!a.alive || !b.alive) continue;
+      if(a.x===b.x && a.y===b.y){
+        dieSet.add(a.slot);
+        dieSet.add(b.slot);
+      }
+    }
+  }
+
+  if(dieSet.size){
+    for(const slot of dieSet){
+      const p = room.players[slot];
+      if(!p || !p.alive) continue;
+      p.alive = false;
+      p.trail = [];
+      kills.push({victimSlot:slot,victim:p.name});
+    }
+  }
+
+  paintRecount(room);
+  if(paintEndIfNeeded(room)) return;
+  paintBcast(room, { kills });
+}
+
+wssPaint.on('connection', ws => {
+  makeWS(wssPaint).alive(ws);
+  let myRoom = null;
+  ws.on('close', () => {
+    makeWS(wssPaint).clear(ws);
+    if(!myRoom) return;
+    const idx = myRoom.players.findIndex(p => p.ws===ws);
+    if(idx<0) return;
+    const left = myRoom.players[idx];
+    myRoom.players.splice(idx, 1);
+    myRoom.players.forEach((p,i)=>p.slot=i);
+    if(myRoom.players.length===0){
+      paintStop(myRoom);
+      paintRooms.delete(myRoom.code);
+      broadcastLobby();
+      return;
+    }
+    if(myRoom.phase==='WAITING'){
+      myRoom.host = myRoom.players[0].name;
+      paintBcast(myRoom, { type:'player_left', name:left.name });
+    }else{
+      paintResetPlayers(myRoom);
+      if(myRoom.phase==='PLAYING'){
+        myRoom.phase='GAME_OVER';
+        myRoom.winnerSlot=myRoom.players[0].slot;
+      }
+      paintBcast(myRoom, { type:'player_left', name:left.name });
+    }
+    broadcastLobby();
+  });
+
+  ws.on('message', raw => {
+    let d; try{ d = JSON.parse(raw); }catch{ return; }
+    const player = myRoom ? myRoom.players.find(p => p.ws===ws) : null;
+    switch(d.type){
+      case 'lounge_chat':{
+        handleLoungeChat(myRoom, ws, d);
+        break;
+      }
+      case 'create_paint':{
+        const name = String(d.name||'').trim().slice(0,20) || 'Joueur';
+        const code = genCode(paintRooms);
+        const room = makePaintRoom(code, name);
+        room.players.push({ ws, name, slot:0, alive:true, x:0, y:0, dir:'right', nextDir:'right', outside:false, trail:[], score:0 });
+        paintRooms.set(code, room);
+        myRoom = room;
+        wsend(ws, { type:'created_paint', code, slot:0, name });
+        paintBcast(room);
+        broadcastLobby();
+        break;
+      }
+      case 'join_paint':{
+        const code = String(d.code||'').trim().toUpperCase();
+        const room = paintRooms.get(code);
+        if(!room){ wsend(ws,{type:'error',msg:'Salle introuvable.'}); return; }
+        if(room.players.length>=4){ wsend(ws,{type:'error',msg:'Salle pleine (4 max).'}); return; }
+        if(room.phase!=='WAITING'){ wsend(ws,{type:'error',msg:'La partie a déjà commencé.'}); return; }
+        const name = String(d.name||'').trim().slice(0,20) || 'Joueur';
+        const slot = room.players.length;
+        room.players.push({ ws, name, slot, alive:true, x:0, y:0, dir:'right', nextDir:'right', outside:false, trail:[], score:0 });
+        myRoom = room;
+        wsend(ws, { type:'welcome_paint', code, slot, name });
+        paintBcast(room);
+        broadcastLobby();
+        break;
+      }
+      case 'start_paint':{
+        if(!myRoom || !player || player.slot!==0 || myRoom.phase!=='WAITING') return;
+        if(myRoom.players.length<2){ wsend(ws,{type:'error',msg:'Il faut au moins 2 joueurs.'}); return; }
+        bcast(myRoom.players, {type:'countdown',seconds:3});
+        myRoom.phase='COUNTDOWN';
+        broadcastLobby();
+        setTimeout(() => {
+          if(!myRoom || myRoom.phase!=='COUNTDOWN') return;
+          paintResetPlayers(myRoom);
+          myRoom.phase='PLAYING';
+          myRoom.winnerSlot=-1;
+          paintStop(myRoom);
+          myRoom.tick = setInterval(() => paintTick(myRoom), PAINT_TICK_MS);
+          paintBcast(myRoom);
+          broadcastLobby();
+        }, 3000);
+        break;
+      }
+      case 'paint_input':{
+        if(!myRoom || !player || myRoom.phase!=='PLAYING' || !player.alive) return;
+        const dir = String(d.dir||'');
+        if(dir==='up' || dir==='down' || dir==='left' || dir==='right') player.nextDir = dir;
+        break;
+      }
+      case 'restart_paint':{
+        if(!myRoom || !player || myRoom.phase!=='GAME_OVER') return;
+        myRoom.phase='WAITING';
+        myRoom.winnerSlot=-1;
+        paintStop(myRoom);
+        myRoom.players.forEach(p => { p.alive=true; p.trail=[]; p.outside=false; p.score=0; });
+        paintBcast(myRoom);
+        broadcastLobby();
+        break;
+      }
+    }
+  });
+});
+
+// ════════════════════════════════════════════════════════
 //  CHAT GLOBAL
 // ════════════════════════════════════════════════════════
 const chatClients = new Set();
