@@ -2862,6 +2862,39 @@ function navalShotOnDefender(room, defender, x, y){
   return false;
 }
 
+/** Après un tir touché : tous les segments de ce navire sont-ils touchés ? */
+function navalSunkShipCells(room, defender, x, y){
+  const b = room.boards[defender];
+  if(!b) return { sunk:false, cells:[] };
+  const idx = y * NAVAL_W + x;
+  const sid = b[idx];
+  if(sid < 0) return { sunk:false, cells:[] };
+  const cells = [];
+  for(let i = 0; i < b.length; i++){
+    if(b[i] !== sid) continue;
+    const cx = i % NAVAL_W;
+    const cy = (i / NAVAL_W) | 0;
+    cells.push({ x:cx, y:cy });
+  }
+  for(const c of cells){
+    if(!navalShotOnDefender(room, defender, c.x, c.y)) return { sunk:false, cells:[] };
+  }
+  return { sunk:true, cells };
+}
+
+function navalBuildLastShot(room, defender, attacker, x, y, hit){
+  let sunk = false;
+  let sunkCells = [];
+  if(hit){
+    const r = navalSunkShipCells(room, defender, x, y);
+    if(r.sunk){
+      sunk = true;
+      sunkCells = r.cells;
+    }
+  }
+  return { x, y, hit:!!hit, target:defender, from:attacker, sunk, sunkCells };
+}
+
 function navalSnapFor(room, slot, extra = {}){
   navalEnsureArrays(room);
   const n = room.players.length;
@@ -3078,13 +3111,14 @@ wssNaval.on('connection', ws => {
         const idx = y * NAVAL_W + x;
         const hit = b && b[idx] >= 0;
         myRoom.volleys[atk].push({ x, y, hit:!!hit, def });
+        const lastShot = navalBuildLastShot(myRoom, def, atk, x, y, hit);
         if(navalAllShipsSunk(myRoom, def)){
           myRoom.eliminated[def] = true;
           const surv = navalSoleSurvivor(myRoom);
           if(surv >= 0){
             myRoom.phase = 'GAME_OVER';
             myRoom.winnerSlot = surv;
-            navalBcast(myRoom, { lastShot:{ x, y, hit:!!hit, target:def } });
+            navalBcast(myRoom, { lastShot });
             broadcastLobby();
             return;
           }
@@ -3094,7 +3128,7 @@ wssNaval.on('connection', ws => {
           myRoom.phase = 'GAME_OVER';
           myRoom.winnerSlot = navalSoleSurvivor(myRoom);
         }
-        navalBcast(myRoom, { lastShot:{ x, y, hit:!!hit, target:def } });
+        navalBcast(myRoom, { lastShot });
         if(myRoom.phase === 'GAME_OVER') broadcastLobby();
         break;
       }

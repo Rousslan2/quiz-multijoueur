@@ -127,6 +127,50 @@ input{width:100%;padding:11px 12px;border-radius:10px;border:1px solid var(--bor
   filter:drop-shadow(0 2px 5px rgba(0,0,0,.65)) brightness(.55) saturate(.75) contrast(1.05);
 }
 .cell.hit::after{z-index:3}
+/* Navire coulé — animation */
+.cell.sunk-flash{
+  z-index:12;
+  animation:navalSunkCell 1.15s cubic-bezier(.25,.9,.3,1.25) forwards;
+}
+.cell.sunk-flash::before{
+  content:'';position:absolute;inset:-6px;border-radius:10px;pointer-events:none;z-index:5;
+  border:3px solid rgba(250,204,21,.95);
+  box-shadow:0 0 24px rgba(251,191,36,.7),inset 0 0 20px rgba(254,240,138,.35);
+  animation:navalSunkRing .95s ease-out forwards;
+}
+@keyframes navalSunkCell{
+  0%{transform:scale(1)}
+  18%{transform:scale(1.1)}
+  40%{transform:scale(1.04)}
+  65%{transform:scale(1.08)}
+  100%{transform:scale(1)}
+}
+@keyframes navalSunkRing{
+  0%{opacity:1;transform:scale(.75)}
+  100%{opacity:0;transform:scale(2.15)}
+}
+.cell.sunk-flash .ship-svg{
+  animation:navalSunkShip 1.2s ease-in forwards;
+}
+@keyframes navalSunkShip{
+  0%{transform:translate(-50%,-50%) rotate(0deg) scale(1);filter:brightness(1.15) drop-shadow(0 2px 4px rgba(0,0,0,.45))}
+  25%{transform:translate(-50%,-58%) rotate(-8deg) scale(1.12);filter:brightness(1.35) drop-shadow(0 0 18px rgba(251,191,36,.8))}
+  55%{transform:translate(-50%,-42%) rotate(6deg) scale(.95);filter:brightness(.75) drop-shadow(0 4px 8px rgba(0,0,0,.6))}
+  100%{transform:translate(-50%,-50%) rotate(0deg) scale(1);filter:brightness(1) drop-shadow(0 2px 3px rgba(0,0,0,.45))}
+}
+.cell.hit.sunk-flash{
+  animation:navalSunkCell 1.15s cubic-bezier(.25,.9,.3,1.25) forwards;
+  box-shadow:inset 0 -4px 12px rgba(0,0,0,.4),0 0 20px rgba(251,191,36,.55);
+}
+#naval-toast{
+  text-align:center;font-weight:800;font-size:1.05rem;
+  color:#fef08a;text-shadow:0 0 20px rgba(250,204,21,.6),0 2px 8px rgba(0,0,0,.5);
+  min-height:0;margin:4px 0 2px;padding:8px 12px;border-radius:12px;
+  background:linear-gradient(90deg,transparent,rgba(120,53,15,.35),transparent);
+  letter-spacing:.04em;
+  opacity:0;transform:scale(.96);transition:opacity .25s,transform .25s;
+}
+#naval-toast.show{opacity:1;transform:scale(1)}
 #place-tools{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:center;margin-top:14px}
 #status{text-align:center;font-weight:600;color:#a5f3fc;min-height:24px;font-size:1rem}
 #score-row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
@@ -257,6 +301,7 @@ input{width:100%;padding:11px 12px;border-radius:10px;border:1px solid var(--bor
 
     <div id="play" class="card hidden">
       <div id="score-row"></div>
+      <div id="naval-toast" aria-live="polite"></div>
       <p id="status"></p>
       <div class="board-wrap">
         <div class="map-chart">
@@ -296,7 +341,7 @@ const WS_URL = `${location.protocol==='https:'?'wss':'ws'}://${location.host}/ws
 const SHIP_QUEUE = [5,4,3,3,2];
 const SHIP_SYM={ 'h-l':'ship-h-l','h-c':'ship-h-c','h-r':'ship-h-r','v-t':'ship-v-t','v-c':'ship-v-c','v-b':'ship-v-b','h-dot':'ship-dot','v-dot':'ship-dot'};
 const $ = id => document.getElementById(id);
-let ws=null,mySlot=-1,myCode='',myName='',state=null,pending=null,lastPhase='';
+let ws=null,mySlot=-1,myCode='',myName='',state=null,pending=null,lastPhase='',lastSunkAnimKey='';
 let shotTarget=-1;
 let orientH = true;
 let remaining = [];
@@ -492,6 +537,7 @@ function render(){
   const phase=state.phase;
 
   if(phase==='WAITING'){
+    lastSunkAnimKey='';
     if(window.ZapPlay) ZapPlay.showLounge({players:pl,mySlot,roomCode:state.code||myCode,gameName:'Bataille navale'});
     hideAllPanels(); $('wait').classList.remove('hidden');
     $('plist').innerHTML=pl.map(p=>`<span class="pill">${p.name}${p.slot===0?' 👑':''}</span>`).join('');
@@ -502,6 +548,7 @@ function render(){
   if(window.ZapPlay) ZapPlay.hideLounge();
 
   if(phase==='PLACING'){
+    lastSunkAnimKey='';
     if(lastPhase!=='PLACING') resetFleet();
     else renderPlaceGrid();
     hideAllPanels(); $('place').classList.remove('hidden');
@@ -536,13 +583,33 @@ function render(){
       return `<span class="pill ${on?'turn':''} ${dead?'dead':''}">${p.name}${dead?' ✕':''}${on?' · à toi':''}</span>`;
     }).join('');
 
+    let sunkMine=null,sunkOpp=null;
+    const ls=state.lastShot;
+    if(ls&&ls.sunk&&Array.isArray(ls.sunkCells)&&ls.sunkCells.length&&typeof ls.from==='number'){
+      const key=`${ls.from}|${ls.target}|${ls.x},${ls.y}|sunk`;
+      if(key!==lastSunkAnimKey){
+        lastSunkAnimKey=key;
+        if(ls.target===mySlot) sunkMine=new Set(ls.sunkCells.map(c=>c.y*10+c.x));
+        if(ls.from===mySlot) sunkOpp=new Set(ls.sunkCells.map(c=>c.y*10+c.x));
+        const toast=$('naval-toast');
+        if(ls.from===mySlot) toast.textContent='Navire adverse coulé !';
+        else if(ls.target===mySlot) toast.textContent='Ton navire est coulé !';
+        else toast.textContent='';
+        if(toast.textContent){
+          toast.classList.add('show');
+          clearTimeout(window.__navalToastT);
+          window.__navalToastT=setTimeout(()=>toast.classList.remove('show'),2600);
+        }
+      }
+    }
+
     if(phase==='PLAYING'){
       if(state.turn===mySlot){
         $('status').textContent=n<=2?'À toi — clique sur la grille adverse pour tirer.':'À toi — choisis la cible (boutons), puis une case.';
       }else $('status').textContent=`Tour de ${names[state.turn]}.`;
     }
 
-    paintGrid($('grid-my'), state.myBoard, state.incoming, true);
+    paintGrid($('grid-my'), state.myBoard, state.incoming, true, null, null, sunkMine);
     let tr='';
     if(phase==='PLAYING'&&n>2){
       for(let i=0;i<n;i++){
@@ -566,7 +633,7 @@ function render(){
     const nm=shotTarget>=0?names[shotTarget]:'';
     $('opp-board-title').textContent=n<=2?'Tirs (adversaire)':`Tirs sur ${nm}`;
     const canFire=phase==='PLAYING'&&state.turn===mySlot&&!elim[mySlot]&&shotTarget>=0&&!elim[shotTarget];
-    paintGrid($('grid-opp'), null, null, false, oppView, canFire);
+    paintGrid($('grid-opp'), null, null, false, oppView, canFire, sunkOpp);
 
     if(phase==='GAME_OVER'){
       const w=state.winnerSlot;
@@ -582,13 +649,14 @@ function render(){
   lastPhase=phase;
 }
 
-function paintGrid(el, myBoard, incoming, isMine, oppView, canShoot){
+function paintGrid(el, myBoard, incoming, isMine, oppView, canShoot, sunkFlash){
   el.innerHTML='';
   const incMap=new Map();
   (incoming||[]).forEach(s=>{
     const k=s.y*10+s.x;
     incMap.set(k, !!(incMap.get(k)||s.hit));
   });
+  const flash=sunkFlash&&sunkFlash.size?sunkFlash:null;
   for(let y=0;y<10;y++)for(let x=0;x<10;x++){
     const d=document.createElement('button');
     d.type='button';
@@ -602,6 +670,7 @@ function paintGrid(el, myBoard, incoming, isMine, oppView, canShoot){
       if(ship) appendHull(d,navalHullSeg(myBoard,x,y),sid);
       if(hit) d.classList.add(wasHit?'hit':'miss');
       d.classList.add('disabled');
+      if(flash&&flash.has(i)&&ship&&wasHit) d.classList.add('sunk-flash');
     }else{
       const v=oppView?oppView[i]:-2;
       if(v===-2) d.classList.add('unknown');
@@ -609,6 +678,7 @@ function paintGrid(el, myBoard, incoming, isMine, oppView, canShoot){
       else if(v===2){
         d.classList.add('hit');
         appendWreckSvg(d);
+        if(flash&&flash.has(i)) d.classList.add('sunk-flash');
       }
       if(canShoot && v===-2){
         d.classList.add('shootable');
