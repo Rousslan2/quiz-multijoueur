@@ -495,7 +495,7 @@ function renderHistoryWidget(containerId){
     return;
   }
 
-  const gameIcons={quiz:'⚡',draw:'✏️',p4:'🟠',morpion:'✖️',taboo:'🚫',emoji:'🌟',verite:'❤️',loup:'🐺',uno:'🃏',bomb:'💣',sumo:'🥋'};
+  const gameIcons={quiz:'⚡',draw:'✏️',p4:'🟠',morpion:'✖️',taboo:'🚫',emoji:'🌟',verite:'❤️',loup:'🐺',uno:'🃏',bomb:'💣',sumo:'🥋',paint:'🎨'};
   const winRate=stats.games?Math.round(stats.wins/stats.games*100):0;
   const profile=getProfileData();
   const recentResult=profile.recent?`${profile.recent.isWinner?'Victoire':'Défaite'} · ${profile.recent.gameName||profile.recent.game}`:'Aucune partie';
@@ -710,7 +710,8 @@ function gameMetaById(id){
     loup:{name:'Loup-Garou',url:'loup.html'},
     uno:{name:'Uno',url:'uno.html'},
     bomb:{name:'Word Bomb',url:'wordbomb.html'},
-    sumo:{name:'Sumo Arena',url:'sumo.html'}
+    sumo:{name:'Sumo Arena',url:'sumo.html'},
+    paint:{name:'Paint.io',url:'paint.html'}
   };
   return map[id] || {name:id||'Jeu',url:'index.html'};
 }

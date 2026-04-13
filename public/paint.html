@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>ZapPlay — Paint.io</title>
+<style>
+:root{
+  --primary:#a78bfa;--buzz:#f97316;--ok:#22c55e;--bad:#ef4444;
+  --text:#f1f5f9;--muted:#94a3b8;--card:rgba(255,255,255,.07);--border:rgba(255,255,255,.13)
+}
+*{box-sizing:border-box;margin:0;padding:0;touch-action:none}
+body{
+  font-family:'Segoe UI',system-ui,sans-serif;
+  background:linear-gradient(135deg,#0f0c29,#302b63,#24243e);
+  color:var(--text);height:100dvh;overflow:hidden
+}
+#app{max-width:900px;margin:0 auto;height:100dvh;padding:56px 12px 14px;display:flex;flex-direction:column;gap:10px}
+#back{position:fixed;top:8px;left:8px;background:none;border:none;color:var(--muted);cursor:pointer;padding:6px 10px;z-index:50}
+#dot{position:fixed;top:10px;right:12px;width:8px;height:8px;border-radius:50%;background:var(--bad);z-index:50}#dot.ok{background:var(--ok)}
+h1{text-align:center;font-size:1.9rem;background:linear-gradient(135deg,var(--primary),var(--buzz));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.card{background:linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,.04));border:1px solid var(--border);border-radius:14px;padding:12px;backdrop-filter:blur(8px)}
+.hidden{display:none!important}
+.btn{border:none;border-radius:10px;padding:11px 14px;font-weight:700;cursor:pointer}
+.btn-primary{background:var(--primary);color:#fff}.btn-buzz{background:var(--buzz);color:#fff}.btn-muted{background:rgba(255,255,255,.12);color:var(--text)}
+input{width:100%;background:rgba(255,255,255,.08);border:1px solid var(--border);border-radius:10px;color:var(--text);padding:11px 12px;outline:none}
+#name-screen{display:flex;flex-direction:column;gap:10px;max-width:420px;width:100%;margin:0 auto}
+#join-area{display:none;gap:8px;flex-direction:column}
+#game-screen{display:flex;flex-direction:column;gap:10px;flex:1;min-height:0}
+#waiting{display:flex;flex-direction:column;gap:10px;align-items:center}
+#players{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+#players .chip{padding:6px 11px;border-radius:999px;background:rgba(255,255,255,.08);border:1px solid var(--border);font-size:.8rem}
+#arena-wrap{display:flex;justify-content:center;flex:1;min-height:0}
+#arena{width:min(92vw,500px);height:min(92vw,500px);max-width:500px;max-height:500px;background:#1e1b4b;border:2px solid rgba(255,255,255,.3);border-radius:8px;box-shadow:0 8px 32px rgba(0,0,0,.5)}
+#status{text-align:center;color:var(--muted);min-height:18px;font-size:.85rem}
+#score-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.row{padding:9px;border:1px solid var(--border);background:rgba(255,255,255,.04);border-radius:10px;font-size:.82rem;display:flex;justify-content:space-between}
+.row.dead{opacity:.4}
+.color-box{width:12px;height:12px;border-radius:3px;display:inline-block;margin-right:6px;vertical-align:middle}
+#controls-mobile{display:none;grid-template-columns:repeat(3,60px);grid-template-rows:repeat(3,60px);gap:8px;justify-content:center;margin-top:10px}
+.mbtn{border:none;border-radius:12px;background:rgba(255,255,255,.15);color:#fff;font-size:1.4rem;display:flex;align-items:center;justify-content:center}
+.mbtn:active{background:rgba(255,255,255,.3)}
+#gcount{position:fixed;inset:0;background:rgba(15,12,41,.8);display:none;align-items:center;justify-content:center;z-index:500}
+#gcount span{font-size:6rem;font-weight:800;color:#f59e0b}
+@media(max-width:760px){
+  #controls-mobile{display:grid}
+  #app{padding-top:48px}
+}
+</style>
+</head>
+<body>
+<div id="gcount"><span id="gnum">3</span></div>
+<button id="back" onclick="location.href='index.html'">← Accueil</button>
+<div id="dot"></div>
+<div id="app">
+  <h1>🎨 Paint.io</h1>
+
+  <div id="name-screen">
+    <div class="card" style="display:flex;flex-direction:column;gap:8px">
+      <input id="name" maxlength="20" placeholder="Ton pseudo">
+      <button class="btn btn-primary" onclick="createGame()">Créer une salle</button>
+      <button class="btn btn-buzz" onclick="toggleJoin()">Rejoindre (code)</button>
+      <div id="join-area">
+        <input id="code" maxlength="4" placeholder="Code (ABCD)" style="text-transform:uppercase;letter-spacing:.14em;text-align:center">
+        <button class="btn btn-buzz" onclick="joinGame()">Rejoindre</button>
+      </div>
+      <div id="err" style="color:#fca5a5;font-size:.82rem;min-height:18px;text-align:center"></div>
+    </div>
+  </div>
+
+  <div id="game-screen" class="hidden">
+    <div id="waiting" class="card hidden">
+      <div id="code-box" onclick="copyCode()" style="cursor:pointer;text-align:center">
+        <div style="font-size:.72rem;color:var(--muted)">Code de la salle</div>
+        <div id="room-code" style="font-size:2.1rem;font-family:monospace;letter-spacing:.2em;color:var(--primary);font-weight:800">----</div>
+      </div>
+      <div id="players"></div>
+      <button id="start-btn" class="btn btn-primary hidden" onclick="startGame()">Lancer la partie</button>
+    </div>
+
+    <div id="playing" class="hidden" style="display:flex;flex-direction:column;gap:10px;min-height:0;flex:1">
+      <div class="card" style="display:flex;flex-direction:column;flex:1;min-height:0;padding:8px">
+        <div id="arena-wrap"><canvas id="arena" width="600" height="600"></canvas></div>
+        <div id="status" style="margin-top:6px"></div>
+      </div>
+      <div class="card" style="padding:8px"><div id="score-list"></div></div>
+      <div id="controls-mobile">
+        <div></div><button class="mbtn" data-dir="up">▲</button><div></div>
+        <button class="mbtn" data-dir="left">◀</button><button class="mbtn" data-dir="down">▼</button><button class="mbtn" data-dir="right">▶</button>
+      </div>
+    </div>
+
+    <div id="over" class="card hidden" style="text-align:center;display:flex;flex-direction:column;gap:10px">
+      <div id="over-title" style="font-size:1.3rem;font-weight:800"></div>
+      <button class="btn btn-primary" onclick="restart()">Rejouer</button>
+      <button class="btn btn-muted" onclick="location.href='index.html'">Accueil</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const WS_URL = `${location.protocol==='https:'?'wss':'ws'}://${location.host}/ws/paint`;
+let ws=null,mySlot=-1,myCode='',myName='',state=null,pendingAction=null,lastPhase='';
+const $ = id => document.getElementById(id);
+function send(o){ if(ws&&ws.readyState===1) ws.send(JSON.stringify(o)); }
+function bindLoungeSender(){ if(window.ZapPlay)ZapPlay.setLoungeSender(text=>send({type:'lounge_chat',text})); else setTimeout(bindLoungeSender,120); }
+bindLoungeSender();
+
+const COLORS = ['#a78bfa', '#22c55e', '#f97316', '#60a5fa'];
+const TRAIL_COLORS = ['rgba(167,139,250,0.5)', 'rgba(34,197,94,0.5)', 'rgba(249,115,22,0.5)', 'rgba(96,165,250,0.5)'];
+
+function connect(){
+  ws=new WebSocket(WS_URL);
+  ws.onopen=()=>{ $('dot').classList.add('ok'); if(window.ZapPlay)ZapPlay.hideLoader(); if(pendingAction){pendingAction();pendingAction=null;} };
+  ws.onclose=()=>{ $('dot').classList.remove('ok'); setTimeout(connect,2000); };
+  ws.onmessage=e=>{ let m; try{m=JSON.parse(e.data);}catch{return;} handle(m); };
+}
+connect();
+
+function toggleJoin(){ $('join-area').style.display = $('join-area').style.display==='flex' ? 'none' : 'flex'; }
+function createGame(){
+  const n=$('name').value.trim(); if(!n){$('err').textContent='Entre ton pseudo';return;}
+  myName=n; if(window.ZapPlay)ZapPlay.savePseudo(n);
+  const action=()=>send({type:'create_paint',name:n});
+  if(ws&&ws.readyState===1) action(); else { pendingAction=action; if(!ws||ws.readyState===3) connect(); }
+}
+function joinGame(){
+  const n=$('name').value.trim(); const c=$('code').value.trim().toUpperCase();
+  if(!n||!c){$('err').textContent='Nom + code requis';return;}
+  myName=n; if(window.ZapPlay)ZapPlay.savePseudo(n);
+  const action=()=>send({type:'join_paint',name:n,code:c});
+  if(ws&&ws.readyState===1) action(); else { pendingAction=action; if(!ws||ws.readyState===3) connect(); }
+}
+function startGame(){ send({type:'start_paint'}); }
+function restart(){ send({type:'restart_paint'}); }
+function copyCode(){ if(!myCode)return; navigator.clipboard.writeText(myCode).catch(()=>{}); }
+
+function handle(m){
+  if(m.type==='created_paint'){mySlot=m.slot;myCode=m.code;showGame();}
+  if(m.type==='welcome_paint'){mySlot=m.slot;myCode=m.code;showGame();}
+  if(m.type==='error'){ $('err').textContent=m.msg; $('status').textContent=m.msg; }
+  if(m.type==='countdown')showCountdown(m.seconds||3);
+  if(m.type==='player_left')$('status').textContent=(m.name||'Un joueur')+' a quitté.';
+  if(m.type==='lounge_chat' && window.ZapPlay)ZapPlay.addLoungeMessage(m);
+  if(m.type==='paint_state'){
+    if(m.kills && m.kills.length){
+      $('status').textContent = m.kills.map(k => `${k.victim} a été éliminé!`).join(' • ');
+      if(navigator.vibrate && m.kills.some(k=>k.victimSlot===mySlot)) navigator.vibrate([200,100,200]);
+    }
+    state=m;
+    render();
+  }
+}
+function showGame(){ $('name-screen').classList.add('hidden'); $('game-screen').classList.remove('hidden'); }
+function showCountdown(n){
+  const g=$('gcount'),num=$('gnum'); g.style.display='flex'; num.textContent=n;
+  let c=n; const t=setInterval(()=>{c--; if(c<=0){clearInterval(t); g.style.display='none';} else num.textContent=c;},1000);
+}
+function setScreen(id){ ['waiting','playing','over'].forEach(x=>$(x).classList.add('hidden')); $(id).classList.remove('hidden'); }
+
+function render(){
+  if(!state)return;
+  $('room-code').textContent = state.code||myCode||'----';
+  const players=state.players||[];
+  if(state.phase==='WAITING'){
+    if(window.ZapPlay)ZapPlay.showLounge({players,mySlot,roomCode:state.code||myCode,gameName:'Paint.io'});
+    setScreen('waiting');
+    $('players').innerHTML=players.map(p=>`<span class="chip"><span class="color-box" style="background:${COLORS[p.slot]}"></span>${p.name}${p.slot===0?' 👑':''}</span>`).join('');
+    $('start-btn').classList.toggle('hidden', !(mySlot===0 && players.length>=2));
+    return;
+  }
+  if(state.phase==='PLAYING'){
+    if(window.ZapPlay)ZapPlay.hideLounge();
+    setScreen('playing');
+    const totalCells = state.W * state.H;
+    $('score-list').innerHTML=players.map(p=>{
+      const cls=['row',!p.alive?'dead':''].join(' ');
+      const pct = ((p.score / totalCells) * 100).toFixed(1);
+      return `<div class="${cls}">
+        <div style="font-weight:700"><span class="color-box" style="background:${COLORS[p.slot]}"></span>${p.name}</div>
+        <div style="font-weight:800;color:${COLORS[p.slot]}">${pct}%</div>
+      </div>`;
+    }).join('');
+    drawArena();
+    return;
+  }
+  if(state.phase==='GAME_OVER'){
+    if(window.ZapPlay)ZapPlay.hideLounge();
+    setScreen('over');
+    const winName = state.winnerSlot>=0 ? (players.find(p=>p.slot===state.winnerSlot)?.name||'') : '';
+    $('over-title').textContent = state.winnerSlot>=0 ? `🏆 ${winName} gagne !` : 'Égalité !';
+    if(lastPhase!=='GAME_OVER' && window.ZapPlay){
+      const pNames=players.map(p=>p.name);
+      ZapPlay.saveGameResult({game:'paint',gameName:'Paint.io',players:pNames,winner:winName||'Égalité',myName,myScore:players.find(p=>p.slot===mySlot)?.score||0,isWinner:state.winnerSlot===mySlot});
+    }
+  }
+  lastPhase=state.phase;
+}
+
+function drawArena(){
+  const cv=$('arena'),ctx=cv.getContext('2d'); if(!ctx||!state)return;
+  const W = state.W, H = state.H;
+  const cellSize = cv.width / W;
+  
+  ctx.clearRect(0,0,cv.width,cv.height);
+  
+  // Draw territory
+  if(state.gridStr){
+    for(let y=0; y<H; y++){
+      for(let x=0; x<W; x++){
+        const char = state.gridStr[y*W + x];
+        if(char !== '.'){
+          ctx.fillStyle = COLORS[parseInt(char)];
+          ctx.fillRect(x*cellSize, y*cellSize, cellSize+0.5, cellSize+0.5); // +0.5 to prevent seams
+        }
+      }
+    }
+  }
+
+  // Draw trails and heads
+  (state.players||[]).forEach(p=>{
+    if(!p.alive) return;
+    
+    // Trail
+    ctx.fillStyle = TRAIL_COLORS[p.slot];
+    (p.trail||[]).forEach(t => {
+      ctx.fillRect(t.x*cellSize + cellSize*0.2, t.y*cellSize + cellSize*0.2, cellSize*0.6, cellSize*0.6);
+    });
+
+    // Head
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(p.x*cellSize, p.y*cellSize, cellSize, cellSize);
+    ctx.fillStyle = COLORS[p.slot];
+    ctx.fillRect(p.x*cellSize + 2, p.y*cellSize + 2, cellSize - 4, cellSize - 4);
+    
+    // Highlight local player
+    if(p.slot === mySlot){
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(p.x*cellSize - 2, p.y*cellSize - 2, cellSize + 4, cellSize + 4);
+    }
+  });
+}
+
+function sendDir(dir){
+  if(!state || state.phase!=='PLAYING') return;
+  send({type:'paint_input', dir});
+  if(navigator.vibrate) navigator.vibrate(15);
+}
+
+window.addEventListener('keydown',e=>{
+  const k=e.key.toLowerCase();
+  if(k==='arrowup'||k==='z'||k==='w') sendDir('up');
+  if(k==='arrowdown'||k==='s') sendDir('down');
+  if(k==='arrowleft'||k==='q'||k==='a') sendDir('left');
+  if(k==='arrowright'||k==='d') sendDir('right');
+});
+
+document.querySelectorAll('[data-dir]').forEach(btn=>{
+  btn.addEventListener('touchstart', e => { e.preventDefault(); sendDir(btn.getAttribute('data-dir')); }, {passive:false});
+  btn.addEventListener('mousedown', () => sendDir(btn.getAttribute('data-dir')));
+});
+
+const p=new URLSearchParams(location.search);
+if(p.get('name'))$('name').value=p.get('name');
+if(window.ZapPlay && !$('name').value){
+  const saved=window.ZapPlay.getSavedPseudo&&window.ZapPlay.getSavedPseudo();
+  if(saved) $('name').value=saved;
+}
+if(p.get('code')){ $('code').value=p.get('code').toUpperCase(); $('join-area').style.display='flex'; }
+if(p.get('create')==='1'&&p.get('name')){
+  const n=p.get('name'); $('name').value=n; myName=n;
+  const action=()=>send({type:'create_paint',name:n});
+  if(ws&&ws.readyState===1) action();
+  else { pendingAction=action; if(!ws||ws.readyState===3) connect(); }
+}
+$('name').addEventListener('keydown',e=>{if(e.key==='Enter')createGame();});
+$('code').addEventListener('input',e=>{e.target.value=e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,'');});
+$('code').addEventListener('keydown',e=>{if(e.key==='Enter')joinGame();});
+</script>
+<script src="shared.js"></script>
+<script src="chat.js"></script>
+</body>
+</html>

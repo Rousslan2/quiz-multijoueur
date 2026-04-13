@@ -20,6 +20,7 @@ const wssTaboo   = new WebSocket.Server({ noServer: true });
 const wssEmoji   = new WebSocket.Server({ noServer: true });
 const wssBomb    = new WebSocket.Server({ noServer: true });
 const wssSumo    = new WebSocket.Server({ noServer: true });
+const wssPaint   = new WebSocket.Server({ noServer: true });
 const wssChat    = new WebSocket.Server({ noServer: true });
 const wssLobby   = new WebSocket.Server({ noServer: true });
 const wssLoup    = new WebSocket.Server({ noServer: true });
@@ -30,7 +31,7 @@ server.on('upgrade', (req, socket, head) => {
     '/ws/quiz':wssQuiz,'/ws/draw':wssDraw,'/ws/p4':wssP4,
     '/ws/morpion':wssMorpion,'/ws/taboo':wssTaboo,'/ws/emoji':wssEmoji,
     '/ws/bomb':wssBomb,'/ws/sumo':wssSumo,'/ws/chat':wssChat,'/ws/lobby':wssLobby,
-    '/ws/loup':wssLoup,'/ws/uno':wssUno
+    '/ws/loup':wssLoup,'/ws/uno':wssUno,'/ws/paint':wssPaint
   };
   const h = routes[req.url];
   if (h) h.handleUpgrade(req, socket, head, ws => h.emit('connection', ws));
@@ -58,12 +59,12 @@ app.get('/api/ip', (_, res) => res.json({ ip: getLocalIP(), port: PORT }));
 const GAME_NAMES = {
   quiz:'Quiz Éclair', draw:'Dessin & Devine', p4:'Puissance 4',
   morpion:'Morpion', taboo:'Mots Interdits', emoji:'Devinette Emoji',
-  loup:'Loup-Garou', uno:'Uno', bomb:'Word Bomb', sumo:'Sumo Arena'
+  loup:'Loup-Garou', uno:'Uno', bomb:'Word Bomb', sumo:'Sumo Arena', paint:'Paint.io'
 };
 
 function getRoomsSnapshot() {
   const all = [];
-  const maps = { quiz:quizRooms, draw:drawRooms, p4:p4Rooms, morpion:morpionRooms, taboo:tabooRooms, emoji:emojiRooms, loup:loupRooms, uno:unoRooms, bomb:bombRooms, sumo:sumoRooms };
+  const maps = { quiz:quizRooms, draw:drawRooms, p4:p4Rooms, morpion:morpionRooms, taboo:tabooRooms, emoji:emojiRooms, loup:loupRooms, uno:unoRooms, bomb:bombRooms, sumo:sumoRooms, paint:paintRooms };
   for (const [game, map] of Object.entries(maps)) {
     for (const [code, room] of map) {
       all.push({
@@ -72,7 +73,7 @@ function getRoomsSnapshot() {
         gameName: GAME_NAMES[game],
         host: room.host,
         players: room.players.map(p => p.name),
-        maxPlayers: game==='loup'?10:game==='bomb'?6:game==='sumo'?4:game==='uno'?4:4,
+        maxPlayers: game==='loup'?10:game==='bomb'?6:game==='sumo'?4:game==='uno'?4:game==='paint'?4:4,
         status: ['WAITING','SETUP'].includes(room.phase) ? 'waiting' : 'playing'
       });
     }
