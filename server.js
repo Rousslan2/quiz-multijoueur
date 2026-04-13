@@ -2131,7 +2131,7 @@ const SUMO_PUNCH_CD_MS = 600;
 function makeSumoRoom(code, host){
   return {
     code, host, players:[], phase:'WAITING',
-    tick:null, winnerSlot:-1, winnerName:null, startedAt:0
+    tick:null, winnerSlot:-1, winnerName:null, startedAt:0, items:[]
   };
 }
 function sumoSpawnPos(slot, total){
@@ -2149,6 +2149,7 @@ function sumoResetPlayers(room){
     p.input={x:0,y:0}; p.dash=false; p.lastDashAt=0;
     p.punch=false; p.lastPunchAt=0; p.punchUntil=0;
     p.faceX=1; p.faceY=0;
+    p.buff=null; p.buffUntil=0;
   });
 }
 function sumoAlive(room){ return room.players.filter(p=>p.alive); }
@@ -2157,13 +2158,15 @@ function sumoSnap(room){
     type:'sumo_state',
     phase:room.phase, code:room.code, ringR:SUMO_RING_R, playerR:SUMO_PLAYER_R,
     winnerSlot:room.winnerSlot??-1, winnerName:room.winnerName||null,
+    items:room.items||[],
     players:room.players.map(p=>({
       name:p.name, slot:p.slot, alive:p.alive, lives:p.lives, score:p.score,
       x:Math.round((p.x||0)*10)/10, y:Math.round((p.y||0)*10)/10,
       vx:Math.round((p.vx||0)*10)/10, vy:Math.round((p.vy||0)*10)/10,
       faceX:Math.round((p.faceX||0)*100)/100, faceY:Math.round((p.faceY||0)*100)/100,
       punching: (p.punchUntil||0) > Date.now(),
-      hit: (p.hitUntil||0) > Date.now()
+      hit: (p.hitUntil||0) > Date.now(),
+      buff: p.buff
     }))
   };
 }
@@ -2189,6 +2192,7 @@ function sumoCheckEnd(room){
 function sumoStart(room){
   room.phase='PLAYING';
   room.winnerSlot=-1; room.winnerName=null; room.startedAt=Date.now();
+  room.items=[];
   sumoResetPlayers(room);
   sumoStop(room);
   room.tick = setInterval(()=>sumoTick(room), SUMO_TICK_MS);
@@ -2198,12 +2202,44 @@ function sumoStart(room){
 function sumoTick(room){
   if(room.phase!=='PLAYING')return;
   const now = Date.now();
+  
+  if(Math.random() < 0.015 && room.items.length < 3){
+    const a = Math.random()*Math.PI*2;
+    const r = Math.random()*(SUMO_RING_R-30);
+    room.items.push({
+      id: Math.random().toString(36).slice(2),
+      x: Math.cos(a)*r, y: Math.sin(a)*r,
+      type: ['mass','speed','power'][Math.floor(Math.random()*3)]
+    });
+  }
+  
   room.players.forEach(p=>{
     if(!p.alive)return;
+    if(p.buff && now > p.buffUntil) p.buff = null;
+    
+    const isSpeed = p.buff === 'speed';
+    const isMass = p.buff === 'mass';
+    const isPower = p.buff === 'power';
+    
+    const accel = isSpeed ? SUMO_ACCEL*1.5 : SUMO_ACCEL;
+    const maxSpd = isSpeed ? SUMO_MAX_SPEED*1.4 : SUMO_MAX_SPEED;
+    const dashB = isSpeed ? SUMO_DASH_BOOST*1.4 : SUMO_DASH_BOOST;
+    const pForce = isPower ? SUMO_PUNCH_FORCE*1.8 : SUMO_PUNCH_FORCE;
+    const prA = isMass ? SUMO_PLAYER_R*1.4 : SUMO_PLAYER_R;
+    
+    for(let i=room.items.length-1; i>=0; i--){
+      const it = room.items[i];
+      if(Math.hypot(p.x-it.x, p.y-it.y) < prA + 15){
+        p.buff = it.type;
+        p.buffUntil = now + 6000;
+        room.items.splice(i,1);
+      }
+    }
+    
     const ix = Math.max(-1, Math.min(1, Number(p.input?.x||0)));
     const iy = Math.max(-1, Math.min(1, Number(p.input?.y||0)));
-    p.vx = (p.vx||0) + ix*SUMO_ACCEL;
-    p.vy = (p.vy||0) + iy*SUMO_ACCEL;
+    p.vx = (p.vx||0) + ix*accel;
+    p.vy = (p.vy||0) + iy*accel;
     if(Math.hypot(ix,iy)>0.15){
       const m=Math.hypot(ix,iy)||1;
       p.faceX=ix/m; p.faceY=iy/m;
@@ -2213,8 +2249,8 @@ function sumoTick(room){
     }
     if(p.dash && (now-(p.lastDashAt||0))>=SUMO_DASH_CD_MS){
       const mag = Math.hypot(ix,iy)||1;
-      p.vx += (ix/mag)*SUMO_DASH_BOOST;
-      p.vy += (iy/mag)*SUMO_DASH_BOOST;
+      p.vx += (ix/mag)*dashB;
+      p.vy += (iy/mag)*dashB;
       p.lastDashAt=now;
       p.dash=false;
     }
@@ -2225,13 +2261,15 @@ function sumoTick(room){
         if(!t.alive || t===p) return;
         const dx=(t.x||0)-(p.x||0), dy=(t.y||0)-(p.y||0);
         const dist=Math.hypot(dx,dy)||0.0001;
-        if(dist > SUMO_PUNCH_RANGE) return;
+        const range = isPower ? SUMO_PUNCH_RANGE*1.3 : SUMO_PUNCH_RANGE;
+        if(dist > range) return;
         const nx=dx/dist, ny=dy/dist;
         const dot = nx*(p.faceX||1) + ny*(p.faceY||0);
         if(dot < SUMO_PUNCH_DOT) return;
-        const force = SUMO_PUNCH_FORCE * Math.max(0.5, dot);
-        t.vx = (t.vx||0) + nx*force;
-        t.vy = (t.vy||0) + ny*force;
+        const force = pForce * Math.max(0.5, dot);
+        const massT = t.buff==='mass'?2:1;
+        t.vx = (t.vx||0) + (nx*force)/massT;
+        t.vy = (t.vy||0) + (ny*force)/massT;
         p.vx = (p.vx||0) - nx*2.0;
         p.vy = (p.vy||0) - ny*2.0;
         p.score = (p.score||0) + 1;
@@ -2242,8 +2280,8 @@ function sumoTick(room){
     p.vx *= SUMO_FRICTION;
     p.vy *= SUMO_FRICTION;
     const sp = Math.hypot(p.vx,p.vy);
-    if(sp>SUMO_MAX_SPEED){
-      const k = SUMO_MAX_SPEED/sp;
+    if(sp>maxSpd){
+      const k = maxSpd/sp;
       p.vx*=k; p.vy*=k;
     }
     p.x += p.vx||0;
@@ -2252,20 +2290,26 @@ function sumoTick(room){
   for(let i=0;i<room.players.length;i++){
     const a = room.players[i];
     if(!a?.alive)continue;
+    const prA = (a.buff==='mass'?1.4:1)*SUMO_PLAYER_R;
     for(let j=i+1;j<room.players.length;j++){
       const b = room.players[j];
       if(!b?.alive)continue;
+      const prB = (b.buff==='mass'?1.4:1)*SUMO_PLAYER_R;
       const dx=(b.x||0)-(a.x||0), dy=(b.y||0)-(a.y||0);
       const dist=Math.hypot(dx,dy)||0.0001;
-      const minDist=SUMO_PLAYER_R*2;
+      const minDist=prA+prB;
       if(dist<minDist){
         const nx=dx/dist, ny=dy/dist;
         const overlap=minDist-dist;
         a.x -= nx*(overlap/2); a.y -= ny*(overlap/2);
         b.x += nx*(overlap/2); b.y += ny*(overlap/2);
         const avx=a.vx||0, avy=a.vy||0, bvx=b.vx||0, bvy=b.vy||0;
-        a.vx = avx - nx*SUMO_COLLISION_PUSH; a.vy = avy - ny*SUMO_COLLISION_PUSH;
-        b.vx = bvx + nx*SUMO_COLLISION_PUSH; b.vy = bvy + ny*SUMO_COLLISION_PUSH;
+        const massA = a.buff==='mass'?2:1;
+        const massB = b.buff==='mass'?2:1;
+        const pushA = SUMO_COLLISION_PUSH * (massB/massA);
+        const pushB = SUMO_COLLISION_PUSH * (massA/massB);
+        a.vx = avx - nx*pushA; a.vy = avy - ny*pushA;
+        b.vx = bvx + nx*pushB; b.vy = bvy + ny*pushB;
       }
     }
   }
