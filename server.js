@@ -2444,6 +2444,9 @@ function makePaintRoom(code, host){
     winnerSlot:-1,
     tick:null,
     grid:new Int8Array(PAINT_W * PAINT_H).fill(-1),
+    _trailOcc: new Int8Array(PAINT_W * PAINT_H),
+    _capBlocked: new Uint8Array(PAINT_W * PAINT_H),
+    _capVisited: new Uint8Array(PAINT_W * PAINT_H),
   };
 }
 
@@ -2505,8 +2508,14 @@ function paintResetPlayers(room){
 
 function paintCapture(room, slot, trail){
   if(!trail || !trail.length) return;
-  const blocked = new Uint8Array(PAINT_W * PAINT_H);
-  const visited = new Uint8Array(PAINT_W * PAINT_H);
+  if(!room._capBlocked || room._capBlocked.length !== PAINT_W * PAINT_H){
+    room._capBlocked = new Uint8Array(PAINT_W * PAINT_H);
+    room._capVisited = new Uint8Array(PAINT_W * PAINT_H);
+  }
+  const blocked = room._capBlocked;
+  const visited = room._capVisited;
+  blocked.fill(0);
+  visited.fill(0);
   for(let i=0;i<room.grid.length;i++) if(room.grid[i]===slot) blocked[i]=1;
   trail.forEach(t => { if(paintInside(t.x,t.y)) blocked[paintIdx(t.x,t.y)] = 1; });
   const q = [];
@@ -2525,9 +2534,17 @@ function paintCapture(room, slot, trail){
     const y = (id / PAINT_W) | 0;
     push(x+1,y); push(x-1,y); push(x,y+1); push(x,y-1);
   }
+  const players = room.players;
   for(let i=0;i<room.grid.length;i++){
-    if(blocked[i] && room.grid[i]!==slot) room.grid[i] = slot;
-    else if(!visited[i] && room.grid[i]!==slot) room.grid[i] = slot;
+    const g = room.grid[i];
+    let nv = g;
+    if(blocked[i] && g!==slot) nv = slot;
+    else if(!visited[i] && g!==slot) nv = slot;
+    if(nv !== g){
+      room.grid[i] = nv;
+      if(g >= 0 && players[g]) players[g].score = Math.max(0, (players[g].score || 0) - 1);
+      if(nv >= 0 && players[nv]) players[nv].score = (players[nv].score || 0) + 1;
+    }
   }
 }
 
@@ -2579,8 +2596,17 @@ function paintStop(room){ if(room.tick){ clearInterval(room.tick); room.tick=nul
 
 function paintTick(room){
   if(room.phase!=='PLAYING') return;
+  if(!room._trailOcc || room._trailOcc.length !== PAINT_W * PAINT_H) room._trailOcc = new Int8Array(PAINT_W * PAINT_H);
   const kills = [];
   const dieSet = new Set();
+  const trailOcc = room._trailOcc;
+  trailOcc.fill(-1);
+  for(const o of room.players){
+    if(!o.alive || !Array.isArray(o.trail) || !o.trail.length) continue;
+    for(const t of o.trail){
+      if(paintInside(t.x,t.y)) trailOcc[paintIdx(t.x, t.y)] = o.slot;
+    }
+  }
 
   for(const p of room.players){
     if(!p.alive) continue;
@@ -2594,13 +2620,10 @@ function paintTick(room){
       continue;
     }
 
-    for(const o of room.players){
-      if(!o.alive) continue;
-      if(!Array.isArray(o.trail) || !o.trail.length) continue;
-      if(o.trail.some(t => t.x===nx && t.y===ny)){
-        if(o.slot===p.slot) dieSet.add(p.slot);
-        else dieSet.add(o.slot);
-      }
+    const hit = paintInside(nx, ny) ? trailOcc[paintIdx(nx, ny)] : -1;
+    if(hit >= 0){
+      if(hit === p.slot) dieSet.add(p.slot);
+      else dieSet.add(hit);
     }
 
     p.x = nx; p.y = ny;
@@ -2638,7 +2661,6 @@ function paintTick(room){
     }
   }
 
-  paintRecount(room);
   if(paintEndIfNeeded(room)) return;
   paintBcast(room, { kills });
 }

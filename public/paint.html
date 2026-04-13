@@ -47,6 +47,10 @@ input{width:100%;background:rgba(255,255,255,.08);border:1px solid var(--border)
 .mbtn:active{background:rgba(255,255,255,.3)}
 #gcount{position:fixed;inset:0;background:rgba(15,12,41,.8);display:none;align-items:center;justify-content:center;z-index:500}
 #gcount span{font-size:6rem;font-weight:800;color:#f59e0b}
+#skin-row{display:flex;flex-direction:column;gap:6px;margin-top:4px}
+#skin-row label{font-size:.75rem;color:var(--muted);letter-spacing:.02em}
+#skin-pick{width:100%;background:rgba(255,255,255,.08);border:1px solid var(--border);border-radius:10px;color:var(--text);padding:10px 12px;font-size:.9rem;cursor:pointer;outline:none}
+#skin-pick:focus{border-color:var(--primary)}
 @media(max-width:760px){
   #controls-mobile{display:grid}
   #app{padding-top:48px}
@@ -69,6 +73,10 @@ input{width:100%;background:rgba(255,255,255,.08);border:1px solid var(--border)
       <div id="join-area">
         <input id="code" maxlength="4" placeholder="Code (ABCD)" style="text-transform:uppercase;letter-spacing:.14em;text-align:center">
         <button class="btn btn-buzz" onclick="joinGame()">Rejoindre</button>
+      </div>
+      <div id="skin-row">
+        <label for="skin-pick">Thème &amp; skins</label>
+        <select id="skin-pick" aria-label="Thème visuel Paint.io"></select>
       </div>
       <div id="err" style="color:#fca5a5;font-size:.82rem;min-height:18px;text-align:center"></div>
     </div>
@@ -106,25 +114,126 @@ input{width:100%;background:rgba(255,255,255,.08);border:1px solid var(--border)
 
 <script>
 const WS_URL = `${location.protocol==='https:'?'wss':'ws'}://${location.host}/ws/paint`;
+const PAINT_SKIN_KEY = 'zapplay_paint_skin';
+const PAINT_SKINS = {
+  neon:{
+    name:'Néon ZapPlay',
+    colors:['#a78bfa','#22c55e','#f97316','#60a5fa'],
+    voidRgb:[18,16,42],
+    bg:[['#2a2452',0],['#15122e',0.45],['#0a0818',1]],
+    border:'rgba(167,139,250,0.42)',
+    gridAlpha:0.05,
+    gridStep:4,
+    head:'round',
+    trailGlow:0.95
+  },
+  cyber:{
+    name:'Cyber grid',
+    colors:['#22d3ee','#e879f9','#4ade80','#fbbf24'],
+    voidRgb:[8,20,35],
+    bg:[['#0c4a6e',0],['#1e1033',0.5],['#020617',1]],
+    border:'rgba(34,211,238,0.45)',
+    gridAlpha:0.055,
+    gridStep:4,
+    head:'diamond',
+    trailGlow:0.85
+  },
+  sunset:{
+    name:'Coucher de soleil',
+    colors:['#fb7185','#f97316','#fbbf24','#a78bfa'],
+    voidRgb:[45,20,28],
+    bg:[['#9f1239',0],['#431407',0.55],['#1c1917',1]],
+    border:'rgba(251,113,133,0.45)',
+    gridAlpha:0.048,
+    gridStep:4,
+    head:'round',
+    trailGlow:1
+  },
+  jungle:{
+    name:'Jungle',
+    colors:['#4ade80','#22c55e','#a3e635','#14b8a6'],
+    voidRgb:[12,35,22],
+    bg:[['#14532d',0],['#052e16',0.5],['#020617',1]],
+    border:'rgba(74,222,128,0.4)',
+    gridAlpha:0.045,
+    gridStep:4,
+    head:'circle',
+    trailGlow:0.8
+  },
+  arctic:{
+    name:'Arctique',
+    colors:['#93c5fd','#e0f2fe','#38bdf8','#7dd3fc'],
+    voidRgb:[15,28,48],
+    bg:[['#1e3a5f',0],['#0f172a',0.55],['#020617',1]],
+    border:'rgba(147,197,253,0.45)',
+    gridAlpha:0.05,
+    gridStep:4,
+    head:'round',
+    trailGlow:0.75
+  },
+  retro:{
+    name:'Arcade 8-bit',
+    colors:['#f472b6','#38bdf8','#facc15','#4ade80'],
+    voidRgb:[25,15,40],
+    bg:[['#4c1d95',0],['#312e81',0.45],['#0f0a1a',1]],
+    border:'rgba(244,114,182,0.5)',
+    gridAlpha:0.06,
+    gridStep:8,
+    head:'diamond',
+    trailGlow:0.9
+  }
+};
+
+let activeSkinId='neon';
+function skin(){
+  const s=PAINT_SKINS[activeSkinId];
+  return s||PAINT_SKINS.neon;
+}
+function hexToRgb(h){
+  const n=String(h).slice(1);
+  return [parseInt(n.slice(0,2),16),parseInt(n.slice(2,4),16),parseInt(n.slice(4,6),16)];
+}
+function trailRgba(hex,a){
+  const [r,g,b]=hexToRgb(hex);
+  return `rgba(${r},${g},${b},${a})`;
+}
+function slotColor(slot){ return skin().colors[slot%4]||'#fff'; }
+
 let ws=null,mySlot=-1,myCode='',myName='',state=null,pendingAction=null,lastPhase='';
 const $ = id => document.getElementById(id);
 function send(o){ if(ws&&ws.readyState===1) ws.send(JSON.stringify(o)); }
 function bindLoungeSender(){ if(window.ZapPlay)ZapPlay.setLoungeSender(text=>send({type:'lounge_chat',text})); else setTimeout(bindLoungeSender,120); }
 bindLoungeSender();
 
-const COLORS = ['#a78bfa', '#22c55e', '#f97316', '#60a5fa'];
-const TRAIL_COLORS = ['rgba(167,139,250,0.72)', 'rgba(34,197,94,0.72)', 'rgba(249,115,22,0.72)', 'rgba(96,165,250,0.72)'];
-const PLAYER_RGB = COLORS.map(h=>{
-  const n=h.slice(1);
-  return [parseInt(n.slice(0,2),16),parseInt(n.slice(2,4),16),parseInt(n.slice(4,6),16)];
-});
-const VOID_RGB = [18,16,42];
-
 let arenaDisplayCss = 520;
 let territoryBm = null;
 let lastGridStr = '';
+let staticLayer = null;
+let staticLayerKey = '';
 
 function rgbStr(r,g,b,a=1){ return `rgba(${r},${g},${b},${a})`; }
+function lowFx(){ return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); }
+
+function initSkinUi(){
+  const sel=$('skin-pick');
+  if(!sel)return;
+  const saved=localStorage.getItem(PAINT_SKIN_KEY);
+  if(saved && PAINT_SKINS[saved]) activeSkinId=saved;
+  sel.innerHTML=Object.keys(PAINT_SKINS).map(id=>`<option value="${id}">${PAINT_SKINS[id].name}</option>`).join('');
+  sel.value=activeSkinId;
+  sel.addEventListener('change',()=>{
+    activeSkinId=sel.value;
+    localStorage.setItem(PAINT_SKIN_KEY,activeSkinId);
+    invalidatePaintVisualCache();
+    if(state&&state.phase==='PLAYING') drawArena();
+  });
+}
+function invalidatePaintVisualCache(){
+  lastGridStr='';
+  staticLayerKey='';
+  territoryBm=null;
+}
+initSkinUi();
 
 function resizeArenaCanvas(){
   const wrap=$('arena-wrap'), cv=$('arena');
@@ -132,15 +241,53 @@ function resizeArenaCanvas(){
   const r=wrap.getBoundingClientRect();
   const side=Math.floor(Math.min(r.width,r.height)-10);
   const size=Math.max(300,Math.min(side,760));
+  const prev=arenaDisplayCss;
   arenaDisplayCss=size;
   const dpr=Math.min(window.devicePixelRatio||1,2);
   const px=Math.floor(size*dpr);
-  if(cv.width!==px||cv.height!==px){
+  if(cv.width!==px||cv.height!==px||Math.round(prev)!==Math.round(size)){
     cv.width=px; cv.height=px;
     cv.style.width=size+'px'; cv.style.height=size+'px';
+    staticLayerKey='';
   }
 }
 window.addEventListener('resize',()=>{ if(state&&state.phase==='PLAYING'){ resizeArenaCanvas(); drawArena(); } });
+
+function ensureStaticBackground(display,W,H,sk){
+  const isMobile=typeof window.matchMedia==='function'&&window.matchMedia('(max-width:760px)').matches;
+  const base=sk.gridStep||4;
+  const step=isMobile&&Math.max(W,H)>64?Math.max(base,8):base;
+  const gkey=`${activeSkinId}-${Math.round(display)}-${W}-${H}-${step}`;
+  if(staticLayerKey===gkey&&staticLayer&&staticLayer.width===Math.floor(display)) return staticLayer;
+  staticLayerKey=gkey;
+  if(!staticLayer) staticLayer=document.createElement('canvas');
+  const d=Math.max(1,Math.floor(display));
+  staticLayer.width=d;
+  staticLayer.height=d;
+  const sx=staticLayer.getContext('2d');
+  if(!sx)return staticLayer;
+  const g=sx.createRadialGradient(d*0.35,d*0.22,0,d*0.52,d*0.55,d*0.92);
+  const stops=sk.bg||[['#2a2452',0],['#15122e',0.45],['#0a0818',1]];
+  stops.forEach(([c,p])=>g.addColorStop(p,c));
+  sx.fillStyle=g;
+  sx.fillRect(0,0,d,d);
+  sx.strokeStyle=`rgba(255,255,255,${sk.gridAlpha||0.05})`;
+  sx.lineWidth=1;
+  sx.beginPath();
+  for(let x=0;x<=W;x+=step){
+    sx.moveTo((x/W)*d+0.5,0);
+    sx.lineTo((x/W)*d+0.5,d);
+  }
+  for(let y=0;y<=H;y+=step){
+    sx.moveTo(0,(y/H)*d+0.5);
+    sx.lineTo(d,(y/H)*d+0.5);
+  }
+  sx.stroke();
+  sx.strokeStyle=sk.border||'rgba(167,139,250,0.4)';
+  sx.lineWidth=2;
+  sx.strokeRect(1.5,1.5,d-3,d-3);
+  return staticLayer;
+}
 
 function connect(){
   ws=new WebSocket(WS_URL);
@@ -198,7 +345,7 @@ function render(){
   if(state.phase==='WAITING'){
     if(window.ZapPlay)ZapPlay.showLounge({players,mySlot,roomCode:state.code||myCode,gameName:'Paint.io'});
     setScreen('waiting');
-    $('players').innerHTML=players.map(p=>`<span class="chip"><span class="color-box" style="background:${COLORS[p.slot]}"></span>${p.name}${p.slot===0?' 👑':''}</span>`).join('');
+    $('players').innerHTML=players.map(p=>`<span class="chip"><span class="color-box" style="background:${slotColor(p.slot)}"></span>${p.name}${p.slot===0?' 👑':''}</span>`).join('');
     $('start-btn').classList.toggle('hidden', !(mySlot===0 && players.length>=2));
     return;
   }
@@ -211,8 +358,8 @@ function render(){
       const cls=['row',!p.alive?'dead':''].join(' ');
       const pct = ((p.score / totalCells) * 100).toFixed(1);
       return `<div class="${cls}">
-        <div style="font-weight:700"><span class="color-box" style="background:${COLORS[p.slot]}"></span>${p.name}</div>
-        <div style="font-weight:800;color:${COLORS[p.slot]}">${pct}%</div>
+        <div style="font-weight:700"><span class="color-box" style="background:${slotColor(p.slot)}"></span>${p.name}</div>
+        <div style="font-weight:800;color:${slotColor(p.slot)}">${pct}%</div>
       </div>`;
     }).join('');
     drawArena();
@@ -232,8 +379,12 @@ function render(){
 }
 
 function getTerritoryBitmap(W,H,gridStr){
-  if(gridStr===lastGridStr && territoryBm && territoryBm.width===W) return territoryBm;
-  lastGridStr=gridStr||'';
+  const sk=skin();
+  const voidRgb=sk.voidRgb;
+  const pal=sk.colors.map(hexToRgb);
+  const gridKey=(gridStr||'')+':'+activeSkinId;
+  if(gridKey===lastGridStr && territoryBm && territoryBm.width===W) return territoryBm;
+  lastGridStr=gridKey;
   if(!territoryBm||territoryBm.width!==W||territoryBm.height!==H){
     territoryBm=document.createElement('canvas');
     territoryBm.width=W; territoryBm.height=H;
@@ -245,10 +396,10 @@ function getTerritoryBitmap(W,H,gridStr){
     const ch=gridStr[i];
     let r,g,b;
     if(ch==='.'||ch===undefined||ch===''){
-      r=VOID_RGB[0]; g=VOID_RGB[1]; b=VOID_RGB[2];
+      r=voidRgb[0]; g=voidRgb[1]; b=voidRgb[2];
     }else{
       const slot=parseInt(ch,10);
-      const rgb=PLAYER_RGB[slot]||VOID_RGB;
+      const rgb=pal[slot]||voidRgb;
       r=Math.min(255,rgb[0]+14); g=Math.min(255,rgb[1]+10); b=Math.min(255,rgb[2]+18);
     }
     d[pix]=r; d[pix+1]=g; d[pix+2]=b; d[pix+3]=255;
@@ -267,8 +418,71 @@ function roundRectPath(ctx,x,y,w,h,r){
   ctx.closePath();
 }
 
+function drawPlayerHead(ctx,p,cellSize,px,py,sk){
+  const col=slotColor(p.slot);
+  const rgb=hexToRgb(col);
+  const inset=cellSize*0.1;
+  const hw=cellSize-2*inset;
+  const rad=cellSize*0.28;
+  const cx=px+cellSize/2, cy=py+cellSize/2;
+  const g=ctx.createRadialGradient(px+cellSize*0.35,py+cellSize*0.32,cellSize*0.08,px+cellSize*0.5,py+cellSize*0.5,cellSize*0.55);
+  g.addColorStop(0,'#ffffff');
+  g.addColorStop(0.25,rgbStr(rgb[0],rgb[1],rgb[2],1));
+  g.addColorStop(1,rgbStr(Math.max(0,rgb[0]-40),Math.max(0,rgb[1]-35),Math.max(0,rgb[2]-30),1));
+  ctx.fillStyle=g;
+  ctx.strokeStyle='rgba(255,255,255,0.55)';
+  ctx.lineWidth=Math.max(1.1,cellSize*0.09);
+  const htype=sk.head||'round';
+  if(htype==='circle'){
+    ctx.beginPath();
+    ctx.arc(cx,cy,hw*0.44,0,Math.PI*2);
+    ctx.fill();
+    ctx.stroke();
+  }else if(htype==='diamond'){
+    ctx.save();
+    ctx.translate(cx,cy);
+    ctx.rotate(Math.PI/4);
+    ctx.scale(0.78,0.78);
+    ctx.beginPath();
+    roundRectPath(ctx,-hw/2,-hw/2,hw,hw,rad);
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+  }else{
+    ctx.beginPath();
+    roundRectPath(ctx,px+inset,py+inset,hw,hw,rad);
+    ctx.fill();
+    ctx.stroke();
+  }
+  if(p.slot===mySlot){
+    ctx.save();
+    ctx.strokeStyle='#fff';
+    ctx.lineWidth=Math.max(2,cellSize*0.12);
+    ctx.setLineDash([cellSize*0.22,cellSize*0.14]);
+    if(htype==='circle'){
+      ctx.beginPath();
+      ctx.arc(cx,cy,hw*0.52,0,Math.PI*2);
+      ctx.stroke();
+    }else if(htype==='diamond'){
+      ctx.translate(cx,cy);
+      ctx.rotate(Math.PI/4);
+      ctx.scale(0.78,0.78);
+      ctx.beginPath();
+      roundRectPath(ctx,-hw*0.65,-hw*0.65,hw*1.3,hw*1.3,rad+cellSize*0.12);
+      ctx.stroke();
+    }else{
+      ctx.beginPath();
+      roundRectPath(ctx,px-cellSize*0.08,py-cellSize*0.08,cellSize+cellSize*0.16,cellSize+cellSize*0.16,rad+cellSize*0.12);
+      ctx.stroke();
+    }
+    ctx.restore();
+    ctx.setLineDash([]);
+  }
+}
+
 function drawArena(){
   const cv=$('arena'),ctx=cv.getContext('2d'); if(!ctx||!state)return;
+  const sk=skin();
   const W=state.W,H=state.H;
   const display=arenaDisplayCss||Math.min(cv.getBoundingClientRect().width,520);
   const dpr=cv.width/display;
@@ -277,12 +491,8 @@ function drawArena(){
   ctx.setTransform(dpr,0,0,dpr,0,0);
   const cellSize=display/W;
 
-  const bg=ctx.createRadialGradient(display*0.35,display*0.22,0,display*0.52,display*0.55,display*0.9);
-  bg.addColorStop(0,'#2a2452');
-  bg.addColorStop(0.45,'#15122e');
-  bg.addColorStop(1,'#0a0818');
-  ctx.fillStyle=bg;
-  ctx.fillRect(0,0,display,display);
+  const slab=ensureStaticBackground(display,W,H,sk);
+  ctx.drawImage(slab,0,0,display,display);
 
   if(state.gridStr){
     const bm=getTerritoryBitmap(W,H,state.gridStr);
@@ -290,32 +500,16 @@ function drawArena(){
     ctx.drawImage(bm,0,0,W,H,0,0,display,display);
   }
 
-  ctx.strokeStyle='rgba(255,255,255,0.045)';
-  ctx.lineWidth=1;
-  for(let x=0;x<=W;x++){
-    ctx.beginPath();
-    ctx.moveTo(x*cellSize+0.5,0);
-    ctx.lineTo(x*cellSize+0.5,display);
-    ctx.stroke();
-  }
-  for(let y=0;y<=H;y++){
-    ctx.beginPath();
-    ctx.moveTo(0,y*cellSize+0.5);
-    ctx.lineTo(display,y*cellSize+0.5);
-    ctx.stroke();
-  }
-
-  ctx.strokeStyle='rgba(167,139,250,0.4)';
-  ctx.lineWidth=2.5;
-  ctx.strokeRect(1.5,1.5,display-3,display-3);
-
+  const glow=lowFx()?0:Math.min(15,cellSize*(sk.trailGlow!=null?sk.trailGlow:1));
   (state.players||[]).forEach(p=>{
     if(!p.alive)return;
     const tw=cellSize*0.62, pad=(cellSize-tw)/2;
     ctx.save();
-    ctx.shadowColor=COLORS[p.slot];
-    ctx.shadowBlur=Math.min(14,cellSize*1.1);
-    ctx.fillStyle=TRAIL_COLORS[p.slot];
+    if(glow>0.5){
+      ctx.shadowColor=slotColor(p.slot);
+      ctx.shadowBlur=glow;
+    }
+    ctx.fillStyle=trailRgba(slotColor(p.slot),0.74);
     (p.trail||[]).forEach(t=>{
       ctx.beginPath();
       roundRectPath(ctx,t.x*cellSize+pad,t.y*cellSize+pad,tw,tw,cellSize*0.18);
@@ -324,30 +518,7 @@ function drawArena(){
     ctx.restore();
 
     const px=p.x*cellSize, py=p.y*cellSize;
-    const inset=cellSize*0.1;
-    const hw=cellSize-2*inset, hh=hw, rad=cellSize*0.28;
-    const g=ctx.createRadialGradient(px+cellSize*0.35,py+cellSize*0.32,cellSize*0.08,px+cellSize*0.5,py+cellSize*0.5,cellSize*0.55);
-    const rgb=PLAYER_RGB[p.slot]||VOID_RGB;
-    g.addColorStop(0,'#ffffff');
-    g.addColorStop(0.25,rgbStr(rgb[0],rgb[1],rgb[2],1));
-    g.addColorStop(1,rgbStr(Math.max(0,rgb[0]-40),Math.max(0,rgb[1]-35),Math.max(0,rgb[2]-30),1));
-    ctx.fillStyle=g;
-    ctx.beginPath();
-    roundRectPath(ctx,px+inset,py+inset,hw,hh,rad);
-    ctx.fill();
-    ctx.strokeStyle='rgba(255,255,255,0.55)';
-    ctx.lineWidth=Math.max(1.2,cellSize*0.09);
-    ctx.stroke();
-
-    if(p.slot===mySlot){
-      ctx.strokeStyle='#fff';
-      ctx.lineWidth=Math.max(2,cellSize*0.12);
-      ctx.setLineDash([cellSize*0.22,cellSize*0.14]);
-      ctx.beginPath();
-      roundRectPath(ctx,px-cellSize*0.08,py-cellSize*0.08,cellSize+cellSize*0.16,cellSize+cellSize*0.16,rad+cellSize*0.12);
-      ctx.stroke();
-      ctx.setLineDash([]);
-    }
+    drawPlayerHead(ctx,p,cellSize,px,py,sk);
   });
 }
 
