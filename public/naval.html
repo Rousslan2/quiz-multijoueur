@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ZapPlay — Bataille navale</title>
+<style>
+:root{--primary:#38bdf8;--buzz:#f97316;--ok:#22c55e;--bad:#ef4444;--text:#f1f5f9;--muted:#94a3b8;--card:rgba(255,255,255,.07);--border:rgba(255,255,255,.13);--sea:#0c1929;--ship:#334155}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:linear-gradient(160deg,#0f172a,#1e3a5f 45%,#0f172a);color:var(--text);min-height:100dvh}
+#home{position:fixed;top:10px;left:10px;background:var(--card);border:1px solid var(--border);color:var(--text);padding:8px 12px;border-radius:8px;cursor:pointer;z-index:50}
+#dot{position:fixed;top:12px;right:12px;width:10px;height:10px;border-radius:50%;background:var(--bad);z-index:50}#dot.ok{background:var(--ok)}
+#app{max-width:920px;margin:0 auto;padding:52px 12px 20px}
+h1{text-align:center;font-size:1.5rem;font-weight:800;background:linear-gradient(90deg,var(--primary),#a5f3fc);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.sub{text-align:center;color:var(--muted);font-size:.85rem;margin-top:4px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px}
+.btn{border:none;border-radius:10px;padding:10px 14px;font-weight:700;cursor:pointer;font-size:.9rem}
+.btn-primary{background:var(--primary);color:#0f172a}.btn-buzz{background:var(--buzz);color:#fff}.btn-muted{background:rgba(255,255,255,.12);color:var(--text)}
+input{width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--border);background:rgba(255,255,255,.08);color:var(--text)}
+.hidden{display:none!important}
+#name-screen{max-width:400px;margin:16px auto;display:flex;flex-direction:column;gap:10px}
+#join-area{display:none;flex-direction:column;gap:8px}
+#err{color:#fecaca;font-size:.82rem;text-align:center;min-height:18px}
+#game-screen{display:none;flex-direction:column;gap:12px}
+#game-screen.on{display:flex}
+.board-wrap{display:flex;flex-wrap:wrap;gap:14px;justify-content:center;align-items:flex-start}
+.board-title{font-size:.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;text-align:center}
+.grid{display:grid;grid-template-columns:repeat(10,1fr);gap:2px;width:min(42vw,200px);aspect-ratio:1;background:#020617;padding:4px;border-radius:10px;border:1px solid var(--border)}
+.grid.placing{width:min(88vw,340px)}
+.cell{aspect-ratio:1;border-radius:3px;background:var(--sea);cursor:pointer;transition:background .12s,transform .1s;font-size:0}
+.cell:hover{background:#164e63}
+.cell.ship{background:linear-gradient(145deg,#475569,#1e293b)}
+.cell.miss{background:#1e293b}
+.cell.hit{background:linear-gradient(145deg,#dc2626,#991b1b)}
+.cell.unknown{background:#0f172a}
+.cell.shootable{outline:2px solid var(--primary);outline-offset:-1px}
+.cell.disabled{cursor:default;opacity:.85}
+#place-tools{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:center;margin-top:10px}
+#status{text-align:center;font-weight:600;color:#a5f3fc;min-height:22px;font-size:.9rem}
+#score-row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+.pill{padding:6px 12px;border-radius:999px;background:rgba(255,255,255,.08);border:1px solid var(--border);font-size:.78rem}
+.pill.turn{border-color:var(--primary);box-shadow:0 0 12px rgba(56,189,248,.25)}
+#gcount{position:fixed;inset:0;background:rgba(15,23,42,.88);display:none;align-items:center;justify-content:center;z-index:400}
+#gcount span{font-size:5rem;font-weight:900;color:var(--buzz)}
+@media(max-width:640px){
+  .grid{width:min(44vw,180px)}
+  .grid.placing{width:min(92vw,360px)}
+}
+</style>
+</head>
+<body>
+<button id="home" onclick="location.href='index.html'">← Accueil</button>
+<div id="dot"></div>
+<div id="gcount"><span id="gnum">3</span></div>
+
+<div id="app">
+  <h1>⚓ Bataille navale</h1>
+  <p class="sub">2 joueurs · grille 10×10 · flotte 5-4-3-3-2</p>
+
+  <div id="name-screen" class="card">
+    <input id="name" maxlength="20" placeholder="Ton pseudo">
+    <button class="btn btn-primary" onclick="createGame()">Créer une salle</button>
+    <button class="btn btn-buzz" onclick="toggleJoin()">Rejoindre (code)</button>
+    <div id="join-area">
+      <input id="code" maxlength="4" placeholder="Code" style="text-transform:uppercase;text-align:center;letter-spacing:.15em">
+      <button class="btn btn-buzz" onclick="joinGame()">Rejoindre</button>
+    </div>
+    <div id="err"></div>
+  </div>
+
+  <div id="game-screen">
+    <div id="wait" class="card hidden">
+      <p style="text-align:center">Code : <strong id="room-code" style="font-family:monospace;letter-spacing:.2em;color:var(--primary)">----</strong></p>
+      <div id="plist" style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin:10px 0"></div>
+      <button id="btn-start" class="btn btn-primary hidden" onclick="send({type:'start_naval'})">Placer les navires</button>
+    </div>
+
+    <div id="place" class="card hidden">
+      <p style="text-align:center;font-size:.88rem;margin-bottom:8px">Place toute ta flotte sur la grille.</p>
+      <div class="board-wrap" style="justify-content:center">
+        <div>
+          <div class="board-title">Ma flotte</div>
+          <div id="grid-place" class="grid placing"></div>
+        </div>
+      </div>
+      <div id="place-tools">
+        <span class="pill" id="place-hint">Bateaux : 5 · 4 · 3 · 3 · 2</span>
+        <button type="button" class="btn btn-muted" id="btn-orient">Orientation : →</button>
+        <button type="button" class="btn btn-buzz" onclick="randomFleet()">Aléatoire</button>
+        <button type="button" class="btn btn-muted" onclick="resetFleet()">Réinitialiser</button>
+        <button type="button" class="btn btn-primary" id="btn-send-place" disabled onclick="sendPlacement()">Valider la flotte</button>
+      </div>
+    </div>
+
+    <div id="play" class="card hidden">
+      <div id="score-row"></div>
+      <p id="status"></p>
+      <div class="board-wrap">
+        <div>
+          <div class="board-title">Ma flotte</div>
+          <div id="grid-my" class="grid"></div>
+        </div>
+        <div>
+          <div class="board-title">Tirs (adversaire)</div>
+          <div id="grid-opp" class="grid"></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="over" class="card hidden" style="text-align:center">
+      <div id="over-msg" style="font-size:1.2rem;font-weight:800;margin-bottom:10px"></div>
+      <button class="btn btn-primary" onclick="send({type:'restart_naval'})">Rejouer</button>
+      <button class="btn btn-muted" style="margin-top:8px" onclick="location.href='index.html'">Accueil</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const WS_URL = `${location.protocol==='https:'?'wss':'ws'}://${location.host}/ws/naval`;
+const SHIP_QUEUE = [5,4,3,3,2];
+const $ = id => document.getElementById(id);
+let ws=null,mySlot=-1,myCode='',myName='',state=null,pending=null,lastPhase='';
+let orientH = true;
+let remaining = [];
+let previewShips = [];
+
+function send(o){ if(ws&&ws.readyState===1) ws.send(JSON.stringify(o)); }
+function bindLounge(){ if(window.ZapPlay)ZapPlay.setLoungeSender(t=>send({type:'lounge_chat',text:t})); else setTimeout(bindLounge,120); }
+bindLounge();
+
+function connect(){
+  ws=new WebSocket(WS_URL);
+  ws.onopen=()=>{ $('dot').classList.add('ok'); if(window.ZapPlay)ZapPlay.hideLoader(); if(pending){pending();pending=null;} };
+  ws.onclose=()=>{ $('dot').classList.remove('ok'); setTimeout(connect,2000); };
+  ws.onmessage=e=>{ let m; try{m=JSON.parse(e.data);}catch{return;} onMsg(m); };
+}
+connect();
+
+function toggleJoin(){ $('join-area').style.display=$('join-area').style.display==='flex'?'none':'flex'; }
+function createGame(){
+  const n=$('name').value.trim(); if(!n){$('err').textContent='Pseudo requis';return;}
+  myName=n; if(window.ZapPlay)ZapPlay.savePseudo(n);
+  const go=()=>send({type:'create_naval',name:n});
+  if(ws&&ws.readyState===1)go(); else{pending=go; if(!ws||ws.readyState===3)connect();}
+}
+function joinGame(){
+  const n=$('name').value.trim(), c=$('code').value.trim().toUpperCase();
+  if(!n||!c){$('err').textContent='Pseudo + code';return;}
+  myName=n; if(window.ZapPlay)ZapPlay.savePseudo(n);
+  const go=()=>send({type:'join_naval',name:n,code:c});
+  if(ws&&ws.readyState===1)go(); else{pending=go; if(!ws||ws.readyState===3)connect();}
+}
+
+function showGame(){ $('name-screen').classList.add('hidden'); $('game-screen').classList.add('on'); }
+function hideAllPanels(){['wait','place','play','over'].forEach(id=>$(id).classList.add('hidden'));}
+
+function onMsg(m){
+  if(m.type==='created_naval'){mySlot=m.slot;myCode=m.code;showGame();}
+  if(m.type==='welcome_naval'){mySlot=m.slot;myCode=m.code;showGame();}
+  if(m.type==='error'){ $('err').textContent=m.msg; }
+  if(m.type==='countdown') showCd(m.seconds||3);
+  if(m.type==='player_left') $('status').textContent=(m.name||'Joueur')+' a quitté.';
+  if(m.type==='game_abandoned'){ hideAllPanels(); $('wait').classList.remove('hidden'); $('status').textContent='Partie annulée.'; }
+  if(m.type==='lounge_chat' && window.ZapPlay) ZapPlay.addLoungeMessage(m);
+  if(m.type==='naval_state'){
+    state=m;
+    $('err').textContent='';
+    render();
+  }
+}
+
+function showCd(n){
+  const g=$('gcount'), s=$('gnum');
+  g.style.display='flex'; s.textContent=n;
+  let c=n; const t=setInterval(()=>{ c--; if(c<=0){clearInterval(t); g.style.display='none';} else s.textContent=c; },1000);
+}
+
+function resetFleet(){
+  remaining=[...SHIP_QUEUE];
+  previewShips=[];
+  $('btn-send-place').disabled=true;
+  renderPlaceGrid();
+}
+function randomFleet(){
+  for(let attempt=0; attempt<400; attempt++){
+    const taken=new Set();
+    const ships=[];
+    let ok=true;
+    for(let si=0; si<5; si++){
+      const len=SHIP_QUEUE[si];
+      let placed=false;
+      for(let t=0; t<500; t++){
+        const horiz=Math.random()<0.5;
+        const x=horiz?Math.floor(Math.random()*(10-len)):Math.floor(Math.random()*10);
+        const y=horiz?Math.floor(Math.random()*10):Math.floor(Math.random()*(10-len));
+        const cells=[];
+        for(let i=0;i<len;i++) cells.push(horiz?{x:x+i,y}:{x,y:y+i});
+        if(cells.some(c=>taken.has(c.y*10+c.x))) continue;
+        cells.forEach(c=>taken.add(c.y*10+c.x));
+        ships.push(cells);
+        placed=true;
+        break;
+      }
+      if(!placed){ ok=false; break; }
+    }
+    if(ok){ previewShips=ships; remaining=[]; $('btn-send-place').disabled=false; renderPlaceGrid(); return; }
+  }
+  $('err').textContent='Impossible de placer au hasard, réessaie.';
+}
+function canPut(cells){
+  for(const {x,y} of cells){
+    if(x<0||x>9||y<0||y>9) return false;
+    const k=y*10+x;
+    if(previewShips.some(arr=>arr.some(c=>c.x===x&&c.y===y))) return false;
+  }
+  return true;
+}
+function renderPlaceGrid(){
+  const g=$('grid-place');
+  g.innerHTML='';
+  const mark=new Set();
+  previewShips.forEach(arr=>arr.forEach(c=>mark.add(c.y*10+c.x)));
+  for(let y=0;y<10;y++)for(let x=0;x<10;x++){
+    const d=document.createElement('button');
+    d.type='button';
+    d.className='cell'+(mark.has(y*10+x)?' ship':'');
+    d.dataset.x=x; d.dataset.y=y;
+    d.addEventListener('click',()=>onPlaceClick(x,y));
+    g.appendChild(d);
+  }
+  const next=remaining[0];
+  $('place-hint').textContent=next?`Prochain : ${next} cases (${orientH?'→':'↓'})`:'Flotte complète — valide !';
+}
+function onPlaceClick(x,y){
+  const len=remaining[0];
+  if(!len) return;
+  const cells=[];
+  for(let i=0;i<len;i++) cells.push(orientH?{x:x+i,y}:{x,y:y+i});
+  if(!canPut(cells)) return;
+  previewShips.push(cells);
+  remaining.shift();
+  if(!remaining.length) $('btn-send-place').disabled=false;
+  renderPlaceGrid();
+}
+function sendPlacement(){
+  if(previewShips.length!==5) return;
+  send({type:'naval_place', ships:previewShips});
+}
+
+$('btn-orient').addEventListener('click',()=>{
+  orientH=!orientH;
+  $('btn-orient').textContent=orientH?'Orientation : →':'Orientation : ↓';
+  renderPlaceGrid();
+});
+
+function render(){
+  if(!state)return;
+  $('room-code').textContent=state.code||myCode||'----';
+  const pl=state.players||[];
+  const phase=state.phase;
+
+  if(phase==='WAITING'){
+    if(window.ZapPlay) ZapPlay.showLounge({players:pl,mySlot,roomCode:state.code||myCode,gameName:'Bataille navale'});
+    hideAllPanels(); $('wait').classList.remove('hidden');
+    $('plist').innerHTML=pl.map(p=>`<span class="pill">${p.name}${p.slot===0?' 👑':''}</span>`).join('');
+    $('btn-start').classList.toggle('hidden',!(mySlot===0&&pl.length>=2));
+    lastPhase=phase;
+    return;
+  }
+  if(window.ZapPlay) ZapPlay.hideLounge();
+
+  if(phase==='PLACING'){
+    if(lastPhase!=='PLACING') resetFleet();
+    else renderPlaceGrid();
+    hideAllPanels(); $('place').classList.remove('hidden');
+    lastPhase=phase;
+    return;
+  }
+
+  if(phase==='COUNTDOWN'){
+    hideAllPanels(); $('place').classList.remove('hidden');
+    $('status').textContent='Début de la partie…';
+    lastPhase=phase;
+    return;
+  }
+
+  if(phase==='PLAYING'||phase==='GAME_OVER'){
+    hideAllPanels();
+    if(phase==='PLAYING') $('play').classList.remove('hidden');
+    else $('over').classList.remove('hidden');
+
+    const names=pl.map(p=>p.name);
+    $('score-row').innerHTML=pl.map((p,i)=>{
+      const on=state.turn===i&&phase==='PLAYING';
+      return `<span class="pill ${on?'turn':''}">${p.name}${on?' · à toi':''}</span>`;
+    }).join('');
+
+    if(phase==='PLAYING'){
+      if(state.turn===mySlot) $('status').textContent='À toi — clique sur la grille adverse pour tirer.';
+      else $('status').textContent=`Tour de ${names[state.turn]}.`;
+    }
+
+    paintGrid($('grid-my'), state.myBoard, state.incoming, true);
+    paintGrid($('grid-opp'), null, null, false, state.oppView, phase==='PLAYING'&&state.turn===mySlot);
+
+    if(phase==='GAME_OVER'){
+      const w=state.winnerSlot;
+      const winName=w>=0?names[w]:'';
+      $('over-msg').textContent=w===mySlot?'Victoire !':`Victoire de ${winName} !`;
+      if(lastPhase!=='GAME_OVER' && window.ZapPlay){
+        ZapPlay.saveGameResult({game:'naval',gameName:'Bataille navale',players:names,winner:winName||'?',myName,isWinner:w===mySlot,myScore:0});
+      }
+    }
+    lastPhase=phase;
+    return;
+  }
+  lastPhase=phase;
+}
+
+function paintGrid(el, myBoard, incoming, isMine, oppView, canShoot){
+  el.innerHTML='';
+  const incMap=new Map();
+  (incoming||[]).forEach(s=>{ incMap.set(s.y*10+s.x,s.hit); });
+  for(let y=0;y<10;y++)for(let x=0;x<10;x++){
+    const d=document.createElement('button');
+    d.type='button';
+    d.className='cell';
+    const i=y*10+x;
+    if(isMine){
+      const ship=myBoard&&myBoard[i]>=0;
+      const hit=incMap.has(i);
+      const wasHit=hit&&incMap.get(i);
+      if(ship) d.classList.add('ship');
+      if(hit) d.classList.add(wasHit?'hit':'miss');
+      d.classList.add('disabled');
+    }else{
+      const v=oppView?oppView[i]:-2;
+      if(v===-2) d.classList.add('unknown');
+      else if(v===-1) d.classList.add('miss');
+      else if(v===2) d.classList.add('hit');
+      if(canShoot && v===-2){
+        d.classList.add('shootable');
+        d.addEventListener('click',()=>send({type:'naval_shot',x,y}));
+      }else d.classList.add('disabled');
+    }
+    el.appendChild(d);
+  }
+}
+
+const q=new URLSearchParams(location.search);
+if(q.get('name')) $('name').value=q.get('name');
+if(window.ZapPlay && !$('name').value){
+  const s=ZapPlay.getSavedPseudo&&ZapPlay.getSavedPseudo();
+  if(s) $('name').value=s;
+}
+if(q.get('code')){ $('code').value=q.get('code').toUpperCase(); $('join-area').style.display='flex'; }
+if(q.get('create')==='1'&&q.get('name')){
+  const n=q.get('name'); $('name').value=n; myName=n;
+  const go=()=>send({type:'create_naval',name:n});
+  if(ws&&ws.readyState===1)go(); else{pending=go; if(!ws||ws.readyState===3)connect();}
+}
+$('name').addEventListener('keydown',e=>{if(e.key==='Enter')createGame();});
+$('code').addEventListener('input',e=>{e.target.value=e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,'');});
+</script>
+<script src="shared.js"></script>
+<script src="chat.js"></script>
+</body>
+</html>

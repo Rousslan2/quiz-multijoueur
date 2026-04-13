@@ -11,7 +11,7 @@ const app    = express();
 const server = http.createServer(app);
 const PORT   = process.env.PORT || 3001;
 
-// ── 13 WebSocket servers ──────────────────────────────────────────────────────
+// ── WebSocket servers (jeux + chat + lobby) ─────────────────────────────────
 const wssQuiz    = new WebSocket.Server({ noServer: true });
 const wssDraw    = new WebSocket.Server({ noServer: true });
 const wssP4      = new WebSocket.Server({ noServer: true });
@@ -25,13 +25,14 @@ const wssChat    = new WebSocket.Server({ noServer: true });
 const wssLobby   = new WebSocket.Server({ noServer: true });
 const wssLoup    = new WebSocket.Server({ noServer: true });
 const wssUno     = new WebSocket.Server({ noServer: true });
+const wssNaval   = new WebSocket.Server({ noServer: true });
 
 server.on('upgrade', (req, socket, head) => {
   const routes = {
     '/ws/quiz':wssQuiz,'/ws/draw':wssDraw,'/ws/p4':wssP4,
     '/ws/morpion':wssMorpion,'/ws/taboo':wssTaboo,'/ws/emoji':wssEmoji,
     '/ws/bomb':wssBomb,'/ws/sumo':wssSumo,'/ws/chat':wssChat,'/ws/lobby':wssLobby,
-    '/ws/loup':wssLoup,'/ws/uno':wssUno,'/ws/paint':wssPaint
+    '/ws/loup':wssLoup,'/ws/uno':wssUno,'/ws/paint':wssPaint,'/ws/naval':wssNaval
   };
   const h = routes[req.url];
   if (h) h.handleUpgrade(req, socket, head, ws => h.emit('connection', ws));
@@ -59,12 +60,13 @@ app.get('/api/ip', (_, res) => res.json({ ip: getLocalIP(), port: PORT }));
 const GAME_NAMES = {
   quiz:'Quiz Éclair', draw:'Dessin & Devine', p4:'Puissance 4',
   morpion:'Morpion', taboo:'Mots Interdits', emoji:'Devinette Emoji',
-  loup:'Loup-Garou', uno:'Uno', bomb:'Word Bomb', sumo:'Sumo Arena', paint:'Paint.io'
+  loup:'Loup-Garou', uno:'Uno', bomb:'Word Bomb', sumo:'Sumo Arena', paint:'Paint.io',
+  naval:'Bataille navale'
 };
 
 function getRoomsSnapshot() {
   const all = [];
-  const maps = { quiz:quizRooms, draw:drawRooms, p4:p4Rooms, morpion:morpionRooms, taboo:tabooRooms, emoji:emojiRooms, loup:loupRooms, uno:unoRooms, bomb:bombRooms, sumo:sumoRooms, paint:paintRooms };
+  const maps = { quiz:quizRooms, draw:drawRooms, p4:p4Rooms, morpion:morpionRooms, taboo:tabooRooms, emoji:emojiRooms, loup:loupRooms, uno:unoRooms, bomb:bombRooms, sumo:sumoRooms, paint:paintRooms, naval:navalRooms };
   for (const [game, map] of Object.entries(maps)) {
     for (const [code, room] of map) {
       all.push({
@@ -73,8 +75,8 @@ function getRoomsSnapshot() {
         gameName: GAME_NAMES[game],
         host: room.host,
         players: room.players.map(p => p.name),
-        maxPlayers: game==='loup'?10:game==='bomb'?6:game==='sumo'?4:game==='uno'?4:game==='paint'?4:4,
-        status: ['WAITING','SETUP'].includes(room.phase) ? 'waiting' : 'playing'
+        maxPlayers: game==='loup'?10:game==='bomb'?6:game==='sumo'?4:game==='uno'?4:game==='paint'?4:game==='naval'?2:4,
+        status: ['WAITING','SETUP','PLACING','COUNTDOWN'].includes(room.phase) ? 'waiting' : 'playing'
       });
     }
   }
@@ -2762,6 +2764,260 @@ wssPaint.on('connection', ws => {
         paintStop(myRoom);
         myRoom.players.forEach(p => { p.alive=true; p.trail=[]; p.outside=false; p.score=0; });
         paintBcast(myRoom);
+        broadcastLobby();
+        break;
+      }
+    }
+  });
+});
+
+// ════════════════════════════════════════════════════════
+//  BATAILLE NAVALE (2 joueurs)
+// ════════════════════════════════════════════════════════
+const navalRooms = new Map();
+const NAVAL_W = 10;
+const NAVAL_SHIPS = [5, 4, 3, 3, 2];
+
+function makeNavalRoom(code, host){
+  return {
+    code, host, phase:'WAITING', players:[],
+    boards:[null, null],
+    placementReady:[false, false],
+    volleys:[[], []],
+    turn:0,
+    winnerSlot:-1,
+    timer:null,
+  };
+}
+
+function navalExpectedLensSorted(){
+  return [...NAVAL_SHIPS].sort((a, b) => a - b);
+}
+
+function navalValidateShipCells(cells){
+  if(!cells || !cells.length) return false;
+  const n = cells.length;
+  for(const c of cells){
+    if(typeof c.x !== 'number' || typeof c.y !== 'number') return false;
+    if(c.x !== (c.x | 0) || c.y !== (c.y | 0)) return false;
+    if(c.x < 0 || c.x >= NAVAL_W || c.y < 0 || c.y >= NAVAL_W) return false;
+  }
+  const xs = cells.map(c => c.x);
+  const ys = cells.map(c => c.y);
+  const uniqX = new Set(xs);
+  const uniqY = new Set(ys);
+  if(uniqX.size > 1 && uniqY.size > 1) return false;
+  if(uniqX.size === 1){
+    const arr = [...new Set(ys)].sort((a, b) => a - b);
+    return arr.length === n && arr[n - 1] - arr[0] === n - 1;
+  }
+  const arr = [...new Set(xs)].sort((a, b) => a - b);
+  return arr.length === n && arr[n - 1] - arr[0] === n - 1;
+}
+
+function navalValidateAndBuild(ships){
+  if(!Array.isArray(ships) || ships.length !== 5) return null;
+  const lens = ships.map(s => (Array.isArray(s) ? s.length : 0)).slice().sort((a, b) => a - b);
+  const exp = navalExpectedLensSorted();
+  if(lens.some((l, i) => l !== exp[i])) return null;
+  const used = new Set();
+  const b = new Int8Array(NAVAL_W * NAVAL_W);
+  b.fill(-1);
+  for(let sIdx = 0; sIdx < 5; sIdx++){
+    const cells = ships[sIdx];
+    if(!navalValidateShipCells(cells)) return null;
+    for(const c of cells){
+      const k = c.y * NAVAL_W + c.x;
+      if(used.has(k)) return null;
+      used.add(k);
+      b[k] = sIdx;
+    }
+  }
+  return used.size === 17 ? b : null;
+}
+
+function navalSnapFor(room, slot, extra = {}){
+  const enemy = 1 - slot;
+  const myB = room.boards[slot];
+  const myBoard = myB ? Array.from(myB) : Array(NAVAL_W * NAVAL_W).fill(-1);
+  const oppView = Array(NAVAL_W * NAVAL_W).fill(-2);
+  for(const v of room.volleys[slot]){
+    const i = v.y * NAVAL_W + v.x;
+    oppView[i] = v.hit ? 2 : -1;
+  }
+  const incoming = (room.volleys[enemy] || []).map(v => ({ x:v.x, y:v.y, hit:!!v.hit }));
+  return {
+    type:'naval_state',
+    phase:room.phase,
+    code:room.code,
+    players:room.players.map(p => ({ name:p.name, slot:p.slot })),
+    turn:room.turn,
+    winnerSlot:room.winnerSlot,
+    shipLengths:[...NAVAL_SHIPS],
+    placementReady:[...room.placementReady],
+    myBoard,
+    oppView,
+    incoming,
+    ...extra,
+  };
+}
+
+function navalBcast(room, extra = {}){
+  room.players.forEach(p => { wsend(p.ws, navalSnapFor(room, p.slot, extra)); });
+}
+
+function navalAllShipsSunk(room, defender){
+  const b = room.boards[defender];
+  if(!b) return false;
+  const atk = 1 - defender;
+  for(let i = 0; i < b.length; i++){
+    if(b[i] < 0) continue;
+    const x = i % NAVAL_W;
+    const y = (i / NAVAL_W) | 0;
+    const hit = room.volleys[atk].some(v => v.x === x && v.y === y);
+    if(!hit) return false;
+  }
+  return true;
+}
+
+wssNaval.on('connection', ws => {
+  makeWS(wssNaval).alive(ws);
+  let myRoom = null;
+  ws.on('close', () => {
+    makeWS(wssNaval).clear(ws);
+    if(!myRoom) return;
+    const idx = myRoom.players.findIndex(p => p.ws === ws);
+    if(idx < 0) return;
+    const name = myRoom.players[idx].name;
+    myRoom.players.splice(idx, 1);
+    myRoom.players.forEach((p, i) => { p.slot = i; });
+    clearTimeout(myRoom.timer);
+    if(myRoom.players.length === 0){
+      navalRooms.delete(myRoom.code);
+      broadcastLobby();
+      return;
+    }
+    const wasGame = ['PLACING', 'COUNTDOWN', 'PLAYING', 'GAME_OVER'].includes(myRoom.phase);
+    bcast(myRoom.players, { type:'player_left', name });
+    if(wasGame) bcast(myRoom.players, { type:'game_abandoned' });
+    myRoom.phase = 'WAITING';
+    myRoom.boards = [null, null];
+    myRoom.placementReady = [false, false];
+    myRoom.volleys = [[], []];
+    myRoom.winnerSlot = -1;
+    navalBcast(myRoom);
+    broadcastLobby();
+  });
+  ws.on('message', raw => {
+    let d; try{ d = JSON.parse(raw); }catch{ return; }
+    const player = myRoom ? myRoom.players.find(p => p.ws === ws) : null;
+    switch(d.type){
+      case 'lounge_chat':{
+        handleLoungeChat(myRoom, ws, d);
+        break;
+      }
+      case 'create_naval':{
+        const name = String(d.name || '').trim().slice(0, 20) || 'Joueur';
+        const code = genCode(navalRooms);
+        const room = makeNavalRoom(code, name);
+        navalRooms.set(code, room);
+        myRoom = room;
+        room.players.push({ ws, name, slot:0 });
+        wsend(ws, { type:'created_naval', code, slot:0, name });
+        navalBcast(room);
+        broadcastLobby();
+        break;
+      }
+      case 'join_naval':{
+        const code = String(d.code || '').trim().toUpperCase();
+        const room = navalRooms.get(code);
+        if(!room){ wsend(ws, { type:'error', msg:'Salle introuvable.' }); return; }
+        if(room.players.length >= 2){ wsend(ws, { type:'error', msg:'Partie pleine (2 joueurs max).' }); return; }
+        if(room.phase !== 'WAITING'){ wsend(ws, { type:'error', msg:'La partie a déjà commencé.' }); return; }
+        const name = String(d.name || '').trim().slice(0, 20) || 'Joueur';
+        const slot = room.players.length;
+        room.players.push({ ws, name, slot });
+        myRoom = room;
+        wsend(ws, { type:'welcome_naval', code, slot, name });
+        navalBcast(room);
+        broadcastLobby();
+        break;
+      }
+      case 'start_naval':{
+        if(!player || !myRoom || player.slot !== 0 || myRoom.phase !== 'WAITING') return;
+        if(myRoom.players.length < 2){ wsend(ws, { type:'error', msg:'Il faut 2 joueurs.' }); return; }
+        myRoom.phase = 'PLACING';
+        myRoom.boards = [null, null];
+        myRoom.placementReady = [false, false];
+        myRoom.volleys = [[], []];
+        myRoom.winnerSlot = -1;
+        navalBcast(myRoom);
+        broadcastLobby();
+        break;
+      }
+      case 'naval_place':{
+        if(!player || !myRoom || myRoom.phase !== 'PLACING') return;
+        const slot = player.slot;
+        if(myRoom.placementReady[slot]) return;
+        const built = navalValidateAndBuild(d.ships);
+        if(!built){
+          wsend(ws, { type:'error', msg:'Placement invalide (bateaux 5-4-3-3-2, lignes droites, sans chevauchement).' });
+          return;
+        }
+        myRoom.boards[slot] = built;
+        myRoom.placementReady[slot] = true;
+        if(myRoom.placementReady[0] && myRoom.placementReady[1]){
+          bcast(myRoom.players, { type:'countdown', seconds:3 });
+          myRoom.phase = 'COUNTDOWN';
+          clearTimeout(myRoom.timer);
+          myRoom.timer = setTimeout(() => {
+            if(!myRoom || myRoom.phase !== 'COUNTDOWN') return;
+            myRoom.phase = 'PLAYING';
+            myRoom.turn = Math.random() < 0.5 ? 0 : 1;
+            navalBcast(myRoom);
+            broadcastLobby();
+          }, 3000);
+        }
+        navalBcast(myRoom);
+        broadcastLobby();
+        break;
+      }
+      case 'naval_shot':{
+        if(!player || !myRoom || myRoom.phase !== 'PLAYING') return;
+        if(player.slot !== myRoom.turn){
+          wsend(ws, { type:'error', msg:"Ce n'est pas ton tour." });
+          return;
+        }
+        const x = Number(d.x);
+        const y = Number(d.y);
+        if(x !== (x | 0) || y !== (y | 0) || x < 0 || x >= NAVAL_W || y < 0 || y >= NAVAL_W) return;
+        const atk = player.slot;
+        const def = 1 - atk;
+        const dup = myRoom.volleys[atk].some(v => v.x === x && v.y === y);
+        if(dup) return;
+        const b = myRoom.boards[def];
+        const idx = y * NAVAL_W + x;
+        const hit = b && b[idx] >= 0;
+        myRoom.volleys[atk].push({ x, y, hit:!!hit });
+        if(navalAllShipsSunk(room, def)){
+          myRoom.phase = 'GAME_OVER';
+          myRoom.winnerSlot = atk;
+          navalBcast(myRoom, { lastShot:{ x, y, hit:!!hit } });
+          broadcastLobby();
+          return;
+        }
+        myRoom.turn = def;
+        navalBcast(myRoom, { lastShot:{ x, y, hit:!!hit } });
+        break;
+      }
+      case 'restart_naval':{
+        if(!player || !myRoom || myRoom.phase !== 'GAME_OVER') return;
+        myRoom.phase = 'PLACING';
+        myRoom.boards = [null, null];
+        myRoom.placementReady = [false, false];
+        myRoom.volleys = [[], []];
+        myRoom.winnerSlot = -1;
+        navalBcast(myRoom);
         broadcastLobby();
         break;
       }

@@ -207,6 +207,7 @@ select option{background:#1e1b4b;color:var(--text)}
         <option value="bomb">💣 Word Bomb</option>
         <option value="sumo">🥋 Sumo Arena</option>
         <option value="paint">🎨 Paint.io</option>
+        <option value="naval">⚓ Bataille navale</option>
       </select>
       <input type="text" id="inp-create-name" placeholder="Votre prénom" maxlength="20" autocomplete="off">
       <button class="btn btn-primary" onclick="doCreate()">Créer la salle</button>
@@ -248,11 +249,12 @@ select option{background:#1e1b4b;color:var(--text)}
 const GAME_URLS = {
   quiz:'quiz.html', draw:'draw.html', p4:'p4.html',
   morpion:'morpion.html', taboo:'taboo.html', emoji:'emoji.html',
-  loup:'loup.html', uno:'uno.html', bomb:'wordbomb.html', sumo:'sumo.html', paint:'paint.html'
+  loup:'loup.html', uno:'uno.html', bomb:'wordbomb.html', sumo:'sumo.html', paint:'paint.html',
+  naval:'naval.html'
 };
 const GAME_ICONS = {
   quiz:'⚡', draw:'✏️', p4:'🟠', morpion:'✖️', taboo:'🚫', emoji:'🌟',
-  loup:'🐺', uno:'🃏', bomb:'💣', sumo:'🥋', paint:'🎨'
+  loup:'🐺', uno:'🃏', bomb:'💣', sumo:'🥋', paint:'🎨', naval:'⚓'
 };
 
 let createdCode = null;
