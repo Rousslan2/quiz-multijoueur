@@ -563,7 +563,7 @@ function render(st){
       st.joker50.hide.forEach(idx=>{btns[idx].classList.add('hidden-joker');});
     }
 
-    if(st.phase==='QUESTION'){stopTimer();startTimer(st.timerSeconds||15);setBuzz(true);setStatus('');}
+    if(st.phase==='QUESTION'){stopTimer();startTimer(st.timerSeconds||15);setBuzz(false);setStatus('⏳ Lis la question...');clearTimeout(window._buzzDelay);window._buzzDelay=setTimeout(()=>{if(document.getElementById('buzz-btn').getAttribute('data-phase')==='QUESTION')setBuzz(true);},2500);document.getElementById('buzz-btn').setAttribute('data-phase','QUESTION');}
     if(st.phase==='BUZZED'){
       navigator.vibrate&&navigator.vibrate(200);
       const isBuzzer=st.buzzedSlot===mySlot;
@@ -598,7 +598,7 @@ function render(st){
     }
   }
 }
-function setBuzz(on){const b=document.getElementById('buzz-btn');b.disabled=!on;b.classList.toggle('pulse',on);}
+function setBuzz(on){const b=document.getElementById('buzz-btn');b.disabled=!on;b.classList.toggle('pulse',on);if(!on){clearTimeout(window._buzzDelay);b.setAttribute('data-phase','');}}
 function setStatus(text,cls='',sub=''){
   const el=document.getElementById('status');
   el.style.cssText='';
