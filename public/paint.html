@@ -6,13 +6,13 @@
 <title>ZapPlay — Paint.io</title>
 <style>
 :root{
-  --primary:#a78bfa;--buzz:#f97316;--ok:#22c55e;--bad:#ef4444;
-  --text:#f1f5f9;--muted:#94a3b8;--card:rgba(255,255,255,.07);--border:rgba(255,255,255,.13)
+  --primary:#00F5D4;--buzz:#FF6B35;--ok:#22c55e;--bad:#ef4444;
+  --text:#E8E8F0;--muted:#5A5A78;--card:#0E0E22;--border:rgba(0,245,212,.10)
 }
 *{box-sizing:border-box;margin:0;padding:0;touch-action:none}
 body{
-  font-family:'Segoe UI',system-ui,sans-serif;
-  background:linear-gradient(135deg,#0f0c29,#302b63,#24243e);
+  font-family:'Exo 2',sans-serif;
+  background-color:#06060F;background-image:linear-gradient(rgba(0,245,212,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(0,245,212,.03) 1px,transparent 1px);background-size:40px 40px;
   color:var(--text);height:100dvh;overflow:hidden
 }
 #app{max-width:900px;margin:0 auto;height:100dvh;padding:56px 12px 14px;display:flex;flex-direction:column;gap:10px}
@@ -57,6 +57,9 @@ input{width:100%;background:rgba(255,255,255,.08);border:1px solid var(--border)
   #arena{max-height:min(58dvh,760px)}
 }
 </style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Exo+2:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
 <div id="gcount"><span id="gnum">3</span></div>

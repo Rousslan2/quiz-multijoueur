@@ -6,21 +6,21 @@
 <title>ZapPlay — Morpion</title>
 <style>
   :root {
-    --primary: #a78bfa;
-    --buzz: #f97316;
+    --primary:#00F5D4;
+    --buzz:#FF6B35;
     --correct: #22c55e;
     --wrong: #ef4444;
     --gold: #fbbf24;
-    --text: #f1f5f9;
-    --muted: #94a3b8;
-    --card: rgba(255,255,255,.07);
-    --border: rgba(255,255,255,.13);
+    --text:#E8E8F0;
+    --muted:#5A5A78;
+    --card:#0E0E22;
+    --border:rgba(0,245,212,.10);
   }
 
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
   body {
-    font-family: 'Segoe UI', system-ui, sans-serif;
+    font-family:'Exo 2',sans-serif;
     background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
     color: var(--text);
     height: 100dvh;
@@ -358,6 +358,9 @@
   #gcount-label{color:var(--muted);font-size:1rem;letter-spacing:.05em;}
   @keyframes cdpulse{0%{transform:scale(1.3);opacity:.6}100%{transform:scale(1);opacity:1}}
 </style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Exo+2:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
 <div id="gcount-overlay"><div id="gcount-num">3</div><div id="gcount-label">Préparez-vous !</div></div>

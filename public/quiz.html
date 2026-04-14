@@ -5,9 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>ZapPlay — Quiz</title>
 <style>
-:root{--bg:#0f0c29;--bg2:#302b63;--card:rgba(255,255,255,.07);--border:rgba(255,255,255,.13);--primary:#a78bfa;--primary2:#7c3aed;--buzz:#f97316;--correct:#22c55e;--wrong:#ef4444;--gold:#fbbf24;--text:#f1f5f9;--muted:#94a3b8;--r:14px}
+:root{--bg:#06060F;--bg2:#0D0D1F;--card:#0E0E22;--border:rgba(0,245,212,.10);--primary:#00F5D4;--primary2:#00C4AB;--buzz:#FF6B35;--correct:#22c55e;--wrong:#ef4444;--gold:#fbbf24;--text:#E8E8F0;--muted:#5A5A78;--r:14px}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-html,body{height:100%;background:linear-gradient(135deg,var(--bg) 0%,var(--bg2) 55%,#24243e 100%);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;overflow:hidden}
+html,body{height:100%;background:linear-gradient(135deg,var(--bg) 0%,var(--bg2) 55%,#24243e 100%);color:var(--text);font-family:'Exo 2',sans-serif;overflow:hidden}
 #wrap{height:100dvh;display:flex;flex-direction:column;max-width:500px;margin:0 auto;padding:0 12px}
 .screen{display:none;flex-direction:column;flex:1;min-height:0}
 .screen.active{display:flex}
@@ -123,6 +123,9 @@ input[type=text]::placeholder{color:var(--muted)}
   100%{opacity:0;transform:translateY(110vh) rotate(720deg)}
 }
 </style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Exo+2:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
 <div id="dot"></div>

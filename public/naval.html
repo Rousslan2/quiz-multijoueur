@@ -6,12 +6,12 @@
 <title>ZapPlay — Bataille navale</title>
 <style>
 :root{
-  --primary:#38bdf8;--buzz:#f97316;--ok:#22c55e;--bad:#ef4444;--text:#f1f5f9;--muted:#94a3b8;
-  --card:rgba(255,255,255,.07);--border:rgba(255,255,255,.13);
+  --primary:#00F5D4;--buzz:#FF6B35;--ok:#22c55e;--bad:#ef4444;--text:#E8E8F0;--muted:#5A5A78;
+  --card:#0E0E22;--border:rgba(0,245,212,.10);
 }
 *{box-sizing:border-box;margin:0;padding:0}
 body{
-  font-family:'Segoe UI',system-ui,sans-serif;
+  font-family:'Exo 2',sans-serif;
   background:radial-gradient(ellipse 100% 80% at 50% -20%,rgba(56,189,248,.12),transparent 50%),
     linear-gradient(165deg,#0c1524 0%,#152a45 40%,#0a1628 100%);
   color:var(--text);min-height:100dvh
@@ -188,6 +188,9 @@ input{width:100%;padding:11px 12px;border-radius:10px;border:1px solid var(--bor
   .map-chart{padding:14px 12px 18px}
 }
 </style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Exo+2:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
 <svg xmlns="http://www.w3.org/2000/svg" width="0" height="0" style="position:absolute;overflow:hidden" aria-hidden="true" focusable="false">
@@ -285,7 +288,7 @@ input{width:100%;padding:11px 12px;border-radius:10px;border:1px solid var(--bor
             <circle cx="40" cy="40" r="34" fill="rgba(255,255,255,.25)" stroke="#6b5344" stroke-width="1.8"/>
             <polygon points="40,10 46,38 40,34 34,38" fill="#3d2e1f"/>
             <polygon points="40,70 46,42 40,46 34,42" fill="#a89880" opacity=".6"/>
-            <text x="40" y="24" text-anchor="middle" font-size="11" fill="#4a3b2e" font-weight="800" font-family="Segoe UI,sans-serif">N</text>
+            <text x="40" y="24" text-anchor="middle" font-size="11" fill="#4a3b2e" font-weight="800" font-family="Exo2,sans-serif">N</text>
           </svg>
           <div id="grid-place" class="grid placing"></div>
         </div>
@@ -310,7 +313,7 @@ input{width:100%;padding:11px 12px;border-radius:10px;border:1px solid var(--bor
             <circle cx="40" cy="40" r="34" fill="rgba(255,255,255,.25)" stroke="#6b5344" stroke-width="1.8"/>
             <polygon points="40,10 46,38 40,34 34,38" fill="#3d2e1f"/>
             <polygon points="40,70 46,42 40,46 34,42" fill="#a89880" opacity=".6"/>
-            <text x="40" y="24" text-anchor="middle" font-size="11" fill="#4a3b2e" font-weight="800" font-family="Segoe UI,sans-serif">N</text>
+            <text x="40" y="24" text-anchor="middle" font-size="11" fill="#4a3b2e" font-weight="800" font-family="Exo2,sans-serif">N</text>
           </svg>
           <div id="grid-my" class="grid"></div>
         </div>
@@ -321,7 +324,7 @@ input{width:100%;padding:11px 12px;border-radius:10px;border:1px solid var(--bor
             <circle cx="40" cy="40" r="34" fill="rgba(255,255,255,.25)" stroke="#6b5344" stroke-width="1.8"/>
             <polygon points="40,10 46,38 40,34 34,38" fill="#3d2e1f"/>
             <polygon points="40,70 46,42 40,46 34,42" fill="#a89880" opacity=".6"/>
-            <text x="40" y="24" text-anchor="middle" font-size="11" fill="#4a3b2e" font-weight="800" font-family="Segoe UI,sans-serif">N</text>
+            <text x="40" y="24" text-anchor="middle" font-size="11" fill="#4a3b2e" font-weight="800" font-family="Exo2,sans-serif">N</text>
           </svg>
           <div id="grid-opp" class="grid"></div>
         </div>
