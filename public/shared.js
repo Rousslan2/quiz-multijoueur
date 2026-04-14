@@ -54,48 +54,61 @@ function hookPseudoInputs(){
 
 function injectLoader(){
   if(document.getElementById('zp-loader'))return;
+  if(!document.querySelector('link[href*="Orbitron"]')){
+    const lnk=document.createElement('link');
+    lnk.rel='stylesheet';
+    lnk.href='https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&display=swap';
+    document.head.appendChild(lnk);
+  }
   const css=document.createElement('style');
-  css.textContent=`
-    #zp-loader{
-      position:fixed;inset:0;z-index:99999;
-      background:linear-gradient(135deg,#0f0c29 0%,#302b63 55%,#24243e 100%);
-      display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;
-      transition:opacity .4s,visibility .4s;
-    }
-    #zp-loader.hide{opacity:0;visibility:hidden;pointer-events:none}
-    #zp-loader .zl-title{
-      font-size:2.4rem;font-weight:800;
-      background:linear-gradient(135deg,#a78bfa,#f97316);
-      -webkit-background-clip:text;-webkit-text-fill-color:transparent;
-      background-clip:text;letter-spacing:-.02em;
-      font-family:'Segoe UI',system-ui,sans-serif;
-    }
-    #zp-loader .zl-sub{color:#94a3b8;font-size:.9rem;font-family:'Segoe UI',system-ui,sans-serif}
-    #zp-loader .zl-spinner{
-      width:36px;height:36px;
-      border:3px solid rgba(167,139,250,.2);
-      border-top-color:#a78bfa;
-      border-radius:50%;animation:zl-spin .7s linear infinite;
-    }
-    @keyframes zl-spin{to{transform:rotate(360deg)}}
-    #zp-loader .zl-dots{display:flex;gap:6px}
-    #zp-loader .zl-dot{
-      width:8px;height:8px;border-radius:50%;background:#a78bfa;
-      animation:zl-bounce .6s ease-in-out infinite alternate;
-    }
-    #zp-loader .zl-dot:nth-child(2){animation-delay:.15s}
-    #zp-loader .zl-dot:nth-child(3){animation-delay:.3s}
-    @keyframes zl-bounce{0%{opacity:.3;transform:translateY(0)}100%{opacity:1;transform:translateY(-6px)}}
-  `;
+  css.textContent=[
+    '#zp-loader{position:fixed;inset:0;z-index:99999;background:#06060F;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:opacity .5s,visibility .5s;overflow:hidden;}',
+    '#zp-loader.hide{opacity:0;visibility:hidden;pointer-events:none}',
+    '#zp-loader::before{content:"";position:absolute;inset:0;background-image:linear-gradient(rgba(0,245,212,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(0,245,212,.04) 1px,transparent 1px);background-size:40px 40px;animation:zl-drift 8s linear infinite;}',
+    '@keyframes zl-drift{0%{transform:translateY(0)}100%{transform:translateY(40px)}}',
+    '#zp-loader::after{content:"";position:absolute;left:0;right:0;height:120px;background:linear-gradient(transparent,rgba(0,245,212,.04),transparent);animation:zl-scan 2.5s linear infinite;}',
+    '@keyframes zl-scan{0%{top:-120px}100%{top:100vh}}',
+    '.zl-corner{position:absolute;width:36px;height:36px;border-color:rgba(0,245,212,.5);border-style:solid;}',
+    '.zl-corner.tl{top:18px;left:18px;border-width:2px 0 0 2px}',
+    '.zl-corner.tr{top:18px;right:18px;border-width:2px 2px 0 0}',
+    '.zl-corner.bl{bottom:18px;left:18px;border-width:0 0 2px 2px}',
+    '.zl-corner.br{bottom:18px;right:18px;border-width:0 2px 2px 0}',
+    '.zl-center{position:relative;display:flex;flex-direction:column;align-items:center;gap:22px;z-index:2;}',
+    '.zl-logo{font-family:"Orbitron",monospace;font-size:clamp(2.8rem,10vw,4.5rem);font-weight:900;color:#00F5D4;letter-spacing:.06em;text-shadow:0 0 30px rgba(0,245,212,.8),0 0 80px rgba(0,245,212,.3);animation:zl-glitch 4s infinite,zl-fin .6s ease both;}',
+    '@keyframes zl-fin{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}',
+    '@keyframes zl-glitch{0%,88%,100%{transform:translate(0);text-shadow:0 0 30px rgba(0,245,212,.8),0 0 80px rgba(0,245,212,.3)}89%{transform:translate(-4px,1px);text-shadow:-4px 0 #FF3864,4px 0 #FF6B35}90%{transform:translate(4px,-1px);text-shadow:4px 0 #FF6B35,-4px 0 #FF3864}91%{transform:translate(0);text-shadow:0 0 30px rgba(0,245,212,.8),0 0 80px rgba(0,245,212,.3)}92%{transform:translate(2px,2px);text-shadow:-2px 0 #FF3864}93%{transform:translate(0);text-shadow:0 0 30px rgba(0,245,212,.8),0 0 80px rgba(0,245,212,.3)}}',
+    '.zl-tag{font-family:"Orbitron",monospace;font-size:.62rem;letter-spacing:.3em;text-transform:uppercase;color:rgba(0,245,212,.45);animation:zl-fin .6s .15s ease both;}',
+    '.zl-bar-wrap{width:200px;height:2px;background:rgba(0,245,212,.1);border-radius:1px;overflow:hidden;animation:zl-fin .6s .25s ease both;}',
+    '.zl-bar{height:100%;width:0%;background:linear-gradient(90deg,#00F5D4,#FF6B35);border-radius:1px;box-shadow:0 0 8px rgba(0,245,212,.6);animation:zl-fill 1.6s .4s cubic-bezier(.4,0,.2,1) forwards;}',
+    '@keyframes zl-fill{0%{width:0%}60%{width:75%}80%{width:82%}100%{width:92%}}',
+    '.zl-sub{font-size:.62rem;color:rgba(90,90,120,.9);letter-spacing:.15em;font-family:"Orbitron",monospace;text-transform:uppercase;animation:zl-fin .6s .35s ease both;}',
+    '.zl-p{position:absolute;width:2px;height:2px;border-radius:50%;background:#00F5D4;animation:zl-float linear infinite;}',
+    '@keyframes zl-float{0%{transform:translateY(100vh);opacity:0}10%{opacity:.5}90%{opacity:.2}100%{transform:translateY(-30px);opacity:0}}',
+  ].join('');
   document.head.appendChild(css);
 
-  const loader=document.createElement('div');
-  loader.id='zp-loader';
-  loader.innerHTML=`
-    <div class="zl-title">ZapPlay</div>
-    <div class="zl-sub">Connexion en cours…</div>
-    <div class="zl-dots"><div class="zl-dot"></div><div class="zl-dot"></div><div class="zl-dot"></div></div>
-  `;
+  const mk=(tag,cls)=>{const e=document.createElement(tag);if(cls)e.className=cls;return e;};
+  const loader=mk('div');loader.id='zp-loader';
+
+  ['tl','tr','bl','br'].forEach(c=>{const d=mk('div','zl-corner '+c);loader.appendChild(d);});
+
+  const particles=mk('div');particles.style.cssText='position:absolute;inset:0;z-index:1;pointer-events:none;overflow:hidden';
+  for(let i=0;i<16;i++){
+    const p=mk('div','zl-p');
+    const sz=(1+Math.random()*2).toFixed(1);
+    p.style.cssText='left:'+Math.round(Math.random()*100)+'%;animation-duration:'+(3+Math.random()*5).toFixed(1)+'s;animation-delay:'+Math.random().toFixed(2)+'s;width:'+sz+'px;height:'+sz+'px;opacity:0';
+    particles.appendChild(p);
+  }
+  loader.appendChild(particles);
+
+  const center=mk('div','zl-center');
+  const logo=mk('div','zl-logo');logo.textContent='ZapPlay';
+  const tag=mk('div','zl-tag');tag.textContent='Arcade Multijoueur';
+  const barWrap=mk('div','zl-bar-wrap');const bar=mk('div','zl-bar');barWrap.appendChild(bar);
+  const sub=mk('div','zl-sub');sub.textContent='Connexion…';
+  [logo,tag,barWrap,sub].forEach(el=>center.appendChild(el));
+  loader.appendChild(center);
+
   document.body.prepend(loader);
 }
 
