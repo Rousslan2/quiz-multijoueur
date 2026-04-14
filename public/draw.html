@@ -56,10 +56,10 @@ input[type=text]::placeholder{color:var(--muted)}
 .vs{width:24px;height:24px;background:var(--card);border:1px solid var(--border);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.6rem;color:var(--muted);flex-shrink:0}
 
 /* Timer bar */
-#timer-wrap{height:4px;background:rgba(255,255,255,.08);border-radius:2px;margin:0 0 6px;overflow:hidden}
-#timer-bar{height:100%;width:100%;border-radius:2px}
+#timer-wrap{height:7px;background:rgba(255,255,255,.06);border-radius:4px;margin:0 0 7px;overflow:hidden}
+#timer-bar{height:100%;width:100%;border-radius:4px;box-shadow:0 0 8px rgba(34,197,94,.4)}
 #timer-bar.go{animation:tshrink linear forwards}
-@keyframes tshrink{0%{width:100%;background:var(--correct)}65%{background:var(--gold)}100%{width:0%;background:var(--wrong)}}
+@keyframes tshrink{0%{width:100%;background:var(--correct);box-shadow:0 0 8px rgba(34,197,94,.5)}65%{background:var(--gold);box-shadow:0 0 8px rgba(251,191,36,.5)}100%{width:0%;background:var(--wrong);box-shadow:0 0 4px rgba(239,68,68,.4)}}
 
 /* Canvas area */
 #canvas-wrap{flex:1;position:relative;border-radius:var(--r);overflow:hidden;background:#fff;min-height:0;cursor:crosshair}
@@ -144,15 +144,15 @@ canvas{width:100%;height:100%;display:block;touch-action:none}
 /* GAME OVER */
 #s-gameover{justify-content:center;align-items:center;text-align:center;gap:14px}
 .final-sc{display:flex;flex-wrap:wrap;gap:10px;width:100%}
-.fs-card{flex:1;min-width:calc(50% - 10px);background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;text-align:center}
-.fs-name{color:var(--muted);font-size:.78rem;margin-bottom:3px}
-.fs-pts{font-size:2rem;font-weight:800;color:var(--orange)}
+.fs-card{flex:1;min-width:calc(50% - 10px);background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px 14px;text-align:center}
+.fs-name{color:var(--muted);font-size:.76rem;margin-bottom:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fs-pts{font-size:2.2rem;font-weight:900;color:var(--orange);font-family:'Orbitron',monospace}
 
 /* Fixed elements */
 #dot{position:fixed;top:8px;right:10px;width:7px;height:7px;border-radius:50%;background:#ef4444;transition:background .3s}
 #dot.ok{background:#22c55e}
-#back-btn{position:fixed;top:5px;left:8px;background:none;border:none;color:var(--muted);font-size:.82rem;cursor:pointer;padding:4px 8px;border-radius:6px;z-index:100}
-#back-btn:hover{color:var(--text)}
+#back-btn{position:fixed;top:8px;left:8px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);color:var(--muted);font-size:.75rem;cursor:pointer;padding:5px 10px;border-radius:8px;z-index:100;transition:all .15s}
+#back-btn:hover{color:var(--text);background:rgba(255,255,255,.09)}
 
 /* Win badge */
 .win-badge{display:inline-block;background:rgba(251,191,36,.2);border:1px solid rgba(251,191,36,.4);border-radius:4px;padding:0 4px;font-size:.55rem;color:var(--gold);margin-left:3px;vertical-align:middle}
