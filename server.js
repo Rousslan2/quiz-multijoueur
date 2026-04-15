@@ -4212,10 +4212,12 @@ function imposteurSnap(room, forSlot) {
       o.isImposteur = room.imposteurSlots.includes(p.slot);
     return o;
   });
+  const showRoleToPlayer = room.phase !== 'WAITING';
   return {
     type:'imposteur_state', phase:room.phase,
     round:room.round, totalRounds:room.totalRounds, nbImposteurs:room.nbImposteurs,
     players, code:room.code, host:room.host,
+    myRole: showRoleToPlayer ? (isImposteur ? 'imposteur' : 'civil') : null,
     word: (room.phase==='DESCRIBE'||room.phase==='VOTE')
       ? (isImposteur ? room.imposteurWord : room.word)
       : (['REVEAL','GUESS','SCORES','GAME_OVER'].includes(room.phase) ? room.word : null),

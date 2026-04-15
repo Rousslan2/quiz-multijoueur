@@ -204,6 +204,7 @@ input[type=text]::placeholder{color:var(--muted)}
 <!-- DESCRIBE -->
 <div id="s-describe" class="screen">
   <div class="word-card">
+    <div class="word-label" id="d-role">Ton rôle</div>
     <div class="word-label">Ton mot secret</div>
     <div id="d-word" class="word-val">---</div>
   </div>
@@ -536,6 +537,12 @@ function renderSetup(s){
 
 // ── DESCRIBE ───────────────────────────────────────────────────
 function renderDescribe(s){
+  var roleEl = el('d-role');
+  if(roleEl){
+    if(s.myRole==='imposteur') { roleEl.textContent = '🕵️ Tu es l’imposteur'; roleEl.style.color = '#f59e0b'; }
+    else if(s.myRole==='civil') { roleEl.textContent = '👤 Tu es civil'; roleEl.style.color = 'var(--muted)'; }
+    else { roleEl.textContent = 'Ton rôle'; roleEl.style.color = 'var(--muted)'; }
+  }
   var wv=el('d-word');
   if(s.word){ wv.textContent=s.word; wv.className='word-val'; }
   else { wv.textContent='???'; wv.className='word-val unk'; }
