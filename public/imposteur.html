@@ -278,6 +278,11 @@ let timerInt = null;
 let cfg = {rounds:5, imp:1};
 let reconnectAction = null;
 
+// ── ZapPlay loader (comme les autres jeux) ─────────────────────
+if (window.ZapPlay && ZapPlay.showLoader) {
+  ZapPlay.showLoader();
+}
+
 // ── Stars ──────────────────────────────────────────────────────
 (function(){
   var sc=document.getElementById('zp-stars-imp');

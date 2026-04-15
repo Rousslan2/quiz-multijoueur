@@ -512,6 +512,15 @@ if(window.ZapPlay && !$('name').value){
   if(saved) $('name').value=saved;
 }
 if(p.get('code')){ $('code').value=p.get('code').toUpperCase(); $('join-area').style.display='flex'; }
+// Auto-join when coming from lobby (code + saved/URL name)
+if(p.get('code') && $('name').value){
+  const n = $('name').value.trim().slice(0,20);
+  if(n){
+    myName = n;
+    pendingAction = () => send({type:'join_bomb', name:n, code:$('code').value.trim().toUpperCase()});
+    if(!ws || ws.readyState===3) connect();
+  }
+}
 if(p.get('create')==='1'&&p.get('name')){
   const n=p.get('name'); $('name').value=n; myName=n;
   pendingAction=()=>send({type:'create_bomb',name:n}); connect();

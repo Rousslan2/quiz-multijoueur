@@ -349,7 +349,18 @@ $('type-in').addEventListener('keydown',e=>{ if(e.key==='Enter') e.preventDefaul
 (function(){
   const p=new URLSearchParams(location.search);
   if(p.get('name')) $('name-input').value=p.get('name');
-  if(p.get('code')){ $('code-in').value=p.get('code').toUpperCase(); toggleJoin(); }
+  if(!p.get('name') && window.ZapPlay && !$('name-input').value){
+    const saved = window.ZapPlay.getSavedPseudo && window.ZapPlay.getSavedPseudo();
+    if(saved) $('name-input').value = saved;
+  }
+  if(p.get('code')){
+    $('code-in').value = p.get('code').toUpperCase();
+    toggleJoin();
+    const nm = ($('name-input').value||'').trim();
+    if(nm){
+      pendingAction = () => send({type:'join_typer', name:nm, code:$('code-in').value.trim().toUpperCase()});
+    }
+  }
   if(p.get('create')==='1'&&p.get('name')){
     const name=p.get('name'); $('name-input').value=name;
     pendingAction=()=>send({type:'create_typer',name});
