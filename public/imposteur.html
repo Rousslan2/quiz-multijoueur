@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ZapPlay - Imposteur</title>
+  <link rel="stylesheet" href="theme.css">
+  <style>
+    :root { --primary:#FF3864; --primary-dim:rgba(255,56,100,.18); --primary-glow:rgba(255,56,100,.55); }
+    .screen { display:none; min-height:100vh; padding:24px 16px 80px; box-sizing:border-box; }
+    .screen.active { display:flex; flex-direction:column; align-items:center; }
+    #s-home h1 { font-size:2.6rem; color:var(--primary); text-shadow:0 0 18px var(--primary-glow); margin-bottom:4px; }
+    #s-home p  { color:#aaa; margin-bottom:28px; }
+    .zp-form { display:flex; flex-direction:column; gap:12px; width:100%; max-width:360px; }
+    .zp-form input { background:#0d0d1a; border:1px solid #2a2a4a; border-radius:10px; padding:12px 16px; color:#fff; font-size:1rem; outline:none; transition:border .2s; }
+    .zp-form input:focus { border-color:var(--primary); box-shadow:0 0 10px var(--primary-dim); }
+    .zp-tabs { display:flex; gap:8px; width:100%; max-width:360px; margin-bottom:4px; }
+    .zp-tab { flex:1; padding:10px; border:1px solid #2a2a4a; border-radius:8px; background:#0d0d1a; color:#888; cursor:pointer; font-size:.95rem; transition:.2s; text-align:center; }
+    .zp-tab.active { border-color:var(--primary); color:var(--primary); background:var(--primary-dim); }
+    #join-fields { display:none; }
+    .room-code-big { font-size:3rem; font-weight:900; letter-spacing:.25em; color:var(--primary); text-shadow:0 0 24px var(--primary-glow); animation:code-pulse 2s ease-in-out infinite; padding:8px 20px; border:2px solid var(--primary); border-radius:14px; background:var(--primary-dim); }
+    @keyframes code-pulse { 0%,100%{box-shadow:0 0 12px var(--primary-glow)} 50%{box-shadow:0 0 32px var(--primary-glow)} }
+    .players-grid { display:flex; flex-wrap:wrap; gap:10px; justify-content:center; max-width:480px; width:100%; margin:18px 0; }
+    .p-chip { display:flex; align-items:center; gap:8px; background:#12122a; border:1px solid #2a2a4a; border-radius:50px; padding:8px 16px; font-size:.9rem; }
+    .p-chip .av { width:28px; height:28px; border-radius:50%; background:var(--primary); display:flex; align-items:center; justify-content:center; font-weight:700; font-size:.8rem; color:#fff; }
+    .p-chip.host .av { background:#f59e0b; }
+    .host-badge { font-size:.7rem; color:#f59e0b; margin-left:4px; }
+    #s-setup h2 { color:var(--primary); margin-bottom:24px; }
+    .setup-section { width:100%; max-width:420px; margin-bottom:24px; }
+    .setup-section label { color:#aaa; font-size:.85rem; display:block; margin-bottom:10px; }
+    .btn-group { display:flex; gap:10px; }
+    .opt-btn { flex:1; padding:12px; border:1px solid #2a2a4a; border-radius:10px; background:#0d0d1a; color:#888; cursor:pointer; font-size:1rem; transition:.2s; }
+    .opt-btn.sel { border-color:var(--primary); color:var(--primary); background:var(--primary-dim); box-shadow:0 0 12px var(--primary-dim); }
+    #s-describe { gap:14px; }
+    .word-card { border:2px solid var(--primary); border-radius:16px; background:var(--primary-dim); padding:18px 32px; text-align:center; animation:word-pulse 2s ease-in-out infinite; }
+    @keyframes word-pulse { 0%,100%{box-shadow:0 0 16px var(--primary-glow)} 50%{box-shadow:0 0 36px var(--primary-glow),0 0 70px var(--primary-dim)} }
+    .word-label { font-size:.8rem; color:#aaa; margin-bottom:4px; }
+    .word-value { font-size:2rem; font-weight:900; color:var(--primary); letter-spacing:.05em; }
+    .word-value.unknown { color:#555; font-style:italic; }
+    .turn-banner { width:100%; max-width:480px; text-align:center; padding:10px; border-radius:10px; background:#12122a; border:1px solid #2a2a4a; color:#ccc; font-size:.95rem; }
+    .turn-banner b { color:var(--primary); }
+    .desc-list { width:100%; max-width:480px; display:flex; flex-direction:column; gap:8px; }
+    .desc-item { background:#0d0d1a; border:1px solid #1e1e3a; border-radius:10px; padding:10px 14px; animation:card-in .35s ease; }
+    @keyframes card-in { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:none} }
+    .desc-item .d-name { font-size:.75rem; color:var(--primary); margin-bottom:2px; }
+    .desc-item .d-text { color:#ddd; }
+    .my-input-row { width:100%; max-width:480px; display:flex; gap:8px; }
+    .my-input-row input { flex:1; background:#0d0d1a; border:1px solid var(--primary); border-radius:10px; padding:12px; color:#fff; font-size:1rem; outline:none; }
+    .my-input-row button { background:var(--primary); border:none; border-radius:10px; padding:12px 20px; color:#fff; font-weight:700; cursor:pointer; transition:.15s; }
+    .my-input-row button:hover { box-shadow:0 0 16px var(--primary-glow); }
+    .waiting-pill { background:#12122a; border:1px solid #2a2a4a; border-radius:8px; padding:8px 16px; color:#555; font-size:.85rem; }
+    #s-vote { gap:14px; }
+    .vote-desc-list { width:100%; max-width:480px; display:flex; flex-direction:column; gap:8px; margin-bottom:8px; }
+    .vote-desc-item { background:#0d0d1a; border:1px solid #1e1e3a; border-radius:10px; padding:10px 14px; }
+    .vote-desc-item .vd-name { font-size:.8rem; color:#aaa; margin-bottom:2px; }
+    .vote-desc-item .vd-text { color:#ddd; }
+    .vote-btns { display:flex; flex-wrap:wrap; gap:10px; justify-content:center; width:100%; max-width:480px; }
+    .vote-btn { padding:10px 18px; border:1px solid #2a2a4a; border-radius:50px; background:#0d0d1a; color:#ccc; cursor:pointer; display:flex; align-items:center; gap:8px; transition:.2s; font-size:.9rem; }
+    .vote-btn .vav { width:26px; height:26px; border-radius:50%; background:#2a2a5a; display:flex; align-items:center; justify-content:center; font-size:.75rem; font-weight:700; }
+    .vote-btn:hover:not(:disabled) { border-color:var(--primary); color:var(--primary); box-shadow:0 0 10px var(--primary-dim); }
+    .vote-btn.voted { border-color:var(--primary); background:var(--primary-dim); color:var(--primary); }
+    .vote-btn:disabled { opacity:.4; cursor:not-allowed; }
+    .vote-count { color:#888; font-size:.85rem; }
+    #s-reveal { gap:18px; }
+    .reveal-votes { width:100%; max-width:480px; display:flex; flex-direction:column; gap:8px; }
+    .rv-row { display:flex; justify-content:space-between; align-items:center; padding:10px 14px; background:#0d0d1a; border:1px solid #1e1e3a; border-radius:10px; }
+    .rv-row.top-voted { border-color:var(--primary); box-shadow:0 0 12px var(--primary-dim); }
+    .rv-name { color:#ccc; }
+    .rv-votes { display:flex; gap:4px; flex-wrap:wrap; justify-content:flex-end; }
+    .rv-vote-dot { width:22px; height:22px; border-radius:50%; background:#2a2a5a; display:flex; align-items:center; justify-content:center; font-size:.7rem; border:1px solid #3a3a6a; }
+    .elim-box { border:2px solid var(--primary); border-radius:16px; padding:20px 32px; text-align:center; background:var(--primary-dim); animation:elim-in .5s cubic-bezier(.34,1.56,.64,1); }
+    @keyframes elim-in { from{opacity:0;transform:scale(.7)} to{opacity:1;transform:scale(1)} }
+    .elim-box .e-label { font-size:.8rem; color:#aaa; margin-bottom:6px; }
+    .elim-box .e-name { font-size:1.8rem; font-weight:900; color:var(--primary); }
+    .elim-box .e-role { font-size:1rem; margin-top:6px; }
+    .elim-box .e-role.imposteur { color:#f59e0b; }
+    .elim-box .e-role.civil { color:#22c55e; }
+    .no-elim-box { border:1px solid #2a2a4a; border-radius:16px; padding:20px 32px; text-align:center; color:#aaa; }
+    #s-guess { gap:18px; }
+    .guess-box { width:100%; max-width:420px; border:1px solid #2a2a4a; border-radius:16px; padding:24px; background:#0d0d1a; text-align:center; }
+    .guess-box h3 { color:var(--primary); margin-bottom:8px; }
+    .guess-box p { color:#aaa; font-size:.9rem; margin-bottom:16px; }
+    .guess-input-row { display:flex; gap:8px; }
+    .guess-input-row input { flex:1; background:#12122a; border:1px solid var(--primary); border-radius:10px; padding:12px; color:#fff; font-size:1rem; outline:none; }
+    .guess-input-row button { background:var(--primary); border:none; border-radius:10px; padding:12px 20px; color:#fff; font-weight:700; cursor:pointer; }
+    .guess-result { font-size:1.2rem; font-weight:700; padding:10px 20px; border-radius:10px; }
+    .guess-result.correct { color:#22c55e; border:1px solid #22c55e; background:rgba(34,197,94,.12); }
+    .guess-result.wrong { color:#ef4444; border:1px solid #ef4444; background:rgba(239,68,68,.12); }
+    .civil-wait { color:#888; font-size:.9rem; }
+    #s-scores { gap:14px; }
+    .scores-title { font-size:1.4rem; font-weight:700; color:var(--primary); }
+    .score-list { width:100%; max-width:420px; display:flex; flex-direction:column; gap:8px; }
+    .score-row { display:flex; align-items:center; gap:12px; padding:12px 16px; background:#0d0d1a; border:1px solid #1e1e3a; border-radius:12px; }
+    .score-row.me { border-color:var(--primary); background:var(--primary-dim); }
+    .score-row .sr-rank { font-size:1.2rem; font-weight:900; width:28px; text-align:center; color:#888; }
+    .score-row .sr-av { width:32px; height:32px; border-radius:50%; background:#2a2a5a; display:flex; align-items:center; justify-content:center; font-weight:700; }
+    .score-row .sr-name { flex:1; color:#ddd; }
+    .score-row .sr-pts { font-weight:700; color:var(--primary); font-size:1.1rem; }
+    .round-info { color:#888; font-size:.85rem; }
+    #s-gameover { gap:18px; }
+    .podium-row { display:flex; align-items:flex-end; gap:12px; margin:12px 0; }
+    .podium-col { display:flex; flex-direction:column; align-items:center; gap:6px; }
+    .podium-av { border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:900; border:2px solid #2a2a4a; background:#2a2a5a; }
+    .podium-col.rank1 .podium-av { width:72px; height:72px; font-size:1.4rem; border-color:#f59e0b; box-shadow:0 0 20px rgba(245,158,11,.5); }
+    .podium-col.rank2 .podium-av { width:56px; height:56px; font-size:1.1rem; border-color:#94a3b8; }
+    .podium-col.rank3 .podium-av { width:46px; height:46px; border-color:#b45309; }
+    .podium-medal { font-size:1.6rem; }
+    .podium-name { font-size:.85rem; color:#ccc; }
+    .podium-pts  { font-size:.9rem; font-weight:700; color:var(--primary); }
+    #confetti-canvas { position:fixed; inset:0; pointer-events:none; z-index:999; }
+    .timer-wrap { width:100%; max-width:480px; height:6px; background:#1a1a2e; border-radius:3px; overflow:hidden; }
+    .timer-fill { height:100%; background:linear-gradient(90deg,var(--primary),#ff8c42); border-radius:3px; transition:width .9s linear; box-shadow:0 0 8px var(--primary-glow); }
+    .sec-title { font-size:1.2rem; font-weight:700; color:#ccc; align-self:flex-start; max-width:480px; width:100%; margin-bottom:4px; }
+    #lounge-area { width:100%; max-width:480px; margin-top:16px; }
+  </style>
+</head>
+<body>
+<div class="zp-space-bg">
+  <div class="zp-neb1" style="background:radial-gradient(ellipse at 30% 40%, rgba(255,56,100,.13) 0%, transparent 65%)"></div>
+  <div class="zp-neb2" style="background:radial-gradient(ellipse at 70% 60%, rgba(255,56,100,.07) 0%, transparent 60%)"></div>
+  <div class="zp-stars" id="zp-stars-imp"></div>
+  <div class="zp-sgrid"></div>
+  <div class="zp-comet"></div>
+</div>
+
+<div class="screen active" id="s-home">
+  <h1>&#x1F575;&#xFE0F; Imposteur</h1>
+  <p>Un mot secret, un tra&#238;tre parmi vous.</p>
+  <div class="zp-tabs">
+    <div class="zp-tab active" id="tab-create" onclick="switchTab('create')">Cr&#233;er</div>
+    <div class="zp-tab" id="tab-join" onclick="switchTab('join')">Rejoindre</div>
+  </div>
+  <div class="zp-form">
+    <input id="inp-name" type="text" maxlength="20" placeholder="Ton pseudo">
+    <div id="join-fields">
+      <input id="inp-code" type="text" maxlength="4" placeholder="Code salle" style="text-transform:uppercase;margin-bottom:0">
+    </div>
+    <button class="zp-start-btn" onclick="homeAction()">Entrer</button>
+  </div>
+  <a href="/" style="margin-top:24px;color:#555;font-size:.85rem;text-decoration:none;">&#8592; Retour au menu</a>
+</div>
+
+<div class="screen" id="s-wait">
+  <div style="margin-bottom:20px;text-align:center">
+    <div style="color:#aaa;font-size:.85rem;margin-bottom:8px">Code de la salle</div>
+    <div class="room-code-big" id="w-code">----</div>
+  </div>
+  <div class="players-grid" id="w-players"></div>
+  <button class="zp-start-btn" id="btn-start" onclick="sendMsg({type:'start_setup'})" style="display:none">Configurer la partie</button>
+  <div class="waiting-pill" id="wait-pill">En attente de l&#39;h&#244;te...</div>
+  <div id="lounge-area"></div>
+</div>
+
+<div class="screen" id="s-setup">
+  <h2>&#9881;&#65039; Configuration</h2>
+  <div class="setup-section">
+    <label>Nombre de manches</label>
+    <div class="btn-group" id="rounds-btns">
+      <button class="opt-btn" data-v="3" onclick="selectOpt('rounds',3,this)">3</button>
+      <button class="opt-btn sel" data-v="5" onclick="selectOpt('rounds',5,this)">5</button>
+      <button class="opt-btn" data-v="7" onclick="selectOpt('rounds',7,this)">7</button>
+    </div>
+  </div>
+  <div class="setup-section">
+    <label>Nombre d&#39;imposteurs</label>
+    <div class="btn-group" id="imp-btns">
+      <button class="opt-btn sel" data-v="1" onclick="selectOpt('imp',1,this)">1</button>
+      <button class="opt-btn" data-v="2" onclick="selectOpt('imp',2,this)">2</button>
+    </div>
+  </div>
+  <button class="zp-start-btn" onclick="launchGame()">Lancer la partie !</button>
+</div>
+
+<div class="screen" id="s-describe">
+  <div class="word-card">
+    <div class="word-label">Ton mot secret</div>
+    <div class="word-value" id="d-word">---</div>
+  </div>
+  <div class="timer-wrap"><div class="timer-fill" id="d-timer" style="width:100%"></div></div>
+  <div class="turn-banner" id="d-turn">Tour de <b>???</b></div>
+  <div class="sec-title">Descriptions</div>
+  <div class="desc-list" id="d-descs"></div>
+  <div class="my-input-row" id="d-input-row" style="display:none">
+    <input id="d-input" type="text" maxlength="120" placeholder="D&#233;cris le mot en 1 phrase...">
+    <button onclick="sendDescribe()">Envoyer</button>
+  </div>
+  <div class="waiting-pill" id="d-wait" style="display:none">En attente des autres joueurs...</div>
+</div>
+
+<div class="screen" id="s-vote">
+  <div style="font-size:1.4rem;font-weight:700;color:var(--primary)">&#x1F5F3;&#xFE0F; Vote</div>
+  <div class="timer-wrap"><div class="timer-fill" id="v-timer" style="width:100%"></div></div>
+  <div class="vote-count" id="v-count">0 / 0 votes</div>
+  <div class="sec-title">Descriptions</div>
+  <div class="vote-desc-list" id="v-descs"></div>
+  <div class="sec-title">Qui est l&#39;imposteur ?</div>
+  <div class="vote-btns" id="v-btns"></div>
+</div>
+
+<div class="screen" id="s-reveal">
+  <div style="font-size:1.4rem;font-weight:700;color:var(--primary)">&#x1F50D; R&#233;v&#233;lation</div>
+  <div class="reveal-votes" id="r-votes"></div>
+  <div id="r-elim"></div>
+</div>
+
+<div class="screen" id="s-guess">
+  <div style="font-size:1.4rem;font-weight:700;color:var(--primary)">&#x1F3AF; Devinette</div>
+  <div class="timer-wrap"><div class="timer-fill" id="g-timer" style="width:100%"></div></div>
+  <div id="g-content"></div>
+</div>
+
+<div class="screen" id="s-scores">
+  <div class="scores-title">&#x1F4CA; Scores</div>
+  <div class="round-info" id="sc-round"></div>
+  <div class="score-list" id="sc-list"></div>
+  <div id="sc-word-reveal" style="color:#aaa;font-size:.9rem;text-align:center"></div>
+  <button class="zp-start-btn" id="btn-next" onclick="sendMsg({type:'next_round'})" style="display:none">Manche suivante &#8594;</button>
+  <div class="waiting-pill" id="sc-wait" style="display:none">En attente de l&#39;h&#244;te...</div>
+</div>
+
+<div class="screen" id="s-gameover">
+  <div style="font-size:1.8rem;font-weight:900;color:var(--primary);text-shadow:0 0 20px var(--primary-glow)">&#x1F3C6; Fin de partie</div>
+  <div class="podium-row" id="go-podium"></div>
+  <div class="score-list" id="go-full"></div>
+  <button class="zp-start-btn" onclick="location.reload()">Rejouer</button>
+  <a href="/" style="margin-top:12px;color:#555;font-size:.85rem;text-decoration:none">&#8592; Menu principal</a>
+  <canvas id="confetti-canvas"></canvas>
+</div>
+
+<script src="shared.js"></script>
+<script src="chat.js"></script>
+<script>
+function el(id){ return document.getElementById(id); }
+
+(function(){
+  var c=el('zp-stars-imp'); if(!c) return;
+  for(var i=0;i<65;i++){
+    var s=document.createElement('div');
+    s.className='zp-star';
+    s.style.cssText='position:absolute;border-radius:50%;background:#fff;opacity:'+(.2+Math.random()*.7)+';width:'+(1+Math.random()*2.5)+'px;height:'+(1+Math.random()*2.5)+'px;top:'+Math.random()*100+'%;left:'+Math.random()*100+'%;animation:star-tw '+(2+Math.random()*4)+'s '+(Math.random()*3)+'s ease-in-out infinite alternate';
+    c.appendChild(s);
+  }
+})();
+
+var ws=null, myName='', mySlot=-1, st=null, isHost=false, timerInterval=null;
+
+function switchTab(t){
+  el('tab-create').classList.toggle('active', t==='create');
+  el('tab-join').classList.toggle('active', t==='join');
+  el('join-fields').style.display = t==='join' ? '' : 'none';
+}
+
+function homeAction(){
+  var name=el('inp-name').value.trim();
+  if(!name){ alert('Entre ton pseudo'); return; }
+  myName=name;
+  var code=el('inp-code').value.trim().toUpperCase();
+  var isJoin=el('tab-join').classList.contains('active');
+  connectWS(isJoin ? {type:'join',name:name,code:code} : {type:'create',name:name});
+}
+
+function connectWS(initMsg){
+  var proto=location.protocol==='https:'?'wss':'ws';
+  ws=new WebSocket(proto+'://'+location.host+'/ws/imposteur');
+  ws.onopen=function(){ ws.send(JSON.stringify(initMsg)); };
+  ws.onmessage=function(e){ handleMsg(JSON.parse(e.data)); };
+}
+function sendMsg(obj){ if(ws&&ws.readyState===1) ws.send(JSON.stringify(obj)); }
+
+function handleMsg(d){
+  if(d.type==='imposteur_state'){ st=d; render(d); }
+  else if(d.type==='error'){ alert(d.msg); }
+}
+
+var cfg={rounds:5,imp:1};
+function selectOpt(key,val,btn){
+  cfg[key]=val;
+  btn.parentElement.querySelectorAll('.opt-btn').forEach(function(b){ b.classList.remove('sel'); });
+  btn.classList.add('sel');
+}
+function launchGame(){ sendMsg({type:'configure',totalRounds:cfg.rounds,nbImposteurs:cfg.imp}); }
+
+function startTimer(fillId,dur){
+  clearInterval(timerInterval);
+  var fill=el(fillId); if(!fill) return;
+  fill.style.transition='none'; fill.style.width='100%';
+  var start=Date.now(), ms=dur*1000;
+  setTimeout(function(){ fill.style.transition='width .9s linear'; },50);
+  timerInterval=setInterval(function(){
+    var pct=Math.max(0,1-(Date.now()-start)/ms);
+    fill.style.width=(pct*100)+'%';
+    if(pct<=0) clearInterval(timerInterval);
+  },250);
+}
+
+function render(s){
+  if(mySlot<0){ var me=s.players.find(function(p){ return p.name===myName; }); if(me) mySlot=me.slot; }
+  isHost=s.host===myName;
+  var screens={WAITING:'s-wait',SETUP:'s-setup',DESCRIBE:'s-describe',VOTE:'s-vote',REVEAL:'s-reveal',GUESS:'s-guess',SCORES:'s-scores',GAME_OVER:'s-gameover'};
+  document.querySelectorAll('.screen').forEach(function(sc){ sc.classList.remove('active'); });
+  var sid=screens[s.phase]||'s-wait';
+  el(sid).classList.add('active');
+  if(s.phase==='WAITING') renderWait(s);
+  else if(s.phase==='SETUP') renderSetup(s);
+  else if(s.phase==='DESCRIBE') renderDescribe(s);
+  else if(s.phase==='VOTE') renderVote(s);
+  else if(s.phase==='REVEAL') renderReveal(s);
+  else if(s.phase==='GUESS') renderGuess(s);
+  else if(s.phase==='SCORES') renderScores(s);
+  else if(s.phase==='GAME_OVER') renderGameOver(s);
+}
+
+function renderWait(s){
+  el('w-code').textContent=s.code;
+  var pg=el('w-players'); pg.textContent='';
+  s.players.forEach(function(p){
+    var chip=document.createElement('div');
+    chip.className='p-chip'+(p.name===s.host?' host':'');
+    var av=document.createElement('div'); av.className='av'; av.textContent=p.name[0].toUpperCase();
+    var nm=document.createElement('span'); nm.textContent=p.name;
+    chip.appendChild(av); chip.appendChild(nm);
+    if(p.name===s.host){ var hb=document.createElement('span'); hb.className='host-badge'; hb.textContent='\u2605'; chip.appendChild(hb); }
+    pg.appendChild(chip);
+  });
+  el('btn-start').style.display=isHost?'':'none';
+  el('wait-pill').style.display=isHost?'none':'';
+}
+
+function renderSetup(s){
+  var imp2=el('imp-btns').querySelector('[data-v="2"]');
+  if(s.players.length<5){
+    imp2.disabled=true; imp2.classList.remove('sel');
+    if(cfg.imp===2){ cfg.imp=1; el('imp-btns').querySelector('[data-v="1"]').classList.add('sel'); }
+  } else { imp2.disabled=false; }
+}
+
+function renderDescribe(s){
+  var wv=el('d-word');
+  if(s.word){ wv.textContent=s.word; wv.className='word-value'; }
+  else { wv.textContent='???'; wv.className='word-value unknown'; }
+  var activeSlot=s.descOrder?s.descOrder[s.descIndex]:-1;
+  var ap=s.players.find(function(p){ return p.slot===activeSlot; });
+  var dt=el('d-turn'); dt.textContent='Tour de ';
+  var b=document.createElement('b'); b.textContent=ap?ap.name:'?'; dt.appendChild(b);
+  startTimer('d-timer',20);
+  var dl=el('d-descs'); dl.textContent='';
+  if(s.descOrder) s.descOrder.slice(0,s.descIndex).forEach(function(slot){
+    var dp=s.players.find(function(p){ return p.slot===slot; });
+    var desc=s.descriptions?s.descriptions.find(function(d){ return d.slot===slot; }):null;
+    var div=document.createElement('div'); div.className='desc-item';
+    var dn=document.createElement('div'); dn.className='d-name'; dn.textContent=dp?dp.name:'?';
+    var dtx=document.createElement('div'); dtx.className='d-text'; dtx.textContent=desc?desc.text:'...';
+    div.appendChild(dn); div.appendChild(dtx); dl.appendChild(div);
+  });
+  var isMine=activeSlot===mySlot;
+  el('d-input-row').style.display=isMine?'':'none';
+  el('d-wait').style.display=isMine?'none':'';
+  if(isMine) el('d-input').focus();
+}
+
+function sendDescribe(){
+  var txt=el('d-input').value.trim(); if(!txt) return;
+  sendMsg({type:'describe',text:txt}); el('d-input').value='';
+}
+
+function renderVote(s){
+  startTimer('v-timer',30);
+  var vd=el('v-descs'); vd.textContent='';
+  if(s.descriptions) s.descriptions.forEach(function(d){
+    var div=document.createElement('div'); div.className='vote-desc-item';
+    var nm=document.createElement('div'); nm.className='vd-name'; nm.textContent=d.name;
+    var tx=document.createElement('div'); tx.className='vd-text'; tx.textContent=d.text;
+    div.appendChild(nm); div.appendChild(tx); vd.appendChild(div);
+  });
+  var voteCount=s.votes?Object.keys(s.votes).length:0;
+  el('v-count').textContent=voteCount+' / '+s.players.length+' votes';
+  var alreadyVoted=s.votes&&s.votes[mySlot]!==undefined;
+  var vb=el('v-btns'); vb.textContent='';
+  s.players.forEach(function(p){
+    if(p.slot===mySlot) return;
+    var btn=document.createElement('button');
+    btn.className='vote-btn'+(alreadyVoted&&s.votes[mySlot]===p.slot?' voted':'');
+    btn.disabled=alreadyVoted;
+    var vav=document.createElement('div'); vav.className='vav'; vav.textContent=p.name[0].toUpperCase();
+    var nm=document.createElement('span'); nm.textContent=p.name;
+    btn.appendChild(vav); btn.appendChild(nm);
+    (function(slot){ btn.onclick=function(){ sendMsg({type:'vote',targetSlot:slot}); }; })(p.slot);
+    vb.appendChild(btn);
+  });
+}
+
+function renderReveal(s){
+  clearInterval(timerInterval);
+  var rv=el('r-votes'); rv.textContent='';
+  var tally={};
+  if(s.votes) Object.values(s.votes).forEach(function(v){ tally[v]=(tally[v]||0)+1; });
+  var maxV=Object.values(tally).length?Math.max.apply(null,Object.values(tally)):0;
+  s.players.forEach(function(p){
+    var votes=tally[p.slot]||0;
+    var row=document.createElement('div'); row.className='rv-row'+(votes===maxV&&votes>0?' top-voted':'');
+    var rn=document.createElement('span'); rn.className='rv-name'; rn.textContent=p.name;
+    var rvd=document.createElement('div'); rvd.className='rv-votes';
+    if(s.votes) Object.entries(s.votes).filter(function(e){ return e[1]===p.slot; }).forEach(function(e){
+      var vp=s.players.find(function(x){ return x.slot==e[0]; });
+      var dot=document.createElement('div'); dot.className='rv-vote-dot'; dot.textContent=vp?vp.name[0].toUpperCase():'?';
+      rvd.appendChild(dot);
+    });
+    row.appendChild(rn); row.appendChild(rvd); rv.appendChild(row);
+  });
+  var re=el('r-elim'); re.textContent='';
+  if(s.eliminated){
+    var isImp=s.eliminated.role==='imposteur';
+    var box=document.createElement('div'); box.className='elim-box';
+    var lbl=document.createElement('div'); lbl.className='e-label'; lbl.textContent='Elimin\xe9(e)';
+    var nm=document.createElement('div'); nm.className='e-name'; nm.textContent=s.eliminated.name;
+    var rl=document.createElement('div'); rl.className='e-role '+(isImp?'imposteur':'civil');
+    rl.textContent=isImp?'\uD83D\uDD75\uFE0F IMPOSTEUR':'\uD83D\uDC64 Civil';
+    box.appendChild(lbl); box.appendChild(nm); box.appendChild(rl); re.appendChild(box);
+  } else {
+    var box2=document.createElement('div'); box2.className='no-elim-box';
+    box2.textContent="Egalit\xe9 \u2014 personne n'est \xe9limin\xe9";
+    re.appendChild(box2);
+  }
+}
+
+function renderGuess(s){
+  startTimer('g-timer',20);
+  var gc=el('g-content'); gc.textContent='';
+  var me=s.players.find(function(p){ return p.slot===mySlot; });
+  var amImp=me&&me.isImposteur;
+  if(s.guessResult){
+    clearInterval(timerInterval);
+    var div=document.createElement('div');
+    div.className='guess-result '+(s.guessResult==='correct'?'correct':'wrong');
+    div.textContent=s.guessResult==='correct'?'Bonne r\xe9ponse ! +1 bonus':'Mauvaise r\xe9ponse';
+    gc.appendChild(div);
+    return;
+  }
+  if(amImp){
+    var box=document.createElement('div'); box.className='guess-box';
+    var h3=document.createElement('h3'); h3.textContent='Devine le mot secret !';
+    var p=document.createElement('p'); p.textContent='Un essai, 20 secondes. Bonne r\xe9ponse = +1 point bonus.';
+    var row=document.createElement('div'); row.className='guess-input-row';
+    var inp=document.createElement('input'); inp.id='g-input'; inp.type='text'; inp.maxLength=40; inp.placeholder='Le mot secret...';
+    var btn=document.createElement('button'); btn.textContent='OK'; btn.onclick=sendGuess;
+    row.appendChild(inp); row.appendChild(btn);
+    box.appendChild(h3); box.appendChild(p); box.appendChild(row);
+    gc.appendChild(box);
+    setTimeout(function(){ var gi=el('g-input'); if(gi) gi.focus(); },50);
+  } else {
+    var div2=document.createElement('div'); div2.className='civil-wait';
+    div2.textContent="L'imposteur tente de deviner le mot secret...";
+    gc.appendChild(div2);
+  }
+}
+
+function sendGuess(){
+  var gi=el('g-input'); if(!gi) return;
+  var w=gi.value.trim(); if(!w) return;
+  sendMsg({type:'guess',word:w}); gi.disabled=true;
+}
+
+function renderScores(s){
+  clearInterval(timerInterval);
+  el('sc-round').textContent='Manche '+s.round+' / '+s.totalRounds;
+  var sorted=s.players.slice().sort(function(a,b){ return (s.scores[b.slot]||0)-(s.scores[a.slot]||0); });
+  var sl=el('sc-list'); sl.textContent='';
+  sorted.forEach(function(p,i){
+    var row=document.createElement('div'); row.className='score-row'+(p.slot===mySlot?' me':'');
+    var rk=document.createElement('div'); rk.className='sr-rank'; rk.textContent=i===0?'1':i===1?'2':i===2?'3':i+1;
+    var av=document.createElement('div'); av.className='sr-av'; av.textContent=p.name[0].toUpperCase();
+    var nm=document.createElement('div'); nm.className='sr-name'; nm.textContent=p.name;
+    var pt=document.createElement('div'); pt.className='sr-pts'; pt.textContent=(s.scores[p.slot]||0)+' pts';
+    row.appendChild(rk); row.appendChild(av); row.appendChild(nm); row.appendChild(pt);
+    sl.appendChild(row);
+  });
+  el('sc-word-reveal').textContent=s.word?'Le mot \xe9tait : '+s.word:'';
+  var isLast=s.round>=s.totalRounds;
+  el('btn-next').style.display=isHost&&!isLast?'':'none';
+  el('sc-wait').style.display=isHost||isLast?'none':'';
+}
+
+function renderGameOver(s){
+  clearInterval(timerInterval);
+  var sorted=s.players.slice().sort(function(a,b){ return (s.scores[b.slot]||0)-(s.scores[a.slot]||0); });
+  var pod=el('go-podium'); pod.textContent='';
+  [1,0,2].forEach(function(idx){
+    var p=sorted[idx]; if(!p) return;
+    var col=document.createElement('div'); col.className='podium-col rank'+(idx+1);
+    var med=document.createElement('div'); med.className='podium-medal'; med.textContent=['\uD83E\uDD47','\uD83E\uDD48','\uD83E\uDD49'][idx];
+    var av=document.createElement('div'); av.className='podium-av'; av.textContent=p.name[0].toUpperCase();
+    var nm=document.createElement('div'); nm.className='podium-name'; nm.textContent=p.name;
+    var pt=document.createElement('div'); pt.className='podium-pts'; pt.textContent=(s.scores[p.slot]||0)+' pts';
+    col.appendChild(med); col.appendChild(av); col.appendChild(nm); col.appendChild(pt);
+    pod.appendChild(col);
+  });
+  var gf=el('go-full'); gf.textContent='';
+  sorted.forEach(function(p,i){
+    var row=document.createElement('div'); row.className='score-row'+(p.slot===mySlot?' me':'');
+    var rk=document.createElement('div'); rk.className='sr-rank'; rk.textContent=i===0?'\uD83E\uDD47':i===1?'\uD83E\uDD48':i===2?'\uD83E\uDD49':i+1;
+    var av=document.createElement('div'); av.className='sr-av'; av.textContent=p.name[0].toUpperCase();
+    var nm=document.createElement('div'); nm.className='sr-name'; nm.textContent=p.name;
+    var pt=document.createElement('div'); pt.className='sr-pts'; pt.textContent=(s.scores[p.slot]||0)+' pts';
+    row.appendChild(rk); row.appendChild(av); row.appendChild(nm); row.appendChild(pt);
+    gf.appendChild(row);
+  });
+  launchConfetti();
+}
+
+function launchConfetti(){
+  var canvas=el('confetti-canvas'); if(!canvas) return;
+  canvas.width=window.innerWidth; canvas.height=window.innerHeight;
+  var ctx=canvas.getContext('2d');
+  var colors=['#FF3864','#ff8c42','#22c55e','#3b82f6','#a855f7','#f59e0b'];
+  var parts=[];
+  for(var i=0;i<120;i++) parts.push({x:Math.random()*canvas.width,y:-10-Math.random()*200,vx:(Math.random()-.5)*4,vy:2+Math.random()*4,r:4+Math.random()*6,color:colors[Math.floor(Math.random()*colors.length)],rot:Math.random()*360,rotv:(Math.random()-.5)*8});
+  var frame=0;
+  function draw(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    parts.forEach(function(p){ ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(p.rot*Math.PI/180); ctx.fillStyle=p.color; ctx.fillRect(-p.r/2,-p.r/2,p.r,p.r*.6); ctx.restore(); p.x+=p.vx; p.y+=p.vy; p.rot+=p.rotv; });
+    if(++frame<200) requestAnimationFrame(draw);
+    else ctx.clearRect(0,0,canvas.width,canvas.height);
+  }
+  draw();
+}
+
+document.addEventListener('keydown',function(e){
+  if(e.key==='Enter'){
+    if(el('s-home').classList.contains('active')) homeAction();
+    else if(el('s-describe').classList.contains('active')&&el('d-input-row').style.display!=='none') sendDescribe();
+    else if(el('s-guess').classList.contains('active')&&el('g-input')) sendGuess();
+  }
+});
+</script>
+</body>
+</html>

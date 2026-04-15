@@ -31,6 +31,7 @@ const wssAnagramme = new WebSocket.Server({ noServer: true });
 const wssJustePrix = new WebSocket.Server({ noServer: true });
 const wssTimeline  = new WebSocket.Server({ noServer: true });
 const wssMemo      = new WebSocket.Server({ noServer: true });
+const wssImposteur = new WebSocket.Server({ noServer: true });
 
 server.on('upgrade', (req, socket, head) => {
   const routes = {
@@ -39,7 +40,8 @@ server.on('upgrade', (req, socket, head) => {
     '/ws/bomb':wssBomb,'/ws/sumo':wssSumo,'/ws/chat':wssChat,'/ws/lobby':wssLobby,
     '/ws/loup':wssLoup,'/ws/uno':wssUno,'/ws/paint':wssPaint,'/ws/naval':wssNaval,
     '/ws/typer':wssTyper,'/ws/anagramme':wssAnagramme,'/ws/justeprix':wssJustePrix,
-    '/ws/timeline':wssTimeline,'/ws/memo':wssMemo
+    '/ws/timeline':wssTimeline,'/ws/memo':wssMemo,
+    '/ws/imposteur':wssImposteur
   };
   const h = routes[req.url];
   if (h) h.handleUpgrade(req, socket, head, ws => h.emit('connection', ws));
@@ -69,12 +71,12 @@ const GAME_NAMES = {
   morpion:'Morpion', taboo:'Mots Interdits', emoji:'Devinette Emoji',
   loup:'Loup-Garou', uno:'Uno', bomb:'Word Bomb', sumo:'Sumo Arena', paint:'Paint.io',
   naval:'Bataille navale', typer:'Typer Race', anagramme:'Anagramme',
-  justeprix:'Juste Prix', timeline:'Timeline', memo:'Mémoire'
+  justeprix:'Juste Prix', timeline:'Timeline', memo:'Mémoire', imposteur:'Imposteur'
 };
 
 function getRoomsSnapshot() {
   const all = [];
-  const maps = { quiz:quizRooms, draw:drawRooms, p4:p4Rooms, morpion:morpionRooms, taboo:tabooRooms, emoji:emojiRooms, loup:loupRooms, uno:unoRooms, bomb:bombRooms, sumo:sumoRooms, paint:paintRooms, naval:navalRooms, typer:typerRooms, anagramme:anagrammeRooms, justeprix:justeprixRooms, timeline:timelineRooms, memo:memoRooms };
+  const maps = { quiz:quizRooms, draw:drawRooms, p4:p4Rooms, morpion:morpionRooms, taboo:tabooRooms, emoji:emojiRooms, loup:loupRooms, uno:unoRooms, bomb:bombRooms, sumo:sumoRooms, paint:paintRooms, naval:navalRooms, typer:typerRooms, anagramme:anagrammeRooms, justeprix:justeprixRooms, timeline:timelineRooms, memo:memoRooms, imposteur:imposteurRooms };
   for (const [game, map] of Object.entries(maps)) {
     for (const [code, room] of map) {
       all.push({
@@ -83,7 +85,7 @@ function getRoomsSnapshot() {
         gameName: GAME_NAMES[game],
         host: room.host,
         players: room.players.map(p => p.name),
-        maxPlayers: game==='loup'?10:game==='bomb'?6:game==='sumo'?4:game==='uno'?4:game==='paint'?4:game==='naval'?4:4,
+        maxPlayers: game==='loup'?10:game==='bomb'?6:game==='sumo'?4:game==='uno'?4:game==='paint'?4:game==='naval'?4:game==='imposteur'?8:4,
         status: ['WAITING','SETUP','PLACING','COUNTDOWN'].includes(room.phase) ? 'waiting' : 'playing'
       });
     }
@@ -4057,6 +4059,295 @@ wssMemo.on('connection',ws=>{
 // ════════════════════════════════════════════════════════
 //  CHAT GLOBAL
 // ════════════════════════════════════════════════════════
+// ── IMPOSTEUR ─────────────────────────────────────────────────────────────────
+const IMPOSTEUR_WORDS = {
+  animaux:  ['chien','chat','lion','éléphant','girafe','singe','pingouin','requin','dauphin','renard','lapin','ours','tigre','zèbre','flamant rose','hibou','tortue','crocodile','baleine','aigle','koala','panda','gorille','perroquet','kangourou','lynx','jaguar','phoque','bison','loup'],
+  objets:   ['avion','guitare','parapluie','horloge','bougie','ballon','couronne','épée','bouclier','lunettes','chapeau','clé','marteau','loupe','sablier','boussole','télescope','accordéon','piano','skateboard','trottinette','parachute','sous-marin','catapulte','igloo','microscope','sarbacane','trampoline','mitraillette','kaleidoscope'],
+  lieux:    ['plage','montagne','bibliothèque','musée','cirque','prison','château','volcan','désert','jungle','igloo','phare','port','stade','mosquée','cathédrale','pyramide','grotte','marché','aéroport','cimetière','aquarium','zoo','université','laboratoire','serre','refuge','caverne','manoir','île déserte'],
+  actions:  ['nager','cuisiner','danser','grimper','chuchoter','éternuer','bâiller','siffler','ronfler','ricaner','trébucher','applaudir','boxer','jongler','méditer','peindre','souder','scier','bricoler','coudre','jardiner','photographier','sculpter','tricoter','ramer','sauter','voler','ramper','glisser','balancer'],
+  aliments: ['pizza','chocolat','pastèque','sushi','croissant','fromage','ananas','pieuvre','escargot','chou-fleur','framboise','noix de coco','piment','ratatouille','fondue','crêpe','guacamole','kimchi','pho','tacos','churros','waffle','bagel','mochi','tiramisu','baklava','choucroute','hummus','lasagne','couscous']
+};
+
+function imposteurPickWord() {
+  const cats = Object.keys(IMPOSTEUR_WORDS);
+  const cat  = cats[Math.floor(Math.random() * cats.length)];
+  const words = IMPOSTEUR_WORDS[cat];
+  return words[Math.floor(Math.random() * words.length)];
+}
+
+function imposteurGenCode() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+  let c = '';
+  for (let i = 0; i < 4; i++) c += chars[Math.floor(Math.random() * chars.length)];
+  return imposteurRooms.has(c) ? imposteurGenCode() : c;
+}
+
+const imposteurRooms = new Map();
+
+function makeImposteurRoom(code, host) {
+  return { code, host, players:[], phase:'WAITING',
+           round:0, totalRounds:5, nbImposteurs:1,
+           word:null, imposteurSlots:[], descOrder:[], descIndex:0,
+           descriptions:[], votes:{}, scores:{}, guessResult:null, timer:null };
+}
+
+function imposteurSnap(room, forSlot) {
+  const isImposteur = room.imposteurSlots.includes(forSlot);
+  const players = room.players.map(p => {
+    const o = { name:p.name, slot:p.slot, score:room.scores[p.slot]||0 };
+    if (['REVEAL','GUESS','SCORES','GAME_OVER'].includes(room.phase))
+      o.isImposteur = room.imposteurSlots.includes(p.slot);
+    return o;
+  });
+  return {
+    type:'imposteur_state', phase:room.phase,
+    round:room.round, totalRounds:room.totalRounds, nbImposteurs:room.nbImposteurs,
+    players, code:room.code, host:room.host,
+    word: room.phase==='DESCRIBE'||room.phase==='VOTE' ? (isImposteur ? null : room.word) : null,
+    descOrder:room.descOrder, descIndex:room.descIndex,
+    descriptions:room.descriptions,
+    votes: ['REVEAL','GUESS','SCORES','GAME_OVER'].includes(room.phase) ? room.votes : {},
+    eliminated:room.eliminated||null, guessResult:room.guessResult,
+    scores:room.scores
+  };
+}
+
+function imposteurBcast(room) {
+  room.players.forEach(p => {
+    if (p.ws.readyState === WebSocket.OPEN) wsend(p.ws, imposteurSnap(room, p.slot));
+  });
+}
+
+function imposteurStartRound(room) {
+  room.round++;
+  room.word = imposteurPickWord();
+  room.descriptions = [];
+  room.votes = {};
+  room.eliminated = null;
+  room.guessResult = null;
+  // pick imposteurs
+  const slots = room.players.map(p => p.slot);
+  const shuffled = [...slots].sort(() => Math.random() - .5);
+  const nb = Math.min(room.nbImposteurs, room.players.length > 4 ? 2 : 1);
+  room.imposteurSlots = shuffled.slice(0, nb);
+  // description order = shuffled
+  room.descOrder = [...slots].sort(() => Math.random() - .5);
+  room.descIndex = 0;
+  room.phase = 'DESCRIBE';
+  imposteurBcast(room);
+  imposteurDescribeTimer(room);
+}
+
+function imposteurDescribeTimer(room) {
+  clearTimeout(room.timer);
+  room.timer = setTimeout(() => {
+    // auto-fill empty description
+    const activeSlot = room.descOrder[room.descIndex];
+    const already = room.descriptions.find(d => d.slot === activeSlot);
+    if (!already) {
+      const p = room.players.find(p => p.slot === activeSlot);
+      room.descriptions.push({ slot:activeSlot, name:p?p.name:'', text:'...' });
+    }
+    imposteurNextDescribe(room);
+  }, 22000);
+}
+
+function imposteurNextDescribe(room) {
+  room.descIndex++;
+  if (room.descIndex >= room.descOrder.length) {
+    imposteurStartVote(room);
+  } else {
+    imposteurBcast(room);
+    imposteurDescribeTimer(room);
+  }
+}
+
+function imposteurStartVote(room) {
+  clearTimeout(room.timer);
+  room.phase = 'VOTE';
+  imposteurBcast(room);
+  room.timer = setTimeout(() => imposteurResolveVote(room), 32000);
+}
+
+function imposteurResolveVote(room) {
+  clearTimeout(room.timer);
+  // auto-vote: players who didn't vote vote for themselves
+  room.players.forEach(p => {
+    if (room.votes[p.slot] === undefined) room.votes[p.slot] = p.slot;
+  });
+  // count votes
+  const tally = {};
+  room.players.forEach(p => { tally[p.slot] = 0; });
+  Object.values(room.votes).forEach(target => { if (tally[target]!==undefined) tally[target]++; });
+  const max = Math.max(...Object.values(tally));
+  const top = Object.keys(tally).filter(s => tally[s] === max).map(Number);
+  const eliminatedSlot = top.length === 1 ? top[0] : null; // ex-aequo = no elimination
+  room.eliminated = null;
+  if (eliminatedSlot !== null) {
+    const ep = room.players.find(p => p.slot === eliminatedSlot);
+    if (ep) room.eliminated = { slot:eliminatedSlot, name:ep.name, isImposteur: room.imposteurSlots.includes(eliminatedSlot) };
+    // score update
+    if (room.imposteurSlots.includes(eliminatedSlot)) {
+      // civils win this round
+      room.players.filter(p => !room.imposteurSlots.includes(p.slot)).forEach(p => { room.scores[p.slot] = (room.scores[p.slot]||0) + 1; });
+    } else {
+      // imposteur wins this round
+      room.imposteurSlots.forEach(s => { room.scores[s] = (room.scores[s]||0) + 1; });
+    }
+  } else {
+    // ex-aequo = imposteur wins
+    room.imposteurSlots.forEach(s => { room.scores[s] = (room.scores[s]||0) + 1; });
+  }
+  room.phase = 'REVEAL';
+  imposteurBcast(room);
+  room.timer = setTimeout(() => imposteurStartGuess(room), 5000);
+}
+
+function imposteurStartGuess(room) {
+  clearTimeout(room.timer);
+  // only if imposteur is still a player (not eliminated) or was eliminated
+  room.phase = 'GUESS';
+  imposteurBcast(room);
+  room.timer = setTimeout(() => imposteurEndGuess(room, null), 22000);
+}
+
+function imposteurEndGuess(room, guessWord) {
+  clearTimeout(room.timer);
+  if (guessWord !== null) {
+    const correct = guessWord.trim().toLowerCase() === room.word.toLowerCase();
+    room.guessResult = correct ? 'correct' : 'wrong';
+    if (correct) {
+      room.imposteurSlots.forEach(s => { room.scores[s] = (room.scores[s]||0) + 1; });
+    }
+  } else {
+    room.guessResult = 'skip';
+  }
+  room.phase = 'SCORES';
+  imposteurBcast(room);
+  broadcastLobby();
+}
+
+function imposteurNextRound(room) {
+  if (room.round >= room.totalRounds) {
+    room.phase = 'GAME_OVER';
+    imposteurBcast(room);
+    broadcastLobby();
+  } else {
+    imposteurStartRound(room);
+    broadcastLobby();
+  }
+}
+
+wssImposteur.on('connection', ws => {
+  aliveFn(ws);
+  let room = null;
+
+  ws.on('message', raw => {
+    let d; try { d = JSON.parse(raw); } catch { return; }
+
+    if (d.type === 'create') {
+      const name = String(d.name||'').trim().slice(0,20);
+      if (!name) return;
+      const code = imposteurGenCode();
+      room = makeImposteurRoom(code, name);
+      room.scores[0] = 0;
+      room.players.push({ ws, name, slot:0, score:0 });
+      imposteurRooms.set(code, room);
+      wsend(ws, imposteurSnap(room, 0));
+      broadcastLobby();
+    }
+
+    else if (d.type === 'join') {
+      const name = String(d.name||'').trim().slice(0,20);
+      const code = String(d.code||'').toUpperCase().trim();
+      if (!name || !code) return;
+      room = imposteurRooms.get(code);
+      if (!room) { wsend(ws, {type:'error', msg:'Salle introuvable'}); return; }
+      if (room.phase !== 'WAITING') { wsend(ws, {type:'error', msg:'Partie déjà commencée'}); return; }
+      if (room.players.length >= 8) { wsend(ws, {type:'error', msg:'Salle pleine'}); return; }
+      const slot = room.players.length;
+      room.scores[slot] = 0;
+      room.players.push({ ws, name, slot });
+      imposteurBcast(room);
+      broadcastLobby();
+    }
+
+    else if (d.type === 'start_setup') {
+      if (!room || room.host !== room.players.find(p=>p.ws===ws)?.name) return;
+      if (room.players.length < 3) { wsend(ws, {type:'error', msg:'Minimum 3 joueurs'}); return; }
+      room.phase = 'SETUP';
+      imposteurBcast(room);
+    }
+
+    else if (d.type === 'configure') {
+      if (!room) return;
+      const p = room.players.find(p=>p.ws===ws);
+      if (!p || p.name !== room.host) return;
+      room.totalRounds = [3,5,7].includes(Number(d.totalRounds)) ? Number(d.totalRounds) : 5;
+      room.nbImposteurs = room.players.length < 5 ? 1 : Math.min(Number(d.nbImposteurs)||1, 2);
+      imposteurStartRound(room);
+      broadcastLobby();
+    }
+
+    else if (d.type === 'describe') {
+      if (!room || room.phase !== 'DESCRIBE') return;
+      const p = room.players.find(p=>p.ws===ws);
+      if (!p) return;
+      if (room.descOrder[room.descIndex] !== p.slot) return; // not your turn
+      const text = String(d.text||'').trim().slice(0,120);
+      if (!text) return;
+      if (room.descriptions.find(x => x.slot === p.slot)) return; // already described
+      room.descriptions.push({ slot:p.slot, name:p.name, text });
+      clearTimeout(room.timer);
+      imposteurNextDescribe(room);
+    }
+
+    else if (d.type === 'vote') {
+      if (!room || room.phase !== 'VOTE') return;
+      const p = room.players.find(p=>p.ws===ws);
+      if (!p) return;
+      if (room.votes[p.slot] !== undefined) return; // already voted
+      const target = Number(d.targetSlot);
+      if (target === p.slot) return; // can't vote for yourself
+      if (!room.players.find(x => x.slot === target)) return;
+      room.votes[p.slot] = target;
+      imposteurBcast(room);
+      if (Object.keys(room.votes).length === room.players.length) {
+        imposteurResolveVote(room);
+      }
+    }
+
+    else if (d.type === 'guess') {
+      if (!room || room.phase !== 'GUESS') return;
+      const p = room.players.find(p=>p.ws===ws);
+      if (!p || !room.imposteurSlots.includes(p.slot)) return;
+      imposteurEndGuess(room, String(d.word||''));
+    }
+
+    else if (d.type === 'next_round') {
+      if (!room || room.phase !== 'SCORES') return;
+      const p = room.players.find(p=>p.ws===ws);
+      if (!p || p.name !== room.host) return;
+      imposteurNextRound(room);
+    }
+
+    else if (d.type === 'lounge_chat') {
+      handleLoungeChat(room, ws, d);
+    }
+  });
+
+  ws.on('close', () => {
+    clearFn(ws);
+    if (!room) return;
+    room.players = room.players.filter(p => p.ws !== ws);
+    if (room.players.length === 0) { imposteurRooms.delete(room.code); broadcastLobby(); return; }
+    if (room.host === room.players.find(p=>p.ws===ws)?.name && room.players.length > 0)
+      room.host = room.players[0].name;
+    imposteurBcast(room);
+    broadcastLobby();
+  });
+});
+
 const chatClients = new Set();
 wssChat.on('connection', ws => {
   chatClients.add(ws);
