@@ -276,6 +276,7 @@ let isHost = false;
 let myCode = null;
 let timerInt = null;
 let cfg = {rounds:5, imp:1};
+let reconnectAction = null;
 
 // ── Stars ──────────────────────────────────────────────────────
 (function(){
@@ -298,13 +299,64 @@ function bindLounge(){
 bindLounge();
 
 // ── WebSocket ──────────────────────────────────────────────────
-function connect(onOpen){
+function connect(){
   ws = new WebSocket(WS_URL);
-  ws.onopen = function(){ dot.classList.add('ok'); if(window.ZapPlay) ZapPlay.hideLoader(); if(onOpen) onOpen(); };
-  ws.onclose = function(){ dot.classList.remove('ok'); };
+  ws.onopen = function(){
+    dot.classList.add('ok');
+    if(window.ZapPlay) ZapPlay.hideLoader();
+    if(reconnectAction){ const fn=reconnectAction; reconnectAction=null; fn(); }
+  };
+  ws.onclose = function(){
+    dot.classList.remove('ok');
+    // Reconnect so lobby deep-links still work after refresh
+    setTimeout(connect, 2000);
+  };
+  ws.onerror = function(){ try{ ws.close(); }catch{} };
   ws.onmessage = function(e){ try{ handle(JSON.parse(e.data)); }catch(ex){ console.error(ex); } };
 }
 function send(obj){ if(ws && ws.readyState===1) ws.send(JSON.stringify(obj)); }
+
+// Always connect (auto-actions depend on it)
+connect();
+
+// ── URL params auto-action ─────────────────────────────────────
+(function(){
+  var p=new URLSearchParams(location.search);
+  if(p.get('name')) el('inp-name').value = p.get('name');
+  if(p.get('code')){
+    el('inp-code').value = String(p.get('code')).toUpperCase();
+    // show join UI
+    var a=el('join-area');
+    a.style.display='flex'; a.style.flexDirection='column';
+  }
+  // Auto-create (from lobby.html create flow)
+  if(p.get('create')==='1' && p.get('name')){
+    var name=String(p.get('name')||'').trim();
+    if(name){
+      myName=name;
+      if(window.ZapPlay) ZapPlay.savePseudo(name);
+      var tryCreate=function(){
+        if(ws && ws.readyState===1) send({type:'create', name:name});
+        else reconnectAction=tryCreate;
+      };
+      setTimeout(tryCreate, 300);
+    }
+  }
+  // Auto-join when code + name are provided (from lobby.html join flow)
+  if(p.get('code') && p.get('name') && p.get('create')!=='1'){
+    var nm=String(p.get('name')||'').trim();
+    var code=String(p.get('code')||'').trim().toUpperCase();
+    if(nm && code){
+      myName=nm;
+      if(window.ZapPlay) ZapPlay.savePseudo(nm);
+      var tryJoin=function(){
+        if(ws && ws.readyState===1) send({type:'join', name:nm, code:code});
+        else reconnectAction=tryJoin;
+      };
+      setTimeout(tryJoin, 300);
+    }
+  }
+})();
 
 // ── Screen helpers ─────────────────────────────────────────────
 function show(id){
@@ -326,7 +378,8 @@ function doCreate(){
   if(window.ZapPlay) ZapPlay.savePseudo(name);
   if(!name){ setErr('Entre ton pr&eacute;nom !'); return; }
   myName=name; setErr('');
-  connect(function(){ send({type:'create', name:name}); });
+  if(ws && ws.readyState===1) send({type:'create', name:name});
+  else reconnectAction=function(){ send({type:'create', name:name}); };
 }
 
 function doJoin(){
@@ -336,7 +389,8 @@ function doJoin(){
   if(!name){ setErr('Entre ton pr&eacute;nom !'); return; }
   if(!code){ setErr('Entre le code de la salle !'); return; }
   myName=name; setErr('');
-  connect(function(){ send({type:'join', name:name, code:code}); });
+  if(ws && ws.readyState===1) send({type:'join', name:name, code:code});
+  else reconnectAction=function(){ send({type:'join', name:name, code:code}); };
 }
 
 // ── Setup ──────────────────────────────────────────────────────
@@ -374,6 +428,7 @@ function copyCode(){
 // ── Main handler ───────────────────────────────────────────────
 function handle(m){
   if(m.type==='error'){ el('wait-err').textContent=m.msg; setErr(m.msg); return; }
+  if(m.type==='lounge_chat'){ if(window.ZapPlay) ZapPlay.addLoungeMessage(m); return; }
   if(m.type!=='imposteur_state') return;
   var s=m;
   // resolve mySlot
@@ -392,6 +447,8 @@ function handle(m){
   else if(s.phase==='GUESS')     { renderGuess(s);    show('s-guess'); }
   else if(s.phase==='SCORES')    { renderScores(s);   show('s-scores'); }
   else if(s.phase==='GAME_OVER') { renderGameOver(s); show('s-gameover'); }
+
+  if(s.phase!=='WAITING'){ if(window.ZapPlay) ZapPlay.hideLounge(); }
 }
 
 // ── WAIT ───────────────────────────────────────────────────────
@@ -406,6 +463,7 @@ function renderWait(s){
   });
   el('start-btn').style.display = isHost ? 'block' : 'none';
   el('wait-err').textContent='';
+  if(window.ZapPlay) ZapPlay.showLounge({players:s.players,mySlot:mySlot,roomCode:s.code||myCode,gameName:'Imposteur'});
 }
 
 // ── SETUP ──────────────────────────────────────────────────────
@@ -632,6 +690,10 @@ document.addEventListener('keydown', function(e){
   if(id==='s-home') doCreate();
   else if(id==='s-describe' && el('d-input-row').style.display!=='none') doDescribe();
   else if(id==='s-guess' && el('g-inp')) doGuess();
+});
+
+el('inp-code').addEventListener('input', function(e){
+  e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,'');
 });
 </script>
 </body>
