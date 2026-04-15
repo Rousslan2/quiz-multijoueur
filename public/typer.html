@@ -258,6 +258,7 @@ function handleMsg(d){
       updateState(d); break;
     case 'countdown':{
       ['scr-wait','scr-name','scr-rnd'].forEach(hide);
+      if(window.ZapPlay)ZapPlay.hideLounge();
       show('scr-cd');
       let n=d.seconds; $('cd-n').textContent=n;
       const iv=setInterval(()=>{ n--; if(n<=0) clearInterval(iv); else $('cd-n').textContent=n; },1000);
@@ -309,12 +310,15 @@ function updateState(d){
       pw.appendChild(ch);
     });
     if(mySlot===0) show('start-btn'); else $('w-hint').textContent='En attente du joueur 1…';
+    if(window.ZapPlay)ZapPlay.showLounge({players:d.players,mySlot,roomCode:d.code,gameName:'Typer Race'});
   }
   if(d.phase==='PLAYING'){
+    if(window.ZapPlay)ZapPlay.hideLounge();
     renderScores(d.players,'score-bar');
     renderProgress(d.players);
   }
   if(d.phase==='GAME_OVER'){
+    if(window.ZapPlay)ZapPlay.hideLounge();
     ['scr-play','scr-rnd'].forEach(hide); show('scr-over');
     const sorted=[...d.players].sort((a,b)=>b.score-a.score);
     $('winner-txt').textContent = (sorted[0]?sorted[0].name+' gagne !':'');

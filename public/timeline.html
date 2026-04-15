@@ -206,7 +206,9 @@ function handleMsg(d){
       $('w-hint').textContent='En attente du lancement…'; break;
     case 'timeline_state': updateState(d); break;
     case 'countdown':{
-      ['scr-wait','scr-name','scr-rev'].forEach(hide); show('scr-cd');
+      ['scr-wait','scr-name','scr-rev'].forEach(hide);
+      if(window.ZapPlay)ZapPlay.hideLounge();
+      show('scr-cd');
       let n=d.seconds; $('cd-n').textContent=n;
       const iv=setInterval(()=>{ n--; if(n<=0) clearInterval(iv); else $('cd-n').textContent=n; },1000);
       break;
@@ -278,9 +280,11 @@ function updateState(d){
     const pw=$('w-players'); pw.textContent='';
     d.players.forEach(p=>{ const c=document.createElement('span'); c.className='p-chip'; c.textContent=(p.slot===0?'👑 ':'')+p.name; pw.appendChild(c); });
     if(mySlot===0) show('start-btn'); else $('w-hint').textContent='En attente du joueur 1…';
+    if(window.ZapPlay)ZapPlay.showLounge({players:d.players,mySlot,roomCode:d.code,gameName:'Timeline'});
   }
-  if(d.phase==='PLAYING') renderScores(d.players,'score-bar');
+  if(d.phase==='PLAYING'){if(window.ZapPlay)ZapPlay.hideLounge(); renderScores(d.players,'score-bar');}
   if(d.phase==='GAME_OVER'){
+    if(window.ZapPlay)ZapPlay.hideLounge();
     ['scr-play','scr-rev'].forEach(hide); show('scr-over');
     const sorted=[...d.players].sort((a,b)=>b.score-a.score);
     $('winner-txt').textContent=sorted[0]?sorted[0].name+' gagne !':'';
