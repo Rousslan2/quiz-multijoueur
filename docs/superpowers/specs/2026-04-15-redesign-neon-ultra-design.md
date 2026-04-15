@@ -150,6 +150,67 @@ Fichiers : `quiz.html`, `draw.html`, `p4.html`, `morpion.html`, `taboo.html`, `e
 
 ---
 
+## 6b. Designs spécifiques par jeu
+
+### Grilles — P4, Morpion
+
+| Élément | Traitement |
+|---------|-----------|
+| Cellules vides | `rgba(255,255,255,.04)` + border fine |
+| Token P0 (bleu) | `background:#3B82F6` + `box-shadow:0 0 10px rgba(59,130,246,.6)` |
+| Token P1 (orange) | `background:#FF6B35` + `box-shadow:0 0 10px rgba(255,107,53,.6)` |
+| Ligne gagnante | `background:#FFE234` + glow pulsant `@keyframes pulse-win` |
+| X/O Morpion | text-shadow coloré (X=teal, O=pink) |
+| Cellule gagnante | border dorée + animation pulse |
+
+### Bataille Navale
+
+| État cellule | Style |
+|-------------|-------|
+| Vide | `rgba(56,189,248,.04)` + border bleue fine |
+| Bateau (ma flotte) | `rgba(56,189,248,.14)` + border bleue |
+| Touché | `rgba(239,68,68,.2)` + border rouge + `✕` centré |
+| Raté | `rgba(255,255,255,.04)` + point gris centré |
+| Coulé | `rgba(239,68,68,.25)` + `box-shadow` rouge intense |
+
+### Dessin & Devine / Paint
+
+- Canvas : fond `#111` sombre (pas blanc)
+- Toolbar : boutons couleur (swatches ronds), taille (carrés neon avec dot), gomme
+- Mot à dessiner : `color:--primary` avec `text-shadow` glow, monospace uppercase
+- Indicateur "TU DESSINES" en overlay bas-droit sur canvas
+
+### Mémoire
+
+| État carte | Style |
+|-----------|-------|
+| Dos (non retournée) | gradient violet+bleu faint, `?` gris centré |
+| Retournée | `rgba(168,85,247,.1)` + border violet |
+| Pairée (match) | `rgba(34,197,94,.08)` + border verte + `@keyframes match-glow` pulsant |
+
+### Loup-Garou
+
+- **Écran rôle** : carte sombre avec border colorée selon rôle (rouge=loup, vert=village), role-icon grand + animation `roleReveal`, liste loups en rouge
+- **Phase nuit** : fond `rgba(0,0,0,.35)` + titre violet, boutons vote avec hover rouge
+- **Phase jour** : joueurs listés, morts en `opacity:.4 + grayscale(1)`, propre joueur border colorée
+
+### WordBomb
+
+- Bombe SVG animée : corps rond gradient sombre, capsule, mèche, étincelle `@keyframes spark`
+- Mode danger : `bombshake` + `sparkpulse` accélérés
+- Syllabe cible : `color:#FFE234` + glow
+- Timer : gradient `#22C55E → #FFE234 → #FF3864` selon temps restant
+- Input : border dorée, texte jaune monospace
+
+### UNO
+
+- Cartes : gradient couleur propre (rouge/bleu/vert/jaune), coins arrondis, `box-shadow` sombre
+- Deck : fond sombre mystérieux
+- Carte jouable : `@keyframes card-glow` scintillement discret
+- Hover sur carte jouable : `translateY(-8px)` + glow amplifié
+
+---
+
 ## 7. Contraintes
 
 - **Zéro changement JS** — uniquement CSS et structure HTML minimale
