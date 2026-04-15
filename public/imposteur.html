@@ -369,8 +369,15 @@ function el(id){ return document.getElementById(id); }
 // ── Home actions ───────────────────────────────────────────────
 function showJoin(){
   var a=el('join-area');
-  a.style.display = a.style.display==='none' ? 'flex' : 'none';
-  a.style.flexDirection = 'column';
+  var isHidden = (a.style.display==='none' || !a.style.display);
+  if(isHidden){
+    a.style.display = 'flex';
+    a.style.flexDirection = 'column';
+    setTimeout(function(){ var c=el('inp-code'); if(c) c.focus(); }, 50);
+    return;
+  }
+  // Si la zone est déjà ouverte, on rejoint directement avec le pseudo saisi/sauvegardé.
+  doJoin();
 }
 
 function doCreate(){
@@ -384,6 +391,10 @@ function doCreate(){
 
 function doJoin(){
   var name=el('inp-name').value.trim();
+  if(!name && window.ZapPlay && ZapPlay.getSavedPseudo){
+    name = (ZapPlay.getSavedPseudo()||'').trim();
+    if(name) el('inp-name').value = name;
+  }
   var code=el('inp-code').value.trim().toUpperCase();
   if(window.ZapPlay) ZapPlay.savePseudo(name);
   if(!name){ setErr('Entre ton pr&eacute;nom !'); return; }
@@ -690,6 +701,12 @@ document.addEventListener('keydown', function(e){
   if(id==='s-home') doCreate();
   else if(id==='s-describe' && el('d-input-row').style.display!=='none') doDescribe();
   else if(id==='s-guess' && el('g-inp')) doGuess();
+});
+
+// Auto-join quand le code est complet (UX identique aux autres jeux)
+el('inp-code').addEventListener('input', function(e){
+  e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,4);
+  if(e.target.value.length===4) doJoin();
 });
 
 el('inp-code').addEventListener('input', function(e){
