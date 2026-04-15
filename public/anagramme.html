@@ -60,7 +60,7 @@ h2{font-size:1.5rem;font-weight:800;background:linear-gradient(135deg,var(--prim
   <h2>🔤 Anagramme</h2>
   <div class="card" style="display:flex;flex-direction:column;gap:10px">
     <p style="text-align:center;color:var(--muted);font-size:.85rem">Déchiffre le mot avant les autres ! 8 manches · 2–4 joueurs</p>
-    <input id="name-in" type="text" maxlength="20" placeholder="Ton pseudo" autocomplete="off">
+    <input id="name-input" type="text" maxlength="20" placeholder="Ton pseudo" autocomplete="off">
     <div style="display:flex;gap:8px">
       <button class="btn btn-p" style="flex:1" onclick="createGame()">Créer une salle</button>
       <button class="btn btn-s" style="flex:1" onclick="toggleJoin()">Rejoindre</button>
@@ -154,8 +154,8 @@ function connect(){
 connect();
 
 function toggleJoin(){ const a=$('join-area'); a.style.display=a.style.display==='flex'?'none':'flex'; }
-function createGame(){ send({type:'create_anagramme',name:$('name-in').value.trim()||'Joueur'}); }
-function joinGame(){ send({type:'join_anagramme',name:$('name-in').value.trim()||'Joueur',code:$('code-in').value.trim().toUpperCase()}); }
+function createGame(){ send({type:'create_anagramme',name:$('name-input').value.trim()||'Joueur'}); }
+function joinGame(){ send({type:'join_anagramme',name:$('name-input').value.trim()||'Joueur',code:$('code-in').value.trim().toUpperCase()}); }
 function copyCode(){ try{ navigator.clipboard.writeText(myCode); }catch{} }
 function startGame(){ send({type:'start_anagramme'}); }
 function restart(){ send({type:'restart_anagramme'}); }
@@ -257,6 +257,7 @@ function handleMsg(d){
     }
     case 'error': $('err').textContent=d.msg; break;
     case 'game_abandoned': alert('Un joueur a quitté.'); location.reload(); break;
+    case 'lounge_chat': if(window.ZapPlay)ZapPlay.addLoungeMessage(d); break;
   }
 }
 function updateState(d){
@@ -280,13 +281,17 @@ $('guess-in').addEventListener('keydown',e=>{ if(e.key==='Enter') submitGuess();
 
 (function(){
   const p=new URLSearchParams(location.search);
-  if(p.get('name')) $('name-in').value=p.get('name');
+  if(p.get('name')) $('name-input').value=p.get('name');
   if(p.get('code')){ $('code-in').value=p.get('code').toUpperCase(); toggleJoin(); }
   if(p.get('create')==='1'&&p.get('name')){
-    const name=p.get('name'); $('name-in').value=name;
+    const name=p.get('name'); $('name-input').value=name;
     pendingAction=()=>send({type:'create_anagramme',name});
   }
 })();
+function bindLoungeSender(){if(window.ZapPlay)ZapPlay.setLoungeSender(text=>send({type:'lounge_chat',text}));else setTimeout(bindLoungeSender,120);}
+bindLoungeSender();
 </script>
+<script src="shared.js"></script>
+<script src="chat.js"></script>
 </body>
 </html>
