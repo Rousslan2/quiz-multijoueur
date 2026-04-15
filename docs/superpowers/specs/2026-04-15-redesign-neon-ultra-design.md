@@ -13,7 +13,13 @@
 - **Animations hover cartes:** Scanlines + Glitch (overlay scanline au hover, glitch chromatic aberration sur les icônes)
 - **Overlay global:** Scanlines fixes sur toute la page (repeating-linear-gradient)
 - **Logo:** Glitch chromatic aberration (rouge + bleu) toutes les 6s
-- **Fond:** Grille animée (drift), 3 glows flottants (teal, pink, blue), particules montantes
+- **Fond — C Deep Space (menu + tous les jeux):**
+  - Background radial-gradient `#0a0520` → `#03030A`
+  - 60 étoiles scintillantes générées en JS (`@keyframes twinkle`)
+  - 2 nébuleuses flous : violet `rgba(168,85,247,.15)` + rose `rgba(255,56,100,.1)` (filter:blur)
+  - Grille légère animée `rgba(168,85,247,.025)` 40px
+  - Comète traversante (`@keyframes comet-fly`) hauteur 1px
+  - Sur les pages jeu : couleur nébuleuse suit la couleur primaire du jeu (`--primary`)
 
 ---
 
