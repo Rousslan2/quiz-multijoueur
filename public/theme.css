@@ -41,6 +41,12 @@ body::before {
   position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden;
   background: radial-gradient(ellipse at 30% 20%, #0a0520, #03030A);
 }
+
+/* Ensure all game content sits above the fixed space bg */
+body > *:not(.zp-space-bg) {
+  position: relative;
+  z-index: 1;
+}
 .zp-space-bg .zp-neb1 {
   position: absolute; width: 600px; height: 600px; border-radius: 50%;
   background: radial-gradient(circle, rgba(168,85,247,.13), transparent 65%);
