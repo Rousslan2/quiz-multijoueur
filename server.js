@@ -26,13 +26,20 @@ const wssLobby   = new WebSocket.Server({ noServer: true });
 const wssLoup    = new WebSocket.Server({ noServer: true });
 const wssUno     = new WebSocket.Server({ noServer: true });
 const wssNaval   = new WebSocket.Server({ noServer: true });
+const wssTyper   = new WebSocket.Server({ noServer: true });
+const wssAnagramme = new WebSocket.Server({ noServer: true });
+const wssJustePrix = new WebSocket.Server({ noServer: true });
+const wssTimeline  = new WebSocket.Server({ noServer: true });
+const wssMemo      = new WebSocket.Server({ noServer: true });
 
 server.on('upgrade', (req, socket, head) => {
   const routes = {
     '/ws/quiz':wssQuiz,'/ws/draw':wssDraw,'/ws/p4':wssP4,
     '/ws/morpion':wssMorpion,'/ws/taboo':wssTaboo,'/ws/emoji':wssEmoji,
     '/ws/bomb':wssBomb,'/ws/sumo':wssSumo,'/ws/chat':wssChat,'/ws/lobby':wssLobby,
-    '/ws/loup':wssLoup,'/ws/uno':wssUno,'/ws/paint':wssPaint,'/ws/naval':wssNaval
+    '/ws/loup':wssLoup,'/ws/uno':wssUno,'/ws/paint':wssPaint,'/ws/naval':wssNaval,
+    '/ws/typer':wssTyper,'/ws/anagramme':wssAnagramme,'/ws/justeprix':wssJustePrix,
+    '/ws/timeline':wssTimeline,'/ws/memo':wssMemo
   };
   const h = routes[req.url];
   if (h) h.handleUpgrade(req, socket, head, ws => h.emit('connection', ws));
@@ -61,12 +68,13 @@ const GAME_NAMES = {
   quiz:'Quiz Éclair', draw:'Dessin & Devine', p4:'Puissance 4',
   morpion:'Morpion', taboo:'Mots Interdits', emoji:'Devinette Emoji',
   loup:'Loup-Garou', uno:'Uno', bomb:'Word Bomb', sumo:'Sumo Arena', paint:'Paint.io',
-  naval:'Bataille navale'
+  naval:'Bataille navale', typer:'Typer Race', anagramme:'Anagramme',
+  justeprix:'Juste Prix', timeline:'Timeline', memo:'Mémoire'
 };
 
 function getRoomsSnapshot() {
   const all = [];
-  const maps = { quiz:quizRooms, draw:drawRooms, p4:p4Rooms, morpion:morpionRooms, taboo:tabooRooms, emoji:emojiRooms, loup:loupRooms, uno:unoRooms, bomb:bombRooms, sumo:sumoRooms, paint:paintRooms, naval:navalRooms };
+  const maps = { quiz:quizRooms, draw:drawRooms, p4:p4Rooms, morpion:morpionRooms, taboo:tabooRooms, emoji:emojiRooms, loup:loupRooms, uno:unoRooms, bomb:bombRooms, sumo:sumoRooms, paint:paintRooms, naval:navalRooms, typer:typerRooms, anagramme:anagrammeRooms, justeprix:justeprixRooms, timeline:timelineRooms, memo:memoRooms };
   for (const [game, map] of Object.entries(maps)) {
     for (const [code, room] of map) {
       all.push({
@@ -3464,6 +3472,583 @@ wssNaval.on('connection', ws => {
         navalBcast(myRoom);
         broadcastLobby();
         break;
+      }
+    }
+  });
+});
+
+// ════════════════════════════════════════════════════════
+//  TYPER RACE
+// ════════════════════════════════════════════════════════
+const TYPER_TEXTS = [
+  "Le renard brun saute par dessus le chien paresseux.",
+  "La technologie avance plus vite que notre capacité à l absorber.",
+  "Chaque jour est une nouvelle occasion de progresser ensemble.",
+  "Les étoiles brillent le plus fort dans une obscurité totale.",
+  "La patience est souvent la clé de toutes les portes fermées.",
+  "Un voyage de mille lieues commence toujours par un seul pas.",
+  "La connaissance est le seul trésor que personne ne peut voler.",
+  "La musique est un art qui atteint directement notre âme profonde.",
+  "Apprendre à écrire rapidement est une compétence très précieuse.",
+  "Le soleil se lève chaque matin pour illuminer un monde nouveau.",
+  "Les grandes réussites commencent toujours par une petite idée.",
+  "Travailler en équipe permet d accomplir des choses extraordinaires.",
+];
+
+const typerRooms = new Map();
+function makeTyperRoom(c,h){return{code:c,host:h,players:[],phase:'WAITING',round:0,totalRounds:5,currentText:null,scores:{},finishers:[],timer:null,usedTexts:[]};}
+function typerSnap(room,extra={}){return{type:'typer_state',phase:room.phase,code:room.code,players:room.players.map(p=>({name:p.name,slot:p.slot,score:room.scores[p.slot]||0,progress:p.progress||0})),round:room.round,totalRounds:room.totalRounds,finishers:[...room.finishers],...extra};}
+
+function typerStartRound(room){
+  room.finishers=[];
+  room.players.forEach(p=>{p.progress=0;});
+  const avail=TYPER_TEXTS.map((_,i)=>i).filter(i=>!room.usedTexts.includes(i));
+  const pool=avail.length?avail:TYPER_TEXTS.map((_,i)=>i);
+  const idx=pool[Math.floor(Math.random()*pool.length)];
+  room.usedTexts.push(idx);
+  room.currentText=TYPER_TEXTS[idx];
+  room.phase='PLAYING';
+  bcast(room.players,{type:'typer_round',round:room.round,totalRounds:room.totalRounds,text:room.currentText});
+  clearTimeout(room.timer);
+  room.timer=setTimeout(()=>typerEndRound(room),60000);
+  broadcastLobby();
+}
+function typerEndRound(room){
+  clearTimeout(room.timer);
+  const pts=[4,3,2,1];
+  room.finishers.forEach((slot,i)=>{room.scores[slot]=(room.scores[slot]||0)+(pts[i]||1);});
+  room.phase='ROUNDOVER';
+  bcast(room.players,{...typerSnap(room),type:'typer_roundover'});
+  clearTimeout(room.timer);
+  room.timer=setTimeout(()=>{
+    if(room.round>=room.totalRounds){room.phase='GAME_OVER';bcast(room.players,typerSnap(room));broadcastLobby();}
+    else{room.round++;typerStartRound(room);}
+  },3500);
+}
+wssTyper.on('connection',ws=>{
+  makeWS(wssTyper).alive(ws);
+  let myRoom=null;
+  ws.on('close',()=>{
+    makeWS(wssTyper).clear(ws);
+    if(!myRoom)return;
+    const idx=myRoom.players.findIndex(p=>p.ws===ws);if(idx<0)return;
+    const name=myRoom.players[idx].name;
+    myRoom.players.splice(idx,1);myRoom.players.forEach((p,i)=>p.slot=i);
+    clearTimeout(myRoom.timer);
+    if(!myRoom.players.length){typerRooms.delete(myRoom.code);broadcastLobby();return;}
+    bcast(myRoom.players,{type:'player_left',name});
+    if(['PLAYING','ROUNDOVER'].includes(myRoom.phase))bcast(myRoom.players,{type:'game_abandoned'});
+    myRoom.phase='WAITING';bcast(myRoom.players,typerSnap(myRoom));broadcastLobby();
+  });
+  ws.on('message',raw=>{
+    let d;try{d=JSON.parse(raw);}catch{return;}
+    const player=myRoom?myRoom.players.find(p=>p.ws===ws):null;
+    switch(d.type){
+      case 'lounge_chat':handleLoungeChat(myRoom,ws,d);break;
+      case 'create_typer':{
+        const name=String(d.name||'').trim().slice(0,20)||'Joueur';
+        const code=genCode(typerRooms);const room=makeTyperRoom(code,name);
+        typerRooms.set(code,room);myRoom=room;
+        room.players.push({ws,name,slot:0,progress:0});room.scores[0]=0;
+        wsend(ws,{type:'created_typer',code,slot:0,name});wsend(ws,typerSnap(room));broadcastLobby();break;
+      }
+      case 'join_typer':{
+        const code=String(d.code||'').trim().toUpperCase();const room=typerRooms.get(code);
+        if(!room){wsend(ws,{type:'error',msg:'Salle introuvable.'});return;}
+        if(room.players.length>=4){wsend(ws,{type:'error',msg:'Partie pleine.'});return;}
+        if(room.phase!=='WAITING'){wsend(ws,{type:'error',msg:'Partie déjà en cours.'});return;}
+        const name=String(d.name||'').trim().slice(0,20)||'Joueur';
+        const slot=room.players.length;room.players.push({ws,name,slot,progress:0});room.scores[slot]=0;
+        myRoom=room;wsend(ws,{type:'welcome_typer',slot,name,code});bcast(room.players,typerSnap(room));broadcastLobby();break;
+      }
+      case 'start_typer':{
+        if(!player||!myRoom||player.slot!==0||myRoom.phase!=='WAITING')return;
+        if(myRoom.players.length<2){wsend(ws,{type:'error',msg:'Il faut au moins 2 joueurs.'});return;}
+        myRoom.round=1;myRoom.scores={};myRoom.usedTexts=[];
+        myRoom.players.forEach(p=>{myRoom.scores[p.slot]=0;p.progress=0;});
+        bcast(myRoom.players,{type:'countdown',seconds:3});
+        clearTimeout(myRoom.timer);myRoom.timer=setTimeout(()=>typerStartRound(myRoom),3000);broadcastLobby();break;
+      }
+      case 'typer_progress':{
+        if(!player||!myRoom||myRoom.phase!=='PLAYING')return;
+        player.progress=Math.min(100,Math.max(0,Number(d.progress)||0));
+        bcast(myRoom.players,{type:'typer_positions',players:myRoom.players.map(p=>({slot:p.slot,progress:p.progress||0}))});break;
+      }
+      case 'typer_done':{
+        if(!player||!myRoom||myRoom.phase!=='PLAYING')return;
+        if(myRoom.finishers.includes(player.slot))return;
+        myRoom.finishers.push(player.slot);player.progress=100;
+        bcast(myRoom.players,{type:'typer_finish',slot:player.slot,name:player.name,rank:myRoom.finishers.length});
+        bcast(myRoom.players,{type:'typer_positions',players:myRoom.players.map(p=>({slot:p.slot,progress:p.progress||0}))});
+        if(myRoom.finishers.length>=myRoom.players.length)typerEndRound(myRoom);break;
+      }
+      case 'restart_typer':{
+        if(!player||!myRoom||myRoom.phase!=='GAME_OVER')return;
+        myRoom.phase='WAITING';myRoom.round=0;myRoom.scores={};myRoom.usedTexts=[];
+        myRoom.players.forEach(p=>{myRoom.scores[p.slot]=0;p.progress=0;});
+        bcast(myRoom.players,typerSnap(myRoom));broadcastLobby();break;
+      }
+    }
+  });
+});
+
+// ════════════════════════════════════════════════════════
+//  ANAGRAMME
+// ════════════════════════════════════════════════════════
+const ANAGRAMME_WORDS=[
+  'maison','jardin','soleil','musique','voyage','plante','balcon','fenetre','bureau','lampe',
+  'chaise','livre','crayon','stylo','nuage','fleuve','dessin','couleur','canard','souris',
+  'lapin','poisson','dragon','pirate','chateau','tresor','lumiere','miroir','bougie','parfum',
+  'rideau','tapis','casque','marteau','valise','billet','montre','bague','collier','bouton',
+  'cravate','manteau','chapeau','voiture','bateau','avion','fusee','etoile','planete','guitare',
+  'trompette','violon','tableau','musee','jardin','tigre','girafe','serpent','tortue','mouton',
+];
+function scrambleWord(w){let a=w.split('');let t=0;do{a.sort(()=>Math.random()-.5);t++;}while(a.join('')===w&&t<30);return a.join('');}
+
+const anagrammeRooms=new Map();
+function makeAnagrammeRoom(c,h){return{code:c,host:h,players:[],phase:'WAITING',round:0,totalRounds:8,currentWord:null,scrambled:null,scores:{},roundOver:false,timer:null,usedIdx:[]};}
+function anagrammeSnap(room,extra={}){return{type:'anagramme_state',phase:room.phase,code:room.code,players:room.players.map(p=>({name:p.name,slot:p.slot,score:room.scores[p.slot]||0})),round:room.round,totalRounds:room.totalRounds,scrambled:room.scrambled,wordLen:room.currentWord?room.currentWord.length:0,...extra};}
+
+function anagrammeStartRound(room){
+  room.roundOver=false;
+  const avail=ANAGRAMME_WORDS.filter((_,i)=>!room.usedIdx.includes(i));
+  const pool=avail.length?avail:ANAGRAMME_WORDS;
+  const pick=pool[Math.floor(Math.random()*pool.length)];
+  room.usedIdx.push(ANAGRAMME_WORDS.indexOf(pick));
+  room.currentWord=pick;room.scrambled=scrambleWord(pick);
+  room.phase='PLAYING';
+  bcast(room.players,{type:'anagramme_round',round:room.round,totalRounds:room.totalRounds,scrambled:room.scrambled,wordLen:pick.length});
+  clearTimeout(room.timer);
+  room.timer=setTimeout(()=>{
+    if(room.roundOver)return;room.roundOver=true;
+    bcast(room.players,{type:'anagramme_timeout',word:room.currentWord,round:room.round});
+    anagrammeNextRound(room);
+  },20000);
+  broadcastLobby();
+}
+function anagrammeNextRound(room){
+  clearTimeout(room.timer);
+  room.timer=setTimeout(()=>{
+    if(room.round>=room.totalRounds){room.phase='GAME_OVER';bcast(room.players,anagrammeSnap(room));broadcastLobby();}
+    else{room.round++;anagrammeStartRound(room);}
+  },3000);
+}
+wssAnagramme.on('connection',ws=>{
+  makeWS(wssAnagramme).alive(ws);
+  let myRoom=null;
+  ws.on('close',()=>{
+    makeWS(wssAnagramme).clear(ws);
+    if(!myRoom)return;
+    const idx=myRoom.players.findIndex(p=>p.ws===ws);if(idx<0)return;
+    const name=myRoom.players[idx].name;
+    myRoom.players.splice(idx,1);myRoom.players.forEach((p,i)=>p.slot=i);
+    clearTimeout(myRoom.timer);
+    if(!myRoom.players.length){anagrammeRooms.delete(myRoom.code);broadcastLobby();return;}
+    bcast(myRoom.players,{type:'player_left',name});
+    if(myRoom.phase==='PLAYING')bcast(myRoom.players,{type:'game_abandoned'});
+    myRoom.phase='WAITING';bcast(myRoom.players,anagrammeSnap(myRoom));broadcastLobby();
+  });
+  ws.on('message',raw=>{
+    let d;try{d=JSON.parse(raw);}catch{return;}
+    const player=myRoom?myRoom.players.find(p=>p.ws===ws):null;
+    switch(d.type){
+      case 'lounge_chat':handleLoungeChat(myRoom,ws,d);break;
+      case 'create_anagramme':{
+        const name=String(d.name||'').trim().slice(0,20)||'Joueur';
+        const code=genCode(anagrammeRooms);const room=makeAnagrammeRoom(code,name);
+        anagrammeRooms.set(code,room);myRoom=room;
+        room.players.push({ws,name,slot:0});room.scores[0]=0;
+        wsend(ws,{type:'created_anagramme',code,slot:0,name});wsend(ws,anagrammeSnap(room));broadcastLobby();break;
+      }
+      case 'join_anagramme':{
+        const code=String(d.code||'').trim().toUpperCase();const room=anagrammeRooms.get(code);
+        if(!room){wsend(ws,{type:'error',msg:'Salle introuvable.'});return;}
+        if(room.players.length>=4){wsend(ws,{type:'error',msg:'Partie pleine.'});return;}
+        if(room.phase!=='WAITING'){wsend(ws,{type:'error',msg:'Partie déjà en cours.'});return;}
+        const name=String(d.name||'').trim().slice(0,20)||'Joueur';
+        const slot=room.players.length;room.players.push({ws,name,slot});room.scores[slot]=0;
+        myRoom=room;wsend(ws,{type:'welcome_anagramme',slot,name,code});bcast(room.players,anagrammeSnap(room));broadcastLobby();break;
+      }
+      case 'start_anagramme':{
+        if(!player||!myRoom||player.slot!==0||myRoom.phase!=='WAITING')return;
+        if(myRoom.players.length<2){wsend(ws,{type:'error',msg:'Il faut au moins 2 joueurs.'});return;}
+        myRoom.round=1;myRoom.scores={};myRoom.usedIdx=[];myRoom.currentWord=null;
+        myRoom.players.forEach(p=>{myRoom.scores[p.slot]=0;});
+        bcast(myRoom.players,{type:'countdown',seconds:3});
+        clearTimeout(myRoom.timer);myRoom.timer=setTimeout(()=>anagrammeStartRound(myRoom),3000);broadcastLobby();break;
+      }
+      case 'anagramme_guess':{
+        if(!player||!myRoom||myRoom.phase!=='PLAYING'||myRoom.roundOver)return;
+        const guess=String(d.word||'').trim().toLowerCase();if(!guess)return;
+        if(guess===myRoom.currentWord){
+          myRoom.roundOver=true;clearTimeout(myRoom.timer);
+          myRoom.scores[player.slot]=(myRoom.scores[player.slot]||0)+3;
+          bcast(myRoom.players,{type:'anagramme_won',winner:player.name,slot:player.slot,word:myRoom.currentWord});
+          anagrammeNextRound(myRoom);
+        }else{wsend(ws,{type:'anagramme_wrong',guess});}
+        break;
+      }
+      case 'restart_anagramme':{
+        if(!player||!myRoom||myRoom.phase!=='GAME_OVER')return;
+        myRoom.phase='WAITING';myRoom.round=0;myRoom.scores={};myRoom.usedIdx=[];myRoom.currentWord=null;myRoom.scrambled=null;
+        myRoom.players.forEach(p=>{myRoom.scores[p.slot]=0;});
+        bcast(myRoom.players,anagrammeSnap(myRoom));broadcastLobby();break;
+      }
+    }
+  });
+});
+
+// ════════════════════════════════════════════════════════
+//  JUSTE PRIX
+// ════════════════════════════════════════════════════════
+const JUSTE_PRIX_QS=[
+  {q:"Prix d'un Big Mac en France (€)",answer:5.3},
+  {q:"Prix d'une baguette tradition en boulangerie (€)",answer:1.2},
+  {q:"Prix d'un iPhone 15 128Go neuf (€)",answer:969},
+  {q:"Prix d'un ticket de métro à Paris (€)",answer:2.1},
+  {q:"Année de sortie du 1er iPhone",answer:2007},
+  {q:"Vitesse maximale d'un guépard (km/h)",answer:120},
+  {q:"Nombre de pays dans l'Union Européenne",answer:27},
+  {q:"Profondeur max de la fosse des Mariannes (km)",answer:11},
+  {q:"Prix d'une Tesla Model 3 neuve en France (€)",answer:42990},
+  {q:"Poids moyen d'un éléphant adulte mâle (kg)",answer:5000},
+  {q:"Distance Terre-Lune (km)",answer:384400},
+  {q:"Année de fondation de Google",answer:1998},
+  {q:"Prix d'un expresso dans un café parisien (€)",answer:2.5},
+  {q:"Nombre de muscles dans le corps humain",answer:650},
+  {q:"Vitesse du son dans l'air (m/s)",answer:343},
+  {q:"Température de surface du Soleil (°C)",answer:5500},
+  {q:"Population mondiale (milliards d'humains)",answer:8},
+  {q:"Hauteur de la Tour Eiffel en mètres",answer:330},
+  {q:"Année de sortie de Minecraft",answer:2011},
+  {q:"Prix moyen d'un croissant à Paris (€)",answer:1.4},
+];
+
+const justeprixRooms=new Map();
+function makeJusteprixRoom(c,h){return{code:c,host:h,players:[],phase:'WAITING',round:0,totalRounds:8,currentQ:null,guesses:{},scores:{},timer:null,usedIdx:[]};}
+function justeprixSnap(room,extra={}){return{type:'justeprix_state',phase:room.phase,code:room.code,players:room.players.map(p=>({name:p.name,slot:p.slot,score:room.scores[p.slot]||0})),round:room.round,totalRounds:room.totalRounds,question:room.currentQ?room.currentQ.q:null,...extra};}
+
+function justeprixStartRound(room){
+  room.guesses={};
+  const avail=JUSTE_PRIX_QS.filter((_,i)=>!room.usedIdx.includes(i));
+  const pool=avail.length?avail:JUSTE_PRIX_QS;
+  const pick=pool[Math.floor(Math.random()*pool.length)];
+  room.usedIdx.push(JUSTE_PRIX_QS.indexOf(pick));
+  room.currentQ=pick;room.phase='PLAYING';
+  bcast(room.players,{type:'justeprix_round',round:room.round,totalRounds:room.totalRounds,question:pick.q});
+  clearTimeout(room.timer);
+  room.timer=setTimeout(()=>justeprixReveal(room),15000);
+  broadcastLobby();
+}
+function justeprixReveal(room){
+  clearTimeout(room.timer);
+  const answer=room.currentQ.answer;
+  const guessArr=room.players.map(p=>({slot:p.slot,name:p.name,guess:room.guesses[p.slot]!==undefined?room.guesses[p.slot]:null,diff:room.guesses[p.slot]!==undefined?Math.abs(room.guesses[p.slot]-answer):Infinity}));
+  guessArr.sort((a,b)=>a.diff-b.diff);
+  const pts=[4,2,1,0];
+  guessArr.forEach((g,i)=>{if(g.guess!==null)room.scores[g.slot]=(room.scores[g.slot]||0)+(pts[i]||0);});
+  room.phase='ROUNDOVER';
+  bcast(room.players,{...justeprixSnap(room),type:'justeprix_reveal',answer,guesses:guessArr});
+  clearTimeout(room.timer);
+  room.timer=setTimeout(()=>{
+    if(room.round>=room.totalRounds){room.phase='GAME_OVER';bcast(room.players,justeprixSnap(room));broadcastLobby();}
+    else{room.round++;justeprixStartRound(room);}
+  },5000);
+}
+wssJustePrix.on('connection',ws=>{
+  makeWS(wssJustePrix).alive(ws);
+  let myRoom=null;
+  ws.on('close',()=>{
+    makeWS(wssJustePrix).clear(ws);
+    if(!myRoom)return;
+    const idx=myRoom.players.findIndex(p=>p.ws===ws);if(idx<0)return;
+    const name=myRoom.players[idx].name;
+    myRoom.players.splice(idx,1);myRoom.players.forEach((p,i)=>p.slot=i);
+    clearTimeout(myRoom.timer);
+    if(!myRoom.players.length){justeprixRooms.delete(myRoom.code);broadcastLobby();return;}
+    bcast(myRoom.players,{type:'player_left',name});
+    if(['PLAYING','ROUNDOVER'].includes(myRoom.phase))bcast(myRoom.players,{type:'game_abandoned'});
+    myRoom.phase='WAITING';bcast(myRoom.players,justeprixSnap(myRoom));broadcastLobby();
+  });
+  ws.on('message',raw=>{
+    let d;try{d=JSON.parse(raw);}catch{return;}
+    const player=myRoom?myRoom.players.find(p=>p.ws===ws):null;
+    switch(d.type){
+      case 'lounge_chat':handleLoungeChat(myRoom,ws,d);break;
+      case 'create_justeprix':{
+        const name=String(d.name||'').trim().slice(0,20)||'Joueur';
+        const code=genCode(justeprixRooms);const room=makeJusteprixRoom(code,name);
+        justeprixRooms.set(code,room);myRoom=room;
+        room.players.push({ws,name,slot:0});room.scores[0]=0;
+        wsend(ws,{type:'created_justeprix',code,slot:0,name});wsend(ws,justeprixSnap(room));broadcastLobby();break;
+      }
+      case 'join_justeprix':{
+        const code=String(d.code||'').trim().toUpperCase();const room=justeprixRooms.get(code);
+        if(!room){wsend(ws,{type:'error',msg:'Salle introuvable.'});return;}
+        if(room.players.length>=4){wsend(ws,{type:'error',msg:'Partie pleine.'});return;}
+        if(room.phase!=='WAITING'){wsend(ws,{type:'error',msg:'Partie déjà en cours.'});return;}
+        const name=String(d.name||'').trim().slice(0,20)||'Joueur';
+        const slot=room.players.length;room.players.push({ws,name,slot});room.scores[slot]=0;
+        myRoom=room;wsend(ws,{type:'welcome_justeprix',slot,name,code});bcast(room.players,justeprixSnap(room));broadcastLobby();break;
+      }
+      case 'start_justeprix':{
+        if(!player||!myRoom||player.slot!==0||myRoom.phase!=='WAITING')return;
+        if(myRoom.players.length<2){wsend(ws,{type:'error',msg:'Il faut au moins 2 joueurs.'});return;}
+        myRoom.round=1;myRoom.scores={};myRoom.usedIdx=[];
+        myRoom.players.forEach(p=>{myRoom.scores[p.slot]=0;});
+        bcast(myRoom.players,{type:'countdown',seconds:3});
+        clearTimeout(myRoom.timer);myRoom.timer=setTimeout(()=>justeprixStartRound(myRoom),3000);broadcastLobby();break;
+      }
+      case 'justeprix_guess':{
+        if(!player||!myRoom||myRoom.phase!=='PLAYING')return;
+        if(myRoom.guesses[player.slot]!==undefined)return;
+        const val=parseFloat(d.value);if(isNaN(val))return;
+        myRoom.guesses[player.slot]=val;
+        wsend(ws,{type:'justeprix_guess_ack'});
+        if(Object.keys(myRoom.guesses).length>=myRoom.players.length)justeprixReveal(myRoom);
+        break;
+      }
+      case 'restart_justeprix':{
+        if(!player||!myRoom||myRoom.phase!=='GAME_OVER')return;
+        myRoom.phase='WAITING';myRoom.round=0;myRoom.scores={};myRoom.usedIdx=[];
+        myRoom.players.forEach(p=>{myRoom.scores[p.slot]=0;});
+        bcast(myRoom.players,justeprixSnap(myRoom));broadcastLobby();break;
+      }
+    }
+  });
+});
+
+// ════════════════════════════════════════════════════════
+//  TIMELINE
+// ════════════════════════════════════════════════════════
+const TIMELINE_EVENTS=[
+  {e:"Construction de la Tour Eiffel",y:1889},
+  {e:"Invention de l'imprimerie (Gutenberg)",y:1440},
+  {e:"Découverte de l'Amérique par Colomb",y:1492},
+  {e:"Chute du mur de Berlin",y:1989},
+  {e:"Premier homme sur la Lune",y:1969},
+  {e:"Invention du téléphone (Bell)",y:1876},
+  {e:"Début de la Seconde Guerre Mondiale",y:1939},
+  {e:"Sortie de Star Wars (1er film)",y:1977},
+  {e:"Fondation d'Apple",y:1976},
+  {e:"Chute de Constantinople",y:1453},
+  {e:"Révolution française",y:1789},
+  {e:"Traité de Versailles",y:1919},
+  {e:"Naissance de Mozart",y:1756},
+  {e:"Premier vol des frères Wright",y:1903},
+  {e:"Découverte de la pénicilline",y:1928},
+  {e:"Sortie de Minecraft",y:2011},
+  {e:"Fondation de Facebook",y:2004},
+  {e:"Sortie du premier iPhone",y:2007},
+  {e:"Naissance de Napoléon Bonaparte",y:1769},
+  {e:"Fin de la Seconde Guerre Mondiale",y:1945},
+  {e:"Premiers JO modernes (Athènes)",y:1896},
+  {e:"Naissance d'Albert Einstein",y:1879},
+  {e:"Fondation de Microsoft",y:1975},
+  {e:"Lancement de Spoutnik",y:1957},
+  {e:"Création de YouTube",y:2005},
+  {e:"Sortie de Harry Potter (1er livre)",y:1997},
+  {e:"Naissance de Léonard de Vinci",y:1452},
+  {e:"Fondation de Google",y:1998},
+  {e:"Invention de la radio (Marconi)",y:1895},
+  {e:"Naissance de Charles Darwin",y:1809},
+];
+
+const timelineRooms=new Map();
+function makeTimelineRoom(c,h){return{code:c,host:h,players:[],phase:'WAITING',round:0,totalRounds:10,options:null,answer:-1,answerEvent:null,scores:{},locked:[],timer:null,usedIdx:[]};}
+function timelineSnap(room,extra={}){return{type:'timeline_state',phase:room.phase,code:room.code,players:room.players.map(p=>({name:p.name,slot:p.slot,score:room.scores[p.slot]||0})),round:room.round,totalRounds:room.totalRounds,options:room.options,...extra};}
+
+function timelineStartRound(room){
+  room.locked=[];
+  const avail=TIMELINE_EVENTS.filter((_,i)=>!room.usedIdx.includes(i));
+  const pool=avail.length>=4?avail:TIMELINE_EVENTS;
+  const chosen=shuffle(pool).slice(0,4);
+  chosen.forEach(ev=>room.usedIdx.push(TIMELINE_EVENTS.indexOf(ev)));
+  chosen.sort((a,b)=>a.y-b.y);
+  const earliest=chosen[0];
+  const shuffled=shuffle(chosen);
+  room.options=shuffled.map(ev=>ev.e);
+  room.answer=shuffled.findIndex(ev=>ev===earliest);
+  room.answerEvent=earliest;
+  room.phase='PLAYING';
+  bcast(room.players,{type:'timeline_round',round:room.round,totalRounds:room.totalRounds,options:room.options,question:"Quel événement s'est produit EN PREMIER ?"});
+  clearTimeout(room.timer);
+  room.timer=setTimeout(()=>timelineReveal(room,-1),12000);
+  broadcastLobby();
+}
+function timelineReveal(room,winnerSlot){
+  clearTimeout(room.timer);room.phase='ROUNDOVER';
+  bcast(room.players,{...timelineSnap(room),type:'timeline_reveal',answer:room.answer,answerYear:room.answerEvent.y,answerEvent:room.answerEvent.e,winnerSlot});
+  clearTimeout(room.timer);
+  room.timer=setTimeout(()=>{
+    if(room.round>=room.totalRounds){room.phase='GAME_OVER';bcast(room.players,timelineSnap(room));broadcastLobby();}
+    else{room.round++;timelineStartRound(room);}
+  },4500);
+}
+wssTimeline.on('connection',ws=>{
+  makeWS(wssTimeline).alive(ws);
+  let myRoom=null;
+  ws.on('close',()=>{
+    makeWS(wssTimeline).clear(ws);
+    if(!myRoom)return;
+    const idx=myRoom.players.findIndex(p=>p.ws===ws);if(idx<0)return;
+    const name=myRoom.players[idx].name;
+    myRoom.players.splice(idx,1);myRoom.players.forEach((p,i)=>p.slot=i);
+    clearTimeout(myRoom.timer);
+    if(!myRoom.players.length){timelineRooms.delete(myRoom.code);broadcastLobby();return;}
+    bcast(myRoom.players,{type:'player_left',name});
+    if(myRoom.phase==='PLAYING')bcast(myRoom.players,{type:'game_abandoned'});
+    myRoom.phase='WAITING';bcast(myRoom.players,timelineSnap(myRoom));broadcastLobby();
+  });
+  ws.on('message',raw=>{
+    let d;try{d=JSON.parse(raw);}catch{return;}
+    const player=myRoom?myRoom.players.find(p=>p.ws===ws):null;
+    switch(d.type){
+      case 'lounge_chat':handleLoungeChat(myRoom,ws,d);break;
+      case 'create_timeline':{
+        const name=String(d.name||'').trim().slice(0,20)||'Joueur';
+        const code=genCode(timelineRooms);const room=makeTimelineRoom(code,name);
+        timelineRooms.set(code,room);myRoom=room;
+        room.players.push({ws,name,slot:0});room.scores[0]=0;
+        wsend(ws,{type:'created_timeline',code,slot:0,name});wsend(ws,timelineSnap(room));broadcastLobby();break;
+      }
+      case 'join_timeline':{
+        const code=String(d.code||'').trim().toUpperCase();const room=timelineRooms.get(code);
+        if(!room){wsend(ws,{type:'error',msg:'Salle introuvable.'});return;}
+        if(room.players.length>=4){wsend(ws,{type:'error',msg:'Partie pleine.'});return;}
+        if(room.phase!=='WAITING'){wsend(ws,{type:'error',msg:'Partie déjà en cours.'});return;}
+        const name=String(d.name||'').trim().slice(0,20)||'Joueur';
+        const slot=room.players.length;room.players.push({ws,name,slot});room.scores[slot]=0;
+        myRoom=room;wsend(ws,{type:'welcome_timeline',slot,name,code});bcast(room.players,timelineSnap(room));broadcastLobby();break;
+      }
+      case 'start_timeline':{
+        if(!player||!myRoom||player.slot!==0||myRoom.phase!=='WAITING')return;
+        if(myRoom.players.length<2){wsend(ws,{type:'error',msg:'Il faut au moins 2 joueurs.'});return;}
+        myRoom.round=1;myRoom.scores={};myRoom.usedIdx=[];
+        myRoom.players.forEach(p=>{myRoom.scores[p.slot]=0;});
+        bcast(myRoom.players,{type:'countdown',seconds:3});
+        clearTimeout(myRoom.timer);myRoom.timer=setTimeout(()=>timelineStartRound(myRoom),3000);broadcastLobby();break;
+      }
+      case 'timeline_answer':{
+        if(!player||!myRoom||myRoom.phase!=='PLAYING')return;
+        if(myRoom.locked.includes(player.slot))return;
+        const pick=Number(d.index);if(pick!==Math.floor(pick)||pick<0||pick>3)return;
+        myRoom.locked.push(player.slot);
+        if(pick===myRoom.answer){
+          myRoom.scores[player.slot]=(myRoom.scores[player.slot]||0)+3;
+          timelineReveal(myRoom,player.slot);
+        }else{
+          wsend(ws,{type:'timeline_wrong'});
+          if(myRoom.locked.length>=myRoom.players.length)timelineReveal(myRoom,-1);
+        }
+        break;
+      }
+      case 'restart_timeline':{
+        if(!player||!myRoom||myRoom.phase!=='GAME_OVER')return;
+        myRoom.phase='WAITING';myRoom.round=0;myRoom.scores={};myRoom.usedIdx=[];myRoom.options=null;myRoom.answer=-1;
+        myRoom.players.forEach(p=>{myRoom.scores[p.slot]=0;});
+        bcast(myRoom.players,timelineSnap(myRoom));broadcastLobby();break;
+      }
+    }
+  });
+});
+
+// ════════════════════════════════════════════════════════
+//  MÉMOIRE
+// ════════════════════════════════════════════════════════
+const MEMO_ICONS=['🎯','🎪','🎨','🎭','🎮','🎲','🎸','🎺','🏆','🌟','🦁','🦊','🐬','🦋','🍕','🍦','🌈','⚡','🔮','🎃','🚀','🎀','🎁','💎'];
+
+const memoRooms=new Map();
+function makeMemoRoom(c,h){return{code:c,host:h,players:[],phase:'WAITING',cards:[],matched:[],scores:{},turn:0,flipped:[],timer:null};}
+function memoSnap(room,extra={}){return{type:'memo_state',phase:room.phase,code:room.code,players:room.players.map(p=>({name:p.name,slot:p.slot,score:room.scores[p.slot]||0})),turn:room.turn,cards:room.cards.map((c,i)=>({id:i,face:(room.matched.includes(i)||room.flipped.includes(i))?c.icon:null,matched:room.matched.includes(i),flipped:room.flipped.includes(i)})),matched:[...room.matched],...extra};}
+function memoSetup(room){
+  const pairCount=room.players.length<=2?8:12;
+  const icons=shuffle(MEMO_ICONS).slice(0,pairCount);
+  const deck=shuffle([...icons,...icons]);
+  room.cards=deck.map((icon,i)=>({id:i,icon}));
+  room.matched=[];room.flipped=[];room.turn=0;
+  room.scores={};room.players.forEach(p=>{room.scores[p.slot]=0;});
+}
+wssMemo.on('connection',ws=>{
+  makeWS(wssMemo).alive(ws);
+  let myRoom=null;
+  ws.on('close',()=>{
+    makeWS(wssMemo).clear(ws);
+    if(!myRoom)return;
+    const idx=myRoom.players.findIndex(p=>p.ws===ws);if(idx<0)return;
+    const name=myRoom.players[idx].name;
+    myRoom.players.splice(idx,1);myRoom.players.forEach((p,i)=>p.slot=i);
+    clearTimeout(myRoom.timer);
+    if(!myRoom.players.length){memoRooms.delete(myRoom.code);broadcastLobby();return;}
+    bcast(myRoom.players,{type:'player_left',name});
+    if(myRoom.phase==='PLAYING')bcast(myRoom.players,{type:'game_abandoned'});
+    myRoom.phase='WAITING';bcast(myRoom.players,memoSnap(myRoom));broadcastLobby();
+  });
+  ws.on('message',raw=>{
+    let d;try{d=JSON.parse(raw);}catch{return;}
+    const player=myRoom?myRoom.players.find(p=>p.ws===ws):null;
+    switch(d.type){
+      case 'lounge_chat':handleLoungeChat(myRoom,ws,d);break;
+      case 'create_memo':{
+        const name=String(d.name||'').trim().slice(0,20)||'Joueur';
+        const code=genCode(memoRooms);const room=makeMemoRoom(code,name);
+        memoRooms.set(code,room);myRoom=room;
+        room.players.push({ws,name,slot:0});room.scores[0]=0;
+        wsend(ws,{type:'created_memo',code,slot:0,name});wsend(ws,memoSnap(room));broadcastLobby();break;
+      }
+      case 'join_memo':{
+        const code=String(d.code||'').trim().toUpperCase();const room=memoRooms.get(code);
+        if(!room){wsend(ws,{type:'error',msg:'Salle introuvable.'});return;}
+        if(room.players.length>=4){wsend(ws,{type:'error',msg:'Partie pleine.'});return;}
+        if(room.phase!=='WAITING'){wsend(ws,{type:'error',msg:'Partie déjà en cours.'});return;}
+        const name=String(d.name||'').trim().slice(0,20)||'Joueur';
+        const slot=room.players.length;room.players.push({ws,name,slot});room.scores[slot]=0;
+        myRoom=room;wsend(ws,{type:'welcome_memo',slot,name,code});bcast(room.players,memoSnap(room));broadcastLobby();break;
+      }
+      case 'start_memo':{
+        if(!player||!myRoom||player.slot!==0||myRoom.phase!=='WAITING')return;
+        if(myRoom.players.length<2){wsend(ws,{type:'error',msg:'Il faut au moins 2 joueurs.'});return;}
+        memoSetup(myRoom);
+        bcast(myRoom.players,{type:'countdown',seconds:3});
+        clearTimeout(myRoom.timer);
+        myRoom.timer=setTimeout(()=>{myRoom.phase='PLAYING';bcast(myRoom.players,memoSnap(myRoom));broadcastLobby();},3000);
+        broadcastLobby();break;
+      }
+      case 'memo_flip':{
+        if(!player||!myRoom||myRoom.phase!=='PLAYING')return;
+        if(myRoom.turn!==player.slot)return;
+        const id=Number(d.id);
+        if(id!==Math.floor(id)||id<0||id>=myRoom.cards.length)return;
+        if(myRoom.matched.includes(id)||myRoom.flipped.includes(id))return;
+        if(myRoom.flipped.length>=2)return;
+        myRoom.flipped.push(id);
+        bcast(myRoom.players,memoSnap(myRoom));
+        if(myRoom.flipped.length===2){
+          const[a,b]=myRoom.flipped;
+          if(myRoom.cards[a].icon===myRoom.cards[b].icon){
+            myRoom.matched.push(a,b);
+            myRoom.scores[player.slot]=(myRoom.scores[player.slot]||0)+1;
+            myRoom.flipped=[];
+            if(myRoom.matched.length>=myRoom.cards.length){
+              myRoom.phase='GAME_OVER';bcast(myRoom.players,memoSnap(myRoom));broadcastLobby();
+            }else{
+              bcast(myRoom.players,memoSnap(myRoom));
+            }
+          }else{
+            clearTimeout(myRoom.timer);
+            myRoom.timer=setTimeout(()=>{
+              myRoom.flipped=[];
+              myRoom.turn=(myRoom.turn+1)%myRoom.players.length;
+              bcast(myRoom.players,memoSnap(myRoom));
+            },1500);
+          }
+        }
+        break;
+      }
+      case 'restart_memo':{
+        if(!player||!myRoom||myRoom.phase!=='GAME_OVER')return;
+        myRoom.phase='WAITING';memoSetup(myRoom);
+        bcast(myRoom.players,memoSnap(myRoom));broadcastLobby();break;
       }
     }
   });

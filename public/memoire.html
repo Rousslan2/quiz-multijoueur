@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ZapPlay — Mémoire</title>
+<link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--primary:#A855F7;--gold:#fbbf24;--ok:#22c55e;--bad:#ef4444;--text:#E8E8F0;--muted:#5A5A78;--card:#0E0E22;--border:rgba(168,85,247,.10)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Exo 2',sans-serif;background:radial-gradient(1200px 700px at 50% -10%,rgba(168,85,247,.15),transparent 60%),linear-gradient(135deg,#0f0c29,#302b63,#24243e);color:var(--text);min-height:100dvh;padding-bottom:24px}
+#app{max-width:560px;margin:0 auto;padding:60px 14px 20px;display:flex;flex-direction:column;gap:14px}
+#back{position:fixed;top:8px;left:8px;background:none;border:none;color:var(--muted);cursor:pointer;padding:6px 10px;font-size:1rem}
+#dot{position:fixed;top:12px;right:12px;width:8px;height:8px;border-radius:50%;background:var(--bad)}
+#dot.ok{background:var(--ok)}
+.hidden{display:none!important}
+.card{background:linear-gradient(180deg,rgba(255,255,255,.07),rgba(255,255,255,.03));border:1px solid var(--border);border-radius:14px;padding:16px}
+.btn{border:none;border-radius:10px;padding:12px 16px;font-weight:700;cursor:pointer;transition:transform .1s;font-size:.95rem;font-family:inherit}
+.btn:active{transform:scale(.97)}
+.btn-p{background:var(--primary);color:#fff}
+.btn-s{background:rgba(255,255,255,.12);color:var(--text)}
+.btn-full{width:100%}
+input{width:100%;background:rgba(255,255,255,.08);border:1px solid var(--border);border-radius:10px;color:var(--text);padding:12px;font-size:1rem;outline:none;font-family:inherit}
+input:focus{border-color:var(--primary)}
+h2{font-size:1.5rem;font-weight:800;background:linear-gradient(135deg,var(--primary),var(--gold));-webkit-background-clip:text;-webkit-text-fill-color:transparent;text-align:center;margin-bottom:4px}
+.code-box{text-align:center;background:rgba(168,85,247,.07);border:1px solid rgba(168,85,247,.2);border-radius:12px;padding:12px;cursor:pointer;width:100%}
+.code-big{font-size:2.2rem;font-weight:900;letter-spacing:.2em;color:var(--primary);font-family:monospace}
+.p-chip{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;background:rgba(255,255,255,.07);border:1px solid var(--border);font-size:.82rem}
+#score-bar{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+.sc-chip{display:flex;flex-direction:column;align-items:center;min-width:80px;background:rgba(255,255,255,.06);border:1px solid var(--border);border-radius:10px;padding:8px 12px}
+.sc-chip.me{border-color:rgba(168,85,247,.5)}
+.sc-chip.active-turn{border-color:var(--primary);box-shadow:0 0 10px rgba(168,85,247,.3)}
+.sc-name{color:var(--muted);font-size:.7rem;margin-bottom:2px}
+.sc-pts{font-weight:800;font-size:1.1rem;color:var(--primary)}
+#card-grid{display:grid;gap:6px;margin-top:4px}
+.mem-card{aspect-ratio:1;border-radius:10px;border:2px solid rgba(168,85,247,.2);background:rgba(255,255,255,.05);cursor:pointer;font-size:1.6rem;display:flex;align-items:center;justify-content:center;transition:transform .15s,background .15s,border-color .15s;user-select:none;-webkit-tap-highlight-color:transparent}
+.mem-card:hover:not(.disabled):not(.matched){background:rgba(168,85,247,.1);border-color:rgba(168,85,247,.4)}
+.mem-card.flipped{background:rgba(168,85,247,.12);border-color:rgba(168,85,247,.5)}
+.mem-card.matched{background:rgba(34,197,94,.1);border-color:rgba(34,197,94,.4);cursor:default}
+.mem-card.disabled{cursor:not-allowed;opacity:.6}
+.mem-card.no-turn{cursor:default}
+.rank-row{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;border-radius:8px;background:rgba(255,255,255,.05);font-size:.88rem;gap:8px}
+.rank-row.me{background:rgba(168,85,247,.1);border:1px solid rgba(168,85,247,.2)}
+.big-num{font-size:5rem;font-weight:900;text-align:center;color:var(--primary)}
+</style>
+</head>
+<body>
+<div id="app">
+<button id="back" onclick="history.back()">← Retour</button>
+<div id="dot"></div>
+
+<template id="tpl-sc">
+  <div class="sc-chip"><div class="sc-name"></div><div class="sc-pts"></div></div>
+</template>
+<template id="tpl-rank">
+  <div class="rank-row"><span class="rk-medal"></span><span class="rk-name" style="flex:1"></span><span class="rk-pts" style="font-weight:700"></span></div>
+</template>
+
+<!-- Name -->
+<div id="scr-name">
+  <h2>🃏 Mémoire</h2>
+  <div class="card" style="display:flex;flex-direction:column;gap:10px">
+    <p style="text-align:center;color:var(--muted);font-size:.85rem">Retrouve les paires ! Le plus de paires remportées gagne · 2–4 joueurs</p>
+    <input id="name-in" type="text" maxlength="20" placeholder="Ton pseudo" autocomplete="off">
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-p" style="flex:1" onclick="createGame()">Créer une salle</button>
+      <button class="btn btn-s" style="flex:1" onclick="toggleJoin()">Rejoindre</button>
+    </div>
+    <div id="join-area" style="display:none;flex-direction:column;gap:8px">
+      <input id="code-in" type="text" maxlength="4" placeholder="Code ABCD" autocomplete="off" style="text-transform:uppercase;text-align:center;font-size:1.2rem;letter-spacing:.15em">
+      <button class="btn btn-p btn-full" onclick="joinGame()">Rejoindre →</button>
+    </div>
+    <p id="err" style="color:var(--bad);text-align:center;font-size:.85rem;min-height:18px"></p>
+  </div>
+</div>
+
+<!-- Wait -->
+<div id="scr-wait" class="hidden">
+  <h2>🃏 Mémoire</h2>
+  <div class="card" style="display:flex;flex-direction:column;gap:12px;align-items:center">
+    <div class="code-box" onclick="copyCode()">
+      <div style="font-size:.62rem;color:var(--muted);letter-spacing:.08em;margin-bottom:4px">CODE DE LA SALLE</div>
+      <div class="code-big" id="w-code">----</div>
+      <div style="font-size:.62rem;color:var(--muted);margin-top:4px">Cliquer pour copier</div>
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:8px" id="w-players"></div>
+    <button id="start-btn" class="btn btn-p btn-full hidden" onclick="startGame()">▶ Lancer</button>
+    <p id="w-hint" style="color:var(--muted);font-size:.82rem"></p>
+  </div>
+</div>
+
+<!-- Countdown -->
+<div id="scr-cd" class="hidden" style="min-height:50vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px">
+  <p style="color:var(--muted);letter-spacing:.1em;text-transform:uppercase;font-size:.9rem">Prêts ?</p>
+  <div class="big-num" id="cd-n">3</div>
+</div>
+
+<!-- Play -->
+<div id="scr-play" class="hidden" style="display:flex;flex-direction:column;gap:14px">
+  <div id="score-bar"></div>
+  <div class="card" style="padding:10px">
+    <p id="turn-info" style="text-align:center;font-size:.82rem;color:var(--muted);margin-bottom:10px">Tour de …</p>
+    <div id="card-grid"></div>
+  </div>
+</div>
+
+<!-- Game over -->
+<div id="scr-over" class="hidden" style="display:flex;flex-direction:column;gap:14px">
+  <div class="card" style="text-align:center">
+    <div style="font-size:2.5rem;margin-bottom:8px">🏆</div>
+    <p id="winner-txt" style="font-size:1.2rem;font-weight:800;color:var(--gold);margin-bottom:16px"></p>
+    <div id="final-ranks" style="display:flex;flex-direction:column;gap:6px;margin-bottom:16px"></div>
+    <button class="btn btn-s btn-full" onclick="restart()">Rejouer</button>
+  </div>
+</div>
+
+</div>
+<script>
+const WS_URL = `${location.protocol==='https:'?'wss':'ws'}://${location.host}/ws/memo`;
+let ws, mySlot=-1, myCode='', lastState=null;
+const $ = id => document.getElementById(id);
+const show = id => $(id).classList.remove('hidden');
+const hide = id => $(id).classList.add('hidden');
+const send = d => ws && ws.readyState===1 && ws.send(JSON.stringify(d));
+
+function connect(){
+  ws = new WebSocket(WS_URL);
+  ws.onopen = () => $('dot').classList.add('ok');
+  ws.onclose = () => { $('dot').classList.remove('ok'); setTimeout(connect,2000); };
+  ws.onmessage = e => { try{ handleMsg(JSON.parse(e.data)); }catch{} };
+}
+connect();
+
+function toggleJoin(){ const a=$('join-area'); a.style.display=a.style.display==='flex'?'none':'flex'; }
+function createGame(){ send({type:'create_memo',name:$('name-in').value.trim()||'Joueur'}); }
+function joinGame(){ send({type:'join_memo',name:$('name-in').value.trim()||'Joueur',code:$('code-in').value.trim().toUpperCase()}); }
+function copyCode(){ try{ navigator.clipboard.writeText(myCode); }catch{} }
+function startGame(){ send({type:'start_memo'}); }
+function restart(){ send({type:'restart_memo'}); }
+
+function flipCard(id){
+  if(!lastState||lastState.phase!=='PLAYING') return;
+  if(lastState.turn!==mySlot) return;
+  const card=lastState.cards[id];
+  if(!card||card.matched||card.flipped) return;
+  const flippedCount=lastState.cards.filter(c=>c.flipped&&!c.matched).length;
+  if(flippedCount>=2) return;
+  send({type:'memo_flip',id});
+}
+
+function renderScores(players){
+  const c=$('score-bar'); c.textContent='';
+  const tpl=$('tpl-sc');
+  const turn=lastState?lastState.turn:-1;
+  players.forEach(p=>{
+    const node=tpl.content.cloneNode(true);
+    const chip=node.querySelector('.sc-chip');
+    if(p.slot===mySlot) chip.classList.add('me');
+    if(p.slot===turn&&lastState&&lastState.phase==='PLAYING') chip.classList.add('active-turn');
+    node.querySelector('.sc-name').textContent=p.name;
+    node.querySelector('.sc-pts').textContent=p.score||0;
+    c.appendChild(node);
+  });
+}
+
+function renderGrid(cards, myTurn){
+  const grid=$('card-grid');
+  const total=cards.length;
+  const cols=total<=16?4:6;
+  grid.style.gridTemplateColumns='repeat('+cols+',1fr)';
+  // remove old listeners by replacing grid
+  const newGrid=grid.cloneNode(false);
+  grid.parentNode.replaceChild(newGrid,grid);
+  cards.forEach((card,i)=>{
+    const el=document.createElement('div');
+    el.className='mem-card';
+    if(card.matched) el.classList.add('matched');
+    else if(card.flipped) el.classList.add('flipped');
+    else if(!myTurn) el.classList.add('no-turn');
+    if(card.face) el.textContent=card.face;
+    else el.textContent='';
+    if(myTurn&&!card.matched&&!card.flipped){
+      const idx=i;
+      el.addEventListener('click',()=>flipCard(idx));
+    }
+    newGrid.appendChild(el);
+  });
+}
+
+const medals=['🥇','🥈','🥉','4️⃣'];
+
+function handleMsg(d){
+  switch(d.type){
+    case 'created_memo':
+      mySlot=d.slot; myCode=d.code;
+      hide('scr-name'); show('scr-wait');
+      $('w-code').textContent=d.code; break;
+    case 'welcome_memo':
+      mySlot=d.slot; myCode=d.code;
+      hide('scr-name'); show('scr-wait');
+      $('w-code').textContent=d.code;
+      $('w-hint').textContent='En attente du lancement…'; break;
+    case 'memo_state': updateState(d); break;
+    case 'countdown':{
+      ['scr-wait','scr-name'].forEach(hide); show('scr-cd');
+      let n=d.seconds; $('cd-n').textContent=n;
+      const iv=setInterval(()=>{ n--; if(n<=0) clearInterval(iv); else $('cd-n').textContent=n; },1000);
+      break;
+    }
+    case 'error': $('err').textContent=d.msg; break;
+    case 'game_abandoned': alert('Un joueur a quitté.'); location.reload(); break;
+  }
+}
+
+function updateState(d){
+  lastState=d;
+  if(d.phase==='WAITING'){
+    ['scr-cd','scr-play','scr-over'].forEach(hide); show('scr-wait');
+    $('w-code').textContent=d.code;
+    const pw=$('w-players'); pw.textContent='';
+    d.players.forEach(p=>{ const c=document.createElement('span'); c.className='p-chip'; c.textContent=(p.slot===0?'👑 ':'')+p.name; pw.appendChild(c); });
+    if(mySlot===0) show('start-btn'); else $('w-hint').textContent='En attente du joueur 1…';
+  }
+  if(d.phase==='PLAYING'){
+    ['scr-cd','scr-wait'].forEach(hide); show('scr-play');
+    const myTurn=d.turn===mySlot;
+    const turnPlayer=d.players.find(p=>p.slot===d.turn);
+    $('turn-info').textContent=myTurn?'🎯 Ton tour !':'Tour de '+(turnPlayer?turnPlayer.name:'…');
+    $('turn-info').style.color=myTurn?'var(--primary)':'var(--muted)';
+    renderScores(d.players);
+    renderGrid(d.cards,myTurn);
+  }
+  if(d.phase==='GAME_OVER'){
+    ['scr-play'].forEach(hide); show('scr-over');
+    const sorted=[...d.players].sort((a,b)=>b.score-a.score);
+    $('winner-txt').textContent=sorted[0]?sorted[0].name+' gagne avec '+sorted[0].score+' paire'+(sorted[0].score>1?'s':'')+'!':'Match nul !';
+    const tpl=$('tpl-rank'); const c=$('final-ranks'); c.textContent='';
+    sorted.forEach((p,i)=>{
+      const node=tpl.content.cloneNode(true);
+      const row=node.querySelector('.rank-row');
+      if(p.slot===mySlot) row.classList.add('me');
+      node.querySelector('.rk-medal').textContent=medals[i]||'🏅';
+      node.querySelector('.rk-name').textContent=p.name;
+      const ptsEl=node.querySelector('.rk-pts');
+      ptsEl.textContent=p.score+' paire'+(p.score>1?'s':'');
+      ptsEl.style.color='var(--gold)';
+      c.appendChild(node);
+    });
+    // show final grid too
+    if(d.cards){ show('scr-play'); renderGrid(d.cards,false); }
+  }
+}
+</script>
+</body>
+</html>

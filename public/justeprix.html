@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ZapPlay — Juste Prix</title>
+<link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--primary:#00F5D4;--gold:#fbbf24;--ok:#22c55e;--bad:#ef4444;--text:#E8E8F0;--muted:#5A5A78;--card:#0E0E22;--border:rgba(0,245,212,.10)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Exo 2',sans-serif;background:radial-gradient(1200px 700px at 30% -10%,rgba(251,191,36,.12),transparent 60%),linear-gradient(135deg,#0f0c29,#302b63,#24243e);color:var(--text);min-height:100dvh;padding-bottom:24px}
+#app{max-width:580px;margin:0 auto;padding:60px 14px 20px;display:flex;flex-direction:column;gap:14px}
+#back{position:fixed;top:8px;left:8px;background:none;border:none;color:var(--muted);cursor:pointer;padding:6px 10px;font-size:1rem}
+#dot{position:fixed;top:12px;right:12px;width:8px;height:8px;border-radius:50%;background:var(--bad)}
+#dot.ok{background:var(--ok)}
+.hidden{display:none!important}
+.card{background:linear-gradient(180deg,rgba(255,255,255,.07),rgba(255,255,255,.03));border:1px solid var(--border);border-radius:14px;padding:16px}
+.btn{border:none;border-radius:10px;padding:12px 16px;font-weight:700;cursor:pointer;transition:transform .1s;font-size:.95rem;font-family:inherit}
+.btn:active{transform:scale(.97)}
+.btn-p{background:var(--primary);color:#000}
+.btn-s{background:rgba(255,255,255,.12);color:var(--text)}
+.btn-full{width:100%}
+input{width:100%;background:rgba(255,255,255,.08);border:1px solid var(--border);border-radius:10px;color:var(--text);padding:12px;font-size:1rem;outline:none;font-family:inherit}
+input:focus{border-color:var(--primary)}
+h2{font-size:1.5rem;font-weight:800;background:linear-gradient(135deg,var(--primary),var(--gold));-webkit-background-clip:text;-webkit-text-fill-color:transparent;text-align:center;margin-bottom:4px}
+.code-box{text-align:center;background:rgba(0,245,212,.07);border:1px solid rgba(0,245,212,.2);border-radius:12px;padding:12px;cursor:pointer;width:100%}
+.code-big{font-size:2.2rem;font-weight:900;letter-spacing:.2em;color:var(--primary);font-family:monospace}
+.p-chip{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;background:rgba(255,255,255,.07);border:1px solid var(--border);font-size:.82rem}
+#score-bar{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+.sc-chip{display:flex;flex-direction:column;align-items:center;min-width:80px;background:rgba(255,255,255,.06);border:1px solid var(--border);border-radius:10px;padding:8px 12px}
+.sc-chip.me{border-color:rgba(251,191,36,.5)}
+.sc-name{color:var(--muted);font-size:.7rem;margin-bottom:2px}
+.sc-pts{font-weight:800;font-size:1.1rem;color:var(--gold)}
+.timer-wrap{height:6px;background:rgba(255,255,255,.08);border-radius:3px;overflow:hidden}
+.timer-bar{height:100%;border-radius:3px;background:linear-gradient(90deg,var(--primary),var(--gold));transition:width .25s linear}
+.rank-row{display:flex;justify-content:space-between;align-items:center;padding:9px 14px;border-radius:8px;background:rgba(255,255,255,.05);font-size:.88rem;gap:8px}
+.rank-row.me{background:rgba(0,245,212,.08);border:1px solid rgba(0,245,212,.2)}
+.rank-row.winner-row{background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.3)}
+.big-num{font-size:5rem;font-weight:900;text-align:center;color:var(--primary)}
+</style>
+</head>
+<body>
+<div id="app">
+<button id="back" onclick="history.back()">← Retour</button>
+<div id="dot"></div>
+
+<template id="tpl-sc">
+  <div class="sc-chip"><div class="sc-name"></div><div class="sc-pts"></div></div>
+</template>
+<template id="tpl-rank">
+  <div class="rank-row">
+    <span class="rk-medal"></span>
+    <span class="rk-name" style="flex:1"></span>
+    <span class="rk-guess" style="color:var(--muted);font-size:.82rem"></span>
+    <span class="rk-pts" style="font-weight:700;min-width:52px;text-align:right"></span>
+  </div>
+</template>
+
+<!-- Name -->
+<div id="scr-name">
+  <h2>💰 Juste Prix</h2>
+  <div class="card" style="display:flex;flex-direction:column;gap:10px">
+    <p style="text-align:center;color:var(--muted);font-size:.85rem">Estimez la valeur — le plus proche gagne ! 8 manches · 2–4 joueurs</p>
+    <input id="name-in" type="text" maxlength="20" placeholder="Ton pseudo" autocomplete="off">
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-p" style="flex:1" onclick="createGame()">Créer une salle</button>
+      <button class="btn btn-s" style="flex:1" onclick="toggleJoin()">Rejoindre</button>
+    </div>
+    <div id="join-area" style="display:none;flex-direction:column;gap:8px">
+      <input id="code-in" type="text" maxlength="4" placeholder="Code ABCD" autocomplete="off" style="text-transform:uppercase;text-align:center;font-size:1.2rem;letter-spacing:.15em">
+      <button class="btn btn-p btn-full" onclick="joinGame()">Rejoindre →</button>
+    </div>
+    <p id="err" style="color:var(--bad);text-align:center;font-size:.85rem;min-height:18px"></p>
+  </div>
+</div>
+
+<!-- Wait -->
+<div id="scr-wait" class="hidden">
+  <h2>💰 Juste Prix</h2>
+  <div class="card" style="display:flex;flex-direction:column;gap:12px;align-items:center">
+    <div class="code-box" onclick="copyCode()">
+      <div style="font-size:.62rem;color:var(--muted);letter-spacing:.08em;margin-bottom:4px">CODE DE LA SALLE</div>
+      <div class="code-big" id="w-code">----</div>
+      <div style="font-size:.62rem;color:var(--muted);margin-top:4px">Cliquer pour copier</div>
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:8px" id="w-players"></div>
+    <button id="start-btn" class="btn btn-p btn-full hidden" onclick="startGame()">▶ Lancer</button>
+    <p id="w-hint" style="color:var(--muted);font-size:.82rem"></p>
+  </div>
+</div>
+
+<!-- Countdown -->
+<div id="scr-cd" class="hidden" style="min-height:50vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px">
+  <p style="color:var(--muted);letter-spacing:.1em;text-transform:uppercase;font-size:.9rem">Prêts ?</p>
+  <div class="big-num" id="cd-n">3</div>
+</div>
+
+<!-- Play -->
+<div id="scr-play" class="hidden" style="display:flex;flex-direction:column;gap:14px">
+  <div style="display:flex;justify-content:space-between;align-items:center">
+    <span id="rnd-info" style="font-size:.78rem;color:var(--muted);letter-spacing:.1em;font-family:monospace">MANCHE 1/8</span>
+    <span id="timer-txt" style="font-family:monospace;color:var(--gold);font-weight:700">15s</span>
+  </div>
+  <div id="score-bar"></div>
+  <div class="card" style="text-align:center">
+    <p style="font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:10px">Question</p>
+    <p id="question-txt" style="font-size:1.15rem;font-weight:700;line-height:1.5;margin-bottom:14px"></p>
+    <div class="timer-wrap"><div class="timer-bar" id="tbar" style="width:100%"></div></div>
+  </div>
+  <div class="card" style="display:flex;flex-direction:column;gap:10px">
+    <input id="val-in" type="number" placeholder="Ta réponse (nombre)" min="0" step="any" autocomplete="off">
+    <button class="btn btn-p btn-full" onclick="submitGuess()" id="submit-btn">Valider →</button>
+    <p id="feed" style="text-align:center;font-size:.9rem;font-weight:700;min-height:22px;color:var(--ok)"></p>
+  </div>
+</div>
+
+<!-- Reveal -->
+<div id="scr-rev" class="hidden" style="display:flex;flex-direction:column;gap:14px">
+  <div class="card" style="text-align:center">
+    <p style="font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px">Réponse correcte</p>
+    <p id="answer-txt" style="font-size:2.2rem;font-weight:900;color:var(--gold);font-family:monospace;margin-bottom:14px"></p>
+    <div id="rev-ranks" style="display:flex;flex-direction:column;gap:6px"></div>
+  </div>
+  <div id="score-bar-r" style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center"></div>
+</div>
+
+<!-- Game over -->
+<div id="scr-over" class="hidden" style="display:flex;flex-direction:column;gap:14px">
+  <div class="card" style="text-align:center">
+    <div style="font-size:2.5rem;margin-bottom:8px">🏆</div>
+    <p id="winner-txt" style="font-size:1.2rem;font-weight:800;color:var(--gold);margin-bottom:16px"></p>
+    <div id="final-ranks" style="display:flex;flex-direction:column;gap:6px;margin-bottom:16px"></div>
+    <button class="btn btn-s btn-full" onclick="restart()">Rejouer</button>
+  </div>
+</div>
+
+</div>
+<script>
+const WS_URL = `${location.protocol==='https:'?'wss':'ws'}://${location.host}/ws/justeprix`;
+let ws, mySlot=-1, myCode='', timerIv=null, guessed=false;
+const $ = id => document.getElementById(id);
+const show = id => $(id).classList.remove('hidden');
+const hide = id => $(id).classList.add('hidden');
+const send = d => ws && ws.readyState===1 && ws.send(JSON.stringify(d));
+
+function connect(){
+  ws = new WebSocket(WS_URL);
+  ws.onopen = () => $('dot').classList.add('ok');
+  ws.onclose = () => { $('dot').classList.remove('ok'); setTimeout(connect,2000); };
+  ws.onmessage = e => { try{ handleMsg(JSON.parse(e.data)); }catch{} };
+}
+connect();
+
+function toggleJoin(){ const a=$('join-area'); a.style.display=a.style.display==='flex'?'none':'flex'; }
+function createGame(){ send({type:'create_justeprix',name:$('name-in').value.trim()||'Joueur'}); }
+function joinGame(){ send({type:'join_justeprix',name:$('name-in').value.trim()||'Joueur',code:$('code-in').value.trim().toUpperCase()}); }
+function copyCode(){ try{ navigator.clipboard.writeText(myCode); }catch{} }
+function startGame(){ send({type:'start_justeprix'}); }
+function restart(){ send({type:'restart_justeprix'}); }
+
+function submitGuess(){
+  if(guessed) return;
+  const v = parseFloat($('val-in').value);
+  if(isNaN(v)) return;
+  send({type:'justeprix_guess',value:v});
+}
+
+function renderScores(players, cid){
+  const c=$(cid); c.textContent='';
+  const tpl=$('tpl-sc');
+  players.forEach(p=>{
+    const node=tpl.content.cloneNode(true);
+    const chip=node.querySelector('.sc-chip');
+    if(p.slot===mySlot) chip.classList.add('me');
+    node.querySelector('.sc-name').textContent=p.name;
+    node.querySelector('.sc-pts').textContent=p.score||0;
+    c.appendChild(node);
+  });
+}
+function renderReveal(guesses, cid){
+  const c=$(cid); c.textContent='';
+  const tpl=$('tpl-rank');
+  const medals=['🥇','🥈','🥉','4️⃣'];
+  const ptsLabels=['+4','+2','+1','+0'];
+  guesses.forEach((g,i)=>{
+    const node=tpl.content.cloneNode(true);
+    const row=node.querySelector('.rank-row');
+    if(g.slot===mySlot) row.classList.add('me');
+    if(i===0&&g.guess!==null) row.classList.add('winner-row');
+    node.querySelector('.rk-medal').textContent=medals[i]||'🏅';
+    node.querySelector('.rk-name').textContent=g.name;
+    const guessEl=node.querySelector('.rk-guess');
+    guessEl.textContent=g.guess!==null?'→ '+g.guess:'(pas répondu)';
+    const ptsEl=node.querySelector('.rk-pts');
+    ptsEl.textContent=ptsLabels[i]||'+0';
+    ptsEl.style.color=i===0&&g.guess!==null?'var(--gold)':'var(--muted)';
+    c.appendChild(node);
+  });
+}
+
+function startTimer(secs){
+  clearInterval(timerIv);
+  let left=secs; $('timer-txt').textContent=left+'s';
+  $('tbar').style.transition='none'; $('tbar').style.width='100%';
+  requestAnimationFrame(()=>{
+    $('tbar').style.transition='width '+secs+'s linear';
+    $('tbar').style.width='0%';
+  });
+  timerIv=setInterval(()=>{ left--; $('timer-txt').textContent=left+'s'; if(left<=0) clearInterval(timerIv); },1000);
+}
+
+const medals=['🥇','🥈','🥉','4️⃣'];
+
+function handleMsg(d){
+  switch(d.type){
+    case 'created_justeprix':
+      mySlot=d.slot; myCode=d.code;
+      hide('scr-name'); show('scr-wait');
+      $('w-code').textContent=d.code; break;
+    case 'welcome_justeprix':
+      mySlot=d.slot; myCode=d.code;
+      hide('scr-name'); show('scr-wait');
+      $('w-code').textContent=d.code;
+      $('w-hint').textContent='En attente du lancement…'; break;
+    case 'justeprix_state': updateState(d); break;
+    case 'countdown':{
+      ['scr-wait','scr-name','scr-rev'].forEach(hide); show('scr-cd');
+      let n=d.seconds; $('cd-n').textContent=n;
+      const iv=setInterval(()=>{ n--; if(n<=0) clearInterval(iv); else $('cd-n').textContent=n; },1000);
+      break;
+    }
+    case 'justeprix_round':
+      guessed=false;
+      ['scr-cd','scr-rev'].forEach(hide); show('scr-play');
+      $('rnd-info').textContent='MANCHE '+d.round+'/'+d.totalRounds;
+      $('question-txt').textContent=d.question;
+      $('val-in').value=''; $('val-in').disabled=false;
+      $('submit-btn').disabled=false; $('feed').textContent='';
+      $('val-in').focus(); startTimer(15); break;
+    case 'justeprix_guess_ack':
+      guessed=true; $('val-in').disabled=true; $('submit-btn').disabled=true;
+      $('feed').textContent='✓ Réponse enregistrée !'; $('feed').style.color='var(--ok)'; break;
+    case 'justeprix_reveal':{
+      clearInterval(timerIv);
+      hide('scr-play'); show('scr-rev');
+      const ans=d.answer;
+      $('answer-txt').textContent=String(ans);
+      renderReveal(d.guesses,'rev-ranks');
+      renderScores(d.players,'score-bar-r');
+      break;
+    }
+    case 'error': $('err').textContent=d.msg; break;
+    case 'game_abandoned': alert('Un joueur a quitté.'); location.reload(); break;
+  }
+}
+function updateState(d){
+  if(d.phase==='WAITING'){
+    ['scr-cd','scr-play','scr-rev','scr-over'].forEach(hide); show('scr-wait');
+    $('w-code').textContent=d.code;
+    const pw=$('w-players'); pw.textContent='';
+    d.players.forEach(p=>{ const c=document.createElement('span'); c.className='p-chip'; c.textContent=(p.slot===0?'👑 ':'')+p.name; pw.appendChild(c); });
+    if(mySlot===0) show('start-btn'); else $('w-hint').textContent='En attente du joueur 1…';
+  }
+  if(d.phase==='PLAYING') renderScores(d.players,'score-bar');
+  if(d.phase==='GAME_OVER'){
+    ['scr-play','scr-rev'].forEach(hide); show('scr-over');
+    const sorted=[...d.players].sort((a,b)=>b.score-a.score);
+    $('winner-txt').textContent=sorted[0]?sorted[0].name+' gagne !':'';
+    const tpl=$('tpl-rank'); const c=$('final-ranks'); c.textContent='';
+    sorted.forEach((p,i)=>{
+      const node=tpl.content.cloneNode(true);
+      const row=node.querySelector('.rank-row');
+      if(p.slot===mySlot) row.classList.add('me');
+      node.querySelector('.rk-medal').textContent=medals[i]||'🏅';
+      node.querySelector('.rk-name').textContent=p.name;
+      node.querySelector('.rk-guess').textContent='';
+      const ptsEl=node.querySelector('.rk-pts');
+      ptsEl.textContent=p.score+' pts'; ptsEl.style.color='var(--gold)';
+      c.appendChild(node);
+    });
+  }
+}
+$('val-in').addEventListener('keydown',e=>{ if(e.key==='Enter') submitGuess(); });
+</script>
+</body>
+</html>

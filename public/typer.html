@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ZapPlay — Typer Race</title>
+<link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--primary:#00F5D4;--gold:#fbbf24;--ok:#22c55e;--bad:#ef4444;--text:#E8E8F0;--muted:#5A5A78;--card:#0E0E22;--border:rgba(0,245,212,.10)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Exo 2',sans-serif;background:radial-gradient(1200px 700px at 20% -10%,rgba(0,245,212,.15),transparent 60%),linear-gradient(135deg,#0f0c29,#302b63,#24243e);color:var(--text);min-height:100dvh;padding-bottom:24px}
+#app{max-width:640px;margin:0 auto;padding:60px 14px 20px;display:flex;flex-direction:column;gap:14px}
+#back{position:fixed;top:8px;left:8px;background:none;border:none;color:var(--muted);cursor:pointer;padding:6px 10px;font-size:1rem}
+#dot{position:fixed;top:12px;right:12px;width:8px;height:8px;border-radius:50%;background:var(--bad)}
+#dot.ok{background:var(--ok)}
+.hidden{display:none!important}
+.card{background:linear-gradient(180deg,rgba(255,255,255,.07),rgba(255,255,255,.03));border:1px solid var(--border);border-radius:14px;padding:16px;backdrop-filter:blur(8px)}
+.btn{border:none;border-radius:10px;padding:12px 16px;font-weight:700;cursor:pointer;transition:transform .1s;font-size:.95rem;font-family:inherit}
+.btn:active{transform:scale(.97)}
+.btn-p{background:var(--primary);color:#000}
+.btn-s{background:rgba(255,255,255,.12);color:var(--text)}
+.btn-full{width:100%}
+input{width:100%;background:rgba(255,255,255,.08);border:1px solid var(--border);border-radius:10px;color:var(--text);padding:12px;font-size:1rem;outline:none;font-family:inherit}
+input:focus{border-color:var(--primary)}
+textarea{width:100%;background:rgba(255,255,255,.08);border:1px solid var(--border);border-radius:10px;color:var(--text);padding:12px;font-size:1rem;outline:none;font-family:inherit;resize:none;line-height:1.7}
+textarea:focus{border-color:var(--primary)}
+h2{font-size:1.5rem;font-weight:800;background:linear-gradient(135deg,var(--primary),var(--gold));-webkit-background-clip:text;-webkit-text-fill-color:transparent;text-align:center;margin-bottom:4px}
+.code-box{text-align:center;background:rgba(0,245,212,.07);border:1px solid rgba(0,245,212,.2);border-radius:12px;padding:12px;cursor:pointer;width:100%}
+.code-big{font-size:2.2rem;font-weight:900;letter-spacing:.2em;color:var(--primary);font-family:monospace}
+.players-wrap{display:flex;flex-wrap:wrap;gap:8px}
+.p-chip{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;background:rgba(255,255,255,.07);border:1px solid var(--border);font-size:.82rem}
+#score-bar,#score-bar-round{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+.sc-chip{display:flex;flex-direction:column;align-items:center;min-width:80px;background:rgba(255,255,255,.06);border:1px solid var(--border);border-radius:10px;padding:8px 12px}
+.sc-chip.me{border-color:rgba(0,245,212,.4)}
+.sc-name{color:var(--muted);font-size:.7rem;margin-bottom:2px}
+.sc-pts{font-weight:800;font-size:1.1rem;color:var(--primary)}
+#text-display{font-size:1.1rem;line-height:2;word-break:break-word}
+.char{transition:color .04s}
+.char.correct{color:var(--ok)}
+.char.wrong{color:var(--bad);background:rgba(239,68,68,.15);border-radius:2px}
+.char.cursor{border-left:2px solid var(--primary)}
+.prog-row{display:flex;align-items:center;gap:10px;font-size:.82rem}
+.prog-name{min-width:70px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted)}
+.prog-bar-wrap{flex:1;height:8px;background:rgba(255,255,255,.08);border-radius:4px;overflow:hidden}
+.prog-bar-fill{height:100%;border-radius:4px;background:linear-gradient(90deg,var(--primary),var(--gold));transition:width .2s}
+.prog-pct{min-width:36px;text-align:right;font-weight:700;color:var(--primary)}
+.rank-row{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;border-radius:8px;background:rgba(255,255,255,.05);font-size:.9rem;gap:8px}
+.rank-row.me{background:rgba(0,245,212,.1);border:1px solid rgba(0,245,212,.2)}
+.big-num{font-size:5rem;font-weight:900;text-align:center;color:var(--primary)}
+
+<!-- templates -->
+</style>
+</head>
+<body>
+<div id="app">
+<button id="back" onclick="history.back()">← Retour</button>
+<div id="dot"></div>
+
+<template id="tpl-sc">
+  <div class="sc-chip"><div class="sc-name"></div><div class="sc-pts"></div></div>
+</template>
+<template id="tpl-prog">
+  <div class="prog-row">
+    <div class="prog-name"></div>
+    <div class="prog-bar-wrap"><div class="prog-bar-fill" style="width:0%"></div></div>
+    <div class="prog-pct">0%</div>
+  </div>
+</template>
+<template id="tpl-rank">
+  <div class="rank-row"><span class="rk-medal"></span><span class="rk-name"></span><span class="rk-pts"></span></div>
+</template>
+
+<!-- Name -->
+<div id="scr-name">
+  <h2>⌨️ Typer Race</h2>
+  <div class="card" style="display:flex;flex-direction:column;gap:10px">
+    <p style="text-align:center;color:var(--muted);font-size:.85rem">Tape le texte le plus vite ! 5 manches · 2–4 joueurs</p>
+    <input id="name-in" type="text" maxlength="20" placeholder="Ton pseudo" autocomplete="off">
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-p" style="flex:1" onclick="createGame()">Créer une salle</button>
+      <button class="btn btn-s" style="flex:1" onclick="toggleJoin()">Rejoindre</button>
+    </div>
+    <div id="join-area" style="display:none;flex-direction:column;gap:8px">
+      <input id="code-in" type="text" maxlength="4" placeholder="Code ABCD" autocomplete="off" style="text-transform:uppercase;text-align:center;font-size:1.2rem;letter-spacing:.15em">
+      <button class="btn btn-p btn-full" onclick="joinGame()">Rejoindre →</button>
+    </div>
+    <p id="err" style="color:var(--bad);text-align:center;font-size:.85rem;min-height:18px"></p>
+  </div>
+</div>
+
+<!-- Wait -->
+<div id="scr-wait" class="hidden">
+  <h2>⌨️ Typer Race</h2>
+  <div class="card" style="display:flex;flex-direction:column;gap:12px;align-items:center">
+    <div class="code-box" onclick="copyCode()">
+      <div style="font-size:.62rem;color:var(--muted);letter-spacing:.08em;margin-bottom:4px">CODE DE LA SALLE</div>
+      <div class="code-big" id="w-code">----</div>
+      <div style="font-size:.62rem;color:var(--muted);margin-top:4px">Cliquer pour copier</div>
+    </div>
+    <div class="players-wrap" id="w-players"></div>
+    <button id="start-btn" class="btn btn-p btn-full hidden" onclick="startGame()">▶ Lancer</button>
+    <p id="w-hint" style="color:var(--muted);font-size:.82rem"></p>
+  </div>
+</div>
+
+<!-- Countdown -->
+<div id="scr-cd" class="hidden" style="min-height:50vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px">
+  <p style="color:var(--muted);letter-spacing:.1em;text-transform:uppercase;font-size:.9rem">Prêts ?</p>
+  <div class="big-num" id="cd-n">3</div>
+</div>
+
+<!-- Play -->
+<div id="scr-play" class="hidden" style="display:flex;flex-direction:column;gap:14px">
+  <div style="display:flex;justify-content:space-between;align-items:center">
+    <span id="rnd-info" style="font-size:.78rem;color:var(--muted);letter-spacing:.1em;font-family:monospace">MANCHE 1/5</span>
+    <span id="timer-disp" style="font-family:monospace;color:var(--gold);font-weight:700">60s</span>
+  </div>
+  <div id="score-bar"></div>
+  <div class="card"><div id="text-display" style="line-height:2;font-size:1.05rem;word-break:break-word"></div></div>
+  <div class="card" style="display:flex;flex-direction:column;gap:10px">
+    <textarea id="type-in" rows="3" placeholder="Tape ici…"></textarea>
+    <p id="done-msg" class="hidden" style="text-align:center;color:var(--ok);font-weight:700">✓ Terminé !</p>
+  </div>
+  <div class="card">
+    <p style="font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Progression</p>
+    <div id="prog-rows" style="display:flex;flex-direction:column;gap:8px"></div>
+  </div>
+</div>
+
+<!-- Round over -->
+<div id="scr-rnd" class="hidden" style="display:flex;flex-direction:column;gap:14px">
+  <div class="card">
+    <p style="text-align:center;color:var(--muted);font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">Fin de manche</p>
+    <div id="rnd-ranks" style="display:flex;flex-direction:column;gap:6px"></div>
+  </div>
+  <div id="score-bar-round"></div>
+</div>
+
+<!-- Game over -->
+<div id="scr-over" class="hidden" style="display:flex;flex-direction:column;gap:14px">
+  <div class="card" style="text-align:center">
+    <div style="font-size:2.5rem;margin-bottom:8px">🏆</div>
+    <p id="winner-txt" style="font-size:1.2rem;font-weight:800;color:var(--gold);margin-bottom:16px"></p>
+    <div id="final-ranks" style="display:flex;flex-direction:column;gap:6px;margin-bottom:16px"></div>
+    <button class="btn btn-s btn-full" onclick="restart()">Rejouer</button>
+  </div>
+</div>
+
+</div>
+<script>
+const WS_URL = `${location.protocol==='https:'?'wss':'ws'}://${location.host}/ws/typer`;
+let ws, mySlot=-1, myCode='', currentText='', done=false, timerIv=null, timeLeft=60;
+const $ = id => document.getElementById(id);
+const show = id => $(id).classList.remove('hidden');
+const hide = id => $(id).classList.add('hidden');
+const send = d => ws && ws.readyState===1 && ws.send(JSON.stringify(d));
+
+function connect(){
+  ws = new WebSocket(WS_URL);
+  ws.onopen = () => $('dot').classList.add('ok');
+  ws.onclose = () => { $('dot').classList.remove('ok'); setTimeout(connect,2000); };
+  ws.onmessage = e => { try{ handleMsg(JSON.parse(e.data)); }catch{} };
+}
+connect();
+
+function toggleJoin(){
+  const a = $('join-area');
+  a.style.display = a.style.display === 'flex' ? 'none' : 'flex';
+}
+function createGame(){ send({type:'create_typer',name:$('name-in').value.trim()||'Joueur'}); }
+function joinGame(){ send({type:'join_typer',name:$('name-in').value.trim()||'Joueur',code:$('code-in').value.trim().toUpperCase()}); }
+function copyCode(){ try{ navigator.clipboard.writeText(myCode); }catch{} }
+function startGame(){ send({type:'start_typer'}); }
+function restart(){ send({type:'restart_typer'}); }
+
+function renderScores(players, cid){
+  const c = $(cid); c.textContent='';
+  const tpl = $('tpl-sc');
+  players.forEach(p=>{
+    const node = tpl.content.cloneNode(true);
+    const chip = node.querySelector('.sc-chip');
+    if(p.slot===mySlot) chip.classList.add('me');
+    node.querySelector('.sc-name').textContent = p.name;
+    node.querySelector('.sc-pts').textContent = p.score||0;
+    c.appendChild(node);
+  });
+}
+function renderProgress(players){
+  const c = $('prog-rows'); c.textContent='';
+  const tpl = $('tpl-prog');
+  players.forEach(p=>{
+    const node = tpl.content.cloneNode(true);
+    node.querySelector('.prog-name').textContent = p.name;
+    node.querySelector('.prog-bar-fill').style.width = (p.progress||0)+'%';
+    node.querySelector('.prog-pct').textContent = (p.progress||0)+'%';
+    c.appendChild(node);
+  });
+}
+function renderRanks(rows, cid){
+  const c = $(cid); c.textContent='';
+  const tpl = $('tpl-rank');
+  rows.forEach(r=>{
+    const node = tpl.content.cloneNode(true);
+    const row = node.querySelector('.rank-row');
+    if(r.me) row.classList.add('me');
+    node.querySelector('.rk-medal').textContent = r.medal;
+    node.querySelector('.rk-name').textContent = r.name;
+    const pts = node.querySelector('.rk-pts');
+    pts.textContent = r.pts;
+    pts.style.color = r.ptsColor||'var(--gold)';
+    pts.style.fontWeight = '700';
+    c.appendChild(node);
+  });
+}
+
+function colorizeText(typed){
+  const disp = $('text-display');
+  disp.textContent = '';
+  for(let i=0;i<currentText.length;i++){
+    const sp = document.createElement('span');
+    sp.textContent = currentText[i];
+    if(i<typed.length){
+      sp.className = typed[i]===currentText[i] ? 'char correct' : 'char wrong';
+    } else {
+      sp.className = i===typed.length ? 'char cursor' : 'char';
+    }
+    disp.appendChild(sp);
+  }
+}
+
+function startTimer(){
+  clearInterval(timerIv); timeLeft=60;
+  $('timer-disp').textContent = '60s';
+  timerIv = setInterval(()=>{
+    timeLeft--; $('timer-disp').textContent = timeLeft+'s';
+    if(timeLeft<=0) clearInterval(timerIv);
+  },1000);
+}
+
+const medals = ['🥇','🥈','🥉','4️⃣'];
+const pts = [4,3,2,1];
+
+function handleMsg(d){
+  switch(d.type){
+    case 'created_typer':
+      mySlot=d.slot; myCode=d.code;
+      hide('scr-name'); show('scr-wait');
+      $('w-code').textContent = d.code;
+      break;
+    case 'welcome_typer':
+      mySlot=d.slot; myCode=d.code;
+      hide('scr-name'); show('scr-wait');
+      $('w-code').textContent = d.code;
+      $('w-hint').textContent = 'En attente du lancement…';
+      break;
+    case 'typer_state':
+      updateState(d); break;
+    case 'countdown':{
+      ['scr-wait','scr-name','scr-rnd'].forEach(hide);
+      show('scr-cd');
+      let n=d.seconds; $('cd-n').textContent=n;
+      const iv=setInterval(()=>{ n--; if(n<=0) clearInterval(iv); else $('cd-n').textContent=n; },1000);
+      break;
+    }
+    case 'typer_round':
+      currentText=d.text; done=false;
+      ['scr-cd','scr-rnd'].forEach(hide); show('scr-play');
+      $('rnd-info').textContent = 'MANCHE '+d.round+'/'+d.totalRounds;
+      $('type-in').value=''; $('type-in').disabled=false; $('type-in').focus();
+      hide('done-msg'); colorizeText(''); startTimer();
+      break;
+    case 'typer_positions':
+      renderProgress(d.players); break;
+    case 'typer_finish':
+      // silent — progress update covers it
+      break;
+    case 'typer_roundover':{
+      clearInterval(timerIv);
+      hide('scr-play'); show('scr-rnd');
+      const rows = d.finishers.map((slot,i)=>{
+        const p = d.players.find(p=>p.slot===slot)||{name:'?',slot,score:0};
+        return {me:slot===mySlot,medal:medals[i]||'🏅',name:p.name,pts:'+'+(pts[i]||1)+' pts'};
+      });
+      d.players.filter(p=>!d.finishers.includes(p.slot)).forEach(p=>{
+        rows.push({me:p.slot===mySlot,medal:'⏱',name:p.name,pts:'+0',ptsColor:'var(--muted)'});
+      });
+      renderRanks(rows,'rnd-ranks');
+      const sorted=[...d.players].sort((a,b)=>b.score-a.score);
+      renderScores(sorted,'score-bar-round');
+      break;
+    }
+    case 'error': $('err').textContent=d.msg; break;
+    case 'game_abandoned': alert('Un joueur a quitté.'); location.reload(); break;
+  }
+}
+
+function updateState(d){
+  if(d.phase==='WAITING'){
+    ['scr-cd','scr-play','scr-rnd','scr-over'].forEach(hide);
+    show('scr-wait');
+    $('w-code').textContent = d.code;
+    const pw = $('w-players'); pw.textContent='';
+    d.players.forEach(p=>{
+      const ch = document.createElement('span');
+      ch.className='p-chip';
+      ch.textContent=(p.slot===0?'👑 ':'')+p.name;
+      pw.appendChild(ch);
+    });
+    if(mySlot===0) show('start-btn'); else $('w-hint').textContent='En attente du joueur 1…';
+  }
+  if(d.phase==='PLAYING'){
+    renderScores(d.players,'score-bar');
+    renderProgress(d.players);
+  }
+  if(d.phase==='GAME_OVER'){
+    ['scr-play','scr-rnd'].forEach(hide); show('scr-over');
+    const sorted=[...d.players].sort((a,b)=>b.score-a.score);
+    $('winner-txt').textContent = (sorted[0]?sorted[0].name+' gagne !':'');
+    renderRanks(sorted.map((p,i)=>({me:p.slot===mySlot,medal:medals[i]||'🏅',name:p.name,pts:p.score+' pts'})),'final-ranks');
+  }
+}
+
+$('type-in').addEventListener('input',()=>{
+  if(done) return;
+  const typed = $('type-in').value;
+  colorizeText(typed);
+  let correct=0;
+  for(let i=0;i<typed.length&&i<currentText.length;i++){
+    if(typed[i]===currentText[i]) correct++; else break;
+  }
+  const pct = Math.round((correct/Math.max(currentText.length,1))*100);
+  send({type:'typer_progress',progress:pct});
+  if(correct===currentText.length&&typed.length===currentText.length){
+    done=true; $('type-in').disabled=true;
+    show('done-msg'); send({type:'typer_done'});
+    clearInterval(timerIv);
+  }
+});
+$('type-in').addEventListener('keydown',e=>{ if(e.key==='Enter') e.preventDefault(); });
+</script>
+</body>
+</html>
