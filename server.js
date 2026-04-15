@@ -4068,6 +4068,56 @@ const IMPOSTEUR_WORDS = {
   aliments: ['pizza','chocolat','pastèque','sushi','croissant','fromage','ananas','pieuvre','escargot','chou-fleur','framboise','noix de coco','piment','ratatouille','fondue','crêpe','guacamole','kimchi','pho','tacos','churros','waffle','bagel','mochi','tiramisu','baklava','choucroute','hummus','lasagne','couscous']
 };
 
+// Paires "à l'envers" pour le mot imposteur (fallback: mot différent)
+const IMPOSTEUR_OPPOSITES = [
+  ['fraise','cerise'],
+  ['pomme','poire'],
+  ['chocolat','vanille'],
+  ['pizza','burger'],
+  ['sushi','tacos'],
+  ['croissant','bagel'],
+  ['ananas','pastèque'],
+  ['fromage','chocolat'],
+  ['chien','chat'],
+  ['lion','tigre'],
+  ['renard','loup'],
+  ['panda','koala'],
+  ['hibou','aigle'],
+  ['plage','montagne'],
+  ['désert','jungle'],
+  ['bibliothèque','musée'],
+  ['château','prison'],
+  ['avion','sous-marin'],
+  ['épée','bouclier'],
+  ['loupe','télescope'],
+  ['nager','courir'],
+  ['danser','méditer'],
+  ['chuchoter','applaudir']
+].map(([a,b])=>[String(a).toLowerCase(),String(b).toLowerCase()]);
+
+function imposteurAllWordsFlat() {
+  return Object.values(IMPOSTEUR_WORDS).flat();
+}
+
+function imposteurPickDifferentWord(notWord) {
+  const flat = imposteurAllWordsFlat();
+  if (!flat.length) return '???';
+  const target = String(notWord||'').toLowerCase();
+  for (let i = 0; i < 20; i++) {
+    const w = flat[Math.floor(Math.random() * flat.length)];
+    if (String(w).toLowerCase() !== target) return w;
+  }
+  return flat[0];
+}
+
+function imposteurPickOpposite(word) {
+  const w = String(word||'').trim().toLowerCase();
+  if (!w) return imposteurPickDifferentWord(word);
+  const pair = IMPOSTEUR_OPPOSITES.find(([a,b]) => a === w || b === w);
+  if (pair) return pair[0] === w ? pair[1] : pair[0];
+  return imposteurPickDifferentWord(word);
+}
+
 function imposteurPickWord() {
   const cats = Object.keys(IMPOSTEUR_WORDS);
   const cat  = cats[Math.floor(Math.random() * cats.length)];
@@ -4088,6 +4138,7 @@ function makeImposteurRoom(code, host) {
   return { code, host, players:[], phase:'WAITING',
            round:0, totalRounds:5, nbImposteurs:1,
            word:null, imposteurSlots:[], descOrder:[], descIndex:0,
+           imposteurWord:null,
            descriptions:[], votes:{}, scores:{}, guessResult:null, timer:null };
 }
 
@@ -4103,7 +4154,9 @@ function imposteurSnap(room, forSlot) {
     type:'imposteur_state', phase:room.phase,
     round:room.round, totalRounds:room.totalRounds, nbImposteurs:room.nbImposteurs,
     players, code:room.code, host:room.host,
-    word: room.phase==='DESCRIBE'||room.phase==='VOTE' ? (isImposteur ? null : room.word) : null,
+    word: (room.phase==='DESCRIBE'||room.phase==='VOTE')
+      ? (isImposteur ? room.imposteurWord : room.word)
+      : (['REVEAL','GUESS','SCORES','GAME_OVER'].includes(room.phase) ? room.word : null),
     descOrder:room.descOrder, descIndex:room.descIndex,
     descriptions:room.descriptions,
     votes: ['REVEAL','GUESS','SCORES','GAME_OVER'].includes(room.phase) ? room.votes : {},
@@ -4121,6 +4174,7 @@ function imposteurBcast(room) {
 function imposteurStartRound(room) {
   room.round++;
   room.word = imposteurPickWord();
+  room.imposteurWord = imposteurPickOpposite(room.word);
   room.descriptions = [];
   room.votes = {};
   room.eliminated = null;

@@ -232,6 +232,7 @@ input[type=text]::placeholder{color:var(--muted)}
 <!-- REVEAL -->
 <div id="s-reveal" class="screen">
   <div style="font-size:1.3rem;font-weight:800;color:var(--primary);text-align:center">R&eacute;v&eacute;lation</div>
+  <div id="r-msg" class="turn-pill" style="margin-top:-6px">—</div>
   <div class="rv-list" id="r-list"></div>
   <div id="r-elim"></div>
 </div>
@@ -257,6 +258,7 @@ input[type=text]::placeholder{color:var(--muted)}
 <div id="s-gameover" class="screen">
   <div style="font-size:1.6rem;font-weight:900;color:var(--primary);text-align:center;text-shadow:0 0 20px rgba(255,56,100,.5)">Fin de partie !</div>
   <div class="podium" id="go-podium"></div>
+  <div style="text-align:center;color:var(--muted);font-size:.78rem;text-transform:uppercase;letter-spacing:.08em;margin-top:4px">Classement</div>
   <div class="score-list" id="go-list"></div>
   <button class="btn btn-secondary" style="max-width:280px;align-self:center" onclick="location.reload()">Rejouer</button>
   <a href="index.html" style="text-align:center;color:var(--muted);font-size:.85rem;text-decoration:none;padding:4px">Retour au menu</a>
@@ -282,6 +284,35 @@ let reconnectAction = null;
 if (window.ZapPlay && ZapPlay.showLoader) {
   ZapPlay.showLoader();
 }
+
+// ── Sons (simple beep, non intrusif) ───────────────────────────
+const SND = (() => {
+  let ctx = null;
+  function init(){
+    if(ctx) return;
+    try{ ctx = new (window.AudioContext||window.webkitAudioContext)(); }catch{}
+  }
+  function beep(freq, dur, type='sine', vol=0.08){
+    if(!ctx) return;
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+    o.type = type;
+    o.frequency.value = freq;
+    g.gain.value = vol;
+    o.connect(g); g.connect(ctx.destination);
+    const t = ctx.currentTime;
+    o.start(t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.stop(t + dur + 0.01);
+  }
+  return {
+    init,
+    vote(){ init(); beep(520, 0.08, 'square', 0.06); },
+    revealGood(){ init(); beep(740, 0.10, 'sine', 0.09); setTimeout(()=>beep(990,0.14,'sine',0.09), 120); },
+    revealBad(){ init(); beep(220, 0.14, 'sawtooth', 0.08); },
+    end(){ init(); [0,140,280].forEach((d,i)=>setTimeout(()=>beep([659,784,988][i],0.12,'sine',0.08), d)); }
+  };
+})();
 
 // ── Stars ──────────────────────────────────────────────────────
 (function(){
@@ -447,6 +478,18 @@ function handle(m){
   if(m.type==='lounge_chat'){ if(window.ZapPlay) ZapPlay.addLoungeMessage(m); return; }
   if(m.type!=='imposteur_state') return;
   var s=m;
+  if(!window.__imp_lastPhase) window.__imp_lastPhase = null;
+  var prev = window.__imp_lastPhase;
+  if(prev !== s.phase){
+    if(s.phase==='VOTE') SND.vote();
+    if(s.phase==='REVEAL'){
+      if(s.eliminated && s.eliminated.isImposteur) SND.revealGood();
+      else if(s.eliminated && !s.eliminated.isImposteur) SND.revealBad();
+      else SND.vote();
+    }
+    if(s.phase==='GAME_OVER') SND.end();
+    window.__imp_lastPhase = s.phase;
+  }
   // resolve mySlot
   if(mySlot<0){
     var me=s.players.find(function(p){ return p.name===myName; });
@@ -558,6 +601,16 @@ function renderVote(s){
 // ── REVEAL ─────────────────────────────────────────────────────
 function renderReveal(s){
   clearInterval(timerInt);
+  var msgEl = el('r-msg');
+  if(msgEl){
+    if(s.eliminated){
+      msgEl.innerHTML = s.eliminated.isImposteur
+        ? '✅ <b>Imposteur trouvé !</b>'
+        : '❌ <b>Mauvais choix…</b> Ce n’était pas un imposteur.';
+    } else {
+      msgEl.textContent = 'Égalité — personne n’est éliminé';
+    }
+  }
   var rl=el('r-list'); rl.textContent='';
   var tally={};
   if(s.votes) Object.values(s.votes).forEach(function(v){ tally[v]=(tally[v]||0)+1; });
@@ -578,7 +631,7 @@ function renderReveal(s){
 
   var re=el('r-elim'); re.textContent='';
   if(s.eliminated){
-    var isImp=s.eliminated.role==='imposteur';
+    var isImp=!!s.eliminated.isImposteur;
     var box=document.createElement('div'); box.className='elim-box';
     var lbl=document.createElement('div'); lbl.className='elim-label'; lbl.textContent='Elimin\xe9(e)';
     var enm=document.createElement('div'); enm.className='elim-name'; enm.textContent=s.eliminated.name;
