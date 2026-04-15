@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<link rel="stylesheet" href="theme.css">
 <title>ZapPlay — Uno</title>
 <style>
 :root {
@@ -14,7 +15,7 @@
   --rouge:#ef4444; --bleu:#3b82f6; --vert:#22c55e; --jaune:#fbbf24;
 }
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-html,body{height:100%;background:linear-gradient(135deg,var(--bg) 0%,var(--bg2) 55%,var(--bg3) 100%);color:var(--text);font-family:'Exo 2',sans-serif;overflow:hidden}
+html,body{height:100%;color:var(--text);font-family:'Exo 2',sans-serif;overflow:hidden}
 #wrap{height:100dvh;display:flex;flex-direction:column;max-width:520px;margin:0 auto;padding:0 12px}
 .screen{display:none;flex-direction:column;flex:1;min-height:0}
 .screen.active{display:flex}
@@ -100,7 +101,7 @@ input[type=text]::placeholder{color:var(--muted)}
 .uno-card.selected{transform:translateY(-12px)!important;box-shadow:0 0 0 3px var(--gold),0 12px 28px rgba(0,0,0,.5)!important;border-color:rgba(251,191,36,.7)!important}
 
 /* Playable glow on hand cards */
-@keyframes playableglow{0%{box-shadow:0 0 0 2px var(--correct),0 4px 16px rgba(0,0,0,.4)}100%{box-shadow:0 0 0 4px var(--correct),0 4px 20px rgba(34,197,94,.3)}}
+@keyframes playableglow{0%{box-shadow:0 0 0 2px var(--correct),0 4px 16px rgba(0,0,0,.4)}100%{box-shadow:0 0 0 4px var(--correct),0 0 22px rgba(34,197,94,.45),0 4px 20px rgba(34,197,94,.3)}}
 .uno-card.playable{animation:playableglow 1s ease infinite alternate}
 
 /* My turn badge */
@@ -178,6 +179,7 @@ input[type=text]::placeholder{color:var(--muted)}
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Exo+2:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
+<div class="zp-space-bg"><div class="zp-neb1"></div><div class="zp-neb2"></div><div class="zp-stars" id="zp-stars-uno"></div><div class="zp-sgrid"></div><div class="zp-comet"></div></div>
 <div id="gcount-overlay"><div id="gcount-num">3</div><div id="gcount-label">Préparez-vous !</div></div>
 <div id="dot"></div>
 <button id="back-btn" onclick="location.href='index.html'">&#8592; Accueil</button>
@@ -695,5 +697,6 @@ document.getElementById('inp-code').addEventListener('keydown', e => { if (e.key
 </script>
 <script src="shared.js"></script>
 <script src="chat.js"></script>
+<script>(function(){var sc=document.getElementById('zp-stars-uno');if(!sc)return;for(var i=0;i<60;i++){var s=document.createElement('div');s.className='zp-star';var sz=(.4+Math.random()*1.6).toFixed(1);s.style.cssText='left:'+Math.random()*100+'%;top:'+Math.random()*100+'%;width:'+sz+'px;height:'+sz+'px;opacity:'+((.2+Math.random()*.8).toFixed(2))+';animation-duration:'+(2+Math.random()*4).toFixed(1)+'s;animation-delay:'+(Math.random()*5).toFixed(1)+'s';sc.appendChild(s);}})();</script>
 </body>
 </html>

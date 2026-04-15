@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="theme.css">
 <title>ZapPlay — Bataille navale</title>
 <style>
 :root{
@@ -12,8 +13,7 @@
 *{box-sizing:border-box;margin:0;padding:0}
 body{
   font-family:'Exo 2',sans-serif;
-  background:radial-gradient(ellipse 100% 80% at 50% -20%,rgba(56,189,248,.12),transparent 50%),
-    linear-gradient(165deg,#0c1524 0%,#152a45 40%,#0a1628 100%);
+  
   color:var(--text);min-height:100dvh
 }
 #home{position:fixed;top:10px;left:10px;background:var(--card);border:1px solid var(--border);color:var(--text);padding:8px 12px;border-radius:8px;cursor:pointer;z-index:50}
@@ -93,7 +93,7 @@ input{width:100%;padding:11px 12px;border-radius:10px;border:1px solid var(--bor
 }
 .cell.hit{
   background:radial-gradient(circle at 50% 45%,#fecaca,#dc2626 35%,#7f1d1d 75%);
-  box-shadow:inset 0 -4px 12px rgba(0,0,0,.4),0 0 14px rgba(220,38,38,.5);
+  box-shadow:inset 0 -4px 12px rgba(0,0,0,.4),0 0 16px rgba(239,68,68,.6),0 0 32px rgba(239,68,68,.2);
 }
 .cell.hit::after{
   content:'';position:absolute;inset:22%;border-radius:50%;
@@ -193,6 +193,7 @@ input{width:100%;padding:11px 12px;border-radius:10px;border:1px solid var(--bor
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Exo+2:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
+<div class="zp-space-bg"><div class="zp-neb1"></div><div class="zp-neb2"></div><div class="zp-stars" id="zp-stars-naval"></div><div class="zp-sgrid"></div><div class="zp-comet"></div></div>
 <svg xmlns="http://www.w3.org/2000/svg" width="0" height="0" style="position:absolute;overflow:hidden" aria-hidden="true" focusable="false">
   <defs>
     <linearGradient id="navalHullGrad" x1="0%" y1="0%" x2="0%" y2="100%">
@@ -709,5 +710,6 @@ $('code').addEventListener('input',e=>{e.target.value=e.target.value.toUpperCase
 </script>
 <script src="shared.js"></script>
 <script src="chat.js"></script>
+<script>(function(){var sc=document.getElementById('zp-stars-naval');if(!sc)return;for(var i=0;i<60;i++){var s=document.createElement('div');s.className='zp-star';var sz=(.4+Math.random()*1.6).toFixed(1);s.style.cssText='left:'+Math.random()*100+'%;top:'+Math.random()*100+'%;width:'+sz+'px;height:'+sz+'px;opacity:'+((.2+Math.random()*.8).toFixed(2))+';animation-duration:'+(2+Math.random()*4).toFixed(1)+'s;animation-delay:'+(Math.random()*5).toFixed(1)+'s';sc.appendChild(s);}})();</script>
 </body>
 </html>

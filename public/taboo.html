@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="theme.css">
 <title>ZapPlay — Mots Interdits</title>
 <style>
   :root {
@@ -315,6 +316,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Exo+2:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
+<div class="zp-space-bg"><div class="zp-neb1"></div><div class="zp-neb2"></div><div class="zp-stars" id="zp-stars-taboo"></div><div class="zp-sgrid"></div><div class="zp-comet"></div></div>
 <div id="gcount-overlay"><div id="gcount-num">3</div><div id="gcount-label">Préparez-vous !</div></div>
 
 <button id="back-btn" onclick="location.href='index.html'">← Accueil</button>
@@ -815,5 +817,6 @@ connect();
 </script>
 <script src="shared.js"></script>
 <script src="chat.js"></script>
+<script>(function(){var sc=document.getElementById('zp-stars-taboo');if(!sc)return;for(var i=0;i<60;i++){var s=document.createElement('div');s.className='zp-star';var sz=(.4+Math.random()*1.6).toFixed(1);s.style.cssText='left:'+Math.random()*100+'%;top:'+Math.random()*100+'%;width:'+sz+'px;height:'+sz+'px;opacity:'+((.2+Math.random()*.8).toFixed(2))+';animation-duration:'+(2+Math.random()*4).toFixed(1)+'s;animation-delay:'+(Math.random()*5).toFixed(1)+'s';sc.appendChild(s);}})();</script>
 </body>
 </html>

@@ -3,11 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<link rel="stylesheet" href="theme.css">
 <title>ZapPlay — Loup-Garou</title>
 <style>
 :root{--bg:#06060F;--bg2:#0D0D1F;--card:#0E0E22;--border:rgba(0,245,212,.10);--primary:#00F5D4;--primary2:#00C4AB;--buzz:#FF6B35;--correct:#22c55e;--wrong:#ef4444;--gold:#fbbf24;--text:#E8E8F0;--muted:#5A5A78;--r:14px}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-html,body{height:100%;background:linear-gradient(135deg,var(--bg) 0%,var(--bg2) 55%,#24243e 100%);color:var(--text);font-family:'Exo 2',sans-serif;overflow:hidden}
+html,body{height:100%;color:var(--text);font-family:'Exo 2',sans-serif;overflow:hidden}
 #wrap{height:100dvh;display:flex;flex-direction:column;max-width:500px;margin:0 auto;padding:0 12px}
 .screen{display:none;flex-direction:column;flex:1;min-height:0}
 .screen.active{display:flex}
@@ -40,17 +41,19 @@ input[type=text]::placeholder{color:var(--muted)}
 #s-role{justify-content:center;align-items:center;gap:24px;text-align:center}
 #role-icon{font-size:5rem;animation:roleReveal .6s ease}
 @keyframes roleReveal{0%{transform:scale(0) rotate(-10deg);opacity:0}80%{transform:scale(1.15) rotate(3deg)}100%{transform:scale(1) rotate(0);opacity:1}}
-#role-name{font-size:1.8rem;font-weight:800;color:var(--primary)}
+#role-name{font-size:1.8rem;font-weight:800;color:var(--primary);text-shadow:0 0 20px rgba(167,139,250,.5)}
 #role-desc{color:var(--muted);font-size:.9rem;max-width:280px;line-height:1.5}
-#role-loups-list{display:none;background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.35);border-radius:10px;padding:10px 16px;font-size:.85rem;color:#fca5a5;text-align:center}
+#role-loups-list{display:none;background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.4);border-radius:10px;padding:10px 16px;font-size:.85rem;color:#fca5a5;text-align:center;box-shadow:0 0 14px rgba(239,68,68,.1)}
 /* Night */
-#s-night{justify-content:center;align-items:center;gap:20px;text-align:center;background:rgba(0,0,0,.35)}
-#night-title{font-size:1.5rem;font-weight:800;color:var(--primary)}
+#s-night{justify-content:center;align-items:center;gap:20px;text-align:center;background:rgba(0,0,0,.4)}
+#night-title{font-size:1.5rem;font-weight:800;color:var(--primary);text-shadow:0 0 16px rgba(167,139,250,.4)}
 #night-msg{color:var(--muted);font-size:.9rem;line-height:1.5;max-width:300px}
 #night-actions{width:100%;display:flex;flex-direction:column;gap:10px}
-.player-vote-btn{background:var(--card);border:2px solid var(--border);border-radius:12px;padding:14px;font-size:.95rem;font-weight:600;color:var(--text);cursor:pointer;transition:border-color .15s,background .15s;touch-action:manipulation}
-.player-vote-btn:hover{border-color:var(--primary);background:rgba(167,139,250,.1)}
-.player-vote-btn.selected{border-color:var(--wrong);background:rgba(239,68,68,.15);color:#fca5a5}
+.player-vote-btn{background:var(--card);border:2px solid var(--border);border-radius:12px;padding:14px;font-size:.95rem;font-weight:600;color:var(--text);cursor:pointer;transition:border-color .15s,background .15s,box-shadow .15s;touch-action:manipulation;position:relative;overflow:hidden}
+.player-vote-btn::before{content:'';position:absolute;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.1) 2px,rgba(0,0,0,.1) 4px);opacity:0;transition:opacity .2s;pointer-events:none}
+.player-vote-btn:hover{border-color:rgba(239,68,68,.5);background:rgba(239,68,68,.1);color:#fca5a5}
+.player-vote-btn:hover::before{opacity:1}
+.player-vote-btn.selected{border-color:rgba(239,68,68,.65);background:rgba(239,68,68,.15);color:#fca5a5;box-shadow:0 0 14px rgba(239,68,68,.15)}
 .player-vote-btn:disabled{opacity:.4;cursor:default}
 #night-timer{font-size:.8rem;color:var(--muted);margin-top:-8px}
 /* Day */
@@ -90,6 +93,7 @@ input[type=text]::placeholder{color:var(--muted)}
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Exo+2:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
+<div class="zp-space-bg"><div class="zp-neb1"></div><div class="zp-neb2"></div><div class="zp-stars" id="zp-stars-loup"></div><div class="zp-sgrid"></div><div class="zp-comet"></div></div>
 <div id="gcount-overlay"><div id="gcount-num">3</div><div id="gcount-label">Préparez-vous !</div></div>
 <div id="dot"></div>
 <button id="back-btn" onclick="location.href='index.html'">&#8592; Accueil</button>
@@ -566,5 +570,6 @@ document.getElementById('inp-code').addEventListener('input', e => {
 </script>
 <script src="shared.js"></script>
 <script src="chat.js"></script>
+<script>(function(){var sc=document.getElementById('zp-stars-loup');if(!sc)return;for(var i=0;i<60;i++){var s=document.createElement('div');s.className='zp-star';var sz=(.4+Math.random()*1.6).toFixed(1);s.style.cssText='left:'+Math.random()*100+'%;top:'+Math.random()*100+'%;width:'+sz+'px;height:'+sz+'px;opacity:'+((.2+Math.random()*.8).toFixed(2))+';animation-duration:'+(2+Math.random()*4).toFixed(1)+'s;animation-delay:'+(Math.random()*5).toFixed(1)+'s';sc.appendChild(s);}})();</script>
 </body>
 </html>

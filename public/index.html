@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Exo+2:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="theme.css">
 <style>
 :root {
   --bg:     #06060F;
@@ -28,54 +29,17 @@ html { height: 100%; }
 
 body {
   min-height: 100%;
-  background-color: var(--bg);
+  background-color: #03030A;
   color: var(--text);
   font-family: 'Exo 2', sans-serif;
   padding-bottom: 80px;
   overflow-x: hidden;
 }
 
-/* ── ANIMATED BACKGROUND ── */
-.bg-layer {
-  position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden;
-}
-.bg-grid {
-  position: absolute; inset: 0;
-  background-image:
-    linear-gradient(rgba(0,245,212,.035) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0,245,212,.035) 1px, transparent 1px);
-  background-size: 44px 44px;
-  animation: grid-drift 12s linear infinite;
-}
-@keyframes grid-drift { 0%{transform:translateY(0)} 100%{transform:translateY(44px)} }
-
-.bg-glow {
-  position: absolute; border-radius: 50%; filter: blur(80px); opacity: .12;
-}
-.bg-glow.g1 {
-  width: 500px; height: 500px; background: var(--teal);
-  top: -150px; left: -100px;
-  animation: glow-drift 14s ease-in-out infinite alternate;
-}
-.bg-glow.g2 {
-  width: 400px; height: 400px; background: var(--orange);
-  bottom: 10%; right: -80px;
-  animation: glow-drift 18s ease-in-out infinite alternate-reverse;
-}
-.bg-glow.g3 {
-  width: 300px; height: 300px; background: var(--pink);
-  top: 40%; left: 40%;
-  animation: glow-drift 22s ease-in-out infinite alternate;
-}
-@keyframes glow-drift {
-  0%{transform:translate(0,0) scale(1)}
-  100%{transform:translate(40px,30px) scale(1.1)}
-}
-
 /* ── PARTICLES ── */
-.particles { position: absolute; inset: 0; overflow: hidden; }
+.particles { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
 .particle {
-  position: absolute; border-radius: 50%; background: var(--teal);
+  position: absolute; border-radius: 50%;
   animation: particle-rise linear infinite;
 }
 @keyframes particle-rise {
@@ -114,24 +78,17 @@ body {
   letter-spacing: .06em;
   color: var(--teal);
   text-shadow:
-    0 0 24px rgba(0,245,212,.7),
-    0 0 70px rgba(0,245,212,.25);
+    0 0 24px rgba(0,245,212,.8),
+    0 0 70px rgba(0,245,212,.3),
+    0 0 140px rgba(0,245,212,.12);
   position: relative;
   display: inline-block;
-  animation: logo-in .8s .1s cubic-bezier(.2,0,.2,1) both, glitch 8s 1s infinite;
+  animation: logo-in .8s .1s cubic-bezier(.2,0,.2,1) both, zp-logo-glitch 6s 1s infinite;
   cursor: default;
 }
 @keyframes logo-in {
   from{opacity:0;transform:translateY(20px) scale(.95)}
   to{opacity:1;transform:translateY(0) scale(1)}
-}
-@keyframes glitch {
-  0%,87%,100%{transform:translate(0);text-shadow:0 0 24px rgba(0,245,212,.7),0 0 70px rgba(0,245,212,.25)}
-  88%{transform:translate(-4px,1px);text-shadow:-4px 0 var(--pink),4px 0 var(--orange)}
-  89%{transform:translate(4px,-1px);text-shadow:4px 0 var(--orange),-4px 0 var(--pink)}
-  90%{transform:translate(0);text-shadow:0 0 24px rgba(0,245,212,.7),0 0 70px rgba(0,245,212,.25)}
-  91%{transform:translate(2px,1px);text-shadow:-2px 0 var(--pink)}
-  92%{transform:translate(0);text-shadow:0 0 24px rgba(0,245,212,.7),0 0 70px rgba(0,245,212,.25)}
 }
 
 /* Decorative line under logo */
@@ -405,12 +362,13 @@ body {
 </head>
 <body>
 
-<!-- Background layers -->
-<div class="bg-layer">
-  <div class="bg-grid"></div>
-  <div class="bg-glow g1"></div>
-  <div class="bg-glow g2"></div>
-  <div class="bg-glow g3"></div>
+<!-- Deep Space Background -->
+<div class="zp-space-bg">
+  <div class="zp-neb1"></div>
+  <div class="zp-neb2"></div>
+  <div class="zp-stars" id="bg-stars"></div>
+  <div class="zp-sgrid"></div>
+  <div class="zp-comet"></div>
   <div class="particles" id="bg-particles"></div>
 </div>
 
@@ -428,127 +386,145 @@ body {
 
 <div class="grid">
 
-  <a class="game-card c-quiz" href="quiz.html">
-    <span class="card-icon">&#9889;</span>
+  <a class="game-card neon-card c-teal" href="quiz.html">
+    <div class="zp-shine"></div>
+    <span class="card-icon zp-glitch-icon">&#9889;</span>
     <div class="card-name">Quiz Éclair</div>
     <div class="card-desc">Buzzez le premier et répondez ! 15 questions, 9 catégories.</div>
     <span class="card-badge">Buzz · 2–4 joueurs</span>
   </a>
 
-  <a class="game-card c-draw" href="draw.html">
-    <span class="card-icon">&#9999;&#65039;</span>
+  <a class="game-card neon-card c-orange" href="draw.html">
+    <div class="zp-shine"></div>
+    <span class="card-icon zp-glitch-icon">&#9999;&#65039;</span>
     <div class="card-name">Dessin &amp; Devine</div>
     <div class="card-desc">Dessinez et faites deviner votre partenaire !</div>
     <span class="card-badge">6 manches · Chill</span>
   </a>
 
-  <a class="game-card c-strat" href="p4.html">
-    <span class="card-icon">&#128993;</span>
+  <a class="game-card neon-card c-blue" href="p4.html">
+    <div class="zp-shine"></div>
+    <span class="card-icon zp-glitch-icon">&#128993;</span>
     <div class="card-name">Puissance 4</div>
     <div class="card-desc">Alignez 4 pions avant votre adversaire !</div>
     <span class="card-badge">Stratégie · Tour/tour</span>
   </a>
 
-  <a class="game-card c-strat" href="morpion.html">
-    <span class="card-icon">&#10799;&#65038;</span>
+  <a class="game-card neon-card c-teal" href="morpion.html">
+    <div class="zp-shine"></div>
+    <span class="card-icon zp-glitch-icon">&#10799;&#65038;</span>
     <div class="card-name">Morpion</div>
     <div class="card-desc">Tic-tac-toe en ligne, best of 5 !</div>
     <span class="card-badge">Best of 5</span>
   </a>
 
-  <a class="game-card c-word" href="taboo.html">
-    <span class="card-icon">&#128683;</span>
+  <a class="game-card neon-card c-pink" href="taboo.html">
+    <div class="zp-shine"></div>
+    <span class="card-icon zp-glitch-icon">&#128683;</span>
     <div class="card-name">Mots Interdits</div>
     <div class="card-desc">Faites deviner sans prononcer les mots tabous !</div>
     <span class="card-badge">8 manches</span>
   </a>
 
-  <a class="game-card c-quiz" href="emoji.html">
-    <span class="card-icon">&#127775;</span>
+  <a class="game-card neon-card c-teal" href="emoji.html">
+    <div class="zp-shine"></div>
+    <span class="card-icon zp-glitch-icon">&#127775;</span>
     <div class="card-name">Devinette Emoji</div>
     <div class="card-desc">Devinez le film ou la chanson en emojis !</div>
     <span class="card-badge">15 devinettes</span>
   </a>
 
-  <a class="game-card c-social" href="loup.html">
-    <span class="card-icon">&#x1F43A;</span>
+  <a class="game-card neon-card c-purple" href="loup.html">
+    <div class="zp-shine"></div>
+    <span class="card-icon zp-glitch-icon">&#x1F43A;</span>
     <div class="card-name">Loup-Garou</div>
     <div class="card-desc">Loups contre villageois, rôles secrets chaque nuit !</div>
     <span class="card-badge">4–10 joueurs · Rôles</span>
   </a>
 
-  <a class="game-card c-action" href="uno.html">
-    <span class="card-icon">&#x1F0CF;</span>
+  <a class="game-card neon-card c-pink" href="uno.html">
+    <div class="zp-shine"></div>
+    <span class="card-icon zp-glitch-icon">&#x1F0CF;</span>
     <div class="card-name">Uno</div>
     <div class="card-desc">Le classique des cartes ! Videz votre main en premier.</div>
     <span class="card-badge">2–4 joueurs · Cartes</span>
   </a>
 
-  <a class="game-card c-action" href="wordbomb.html">
-    <span class="card-icon">&#x1F4A3;</span>
+  <a class="game-card neon-card c-gold" href="wordbomb.html">
+    <div class="zp-shine"></div>
+    <span class="card-icon zp-glitch-icon">&#x1F4A3;</span>
     <div class="card-name">Word Bomb</div>
     <div class="card-desc">Trouve un mot avec la syllabe avant l'explosion.</div>
     <span class="card-badge">2–6 joueurs · Vitesse</span>
   </a>
 
-  <a class="game-card c-action" href="sumo.html">
-    <span class="card-icon">&#x1F94B;</span>
+  <a class="game-card neon-card c-gold" href="sumo.html">
+    <div class="zp-shine"></div>
+    <span class="card-icon zp-glitch-icon">&#x1F94B;</span>
     <div class="card-name">Sumo Arena</div>
     <div class="card-desc">Pousse tes adversaires hors du ring !</div>
     <span class="card-badge">2–4 joueurs · Combat</span>
   </a>
 
-  <a class="game-card c-draw" href="paint.html">
-    <span class="card-icon">&#x1F3A8;</span>
+  <a class="game-card neon-card c-orange" href="paint.html">
+    <div class="zp-shine"></div>
+    <span class="card-icon zp-glitch-icon">&#x1F3A8;</span>
     <div class="card-name">Paint.io</div>
     <div class="card-desc">Capture le plus de territoire sans te faire couper !</div>
     <span class="card-badge">2–4 joueurs · Survie</span>
   </a>
 
-  <a class="game-card c-strat" href="naval.html">
-    <span class="card-icon">&#9875;</span>
+  <a class="game-card neon-card c-blue" href="naval.html">
+    <div class="zp-shine"></div>
+    <span class="card-icon zp-glitch-icon">&#9875;</span>
     <div class="card-name">Bataille navale</div>
     <div class="card-desc">Place ta flotte puis coule tous les navires adverses !</div>
     <span class="card-badge">2–4 joueurs · Stratégie</span>
   </a>
 
-  <a class="game-card c-action" href="typer.html">
-    <span class="card-icon">⌨️</span>
+  <a class="game-card neon-card c-gold" href="typer.html">
+    <div class="zp-shine"></div>
+    <span class="card-icon zp-glitch-icon">⌨️</span>
     <div class="card-name">Typer Race</div>
     <div class="card-desc">Tape le texte le plus vite ! Qui finira 1er sur 5 manches ?</div>
     <span class="card-badge">2–4 joueurs · Vitesse</span>
   </a>
 
-  <a class="game-card c-word" href="anagramme.html">
-    <span class="card-icon">🔤</span>
+  <a class="game-card neon-card c-pink" href="anagramme.html">
+    <div class="zp-shine"></div>
+    <span class="card-icon zp-glitch-icon">🔤</span>
     <div class="card-name">Anagramme</div>
     <div class="card-desc">Déchiffre les lettres mélangées avant les autres ! 8 manches.</div>
     <span class="card-badge">2–4 joueurs · Mots</span>
   </a>
 
-  <a class="game-card c-quiz" href="justeprix.html">
-    <span class="card-icon">💰</span>
+  <a class="game-card neon-card c-teal" href="justeprix.html">
+    <div class="zp-shine"></div>
+    <span class="card-icon zp-glitch-icon">💰</span>
     <div class="card-name">Juste Prix</div>
     <div class="card-desc">Estimez le prix ou la valeur — le plus proche gagne !</div>
     <span class="card-badge">8 manches · Estimation</span>
   </a>
 
-  <a class="game-card c-strat" href="timeline.html">
-    <span class="card-icon">📅</span>
+  <a class="game-card neon-card c-blue" href="timeline.html">
+    <div class="zp-shine"></div>
+    <span class="card-icon zp-glitch-icon">📅</span>
     <div class="card-name">Timeline</div>
     <div class="card-desc">Quel événement s'est produit en premier ? Histoire & culture.</div>
     <span class="card-badge">10 manches · Histoire</span>
   </a>
 
-  <a class="game-card c-social" href="memoire.html">
-    <span class="card-icon">🃏</span>
+  <a class="game-card neon-card c-purple" href="memoire.html">
+    <div class="zp-shine"></div>
+    <span class="card-icon zp-glitch-icon">🃏</span>
     <div class="card-name">Mémoire</div>
     <div class="card-desc">Retourne les cartes et retrouve les paires ! Tour par tour.</div>
     <span class="card-badge">2–4 joueurs · Mémoire</span>
   </a>
 
-  <a class="game-card c-lobby lobby-full" href="lobby.html">
-    <span class="card-icon">&#127968;</span>
+  <a class="game-card neon-card c-green lobby-full" href="lobby.html">
+    <div class="zp-shine"></div>
+    <span class="card-icon zp-glitch-icon">&#127968;</span>
     <div class="card-name">Salles en ligne</div>
     <div class="card-desc">Créez ou rejoignez une salle, voyez les parties en cours en temps réel !</div>
     <span class="card-badge">Lobby · Temps réel</span>
@@ -575,21 +551,37 @@ body {
 </div><!-- .wrap -->
 
 <script>
-// Background particles
+// Stars
+(function(){
+  const sc = document.getElementById('bg-stars');
+  if(!sc) return;
+  for(let i=0;i<70;i++){
+    const s=document.createElement('div');
+    s.className='zp-star';
+    const sz=(.4+Math.random()*1.6).toFixed(1);
+    s.style.cssText='left:'+Math.random()*100+'%;top:'+Math.random()*100+'%;width:'+sz+'px;height:'+sz+'px;opacity:'+((.2+Math.random()*.8).toFixed(2))+';animation-duration:'+(2+Math.random()*4).toFixed(1)+'s;animation-delay:'+(Math.random()*5).toFixed(1)+'s';
+    sc.appendChild(s);
+  }
+})();
+
+// Particles
 (function(){
   const c = document.getElementById('bg-particles');
   if(!c) return;
-  for(let i = 0; i < 20; i++){
+  const colors=['#00F5D4','#FF3864','#3B82F6','#A855F7','#FFE234'];
+  for(let i = 0; i < 30; i++){
     const p = document.createElement('div');
     p.className = 'particle';
     const sz = (.5 + Math.random() * 1.5).toFixed(1);
+    const col = colors[Math.floor(Math.random()*colors.length)];
     p.style.cssText = [
       'left:' + Math.round(Math.random()*100) + '%',
       'width:' + sz + 'px',
       'height:' + sz + 'px',
+      'background:' + col,
       'opacity:0',
-      'animation-duration:' + (6 + Math.random()*10).toFixed(1) + 's',
-      'animation-delay:' + (Math.random()*8).toFixed(1) + 's',
+      'animation-duration:' + (7 + Math.random()*12).toFixed(1) + 's',
+      'animation-delay:' + (Math.random()*10).toFixed(1) + 's',
     ].join(';');
     c.appendChild(p);
   }

@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<link rel="stylesheet" href="theme.css">
 <title>ZapPlay — Salles en ligne</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -19,28 +20,11 @@ html{height:100%}
 
 body{
   min-height:100%;
-  background-color:var(--bg);
-  background-image:
-    linear-gradient(rgba(0,245,212,.035) 1px,transparent 1px),
-    linear-gradient(90deg,rgba(0,245,212,.035) 1px,transparent 1px);
-  background-size:44px 44px;
-  animation:grid-drift 12s linear infinite;
   color:var(--text);font-family:'Exo 2',sans-serif;padding-bottom:64px;
   overflow-x:hidden;
 }
-@keyframes grid-drift{0%{background-position:0 0}100%{background-position:0 44px}}
 
-/* Ambient glow */
-body::before{
-  content:'';position:fixed;top:-200px;left:-150px;width:600px;height:600px;
-  border-radius:50%;background:var(--teal);filter:blur(120px);opacity:.05;
-  pointer-events:none;z-index:0;
-}
-body::after{
-  content:'';position:fixed;bottom:-100px;right:-100px;width:500px;height:500px;
-  border-radius:50%;background:var(--orange);filter:blur(120px);opacity:.05;
-  pointer-events:none;z-index:0;
-}
+/* Ambient glows removed — replaced by Deep Space background (theme.css) */
 
 /* ── HEADER ── */
 .header{
@@ -287,6 +271,7 @@ select option{background:#0D0D1F;color:var(--text)}
 </style>
 </head>
 <body>
+<div class="zp-space-bg"><div class="zp-neb1"></div><div class="zp-neb2"></div><div class="zp-stars" id="zp-stars-lobby"></div><div class="zp-sgrid"></div><div class="zp-comet"></div></div>
 
 <div class="header">
   <a class="back-btn" href="index.html">&#8592; Accueil</a>
@@ -536,5 +521,6 @@ document.getElementById('inp-join-code').addEventListener('input', e=>{
 </script>
 <script src="shared.js"></script>
 <script src="chat.js"></script>
+<script>(function(){var sc=document.getElementById('zp-stars-lobby');if(!sc)return;for(var i=0;i<60;i++){var s=document.createElement('div');s.className='zp-star';var sz=(.4+Math.random()*1.6).toFixed(1);s.style.cssText='left:'+Math.random()*100+'%;top:'+Math.random()*100+'%;width:'+sz+'px;height:'+sz+'px;opacity:'+((.2+Math.random()*.8).toFixed(2))+';animation-duration:'+(2+Math.random()*4).toFixed(1)+'s;animation-delay:'+(Math.random()*5).toFixed(1)+'s';sc.appendChild(s);}})();</script>
 </body>
 </html>

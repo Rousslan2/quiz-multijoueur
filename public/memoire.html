@@ -3,12 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="theme.css">
 <title>ZapPlay — Mémoire</title>
 <link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
 :root{--primary:#A855F7;--gold:#fbbf24;--ok:#22c55e;--bad:#ef4444;--text:#E8E8F0;--muted:#5A5A78;--card:#0E0E22;--border:rgba(168,85,247,.10)}
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Exo 2',sans-serif;background:radial-gradient(1200px 700px at 50% -10%,rgba(168,85,247,.15),transparent 60%),linear-gradient(135deg,#0f0c29,#302b63,#24243e);color:var(--text);min-height:100dvh;padding-bottom:24px}
+body{font-family:'Exo 2',sans-serif;color:var(--text);min-height:100dvh;padding-bottom:24px}
 #app{max-width:560px;margin:0 auto;padding:60px 14px 20px;display:flex;flex-direction:column;gap:14px}
 #back{position:fixed;top:8px;left:8px;background:none;border:none;color:var(--muted);cursor:pointer;padding:6px 10px;font-size:1rem}
 #dot{position:fixed;top:12px;right:12px;width:8px;height:8px;border-radius:50%;background:var(--bad)}
@@ -33,11 +34,12 @@ h2{font-size:1.5rem;font-weight:800;background:linear-gradient(135deg,var(--prim
 .sc-name{color:var(--muted);font-size:.7rem;margin-bottom:2px}
 .sc-pts{font-weight:800;font-size:1.1rem;color:var(--primary)}
 #card-grid{display:grid;gap:6px;margin-top:4px}
-.mem-card{aspect-ratio:1;border-radius:10px;border:2px solid rgba(168,85,247,.2);background:rgba(255,255,255,.05);cursor:pointer;font-size:1.6rem;display:flex;align-items:center;justify-content:center;transition:transform .15s,background .15s,border-color .15s;user-select:none;-webkit-tap-highlight-color:transparent}
-.mem-card:hover:not(.disabled):not(.matched){background:rgba(168,85,247,.1);border-color:rgba(168,85,247,.4)}
-.mem-card.flipped{background:rgba(168,85,247,.12);border-color:rgba(168,85,247,.5)}
-.mem-card.matched{background:rgba(34,197,94,.1);border-color:rgba(34,197,94,.4);cursor:default}
-.mem-card.disabled{cursor:not-allowed;opacity:.6}
+.mem-card{aspect-ratio:1;border-radius:10px;border:2px solid rgba(168,85,247,.2);background:rgba(255,255,255,.04);cursor:pointer;font-size:1.6rem;display:flex;align-items:center;justify-content:center;transition:transform .15s,background .15s,border-color .15s,box-shadow .15s;user-select:none;-webkit-tap-highlight-color:transparent}
+.mem-card:hover:not(.disabled):not(.matched){background:rgba(168,85,247,.1);border-color:rgba(168,85,247,.45);box-shadow:0 0 12px rgba(168,85,247,.2)}
+.mem-card.flipped{background:rgba(168,85,247,.12);border-color:rgba(168,85,247,.55);box-shadow:0 0 14px rgba(168,85,247,.25)}
+.mem-card.matched{background:rgba(34,197,94,.08);border-color:rgba(34,197,94,.45);cursor:default;animation:mem-match-glow 2s ease-in-out infinite}
+@keyframes mem-match-glow{0%,100%{box-shadow:0 0 8px rgba(34,197,94,.25)}50%{box-shadow:0 0 22px rgba(34,197,94,.5)}}
+.mem-card.disabled{cursor:not-allowed;opacity:.55}
 .mem-card.no-turn{cursor:default}
 .rank-row{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;border-radius:8px;background:rgba(255,255,255,.05);font-size:.88rem;gap:8px}
 .rank-row.me{background:rgba(168,85,247,.1);border:1px solid rgba(168,85,247,.2)}
@@ -45,6 +47,7 @@ h2{font-size:1.5rem;font-weight:800;background:linear-gradient(135deg,var(--prim
 </style>
 </head>
 <body>
+<div class="zp-space-bg"><div class="zp-neb1"></div><div class="zp-neb2"></div><div class="zp-stars" id="zp-stars-memoire"></div><div class="zp-sgrid"></div><div class="zp-comet"></div></div>
 <div id="app">
 <button id="back" onclick="history.back()">← Retour</button>
 <div id="dot"></div>
@@ -271,5 +274,6 @@ bindLoungeSender();
 </script>
 <script src="shared.js"></script>
 <script src="chat.js"></script>
+<script>(function(){var sc=document.getElementById('zp-stars-memoire');if(!sc)return;for(var i=0;i<60;i++){var s=document.createElement('div');s.className='zp-star';var sz=(.4+Math.random()*1.6).toFixed(1);s.style.cssText='left:'+Math.random()*100+'%;top:'+Math.random()*100+'%;width:'+sz+'px;height:'+sz+'px;opacity:'+((.2+Math.random()*.8).toFixed(2))+';animation-duration:'+(2+Math.random()*4).toFixed(1)+'s;animation-delay:'+(Math.random()*5).toFixed(1)+'s';sc.appendChild(s);}})();</script>
 </body>
 </html>

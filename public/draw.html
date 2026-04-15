@@ -3,11 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<link rel="stylesheet" href="theme.css">
 <title>ZapPlay — Dessin</title>
 <style>
 :root{--bg:#06060F;--bg2:#24243e;--card:#0E0E22;--border:rgba(0,245,212,.10);--primary:#00F5D4;--primary2:#00C4AB;--orange:#f97316;--correct:#22c55e;--wrong:#ef4444;--gold:#fbbf24;--text:#E8E8F0;--muted:#5A5A78;--r:12px}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-html,body{height:100%;background:linear-gradient(135deg,var(--bg) 0%,var(--bg2) 100%);color:var(--text);font-family:'Exo 2',sans-serif;overflow:hidden}
+html,body{height:100%;color:var(--text);font-family:'Exo 2',sans-serif;overflow:hidden}
 #app{height:100dvh;display:flex;flex-direction:column;max-width:520px;margin:0 auto;padding:0 10px}
 .screen{display:none;flex-direction:column;flex:1;min-height:0}
 .screen.active{display:flex}
@@ -238,6 +239,7 @@ canvas{width:100%;height:100%;display:block;touch-action:none}
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Exo+2:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
+<div class="zp-space-bg"><div class="zp-neb1"></div><div class="zp-neb2"></div><div class="zp-stars" id="zp-stars-draw"></div><div class="zp-sgrid"></div><div class="zp-comet"></div></div>
 <!-- Global countdown overlay -->
 <div id="global-countdown-overlay">
   <div id="global-countdown-num">3</div>
@@ -1361,5 +1363,6 @@ function renderState(st) {
 </script>
 <script src="shared.js"></script>
 <script src="chat.js"></script>
+<script>(function(){var sc=document.getElementById('zp-stars-draw');if(!sc)return;for(var i=0;i<60;i++){var s=document.createElement('div');s.className='zp-star';var sz=(.4+Math.random()*1.6).toFixed(1);s.style.cssText='left:'+Math.random()*100+'%;top:'+Math.random()*100+'%;width:'+sz+'px;height:'+sz+'px;opacity:'+((.2+Math.random()*.8).toFixed(2))+';animation-duration:'+(2+Math.random()*4).toFixed(1)+'s;animation-delay:'+(Math.random()*5).toFixed(1)+'s';sc.appendChild(s);}})();</script>
 </body>
 </html>

@@ -3,12 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="theme.css">
 <title>ZapPlay — Timeline</title>
 <link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
 :root{--primary:#3B82F6;--gold:#fbbf24;--ok:#22c55e;--bad:#ef4444;--text:#E8E8F0;--muted:#5A5A78;--card:#0E0E22;--border:rgba(59,130,246,.10)}
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Exo 2',sans-serif;background:radial-gradient(1200px 700px at 50% -10%,rgba(59,130,246,.15),transparent 60%),linear-gradient(135deg,#0f0c29,#302b63,#24243e);color:var(--text);min-height:100dvh;padding-bottom:24px}
+body{font-family:'Exo 2',sans-serif;color:var(--text);min-height:100dvh;padding-bottom:24px}
 #app{max-width:600px;margin:0 auto;padding:60px 14px 20px;display:flex;flex-direction:column;gap:14px}
 #back{position:fixed;top:8px;left:8px;background:none;border:none;color:var(--muted);cursor:pointer;padding:6px 10px;font-size:1rem}
 #dot{position:fixed;top:12px;right:12px;width:8px;height:8px;border-radius:50%;background:var(--bad)}
@@ -45,6 +46,7 @@ h2{font-size:1.5rem;font-weight:800;background:linear-gradient(135deg,var(--prim
 </style>
 </head>
 <body>
+<div class="zp-space-bg"><div class="zp-neb1"></div><div class="zp-neb2"></div><div class="zp-stars" id="zp-stars-timeline"></div><div class="zp-sgrid"></div><div class="zp-comet"></div></div>
 <div id="app">
 <button id="back" onclick="history.back()">← Retour</button>
 <div id="dot"></div>
@@ -306,5 +308,6 @@ bindLoungeSender();
 </script>
 <script src="shared.js"></script>
 <script src="chat.js"></script>
+<script>(function(){var sc=document.getElementById('zp-stars-timeline');if(!sc)return;for(var i=0;i<60;i++){var s=document.createElement('div');s.className='zp-star';var sz=(.4+Math.random()*1.6).toFixed(1);s.style.cssText='left:'+Math.random()*100+'%;top:'+Math.random()*100+'%;width:'+sz+'px;height:'+sz+'px;opacity:'+((.2+Math.random()*.8).toFixed(2))+';animation-duration:'+(2+Math.random()*4).toFixed(1)+'s;animation-delay:'+(Math.random()*5).toFixed(1)+'s';sc.appendChild(s);}})();</script>
 </body>
 </html>
