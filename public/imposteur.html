@@ -262,7 +262,7 @@ function homeAction(){
 function connectWS(initMsg){
   var proto=location.protocol==='https:'?'wss':'ws';
   ws=new WebSocket(proto+'://'+location.host+'/ws/imposteur');
-  ws.onopen=function(){ ws.send(JSON.stringify(initMsg)); };
+  ws.onopen=function(){ if(window.ZapPlay) ZapPlay.hideLoader(); ws.send(JSON.stringify(initMsg)); };
   ws.onmessage=function(e){ handleMsg(JSON.parse(e.data)); };
 }
 function sendMsg(obj){ if(ws&&ws.readyState===1) ws.send(JSON.stringify(obj)); }
