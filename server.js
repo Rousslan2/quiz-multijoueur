@@ -4239,7 +4239,7 @@ function imposteurNextRound(room) {
 }
 
 wssImposteur.on('connection', ws => {
-  aliveFn(ws);
+  makeWS(wssImposteur).alive(ws);
   let room = null;
 
   ws.on('message', raw => {
@@ -4337,7 +4337,7 @@ wssImposteur.on('connection', ws => {
   });
 
   ws.on('close', () => {
-    clearFn(ws);
+    makeWS(wssImposteur).clear(ws);
     if (!room) return;
     room.players = room.players.filter(p => p.ws !== ws);
     if (room.players.length === 0) { imposteurRooms.delete(room.code); broadcastLobby(); return; }
