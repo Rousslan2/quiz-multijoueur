@@ -261,8 +261,10 @@ input[type=text]::placeholder{color:var(--muted)}
   <div class="podium" id="go-podium"></div>
   <div style="text-align:center;color:var(--muted);font-size:.78rem;text-transform:uppercase;letter-spacing:.08em;margin-top:4px">Classement</div>
   <div class="score-list" id="go-list"></div>
-  <button class="btn btn-secondary" style="max-width:280px;align-self:center" onclick="location.reload()">Rejouer</button>
-  <a href="index.html" style="text-align:center;color:var(--muted);font-size:.85rem;text-decoration:none;padding:4px">Retour au menu</a>
+  <div style="display:flex;gap:10px;max-width:340px;align-self:center;width:100%">
+    <button class="btn btn-secondary" style="flex:1" onclick="location.reload()">Rejouer</button>
+    <button class="btn btn-secondary" style="flex:1" onclick="location.href='index.html'">Quitter</button>
+  </div>
 </div>
 
 </div><!-- #wrap -->
