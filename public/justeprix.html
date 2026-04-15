@@ -138,6 +138,7 @@ h2{font-size:1.5rem;font-weight:800;background:linear-gradient(135deg,var(--prim
 <script>
 const WS_URL = `${location.protocol==='https:'?'wss':'ws'}://${location.host}/ws/justeprix`;
 let ws, mySlot=-1, myCode='', timerIv=null, guessed=false;
+let pendingAction=null;
 const $ = id => document.getElementById(id);
 const show = id => $(id).classList.remove('hidden');
 const hide = id => $(id).classList.add('hidden');
@@ -145,7 +146,7 @@ const send = d => ws && ws.readyState===1 && ws.send(JSON.stringify(d));
 
 function connect(){
   ws = new WebSocket(WS_URL);
-  ws.onopen = () => $('dot').classList.add('ok');
+  ws.onopen = () => { $('dot').classList.add('ok'); if(pendingAction){pendingAction();pendingAction=null;} };
   ws.onclose = () => { $('dot').classList.remove('ok'); setTimeout(connect,2000); };
   ws.onmessage = e => { try{ handleMsg(JSON.parse(e.data)); }catch{} };
 }
@@ -281,6 +282,16 @@ function updateState(d){
   }
 }
 $('val-in').addEventListener('keydown',e=>{ if(e.key==='Enter') submitGuess(); });
+
+(function(){
+  const p=new URLSearchParams(location.search);
+  if(p.get('name')) $('name-in').value=p.get('name');
+  if(p.get('code')){ $('code-in').value=p.get('code').toUpperCase(); toggleJoin(); }
+  if(p.get('create')==='1'&&p.get('name')){
+    const name=p.get('name'); $('name-in').value=name;
+    pendingAction=()=>send({type:'create_justeprix',name});
+  }
+})();
 </script>
 </body>
 </html>

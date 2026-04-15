@@ -323,6 +323,11 @@ select option{background:#0D0D1F;color:var(--text)}
         <option value="sumo">🥋 Sumo Arena</option>
         <option value="paint">🎨 Paint.io</option>
         <option value="naval">⚓ Bataille navale</option>
+        <option value="typer">⌨️ Typer Race</option>
+        <option value="anagramme">🔤 Anagramme</option>
+        <option value="justeprix">💰 Juste Prix</option>
+        <option value="timeline">📅 Timeline</option>
+        <option value="memo">🃏 Mémoire</option>
       </select>
       <input type="text" id="inp-create-name" placeholder="Votre prénom" maxlength="20" autocomplete="off">
       <button class="btn btn-create" onclick="doCreate()">Créer la salle</button>
@@ -369,11 +374,14 @@ const GAME_URLS = {
   quiz:'quiz.html', draw:'draw.html', p4:'p4.html',
   morpion:'morpion.html', taboo:'taboo.html', emoji:'emoji.html',
   loup:'loup.html', uno:'uno.html', bomb:'wordbomb.html',
-  sumo:'sumo.html', paint:'paint.html', naval:'naval.html'
+  sumo:'sumo.html', paint:'paint.html', naval:'naval.html',
+  typer:'typer.html', anagramme:'anagramme.html',
+  justeprix:'justeprix.html', timeline:'timeline.html', memo:'memoire.html'
 };
 const GAME_ICONS = {
   quiz:'⚡', draw:'✏️', p4:'🟠', morpion:'✖️', taboo:'🚫', emoji:'🌟',
-  loup:'🐺', uno:'🃏', bomb:'💣', sumo:'🥋', paint:'🎨', naval:'⚓'
+  loup:'🐺', uno:'🃏', bomb:'💣', sumo:'🥋', paint:'🎨', naval:'⚓',
+  typer:'⌨️', anagramme:'🔤', justeprix:'💰', timeline:'📅', memo:'🃏'
 };
 
 let createdCode = null;
