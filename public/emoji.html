@@ -263,7 +263,7 @@
 <body>
 <div class="zp-space-bg"><div class="zp-neb1"></div><div class="zp-neb2"></div><div class="zp-stars" id="zp-stars-emoji"></div><div class="zp-sgrid"></div><div class="zp-comet"></div></div>
 
-<button id="back-btn" onclick="location.href='index.html'">← Accueil</button>
+<button id="back-btn" onclick="location.href='index.html'" data-i18n="ui_home">← Accueil</button>
 <div id="dot"></div>
 
 <!-- Countdown overlay -->
@@ -278,16 +278,16 @@
     <div id="phase-overlay">
       <h1>🎯 Devinette Emoji</h1>
       <p>Entre ton prénom pour rejoindre</p>
-      <input id="name-input" type="text" placeholder="Ton prénom" maxlength="20"
+      <input id="name-input" type="text" placeholder="Ton prénom" maxlength="20" data-i18n-ph="ui_your_name_ph"
         style="width:100%;background:rgba(255,255,255,.1);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:16px;padding:14px;outline:none;text-align:center;">
       <div style="display:flex;gap:8px;margin-top:4px">
-        <button class="btn btn-primary" style="flex:1" onclick="createGame()">Créer une salle</button>
-        <button class="btn btn-secondary" style="flex:1" onclick="showJoinE()">Rejoindre (code)</button>
+        <button class="btn btn-primary" style="flex:1" onclick="createGame()" data-i18n="ui_create_room">Créer une salle</button>
+        <button class="btn btn-secondary" style="flex:1" onclick="showJoinE()" data-i18n="ui_join_code">Rejoindre (code)</button>
       </div>
       <div id="join-code-area" style="display:none;flex-direction:column;gap:8px;margin-top:4px">
         <input id="code-input" type="text" maxlength="4" placeholder="Code (ABCD)"
           style="width:100%;background:rgba(255,255,255,.1);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:1.1rem;font-weight:700;padding:12px;outline:none;text-align:center;text-transform:uppercase;letter-spacing:.12em;" autocomplete="off">
-        <button class="btn btn-primary btn-full" onclick="joinGame()">Rejoindre</button>
+        <button class="btn btn-primary btn-full" onclick="joinGame()" data-i18n="ui_join">Rejoindre</button>
       </div>
     </div>
   </div>
@@ -369,7 +369,7 @@
         <div id="go-scores-list" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;justify-content:center"></div>
         <div id="go-winner" style="font-size:1.1rem;color:var(--gold);margin-bottom:20px"></div>
         <div style="display:flex;gap:10px">
-          <button class="btn btn-muted btn-full" onclick="location.href='index.html'">Accueil</button>
+          <button class="btn btn-muted btn-full" onclick="location.href='index.html'" data-i18n="ui_home">Accueil</button>
           <button class="btn btn-primary btn-full" onclick="restartGame()">Rejouer</button>
         </div>
       </div>

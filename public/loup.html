@@ -96,7 +96,7 @@ input[type=text]::placeholder{color:var(--muted)}
 <div class="zp-space-bg"><div class="zp-neb1"></div><div class="zp-neb2"></div><div class="zp-stars" id="zp-stars-loup"></div><div class="zp-sgrid"></div><div class="zp-comet"></div></div>
 <div id="gcount-overlay"><div id="gcount-num">3</div><div id="gcount-label">Préparez-vous !</div></div>
 <div id="dot"></div>
-<button id="back-btn" onclick="location.href='index.html'">&#8592; Accueil</button>
+<button id="back-btn" onclick="location.href='index.html'">&#8592; <span data-i18n="ui_home">Accueil</span></button>
 <div id="confetti-wrap"></div>
 
 <div id="wrap">
@@ -106,15 +106,15 @@ input[type=text]::placeholder{color:var(--muted)}
   <div style="flex:1"></div>
   <div class="logo"><h1>&#x1F43A; Loup-Garou</h1><p>Loups contre villageois, rôles secrets !</p></div>
   <div class="card form-card">
-    <h2>Ton prénom</h2>
+    <h2 data-i18n="ui_name_ph">Ton pseudo</h2>
     <input id="inp-name" type="text" placeholder="Ex: Marie" maxlength="20" autocomplete="off">
     <div style="display:flex;gap:8px">
-      <button class="btn btn-primary" style="flex:1" onclick="doCreate()">Créer une salle</button>
-      <button class="btn btn-secondary" style="flex:1" onclick="showJoin()">Rejoindre</button>
+      <button class="btn btn-primary" style="flex:1" onclick="doCreate()" data-i18n="lobby_create_btn">Créer la salle</button>
+      <button class="btn btn-secondary" style="flex:1" onclick="showJoin()" data-i18n="lobby_join">Rejoindre</button>
     </div>
     <div id="join-area" style="display:none;flex-direction:column;gap:8px">
       <input id="inp-code" type="text" placeholder="Code (ex: ABCD)" maxlength="4" autocomplete="off" style="text-transform:uppercase;letter-spacing:.1em;text-align:center;font-size:1.1rem;font-weight:700">
-      <button class="btn btn-success" onclick="doJoin()">Rejoindre</button>
+      <button class="btn btn-success" onclick="doJoin()" data-i18n="lobby_join_btn">Rejoindre</button>
     </div>
     <div id="err"></div>
   </div>

@@ -367,7 +367,7 @@
 <div class="zp-space-bg"><div class="zp-neb1"></div><div class="zp-neb2"></div><div class="zp-stars" id="zp-stars-morpion"></div><div class="zp-sgrid"></div><div class="zp-comet"></div></div>
 <div id="gcount-overlay"><div id="gcount-num">3</div><div id="gcount-label">Préparez-vous !</div></div>
 
-<button id="home-btn" onclick="location.href='index.html'">← Accueil</button>
+<button id="home-btn" onclick="location.href='index.html'">← <span data-i18n="ui_home">Accueil</span></button>
 <div id="dot"></div>
 
 <div id="app">
@@ -378,13 +378,13 @@
     <p>Entre ton pseudo pour rejoindre la partie</p>
     <input id="name-input" class="input-field" type="text" maxlength="20" placeholder="Ton pseudo..." autocomplete="off">
     <div style="display:flex;gap:8px;margin-top:4px">
-      <button class="btn btn-primary" style="flex:1" onclick="createGame()">Créer une salle</button>
-      <button class="btn btn-secondary" style="flex:1" onclick="showJoinM()">Rejoindre (code)</button>
+      <button class="btn btn-primary" style="flex:1" onclick="createGame()" data-i18n="lobby_create_btn">Créer la salle</button>
+      <button class="btn btn-secondary" style="flex:1" onclick="showJoinM()" data-i18n="lobby_join">Rejoindre</button>
     </div>
     <div id="join-code-area" style="display:none;flex-direction:column;gap:8px;margin-top:4px">
       <input id="code-input" class="input-field" type="text" maxlength="4" placeholder="Code (ABCD)"
         style="text-transform:uppercase;letter-spacing:.12em;font-size:1.1rem;font-weight:700;text-align:center" autocomplete="off">
-      <button class="btn btn-primary" onclick="joinGame()">Rejoindre</button>
+      <button class="btn btn-primary" onclick="joinGame()" data-i18n="lobby_join_btn">Rejoindre</button>
     </div>
   </div>
 
