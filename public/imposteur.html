@@ -262,7 +262,7 @@ input[type=text]::placeholder{color:var(--muted)}
   <div style="text-align:center;color:var(--muted);font-size:.78rem;text-transform:uppercase;letter-spacing:.08em;margin-top:4px">Classement</div>
   <div class="score-list" id="go-list"></div>
   <div style="display:flex;gap:10px;max-width:340px;align-self:center;width:100%">
-    <button class="btn btn-secondary" style="flex:1" onclick="location.reload()">Rejouer</button>
+    <button class="btn btn-secondary" style="flex:1" onclick="doReplay()">Rejouer</button>
     <button class="btn btn-secondary" style="flex:1" onclick="location.href='index.html'">Quitter</button>
   </div>
 </div>
@@ -739,6 +739,10 @@ function renderGameOver(s){
     gl.appendChild(row);
   });
   launchConfetti();
+}
+
+function doReplay(){
+  if(ws && ws.readyState===1) send({type:'restart_imposteur'});
 }
 
 // ── Confetti ───────────────────────────────────────────────────

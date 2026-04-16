@@ -4449,6 +4449,31 @@ wssImposteur.on('connection', ws => {
       imposteurNextRound(room);
     }
 
+    else if (d.type === 'restart_imposteur') {
+      if (!room || room.phase !== 'GAME_OVER') return;
+      const p = room.players.find(p=>p.ws===ws);
+      if (!p || p.name !== room.host) return;
+      room.phase = 'WAITING';
+      room.round = 0;
+      room.totalRounds = 5;
+      room.nbImposteurs = 1;
+      room.word = null;
+      room.imposteurSlots = [];
+      room.imposteurWord = null;
+      room.descOrder = [];
+      room.descIndex = 0;
+      room.descriptions = [];
+      room.votes = {};
+      room.eliminated = null;
+      room.guessResult = null;
+      room.scores = {};
+      room.players.forEach(pl => { room.scores[pl.slot] = 0; });
+      clearTimeout(room.timer);
+      room.timer = null;
+      imposteurBcast(room);
+      broadcastLobby();
+    }
+
     else if (d.type === 'lounge_chat') {
       handleLoungeChat(room, ws, d);
     }
