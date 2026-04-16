@@ -317,7 +317,7 @@
 </head>
 <body>
 <div class="zp-space-bg"><div class="zp-neb1"></div><div class="zp-neb2"></div><div class="zp-stars" id="zp-stars-taboo"></div><div class="zp-sgrid"></div><div class="zp-comet"></div></div>
-<div id="gcount-overlay"><div id="gcount-num">3</div><div id="gcount-label" data-i18n="taboo_prepare">Préparez-vous !</div></div>
+<div id="gcount-overlay"><div id="gcount-num">3</div><div id="gcount-label">Préparez-vous !</div></div>
 
 <button id="back-btn" onclick="location.href='index.html'">← <span data-i18n="ui_home">Accueil</span></button>
 <div id="dot"></div>
@@ -326,16 +326,16 @@
   <!-- Name entry -->
   <div id="screen-name" class="hidden">
     <div id="phase-overlay">
-      <h1 data-i18n="taboo_title">🃏 Mots Interdits</h1>
-      <p data-i18n="taboo_enter_name">Entre ton prénom pour rejoindre</p>
-      <input id="name-input" type="text" data-i18n-ph="taboo_name_ph" placeholder="Ton prénom" maxlength="20"
+      <h1>🃏 Mots Interdits</h1>
+      <p>Entre ton prénom pour rejoindre</p>
+      <input id="name-input" type="text" placeholder="Ton prénom" maxlength="20"
         style="width:100%;background:rgba(255,255,255,.1);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:16px;padding:14px;outline:none;text-align:center;">
       <div style="display:flex;gap:8px;margin-top:4px">
         <button class="btn btn-primary" style="flex:1" onclick="createGame()" data-i18n="lobby_create_btn">Créer la salle</button>
         <button class="btn btn-secondary" style="flex:1" onclick="showJoinT()" data-i18n="lobby_join">Rejoindre</button>
       </div>
       <div id="join-code-area" style="display:none;flex-direction:column;gap:8px;margin-top:4px">
-        <input id="code-input" type="text" maxlength="4" data-i18n-ph="ui_code_ph" placeholder="Code (ABCD)"
+        <input id="code-input" type="text" maxlength="4" placeholder="Code (ABCD)"
           style="width:100%;background:rgba(255,255,255,.1);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:1.1rem;font-weight:700;padding:12px;outline:none;text-align:center;text-transform:uppercase;letter-spacing:.12em;" autocomplete="off">
         <button class="btn btn-primary btn-full" onclick="joinGame()" data-i18n="lobby_join_btn">Rejoindre</button>
       </div>
@@ -345,25 +345,25 @@
   <!-- Waiting -->
   <div id="screen-waiting" class="hidden">
     <div id="phase-overlay">
-      <h1 data-i18n="taboo_waiting">En attente…</h1>
-      <div id="taboo-code-box" onclick="copyCodeT()" data-i18n-title="taboo_click_copy" title="Cliquer pour copier"
+      <h1>En attente…</h1>
+      <div id="taboo-code-box" onclick="copyCodeT()" title="Cliquer pour copier"
         style="text-align:center;background:rgba(167,139,250,.1);border:2px solid rgba(167,139,250,.35);
                border-radius:12px;padding:10px 18px;cursor:pointer;margin-bottom:10px">
-        <div style="font-size:.65rem;color:#94a3b8;text-transform:uppercase;letter-spacing:.07em;margin-bottom:3px" data-i18n="taboo_room_code">Code de la salle</div>
+        <div style="font-size:.65rem;color:#94a3b8;text-transform:uppercase;letter-spacing:.07em;margin-bottom:3px">Code de la salle</div>
         <div id="taboo-code-display" style="font-size:2.2rem;font-weight:800;letter-spacing:.2em;color:#a78bfa;font-family:monospace;line-height:1">----</div>
-        <div id="taboo-copy-hint" style="font-size:.65rem;color:#94a3b8;margin-top:3px" data-i18n="taboo_click_copy">Cliquer pour copier</div>
+        <div id="taboo-copy-hint" style="font-size:.65rem;color:#94a3b8;margin-top:3px">Cliquer pour copier</div>
       </div>
-      <p data-i18n="taboo_share">Partage le code à tes amis</p>
+      <p>Partage le code à tes amis</p>
     </div>
   </div>
 
   <!-- Ready -->
   <div id="screen-ready" class="hidden">
     <div id="phase-overlay">
-      <h1 data-i18n="taboo_ready">Prêt à jouer !</h1>
+      <h1>Prêt à jouer !</h1>
       <p id="ready-players">2 joueurs connectés</p>
-      <button id="start-btn" class="btn btn-primary btn-full hidden" onclick="startGame()" data-i18n="taboo_start">Lancer la partie</button>
-      <p id="ready-wait" class="hidden" style="color:var(--muted)" data-i18n="taboo_wait_p1">En attente du joueur 1…</p>
+      <button id="start-btn" class="btn btn-primary btn-full hidden" onclick="startGame()">Lancer la partie</button>
+      <p id="ready-wait" class="hidden" style="color:var(--muted)">En attente du joueur 1…</p>
     </div>
   </div>
 
@@ -376,11 +376,11 @@
     <!-- Describer view -->
     <div id="describer-view" class="card hidden">
       <div id="word-display">
-        <div class="label" data-i18n="taboo_word_to_guess">Mot à faire deviner :</div>
+        <div class="label">Mot à faire deviner :</div>
         <div class="main-word" id="main-word">???</div>
       </div>
       <div id="forbidden-list">
-        <div class="label" data-i18n="taboo_forbidden">Mots interdits :</div>
+        <div class="label">Mots interdits :</div>
         <div class="forbidden-badges" id="forbidden-badges"></div>
       </div>
     </div>
@@ -388,26 +388,26 @@
     <!-- Guesser view -->
     <div id="guesser-view" class="hidden" style="display:flex;flex-direction:column;gap:12px">
       <div class="card">
-        <div id="word-hint"></div>
+        <div id="word-hint">Le descripteur décrit un mot de <span id="word-len">?</span> lettres</div>
       </div>
       <div class="card">
         <div id="guess-form">
-          <input id="guess-input" type="text" data-i18n-ph="taboo_answer_ph" placeholder="Ta réponse…" autocomplete="off" autocorrect="off">
-          <button class="btn btn-primary" onclick="sendGuess()" data-i18n="taboo_guess">Deviner</button>
+          <input id="guess-input" type="text" placeholder="Ta réponse…" autocomplete="off" autocorrect="off">
+          <button class="btn btn-primary" onclick="sendGuess()">Deviner</button>
         </div>
       </div>
       <div class="grille-btn-wrap">
-        <button class="btn btn-danger" style="padding:12px 28px" onclick="sendGrille()" data-i18n="taboo_grille">🚫 GRILLE !</button>
+        <button class="btn btn-danger" style="padding:12px 28px" onclick="sendGrille()">🚫 GRILLE !</button>
       </div>
       <div class="card" id="guess-log-wrap">
-        <div style="font-size:13px;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px" data-i18n="taboo_attempts">Tentatives</div>
+        <div style="font-size:13px;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">Tentatives</div>
         <div id="guess-log"></div>
       </div>
     </div>
 
     <!-- Waiting (not your turn to describe) -->
     <div id="waiting-view" class="card hidden" style="text-align:center;padding:24px">
-      <div style="font-size:1rem;color:var(--muted)" id="waiting-msg" data-i18n="taboo_other_describes">C'est à l'autre de décrire…</div>
+      <div style="font-size:1rem;color:var(--muted)" id="waiting-msg">C'est à l'autre de décrire…</div>
     </div>
   </div>
 
@@ -415,10 +415,10 @@
   <div id="screen-reveal" class="hidden">
     <div id="phase-overlay">
       <div id="reveal-box" class="card" style="width:100%;padding:28px">
-        <div class="label" style="font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px" data-i18n="taboo_word_was">Le mot était :</div>
+        <div class="label" style="font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Le mot était :</div>
         <div class="reveal-word" id="reveal-word"></div>
         <div class="reveal-result" id="reveal-result"></div>
-        <div class="reveal-countdown" id="reveal-countdown" data-i18n="taboo_next_round">Prochain tour dans 3.5s…</div>
+        <div class="reveal-countdown" id="reveal-countdown">Prochain tour dans 3.5s…</div>
       </div>
     </div>
   </div>
@@ -428,12 +428,12 @@
     <div id="phase-overlay">
       <div class="card" style="width:100%;padding:28px" id="gameover-box">
         <div style="font-size:2.5rem;margin-bottom:8px">🏆</div>
-        <h2 id="gameover-title" data-i18n="taboo_game_over">Partie terminée !</h2>
+        <h2 id="gameover-title">Partie terminée !</h2>
         <div id="go-scores-list"></div>
         <div id="go-winner" style="font-size:1.1rem;color:var(--gold);margin:14px 0"></div>
         <div style="display:flex;gap:10px;margin-top:16px">
-          <button class="btn btn-muted btn-full" onclick="location.href='index.html'" data-i18n="ui_home">Accueil</button>
-          <button class="btn btn-primary btn-full" onclick="restartGame()" data-i18n="ui_replay">Rejouer</button>
+          <button class="btn btn-muted btn-full" onclick="location.href='index.html'">Accueil</button>
+          <button class="btn btn-primary btn-full" onclick="restartGame()">Rejouer</button>
         </div>
       </div>
     </div>
@@ -563,12 +563,12 @@ function handleMsg(msg) {
     case 'player_left':
       // Le serveur enverra un taboo_state avec la nouvelle phase
       { const el=document.getElementById('msg-area')||document.getElementById('status-msg');
-        if(el)el.textContent=(window.ZapPlay?ZapPlay.t('taboo_player_left',{name:(msg.name||ZapPlay.t('taboo_player_left_generic'))}):((msg.name||'Un joueur')+' a quitté la partie.')); }
+        if(el)el.textContent=(msg.name||'Un joueur')+' a quitté la partie.'; }
       break;
 
     case 'game_abandoned':
       { const el=document.getElementById('msg-area')||document.getElementById('status-msg');
-        if(el){el.textContent=(window.ZapPlay?ZapPlay.t('taboo_abandoned'):'Tous les joueurs ont quitté — partie abandonnée !');el.style.color='#fca5a5';} }
+        if(el){el.textContent='Tous les joueurs ont quitté — partie abandonnée !';el.style.color='#fca5a5';} }
       break;
     case 'lounge_chat':
       if(window.ZapPlay)ZapPlay.addLoungeMessage(msg);
@@ -603,7 +603,7 @@ function renderState() {
         showScreen('screen-ready');
         document.getElementById('ready-players').textContent = players.length >= 2
           ? players.map(p=>p.name).join(' · ')
-          : (window.ZapPlay?ZapPlay.t('taboo_wait_players'):'En attente de joueurs...');
+          : 'En attente de joueurs...';
         if (mySlot === 0 && players.length >= 2) {
           document.getElementById('start-btn').classList.remove('hidden');
           document.getElementById('ready-wait').classList.add('hidden');
@@ -611,8 +611,7 @@ function renderState() {
           document.getElementById('start-btn').classList.add('hidden');
           document.getElementById('ready-wait').classList.remove('hidden');
           document.getElementById('ready-wait').textContent = mySlot === 0
-            ? (window.ZapPlay?ZapPlay.t('taboo_wait_players'):'En attente de joueurs...')
-            : (window.ZapPlay?ZapPlay.t('taboo_wait_host'):'En attente que l\'hôte lance...');
+            ? 'En attente de joueurs...' : 'En attente que l\'hôte lance...';
         }
       }
       break;
@@ -633,18 +632,8 @@ function renderState() {
     case 'PLAYING':
       if(window.ZapPlay)ZapPlay.hideLounge();
       showScreen('screen-playing');
-      {
-        const r = round ?? 1;
-        const mr = maxRounds ?? 10;
-        const turnLine = window.ZapPlay
-          ? ZapPlay.t('taboo_turn_info', {
-              cur: r,
-              total: mr,
-              who: (mySlot === describerSlot ? ZapPlay.t('taboo_you_describe') : ZapPlay.t('taboo_x_describes', { name: (players[describerSlot]?.name ?? '?') }))
-            })
-          : `Tour ${r}/${mr} — ${mySlot === describerSlot ? 'C\\'est à toi de décrire !' : `C\\'est à ${players[describerSlot]?.name ?? '?'} de décrire`}`;
-        document.getElementById('turn-info').textContent = turnLine;
-      }
+      document.getElementById('turn-info').textContent =
+        `Tour ${round}/${maxRounds} — ${mySlot === describerSlot ? 'C\'est à toi de décrire !' : `C\'est à ${players[describerSlot]?.name ?? '?'} de décrire`}`;
 
       // Timer
       timerDuration = timerSeconds;
@@ -672,10 +661,6 @@ function renderState() {
         document.getElementById('guesser-view').classList.remove('hidden');
         document.getElementById('waiting-view').classList.add('hidden');
         document.getElementById('word-len').textContent = wordLen ?? '?';
-        const wl = wordLen ?? '?';
-        const hint = window.ZapPlay ? ZapPlay.t('taboo_word_hint', { n: wl }) : `Le descripteur décrit un mot de ${wl} lettres`;
-        const hintEl = document.getElementById('word-hint');
-        if (hintEl) hintEl.innerHTML = hint.replace(String(wl), `<span id="word-len">${wl}</span>`);
         renderGuessLog();
       }
       break;
@@ -690,10 +675,10 @@ function renderState() {
       const resultEl = document.getElementById('reveal-result');
       if (guessed) {
         resultEl.style.color = 'var(--correct)';
-        resultEl.textContent = (window.ZapPlay?ZapPlay.t('taboo_guessed'):'✅ Deviné !');
+        resultEl.textContent = '✅ Deviné !';
       } else {
         resultEl.style.color = 'var(--wrong)';
-        resultEl.textContent = (window.ZapPlay?ZapPlay.t('taboo_not_guessed'):'❌ Non deviné');
+        resultEl.textContent = '❌ Non deviné';
       }
       break;
     }
@@ -711,9 +696,7 @@ function renderState() {
         const meClass=p.slot===mySlot?' me':'';
         return `<div class="score-final${meClass}">${p.name} : ${scores?.[p.slot]??0} pts</div>`;
       }).join('');
-      document.getElementById('go-winner').textContent = winner
-        ? (window.ZapPlay?ZapPlay.t('taboo_wins',{name:winner}):`🏆 ${winner} remporte la partie !`)
-        : (window.ZapPlay?ZapPlay.t('taboo_tie'):'🤝 Égalité !');
+      document.getElementById('go-winner').textContent = winner ? `🏆 ${winner} remporte la partie !` : '🤝 Égalité !';
       if(window.ZapPlay){
         const pNames=players.map(p=>p.name);
         ZapPlay.saveGameResult({game:'taboo',gameName:'Mots Interdits',players:pNames,winner:winner||'Égalité',myName,myScore:scores[mySlot]??0,isWinner:winner===myName});
@@ -727,9 +710,7 @@ function renderScoreBar(players,scores){
   if(!bar)return;
   bar.innerHTML=players.map(p=>{
     const cls=p.slot===mySlot?'me':'other';
-    const pts = scores?.[p.slot]??0;
-    const ptsLabel = (window.ZapPlay?ZapPlay.t('taboo_pts'):'pts');
-    return `<div class="player-score ${cls}">${p.name} ${pts} ${ptsLabel}</div>`;
+    return `<div class="player-score ${cls}">${p.name} ${scores?.[p.slot]??0} pts</div>`;
   }).join('');
 }
 
@@ -810,8 +791,8 @@ function copyCodeT() {
   if (!myRoomCode) return;
   navigator.clipboard.writeText(myRoomCode).then(() => {
     const h = document.getElementById('taboo-copy-hint');
-    h.textContent = (window.ZapPlay?ZapPlay.t('taboo_copied'):'Copié !'); h.style.color = '#22c55e';
-    setTimeout(() => { h.textContent = (window.ZapPlay?ZapPlay.t('taboo_click_copy'):'Cliquer pour copier'); h.style.color = ''; }, 1500);
+    h.textContent = 'Copié !'; h.style.color = '#22c55e';
+    setTimeout(() => { h.textContent = 'Cliquer pour copier'; h.style.color = ''; }, 1500);
   }).catch(() => {});
 }
 document.getElementById('code-input') && document.getElementById('code-input').addEventListener('input', e => {
@@ -844,14 +825,6 @@ document.addEventListener('keydown', e => {
 /* ─── Init ───────────────────────────────────────────── */
 showScreen('screen-name');
 connect();
-
-// Refresh i18n dynamic strings on language switch
-if (window.addEventListener) {
-  window.addEventListener('zapplay:lang', () => {
-    // shared.js will apply data-i18n to static elements
-    renderState();
-  });
-}
 </script>
 <script src="shared.js"></script>
 <script src="chat.js"></script>

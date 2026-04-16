@@ -263,7 +263,7 @@
 <body>
 <div class="zp-space-bg"><div class="zp-neb1"></div><div class="zp-neb2"></div><div class="zp-stars" id="zp-stars-emoji"></div><div class="zp-sgrid"></div><div class="zp-comet"></div></div>
 
-<button id="back-btn" onclick="location.href='index.html'">← <span data-i18n="ui_home">Accueil</span></button>
+<button id="back-btn" onclick="location.href='index.html'" data-i18n="ui_home">← Accueil</button>
 <div id="dot"></div>
 
 <!-- Countdown overlay -->
@@ -276,18 +276,18 @@
   <!-- Name entry -->
   <div id="screen-name">
     <div id="phase-overlay">
-      <h1 data-i18n="emo_title">🎯 Devinette Emoji</h1>
-      <p data-i18n="emo_enter_name">Entre ton prénom pour rejoindre</p>
-      <input id="name-input" type="text" data-i18n-ph="lobby_your_name_ph" placeholder="Ton prénom" maxlength="20"
+      <h1>🎯 Devinette Emoji</h1>
+      <p>Entre ton prénom pour rejoindre</p>
+      <input id="name-input" type="text" placeholder="Ton prénom" maxlength="20" data-i18n-ph="ui_your_name_ph"
         style="width:100%;background:rgba(255,255,255,.1);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:16px;padding:14px;outline:none;text-align:center;">
       <div style="display:flex;gap:8px;margin-top:4px">
-        <button class="btn btn-primary" style="flex:1" onclick="createGame()" data-i18n="lobby_create_btn">Créer la salle</button>
-        <button class="btn btn-secondary" style="flex:1" onclick="showJoinE()" data-i18n="bomb_join_code">Rejoindre (code)</button>
+        <button class="btn btn-primary" style="flex:1" onclick="createGame()" data-i18n="ui_create_room">Créer une salle</button>
+        <button class="btn btn-secondary" style="flex:1" onclick="showJoinE()" data-i18n="ui_join_code">Rejoindre (code)</button>
       </div>
       <div id="join-code-area" style="display:none;flex-direction:column;gap:8px;margin-top:4px">
-        <input id="code-input" type="text" maxlength="4" data-i18n-ph="ui_code_ph" placeholder="Code (ABCD)"
+        <input id="code-input" type="text" maxlength="4" placeholder="Code (ABCD)"
           style="width:100%;background:rgba(255,255,255,.1);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:1.1rem;font-weight:700;padding:12px;outline:none;text-align:center;text-transform:uppercase;letter-spacing:.12em;" autocomplete="off">
-        <button class="btn btn-primary btn-full" onclick="joinGame()" data-i18n="lobby_join_btn">Rejoindre</button>
+        <button class="btn btn-primary btn-full" onclick="joinGame()" data-i18n="ui_join">Rejoindre</button>
       </div>
     </div>
   </div>
@@ -295,25 +295,25 @@
   <!-- Waiting -->
   <div id="screen-waiting" class="hidden">
     <div id="phase-overlay">
-      <h1 data-i18n="emo_waiting">En attente…</h1>
-      <div id="emoji-code-box" onclick="copyCodeE()" data-i18n-title="emo_click_copy" title="Cliquer pour copier"
+      <h1>En attente…</h1>
+      <div id="emoji-code-box" onclick="copyCodeE()" title="Cliquer pour copier"
         style="text-align:center;background:rgba(167,139,250,.1);border:2px solid rgba(167,139,250,.35);
                border-radius:12px;padding:10px 18px;cursor:pointer;margin-bottom:10px">
-        <div style="font-size:.65rem;color:#94a3b8;text-transform:uppercase;letter-spacing:.07em;margin-bottom:3px" data-i18n="emo_room_code">Code de la salle</div>
+        <div style="font-size:.65rem;color:#94a3b8;text-transform:uppercase;letter-spacing:.07em;margin-bottom:3px">Code de la salle</div>
         <div id="emoji-code-display" style="font-size:2.2rem;font-weight:800;letter-spacing:.2em;color:#a78bfa;font-family:monospace;line-height:1">----</div>
-        <div id="emoji-copy-hint" style="font-size:.65rem;color:#94a3b8;margin-top:3px" data-i18n="emo_click_copy">Cliquer pour copier</div>
+        <div id="emoji-copy-hint" style="font-size:.65rem;color:#94a3b8;margin-top:3px">Cliquer pour copier</div>
       </div>
-      <p data-i18n="emo_share_code">Partage le code à tes amis</p>
+      <p>Partage le code à tes amis</p>
     </div>
   </div>
 
   <!-- Ready -->
   <div id="screen-ready" class="hidden">
     <div id="phase-overlay">
-      <h1 data-i18n="emo_ready">Prêts !</h1>
+      <h1>Prêts !</h1>
       <p id="ready-players"></p>
-      <button id="start-btn" class="btn btn-primary btn-full hidden" onclick="startGame()" data-i18n="emo_start">Lancer la partie</button>
-      <p id="ready-wait" class="hidden" style="color:var(--muted)" data-i18n="emo_wait_p1">En attente du joueur 1…</p>
+      <button id="start-btn" class="btn btn-primary btn-full hidden" onclick="startGame()">Lancer la partie</button>
+      <p id="ready-wait" class="hidden" style="color:var(--muted)">En attente du joueur 1…</p>
     </div>
   </div>
 
@@ -324,8 +324,8 @@
     </div>
 
     <div id="question-meta">
-      <span class="qnum" id="q-num"></span>
-      <span class="cat" id="q-cat" data-i18n="emo_category">Catégorie</span>
+      <span class="qnum" id="q-num">Question 1/10</span>
+      <span class="cat" id="q-cat">Catégorie</span>
     </div>
 
     <div class="card">
@@ -337,8 +337,8 @@
     <!-- Answer form — always visible during QUESTION -->
     <div id="answer-form-wrap" class="card" style="display:none">
       <div id="answer-wrap">
-        <input id="answer-input" type="text" data-i18n-ph="emo_answer_ph" placeholder="Ta réponse…" autocomplete="off" autocorrect="off">
-        <button class="btn btn-primary" onclick="submitAnswer()" data-i18n="emo_validate">Valider</button>
+        <input id="answer-input" type="text" placeholder="Ta réponse…" autocomplete="off" autocorrect="off">
+        <button class="btn btn-primary" onclick="submitAnswer()">Valider</button>
       </div>
     </div>
 
@@ -365,12 +365,12 @@
     <div id="phase-overlay">
       <div class="card" style="width:100%;padding:28px;text-align:center">
         <div style="font-size:2.5rem;margin-bottom:8px">🏆</div>
-        <h2 style="font-size:1.8rem;font-weight:900;margin-bottom:16px" data-i18n="emo_game_over">Partie terminée !</h2>
+        <h2 style="font-size:1.8rem;font-weight:900;margin-bottom:16px">Partie terminée !</h2>
         <div id="go-scores-list" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;justify-content:center"></div>
         <div id="go-winner" style="font-size:1.1rem;color:var(--gold);margin-bottom:20px"></div>
         <div style="display:flex;gap:10px">
           <button class="btn btn-muted btn-full" onclick="location.href='index.html'" data-i18n="ui_home">Accueil</button>
-          <button class="btn btn-primary btn-full" onclick="restartGame()" data-i18n="ui_replay">Rejouer</button>
+          <button class="btn btn-primary btn-full" onclick="restartGame()">Rejouer</button>
         </div>
       </div>
     </div>
@@ -459,15 +459,11 @@ function handleMsg(msg) {
         const statusEl = document.getElementById('answer-status');
         if (isMe) {
           statusEl.style.color = 'var(--correct)';
-          statusEl.textContent = window.ZapPlay
-            ? ZapPlay.t('emo_correct', { n: msg.pts })
-            : ('✅ Bonne réponse ! +' + msg.pts + ' pts');
+          statusEl.textContent = '✅ Bonne réponse ! +' + msg.pts + ' pts';
           document.getElementById('answer-form-wrap').style.display = 'none';
         } else {
           statusEl.style.color = 'var(--gold)';
-          statusEl.textContent = window.ZapPlay
-            ? ZapPlay.t('emo_x_found', { name: msg.name, n: msg.pts })
-            : (msg.name + ' a trouvé ! (+' + msg.pts + ' pts)');
+          statusEl.textContent = msg.name + ' a trouvé ! (+' + msg.pts + ' pts)';
         }
         // Update scoreboard if state available
         if (state && msg.answeredSlots) {
@@ -480,7 +476,7 @@ function handleMsg(msg) {
       if (msg.slot === mySlot || !msg.slot) {
         const statusEl = document.getElementById('answer-status');
         statusEl.style.color = 'var(--wrong)';
-        statusEl.textContent = (window.ZapPlay ? ZapPlay.t('emo_wrong') : '❌ Mauvaise réponse…');
+        statusEl.textContent = '❌ Mauvaise réponse…';
         setTimeout(() => { statusEl.textContent = ''; }, 1500);
       }
       break;
@@ -488,21 +484,12 @@ function handleMsg(msg) {
     case 'player_left':
       // Don't force redirect mid-game, just show a message
       { const statusEl = document.getElementById('answer-status');
-        if (statusEl) {
-          statusEl.style.color = 'var(--muted)';
-          const n = msg.name || (window.ZapPlay ? ZapPlay.t('emo_player_left_generic') : 'Un joueur');
-          statusEl.textContent = window.ZapPlay ? ZapPlay.t('emo_player_left', { name: n }) : (n + ' a quitté.');
-        }
-      }
+        if (statusEl) { statusEl.style.color = 'var(--muted)'; statusEl.textContent = (msg.name||'Un joueur') + ' a quitté.'; } }
       break;
 
     case 'game_abandoned':
       { const statusEl = document.getElementById('answer-status');
-        if (statusEl) {
-          statusEl.style.color = '#fca5a5';
-          statusEl.textContent = (window.ZapPlay ? ZapPlay.t('emo_abandoned') : 'Tous les joueurs ont quitté — partie abandonnée !');
-        }
-      }
+        if (statusEl) { statusEl.style.color = '#fca5a5'; statusEl.textContent = 'Tous les joueurs ont quitté — partie abandonnée !'; } }
       break;
     case 'lounge_chat':
       if(window.ZapPlay)ZapPlay.addLoungeMessage(msg);
@@ -578,8 +565,7 @@ function renderState() {
       } else {
         showScreen('screen-ready');
         document.getElementById('ready-players').textContent = players.length >= 2
-          ? players.map(p => p.name).join(' · ')
-          : ZapPlay.t('emo_wait_players');
+          ? players.map(p => p.name).join(' · ') : 'En attente de joueurs...';
         toggleEl('start-btn', mySlot === 0 && players.length >= 2);
         toggleEl('ready-wait', mySlot !== 0);
       }
@@ -607,11 +593,7 @@ function renderState() {
         document.getElementById('emoji-display').textContent = puzzle.emojis;
         document.getElementById('q-cat').textContent = puzzle.cat || '';
       }
-      {
-        const cur = (qIndex ?? 0) + 1;
-        const tot = (total ?? '?');
-        document.getElementById('q-num').textContent = ZapPlay.t('emo_question', { cur, total: tot });
-      }
+      document.getElementById('q-num').textContent = 'Question ' + ((qIndex ?? 0) + 1) + '/' + (total ?? '?');
       // Show answer form (not yet answered)
       const afWrap = document.getElementById('answer-form-wrap');
       const alreadyAnswered = answeredSlots && answeredSlots.includes(mySlot);
@@ -638,9 +620,7 @@ function renderState() {
         answerEl.style.color = 'var(--correct)';
         const correctSlots = reveal.correctSlots || [];
         const correctNames = correctSlots.map(s => players.find(p => p.slot === s)?.name).filter(Boolean);
-        document.getElementById('reveal-verdict').textContent = correctNames.length
-          ? ZapPlay.t('emo_x_found_list', { names: correctNames.join(', ') })
-          : ZapPlay.t('emo_nobody_found');
+        document.getElementById('reveal-verdict').textContent = correctNames.length ? correctNames.join(', ') + ' ont trouvé !' : 'Personne n\'a trouvé.';
         document.getElementById('reveal-correct-players').textContent = correctNames.length ? '✅ ' + correctNames.join(' · ') : '';
       }
       break;
@@ -658,13 +638,13 @@ function renderState() {
         if (p.slot === mySlot) d.style.borderColor = 'var(--primary)';
         d.innerHTML = '<div style="font-size:12px;color:var(--muted)">' + p.name + '</div>'
           + '<div style="font-size:1.4rem;font-weight:800;color:var(--primary)">' + (scores?.[p.slot] ?? 0) + ' pts</div>'
-          + '<div style="font-size:11px;color:var(--muted)">' + ZapPlay.t('emo_wins_count', { n: (wins?.[p.slot] ?? 0) }) + '</div>';
+          + '<div style="font-size:11px;color:var(--muted)">' + (wins?.[p.slot] ?? 0) + ' victoire(s)</div>';
         gsList.appendChild(d);
       });
       const winnerSlot = state.winnerSlot ?? -1;
-      if (winnerSlot < 0) document.getElementById('go-winner').textContent = ZapPlay.t('emo_tie');
-      else if (winnerSlot === mySlot) document.getElementById('go-winner').textContent = ZapPlay.t('emo_you_win');
-      else document.getElementById('go-winner').textContent = ZapPlay.t('emo_x_wins', { name: (players.find(p => p.slot === winnerSlot)?.name || '?') });
+      if (winnerSlot < 0) document.getElementById('go-winner').textContent = '🤝 Égalité !';
+      else if (winnerSlot === mySlot) document.getElementById('go-winner').textContent = '🏆 Tu remportes la partie !';
+      else document.getElementById('go-winner').textContent = '🏆 ' + (players.find(p => p.slot === winnerSlot)?.name || '?') + ' remporte la partie !';
       if(window.ZapPlay){
         const pNames=players.map(p=>p.name);
         const ws3=state.winnerSlot??-1;
@@ -718,16 +698,9 @@ function copyCodeE() {
   if (!myRoomCode) return;
   navigator.clipboard.writeText(myRoomCode).then(() => {
     const h = document.getElementById('emoji-copy-hint');
-    h.textContent = (window.ZapPlay?ZapPlay.t('emo_copied'):''); h.style.color = '#22c55e';
-    setTimeout(() => { h.textContent = (window.ZapPlay?ZapPlay.t('emo_click_copy'):''); h.style.color = ''; }, 1500);
+    h.textContent = 'Copié !'; h.style.color = '#22c55e';
+    setTimeout(() => { h.textContent = 'Cliquer pour copier'; h.style.color = ''; }, 1500);
   }).catch(() => {});
-}
-
-// Refresh i18n dynamic strings on language switch
-if (window.addEventListener) {
-  window.addEventListener('zapplay:lang', () => {
-    renderState();
-  });
 }
 document.getElementById('code-input') && document.getElementById('code-input').addEventListener('input', e => {
   e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,'');

@@ -68,7 +68,7 @@ input{width:100%;background:rgba(255,255,255,.08);border:1px solid var(--border)
 <button id="back" onclick="location.href='index.html'" data-i18n="ui_back">← Accueil</button>
 <div id="dot"></div>
 <div id="app">
-  <h1>🎨 <span data-i18n="paint_title">Paint.io</span></h1>
+  <h1>🎨 Paint.io</h1>
 
   <div id="name-screen">
     <div class="card" style="display:flex;flex-direction:column;gap:8px">
@@ -80,8 +80,8 @@ input{width:100%;background:rgba(255,255,255,.08);border:1px solid var(--border)
         <button class="btn btn-buzz" onclick="joinGame()" data-i18n="ui_join">Rejoindre</button>
       </div>
       <div id="skin-row">
-        <label for="skin-pick" data-i18n="paint_skins_label">Thème &amp; skins</label>
-        <select id="skin-pick" data-i18n-aria="paint_skins_aria" aria-label="Thème visuel Paint.io"></select>
+        <label for="skin-pick">Thème &amp; skins</label>
+        <select id="skin-pick" aria-label="Thème visuel Paint.io"></select>
       </div>
       <div id="err" style="color:#fca5a5;font-size:.82rem;min-height:18px;text-align:center"></div>
     </div>
@@ -90,11 +90,11 @@ input{width:100%;background:rgba(255,255,255,.08);border:1px solid var(--border)
   <div id="game-screen" class="hidden">
     <div id="waiting" class="card hidden">
       <div id="code-box" onclick="copyCode()" style="cursor:pointer;text-align:center">
-        <div style="font-size:.72rem;color:var(--muted)" data-i18n="lobby_room_code">Code de la salle</div>
+        <div style="font-size:.72rem;color:var(--muted)">Code de la salle</div>
         <div id="room-code" style="font-size:2.1rem;font-family:monospace;letter-spacing:.2em;color:var(--primary);font-weight:800">----</div>
       </div>
       <div id="players"></div>
-      <button id="start-btn" class="btn btn-primary hidden" onclick="startGame()" data-i18n="paint_start">Lancer la partie</button>
+      <button id="start-btn" class="btn btn-primary hidden" onclick="startGame()">Lancer la partie</button>
     </div>
 
     <div id="playing" class="hidden" style="display:flex;flex-direction:column;gap:10px;min-height:0;flex:1">
@@ -111,7 +111,7 @@ input{width:100%;background:rgba(255,255,255,.08);border:1px solid var(--border)
 
     <div id="over" class="card hidden" style="text-align:center;display:flex;flex-direction:column;gap:10px">
       <div id="over-title" style="font-size:1.3rem;font-weight:800"></div>
-      <button class="btn btn-primary" onclick="restart()" data-i18n="ui_replay">Rejouer</button>
+      <button class="btn btn-primary" onclick="restart()">Rejouer</button>
       <button class="btn btn-muted" onclick="location.href='index.html'" data-i18n="ui_home">Accueil</button>
     </div>
   </div>
@@ -304,14 +304,14 @@ connect();
 
 function toggleJoin(){ $('join-area').style.display = $('join-area').style.display==='flex' ? 'none' : 'flex'; }
 function createGame(){
-  const n=$('name').value.trim(); if(!n){$('err').textContent=window.ZapPlay?ZapPlay.t('paint_enter_name'):'Entre ton pseudo';return;}
+  const n=$('name').value.trim(); if(!n){$('err').textContent='Entre ton pseudo';return;}
   myName=n; if(window.ZapPlay)ZapPlay.savePseudo(n);
   const action=()=>send({type:'create_paint',name:n});
   if(ws&&ws.readyState===1) action(); else { pendingAction=action; if(!ws||ws.readyState===3) connect(); }
 }
 function joinGame(){
   const n=$('name').value.trim(); const c=$('code').value.trim().toUpperCase();
-  if(!n||!c){$('err').textContent=window.ZapPlay?ZapPlay.t('paint_name_code_required'):'Nom + code requis';return;}
+  if(!n||!c){$('err').textContent='Nom + code requis';return;}
   myName=n; if(window.ZapPlay)ZapPlay.savePseudo(n);
   const action=()=>send({type:'join_paint',name:n,code:c});
   if(ws&&ws.readyState===1) action(); else { pendingAction=action; if(!ws||ws.readyState===3) connect(); }
@@ -325,25 +325,17 @@ function handle(m){
   if(m.type==='welcome_paint'){mySlot=m.slot;myCode=m.code;showGame();}
   if(m.type==='error'){ $('err').textContent=m.msg; $('status').textContent=m.msg; }
   if(m.type==='countdown')showCountdown(m.seconds||3);
-  if(m.type==='player_left'){
-    const n=m.name || (window.ZapPlay?ZapPlay.t('paint_player_left_generic'):'Un joueur');
-    $('status').textContent = window.ZapPlay ? ZapPlay.t('paint_player_left',{name:n}) : (n+' a quitté.');
-  }
+  if(m.type==='player_left')$('status').textContent=(m.name||'Un joueur')+' a quitté.';
   if(m.type==='lounge_chat' && window.ZapPlay)ZapPlay.addLoungeMessage(m);
   if(m.type==='paint_state'){
     if(m.kills && m.kills.length){
-      $('status').textContent = m.kills.map(k => window.ZapPlay ? ZapPlay.t('paint_eliminated',{name:k.victim}) : (k.victim+' a été éliminé !')).join(' • ');
+      $('status').textContent = m.kills.map(k => `${k.victim} a été éliminé!`).join(' • ');
       if(navigator.vibrate && m.kills.some(k=>k.victimSlot===mySlot)) navigator.vibrate([200,100,200]);
     }
     state=m;
     render();
   }
 }
-
-// Refresh dynamic strings on language switch
-window.addEventListener('zapplay:lang', () => {
-  if (state) render();
-});
 function showGame(){ $('name-screen').classList.add('hidden'); $('game-screen').classList.remove('hidden'); }
 function showCountdown(n){
   const g=$('gcount'),num=$('gnum'); g.style.display='flex'; num.textContent=n;

@@ -148,24 +148,24 @@ input[type=text]::placeholder{color:var(--muted)}
 <div class="zp-space-bg"><div class="zp-neb1"></div><div class="zp-neb2"></div><div class="zp-stars" id="zp-stars-quiz"></div><div class="zp-sgrid"></div><div class="zp-comet"></div></div>
 <div id="dot"></div>
 <button id="back-btn" onclick="location.href='index.html'">&#8592; <span data-i18n="ui_home">Accueil</span></button>
-<button id="sound-toggle" data-i18n-title="quiz_sound_toggle_title" title="Sons on/off">&#128266;</button>
-<div id="cdown"><span id="cnum" class="cdown-n"></span><small data-i18n="quiz_prepare">Préparez-vous !</small></div>
+<button id="sound-toggle" title="Sons on/off">&#128266;</button>
+<div id="cdown"><span id="cnum" class="cdown-n"></span><small>Préparez-vous !</small></div>
 <div id="confetti-wrap"></div>
 
 <div id="wrap">
 <!-- HOME -->
 <div id="s-home" class="screen active">
   <div style="flex:1"></div>
-  <div class="logo"><h1 data-i18n="quiz_title">Quiz Éclair</h1><p data-i18n="quiz_tagline">Buzzez le premier !</p></div>
+  <div class="logo"><h1>Quiz Eclair</h1><p>Buzzez le premier !</p></div>
   <div class="card form-card">
     <h2 data-i18n="ui_name_ph">Ton pseudo</h2>
-    <input id="inp-name" type="text" data-i18n-ph="chat_name_ph" placeholder="Ex: Marie" maxlength="20" autocomplete="off">
+    <input id="inp-name" type="text" placeholder="Ex: Marie" maxlength="20" autocomplete="off">
     <div style="display:flex;gap:8px">
       <button class="btn btn-primary" style="flex:1" onclick="doCreate()" data-i18n="lobby_create_btn">Créer la salle</button>
       <button class="btn btn-secondary" style="flex:1" onclick="showJoinInput()" data-i18n="lobby_join">Rejoindre</button>
     </div>
     <div id="join-code-area" style="display:none;flex-direction:column;gap:8px">
-      <input id="inp-code" type="text" data-i18n-ph="ui_code_ph" placeholder="Code (ex: ABCD)" maxlength="4" autocomplete="off"
+      <input id="inp-code" type="text" placeholder="Code (ex: ABCD)" maxlength="4" autocomplete="off"
         style="text-transform:uppercase;letter-spacing:.12em;font-size:1.1rem;font-weight:700;text-align:center">
       <button class="btn btn-secondary" onclick="doJoin()" data-i18n="lobby_join_btn">Rejoindre</button>
     </div>
@@ -177,69 +177,69 @@ input[type=text]::placeholder{color:var(--muted)}
 <!-- WAIT (host waiting for 2nd player) -->
 <div id="s-wait" class="screen">
   <div style="text-align:center;padding:16px 0 8px">
-    <div style="font-size:.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px" data-i18n="quiz_room_code_label">Code de votre salle</div>
-    <div id="room-code-display" onclick="copyRoomCode()" data-i18n-title="quiz_click_copy" title="Cliquer pour copier"
+    <div style="font-size:.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Code de votre salle</div>
+    <div id="room-code-display" onclick="copyRoomCode()" title="Cliquer pour copier"
       style="font-size:3rem;font-weight:800;letter-spacing:.2em;color:var(--primary);font-family:monospace;
              background:rgba(167,139,250,.1);border:2px solid rgba(167,139,250,.35);border-radius:14px;
              padding:14px 20px;cursor:pointer;transition:background .18s;display:inline-block">
       ----
     </div>
-    <div id="copy-hint-quiz" style="font-size:.72rem;color:var(--muted);margin-top:6px" data-i18n="quiz_click_copy">Cliquer pour copier</div>
+    <div id="copy-hint-quiz" style="font-size:.72rem;color:var(--muted);margin-top:6px">Cliquer pour copier</div>
   </div>
-  <div id="wait-msg"><h2 id="wait-title" data-i18n="quiz_waiting">En attente...</h2><p id="wait-count" style="color:var(--muted);font-size:.9rem"></p></div>
+  <div id="wait-msg"><h2 id="wait-title">En attente...</h2><p id="wait-count" style="color:var(--muted);font-size:.9rem">1 joueur connecté</p></div>
 </div>
 
 <!-- SETUP -->
 <div id="s-setup" class="screen">
   <div style="height:8px"></div>
-  <h2 data-i18n="quiz_categories">Catégories</h2>
+  <h2>Categories</h2>
   <div class="cat-grid" id="cat-grid">
-    <button class="cat-btn on" data-cat="geo" data-i18n="quiz_cat_geo">Géographie</button>
-    <button class="cat-btn on" data-cat="histoire" data-i18n="quiz_cat_histoire">Histoire</button>
-    <button class="cat-btn on" data-cat="sciences" data-i18n="quiz_cat_sciences">Sciences</button>
-    <button class="cat-btn on" data-cat="cinema" data-i18n="quiz_cat_cinema">Cinéma &amp; TV</button>
-    <button class="cat-btn on" data-cat="musique" data-i18n="quiz_cat_musique">Musique</button>
-    <button class="cat-btn on" data-cat="sport" data-i18n="quiz_cat_sport">Sport</button>
-    <button class="cat-btn on" data-cat="cuisine" data-i18n="quiz_cat_cuisine">Gastronomie</button>
-    <button class="cat-btn on" data-cat="tech" data-i18n="quiz_cat_tech">Tech</button>
-    <button class="cat-btn on" data-cat="culture" data-i18n="quiz_cat_culture">Culture</button>
+    <button class="cat-btn on" data-cat="geo">Géographie</button>
+    <button class="cat-btn on" data-cat="histoire">Histoire</button>
+    <button class="cat-btn on" data-cat="sciences">Sciences</button>
+    <button class="cat-btn on" data-cat="cinema">Cinéma &amp; TV</button>
+    <button class="cat-btn on" data-cat="musique">Musique</button>
+    <button class="cat-btn on" data-cat="sport">Sport</button>
+    <button class="cat-btn on" data-cat="cuisine">Gastronomie</button>
+    <button class="cat-btn on" data-cat="tech">Tech</button>
+    <button class="cat-btn on" data-cat="culture">Culture</button>
   </div>
-  <h2 data-i18n="quiz_difficulty">Difficulté</h2>
+  <h2>Difficulté</h2>
   <div class="diff-row" id="diff-row">
-    <button class="diff-btn on" data-diff="0" data-i18n="quiz_diff_all">Toutes</button>
-    <button class="diff-btn" data-diff="1" data-i18n="quiz_diff_easy">Facile</button>
-    <button class="diff-btn" data-diff="2" data-i18n="quiz_diff_med">Moyen</button>
-    <button class="diff-btn" data-diff="3" data-i18n="quiz_diff_hard">Difficile</button>
+    <button class="diff-btn on" data-diff="0">Toutes</button>
+    <button class="diff-btn" data-diff="1">Facile</button>
+    <button class="diff-btn" data-diff="2">Moyen</button>
+    <button class="diff-btn" data-diff="3">Difficile</button>
   </div>
-  <h2 data-i18n="quiz_qcount">Nombre de questions</h2>
+  <h2>Nombre de questions</h2>
   <div class="count-row" id="count-row">
     <button class="count-btn" data-count="5">5</button>
     <button class="count-btn" data-count="10">10</button>
     <button class="count-btn on" data-count="15">15</button>
     <button class="count-btn" data-count="20">20</button>
   </div>
-  <button class="custom-toggle" onclick="toggleCustom()" data-i18n="quiz_custom_toggle">+ Questions personnalisées</button>
+  <button class="custom-toggle" onclick="toggleCustom()">+ Questions personnalisées</button>
   <div id="custom-area">
-    <input type="text" id="cq-text" data-i18n-ph="quiz_custom_q_ph" placeholder="Votre question..." maxlength="200">
+    <input type="text" id="cq-text" placeholder="Votre question..." maxlength="200">
     <div class="opts-2x2">
-      <input type="text" id="cq0" data-i18n-ph="quiz_custom_a_ph" placeholder="Réponse A" maxlength="60">
-      <input type="text" id="cq1" data-i18n-ph="quiz_custom_b_ph" placeholder="Réponse B" maxlength="60">
-      <input type="text" id="cq2" data-i18n-ph="quiz_custom_c_ph" placeholder="Réponse C" maxlength="60">
-      <input type="text" id="cq3" data-i18n-ph="quiz_custom_d_ph" placeholder="Réponse D" maxlength="60">
+      <input type="text" id="cq0" placeholder="Réponse A" maxlength="60">
+      <input type="text" id="cq1" placeholder="Réponse B" maxlength="60">
+      <input type="text" id="cq2" placeholder="Réponse C" maxlength="60">
+      <input type="text" id="cq3" placeholder="Réponse D" maxlength="60">
     </div>
     <div class="radio-row">
-      <span data-i18n="quiz_custom_correct">Bonne réponse :</span>
+      <span>Bonne réponse :</span>
       <label><input type="radio" name="cqans" value="0"> A</label>
       <label><input type="radio" name="cqans" value="1"> B</label>
       <label><input type="radio" name="cqans" value="2"> C</label>
       <label><input type="radio" name="cqans" value="3"> D</label>
     </div>
-    <button class="btn btn-secondary btn-sm" onclick="addCustomQ()" data-i18n="quiz_custom_add">Ajouter</button>
+    <button class="btn btn-secondary btn-sm" onclick="addCustomQ()">Ajouter</button>
     <div id="custom-list"></div>
   </div>
   <div id="setup-actions" style="margin-top:auto;padding-top:10px;display:flex;flex-direction:column;gap:8px">
     <div id="setup-status" style="text-align:center;color:var(--muted);font-size:.85rem"></div>
-    <button id="btn-start" class="btn btn-success" onclick="doStart()" style="display:none" data-i18n="quiz_start_btn">Lancer la partie !</button>
+    <button id="btn-start" class="btn btn-success" onclick="doStart()" style="display:none">Lancer la partie !</button>
   </div>
   <div style="height:6px"></div>
 </div>
@@ -260,7 +260,7 @@ input[type=text]::placeholder{color:var(--muted)}
     </div>
     <div id="joker-row">
       <button class="joker-btn" id="joker-fifty" onclick="doJoker('fifty')" disabled>&#9000; 50/50</button>
-      <button class="joker-btn" id="joker-pass" onclick="doJoker('pass')" disabled data-i18n="quiz_joker_pass">&#8594; Passe</button>
+      <button class="joker-btn" id="joker-pass" onclick="doJoker('pass')" disabled>&#8594; Passe</button>
     </div>
     <div id="status"></div>
   </div>
@@ -270,10 +270,10 @@ input[type=text]::placeholder{color:var(--muted)}
 <!-- GAME OVER -->
 <div id="s-gameover" class="screen">
   <div id="go-crown">🏆</div>
-  <div id="go-title" data-i18n="quiz_gameover_title">Fin de la partie !</div>
+  <div id="go-title">Fin de la partie !</div>
   <div id="go-winner"></div>
   <div class="final-scores" id="go-scores"></div>
-  <button class="btn btn-primary" onclick="doRestart()" data-i18n="ui_replay">Rejouer</button>
+  <button class="btn btn-primary" onclick="doRestart()">Rejouer</button>
   <button class="btn btn-secondary" onclick="location.href='index.html'" data-i18n="ui_home">Accueil</button>
 </div>
 </div><!-- /wrap -->
@@ -374,30 +374,30 @@ function showJoinInput(){
 function doCreate(){
   SND.init();
   const n=document.getElementById('inp-name').value.trim();
-  if(!n){showErr((window.ZapPlay?ZapPlay.t('quiz_enter_name'):'Entre ton prénom !'));return;}
+  if(!n){showErr('Entre ton prénom !');return;}
   myName=n;if(window.ZapPlay)ZapPlay.savePseudo(n);send({type:'create_quiz',name:n});
 }
 function doJoin(){
   SND.init();
   const n=document.getElementById('inp-name').value.trim();
-  if(!n){showErr((window.ZapPlay?ZapPlay.t('quiz_enter_name'):'Entre ton prénom !'));return;}
+  if(!n){showErr('Entre ton prénom !');return;}
   const c=document.getElementById('inp-code').value.trim().toUpperCase();
-  if(!c){showErr((window.ZapPlay?ZapPlay.t('quiz_enter_code'):'Entre le code de la salle !'));return;}
+  if(!c){showErr('Entre le code de la salle !');return;}
   myName=n;if(window.ZapPlay)ZapPlay.savePseudo(n);send({type:'join_quiz',name:n,code:c});
 }
 function copyRoomCode(){
   if(!myCode)return;
   navigator.clipboard.writeText(myCode).then(()=>{
     const h=document.getElementById('copy-hint-quiz');
-    h.textContent=(window.ZapPlay?ZapPlay.t('quiz_copied'):'Copié !');h.style.color='var(--correct)';
-    setTimeout(()=>{h.textContent=(window.ZapPlay?ZapPlay.t('quiz_click_copy'):'Cliquer pour copier');h.style.color='';},1500);
+    h.textContent='Copié !';h.style.color='var(--correct)';
+    setTimeout(()=>{h.textContent='Cliquer pour copier';h.style.color='';},1500);
   }).catch(()=>{});
 }
 function copyCode(){
   if(!myCode)return;
   navigator.clipboard.writeText(myCode).then(()=>{
     const el=document.querySelector('#setup-status span');
-    if(el){const orig=el.textContent;el.textContent=(window.ZapPlay?ZapPlay.t('quiz_copied'):'Copié !');setTimeout(()=>{el.textContent=orig;},1200);}
+    if(el){const orig=el.textContent;el.textContent='Copié !';setTimeout(()=>{el.textContent=orig;},1200);}
   }).catch(()=>{});
 }
 document.getElementById('inp-name').addEventListener('keydown',e=>{if(e.key==='Enter')doCreate();});
@@ -452,7 +452,7 @@ document.getElementById('cat-grid').addEventListener('click',e=>{const b=e.targe
 document.getElementById('diff-row').addEventListener('click',e=>{const b=e.target.closest('.diff-btn');if(b){document.querySelectorAll('.diff-btn').forEach(x=>x.classList.remove('on'));b.classList.add('on');}});
 function toggleCustom(){const a=document.getElementById('custom-area');a.style.display=a.style.display==='flex'?'none':'flex';a.style.flexDirection='column';a.style.gap='8px';}
 const customQuestions=[];
-function addCustomQ(){const text=document.getElementById('cq-text').value.trim();const opts=[0,1,2,3].map(i=>document.getElementById('cq'+i).value.trim());const ansEl=document.querySelector('input[name="cqans"]:checked');if(!text||opts.some(o=>!o)||!ansEl){alert((window.ZapPlay?ZapPlay.t('quiz_fill_all'):'Remplis tous les champs !'));return;}customQuestions.push({text,opts,ans:Number(ansEl.value)});renderCustomList();document.getElementById('cq-text').value='';[0,1,2,3].forEach(i=>document.getElementById('cq'+i).value='');document.querySelectorAll('input[name="cqans"]').forEach(r=>r.checked=false);}
+function addCustomQ(){const text=document.getElementById('cq-text').value.trim();const opts=[0,1,2,3].map(i=>document.getElementById('cq'+i).value.trim());const ansEl=document.querySelector('input[name="cqans"]:checked');if(!text||opts.some(o=>!o)||!ansEl){alert('Remplis tous les champs !');return;}customQuestions.push({text,opts,ans:Number(ansEl.value)});renderCustomList();document.getElementById('cq-text').value='';[0,1,2,3].forEach(i=>document.getElementById('cq'+i).value='');document.querySelectorAll('input[name="cqans"]').forEach(r=>r.checked=false);}
 function removeCustomQ(i){customQuestions.splice(i,1);renderCustomList();}
 function renderCustomList(){document.getElementById('custom-list').innerHTML=customQuestions.map((q,i)=>`<div class="cq-item"><span>${q.text}</span><button class="cq-del" onclick="removeCustomQ(${i})">✕</button></div>`).join('');}
 
@@ -515,14 +515,14 @@ function handle(msg){
     case 'error': showErr(msg.msg); break;
     case 'countdown': showCountdown(msg.seconds); break;
     case 'player_left':
-      if(msg.name){showErr((window.ZapPlay?ZapPlay.t('quiz_player_left',{name:msg.name}):(msg.name+' a quitté.')));}
+      if(msg.name){showErr((msg.name)+' a quitté.');}
       // stay in current screen if still playing, go home only if waiting
       break;
     case 'lounge_chat':
       if(window.ZapPlay)ZapPlay.addLoungeMessage(msg);
       break;
     case 'game_abandoned':
-      showErr((window.ZapPlay?ZapPlay.t('quiz_abandoned'):'Tous les autres joueurs ont quitté — partie abandonnée !'));
+      showErr('Tous les autres joueurs ont quitté — partie abandonnée !');
       break;
     case 'state': render(msg); break;
   }
@@ -557,7 +557,7 @@ function render(st){
     if(window.ZapPlay)ZapPlay.showLounge({players:st.players,mySlot,roomCode:st.code||myCode,gameName:'Quiz Éclair'});
     show('s-wait');
     const c=st.players.length;
-    document.getElementById('wait-count').textContent=window.ZapPlay?ZapPlay.tc('quiz_players_connected',c,{n:c}):(c+' joueur'+(c>1?'s':'')+' connecté'+(c>1?'s':''));
+    document.getElementById('wait-count').textContent=c+' joueur'+(c>1?'s':'')+' connecté'+(c>1?'s':'');
     return;
   }
   if(st.phase==='SETUP'){
@@ -569,15 +569,12 @@ function render(st){
     document.getElementById('btn-start').style.display=canStart?'':'none';
     if(isP1){
       if(n<2){
-        const titleCopy = window.ZapPlay ? ZapPlay.t('quiz_click_copy') : 'Copier';
-        const after = window.ZapPlay ? ZapPlay.t('quiz_code_wait',{code:myCode}) : `Code : ${myCode} — En attente de joueurs…`;
-        document.getElementById('setup-status').innerHTML=`${after.replace(String(myCode),`<span onclick="copyCode()" title="${titleCopy}" style="font-family:monospace;font-weight:800;color:var(--primary);letter-spacing:.12em;cursor:pointer">${myCode}</span>`)}`;
+        document.getElementById('setup-status').innerHTML=`Code&nbsp;: <span onclick="copyCode()" title="Copier" style="font-family:monospace;font-weight:800;color:var(--primary);letter-spacing:.12em;cursor:pointer">${myCode}</span>&nbsp;— En attente de joueurs…`;
       } else {
-        document.getElementById('setup-status').textContent=window.ZapPlay?ZapPlay.tc('quiz_host_ready',n,{n}):`${n} joueur${n>1?'s':''} — lance quand tu es prêt !`;
+        document.getElementById('setup-status').textContent=`${n} joueur${n>1?'s':''} — lance quand tu es prêt !`;
       }
     } else {
-      const host = st.players[0]?.name || (window.ZapPlay?ZapPlay.t('quiz_player1'):'Joueur 1');
-      document.getElementById('setup-status').textContent=window.ZapPlay?ZapPlay.t('quiz_wait_host',{name:host}):`En attente que ${host} lance…`;
+      document.getElementById('setup-status').textContent=`En attente que ${st.players[0]?.name||'Joueur 1'} lance…`;
     }
     document.querySelectorAll('.cat-btn,.diff-btn,.count-btn,.custom-toggle').forEach(el=>{el.disabled=!isP1;el.style.pointerEvents=isP1?'':'none';el.style.opacity=isP1?'':'0.5';});
     document.getElementById('btn-start').disabled=!canStart;
@@ -594,7 +591,7 @@ function render(st){
   updateJokerButtons(st.phase, myJokers);
 
   if(st.question){
-    document.getElementById('q-num').textContent=window.ZapPlay?ZapPlay.t('quiz_q_xof',{cur:st.qIndex+1,total:st.total}):`Question ${st.qIndex+1} / ${st.total}`;
+    document.getElementById('q-num').textContent=`Question ${st.qIndex+1} / ${st.total}`;
     document.getElementById('q-text').textContent=st.question.text;
     const opts=st.question.opts;
     const btns=[0,1,2,3].map(i=>document.getElementById('a'+i));
@@ -609,21 +606,21 @@ function render(st){
       st.joker50.hide.forEach(idx=>{btns[idx].classList.add('hidden-joker');});
     }
 
-    if(st.phase==='QUESTION'){stopTimer();startTimer(st.timerSeconds||15);setBuzz(false);setStatus((window.ZapPlay?ZapPlay.t('quiz_read_question'):'⏳ Lis la question...'));clearTimeout(window._buzzDelay);window._buzzDelay=setTimeout(()=>{if(document.getElementById('buzz-btn').getAttribute('data-phase')==='QUESTION')setBuzz(true);},2500);document.getElementById('buzz-btn').setAttribute('data-phase','QUESTION');}
+    if(st.phase==='QUESTION'){stopTimer();startTimer(st.timerSeconds||15);setBuzz(false);setStatus('⏳ Lis la question...');clearTimeout(window._buzzDelay);window._buzzDelay=setTimeout(()=>{if(document.getElementById('buzz-btn').getAttribute('data-phase')==='QUESTION')setBuzz(true);},2500);document.getElementById('buzz-btn').setAttribute('data-phase','QUESTION');}
     if(st.phase==='BUZZED'){
       navigator.vibrate&&navigator.vibrate(200);
       const isBuzzer=st.buzzedSlot===mySlot;
       stopTimer();startTimer(st.timerSeconds||10);
-      if(isBuzzer){btns.forEach(b=>{b.className='ans-btn enabled';b.disabled=false;if(st.joker50&&st.joker50.hide&&st.joker50.hide.some(idx=>btns.indexOf(b)===idx)){b.className='ans-btn hidden-joker';b.disabled=true;}});setStatus((window.ZapPlay?ZapPlay.t('quiz_you_buzzed'):'Tu as buzzé ! Choisis ta réponse...'));}
-      else{const bn=st.players[st.buzzedSlot]?.name||'?';setStatus((window.ZapPlay?ZapPlay.t('quiz_player_buzzed',{name:bn}):`${bn} a buzzé !`));}
+      if(isBuzzer){btns.forEach(b=>{b.className='ans-btn enabled';b.disabled=false;if(st.joker50&&st.joker50.hide&&st.joker50.hide.some(idx=>btns.indexOf(b)===idx)){b.className='ans-btn hidden-joker';b.disabled=true;}});setStatus('Tu as buzzé ! Choisis ta réponse...');}
+      else{setStatus(`${st.players[st.buzzedSlot]?.name||'?'} a buzzé !`);}
       setBuzz(false);
     }
     if(st.phase==='SECOND_CHANCE'){
       const isSecondMe=st.secondChanceSlot===mySlot;
       stopTimer();startTimer(st.timerSeconds||5);
       if(st.firstWrongAns>=0)btns[st.firstWrongAns].className='ans-btn wrong';
-      if(isSecondMe){btns.forEach((b,i)=>{if(i!==st.firstWrongAns){b.className='ans-btn enabled';b.disabled=false;}});setStatus((window.ZapPlay?ZapPlay.t('quiz_second_for_you'):'Deuxième chance pour toi !'),'second');}
-      else{const sn=st.players[st.secondChanceSlot]?.name||'?';setStatus((window.ZapPlay?ZapPlay.t('quiz_second_for_x',{name:sn}):`Deuxième chance pour ${sn} !`),'second');}
+      if(isSecondMe){btns.forEach((b,i)=>{if(i!==st.firstWrongAns){b.className='ans-btn enabled';b.disabled=false;}});setStatus('Deuxième chance pour toi !','second');}
+      else{setStatus(`Deuxième chance pour ${st.players[st.secondChanceSlot]?.name||'?'} !`,'second');}
       setBuzz(false);SND.buzz();
     }
     if(st.phase==='REVEAL'&&st.reveal){
@@ -631,28 +628,16 @@ function render(st){
       const{correct,selected,isCorrect,answererSlot,isSecondChance,pts,streakBonus,firstWrongAns,timeBonus}=st.reveal;
       btns.forEach((b,i)=>{if(i===correct)b.className='ans-btn correct';else if(i===selected&&!isCorrect)b.className='ans-btn wrong';else if(i===firstWrongAns&&firstWrongAns>=0&&firstWrongAns!==correct)b.className='ans-btn wrong';else b.className='ans-btn';});
       setBuzz(false);
-      if(answererSlot<0||selected<0)setStatus((window.ZapPlay?ZapPlay.t('quiz_time_up'):'Temps écoulé ! Personne n\'a répondu.'));
+      if(answererSlot<0||selected<0)setStatus('Temps écoulé ! Personne n\'a répondu.');
       else if(answererSlot===mySlot){
         if(isCorrect){
           navigator.vibrate&&navigator.vibrate([100,50,100]);
-          const bonus=timeBonus?(window.ZapPlay?ZapPlay.t('quiz_speed_bonus'):' ⚡+1 Bonus Vitesse !'):'';
-          const streak=streakBonus?(window.ZapPlay?ZapPlay.t('quiz_streak_bonus'):' + Bonus série !'):'';
-          const points=window.ZapPlay?ZapPlay.tc('quiz_points',pts,{n:pts}):`+${pts} point${pts>1?'s':''}`;
-          const sub=isSecondChance?(window.ZapPlay?ZapPlay.t('quiz_second_chance'):'(2ème chance)'):'';
-          setStatus(points+streak+bonus,'ok',sub);
+          const bonus=timeBonus?' ⚡+1 Bonus Vitesse !':'';
+          setStatus(`+${pts} point${pts>1?'s':''}${streakBonus?' + Bonus série !':''}${bonus}`,'ok',isSecondChance?'(2ème chance)':'');
           SND.correct();
-        }else{setStatus((window.ZapPlay?ZapPlay.t('quiz_wrong'):'Mauvaise réponse...'),'bad');SND.wrong();}
+        }else{setStatus('Mauvaise réponse...','bad');SND.wrong();}
       }
-      else{
-        const aName=st.players[answererSlot]?.name||'?';
-        if(isCorrect){
-          const txt=window.ZapPlay?ZapPlay.tc('quiz_x_points',pts,{name:aName,n:pts}):(aName+' : +'+pts+' pt'+(pts>1?'s':''));
-          const sub=isSecondChance?(window.ZapPlay?ZapPlay.t('quiz_second_chance'):'(2ème chance)'):'';
-          setStatus(txt,'bad',sub);SND.correct();
-        }else{
-          setStatus((window.ZapPlay?ZapPlay.t('quiz_x_wrong',{name:aName}):(aName+' s\'est trompé !')),'ok');SND.wrong();
-        }
-      }
+      else{const aName=st.players[answererSlot]?.name||'?';if(isCorrect){setStatus(aName+' : +'+pts+' pt'+(pts>1?'s':''),'bad',isSecondChance?'(2ème chance)':'');SND.correct();}else{setStatus(aName+' s\'est trompé !','ok');SND.wrong();}}
     }
   }
 }
@@ -669,9 +654,9 @@ function setStatus(text,cls='',sub=''){
 function renderGameOver(st){
   show('s-gameover');stopTimer();
   const ws=st.winnerSlot??-1;
-  if(ws<0)document.getElementById('go-winner').textContent=(window.ZapPlay?ZapPlay.t('quiz_draw'):'Égalité — match nul !');
-  else if(ws===mySlot){document.getElementById('go-winner').textContent=(window.ZapPlay?ZapPlay.t('quiz_you_win'):'Tu as gagné ! Félicitations !');launchConfetti();}
-  else {const wn=st.players[ws]?.name||'?';document.getElementById('go-winner').textContent=(window.ZapPlay?ZapPlay.t('quiz_x_wins',{name:wn}):(wn+' a gagné !'));}
+  if(ws<0)document.getElementById('go-winner').textContent='Égalité — match nul !';
+  else if(ws===mySlot){document.getElementById('go-winner').textContent='Tu as gagné ! Félicitations !';launchConfetti();}
+  else document.getElementById('go-winner').textContent=(st.players[ws]?.name||'?')+' a gagné !';
   const sc=document.getElementById('go-scores');sc.innerHTML='';
   // Sort by score descending
   const wsSlot=st.winnerSlot??-1;
@@ -685,8 +670,8 @@ function renderGameOver(st){
     const rk=mkEl('div','fs-rank');rk.textContent=ranks[ri]||'';
     const nm=mkEl('div','fs-name');nm.textContent=p.name;
     const pts=mkEl('div','fs-pts');pts.textContent=p.score;
-    const pl=mkEl('div','fs-pts-label');pl.textContent=(window.ZapPlay?ZapPlay.t('quiz_pts'):'pts');
-    const wn=mkEl('div','fs-wins');wn.textContent=window.ZapPlay?ZapPlay.tc('quiz_win_count',wins,{n:wins}):(wins+' victoire'+(wins!==1?'s':''));
+    const pl=mkEl('div','fs-pts-label');pl.textContent='pts';
+    const wn=mkEl('div','fs-wins');wn.textContent=wins+' victoire'+(wins!==1?'s':'');
     d.append(rk,nm,pts,pl,wn);
     sc.appendChild(d);
   });
@@ -697,26 +682,6 @@ function renderGameOver(st){
     ZapPlay.saveGameResult({game:'quiz',gameName:'Quiz Éclair',players:pNames,winner:wName,myName,myScore:st.players.find(p=>p.slot===mySlot)?.score??0,isWinner:ws2===mySlot});
   }
 }
-
-// Re-render visible dynamic strings on lang switch
-function rerenderCurrent(){
-  if(!window.ZapPlay)return;
-  const active=document.querySelector('.screen.active');
-  if(!active)return;
-  if(active.id==='s-wait'){
-    document.getElementById('wait-title').textContent=ZapPlay.t('quiz_waiting');
-    // wait-count is rendered from state; keep as-is
-    const h=document.getElementById('copy-hint-quiz');
-    if(h && !h.style.color) h.textContent=ZapPlay.t('quiz_click_copy');
-  } else if(active.id==='s-setup'){
-    if(window._lastQuizState) render(window._lastQuizState);
-  } else if(active.id==='s-game'){
-    if(window._lastQuizState) render(window._lastQuizState);
-  } else if(active.id==='s-gameover'){
-    if(window._lastQuizState) renderGameOver(window._lastQuizState);
-  }
-}
-window.addEventListener('zapplay:lang', rerenderCurrent);
 </script>
 <script src="shared.js"></script>
 <script src="chat.js"></script>
