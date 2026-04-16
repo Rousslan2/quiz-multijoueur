@@ -6,27 +6,91 @@
 <link rel="stylesheet" href="theme.css">
 <title>ZapPlay — Débat express</title>
 <style>
-:root{--primary:#ec4899;--card:#0E0E22;--border:rgba(236,72,153,.25);--text:#E8E8F0;--muted:#5A5A78;--for:#22c55e;--against:#f97316;--judge:#a855f7}
+:root{--primary:#ec4899;--card:#0E0E22;--border:rgba(236,72,153,.25);--text:#E8E8F0;--muted:#5A5A78;--for:#22c55e;--against:#f97316;--judge:#a855f7;--gold:#FFE234}
 *{box-sizing:border-box;margin:0;padding:0}
-html,body{height:100%;color:var(--text);font-family:'Exo 2',sans-serif;overflow:hidden}
+html,body{height:100%;color:var(--text);font-family:'Exo 2',sans-serif}
+body{overflow-x:hidden;overflow-y:auto;padding-bottom:30px}
 #wrap{max-width:520px;margin:0 auto;padding:56px 14px 16px;min-height:100dvh;display:flex;flex-direction:column;gap:12px}
 #dot{position:fixed;top:10px;right:12px;width:8px;height:8px;border-radius:50%;background:#ef4444;z-index:50}
 #dot.ok{background:#22c55e}
 #back{position:fixed;top:8px;left:10px;background:rgba(255,255,255,.06);border:1px solid var(--border);color:var(--muted);padding:6px 12px;border-radius:8px;cursor:pointer;font-size:.75rem;z-index:50}
-.screen{display:none;flex-direction:column;gap:12px;flex:1;min-height:0;overflow-y:auto}
+.screen{display:none;flex-direction:column;gap:12px;flex:1}
 .screen.active{display:flex}
-.btn{width:100%;padding:14px;border:none;border-radius:10px;font-weight:700;cursor:pointer;font-size:1rem}
+.btn{width:100%;padding:14px;border:none;border-radius:10px;font-weight:700;cursor:pointer;font-size:1rem;transition:opacity .15s}
+.btn:active{opacity:.75}
 .btn-primary{background:linear-gradient(135deg,var(--primary),#db2777);color:#fff}
 .btn-secondary{background:rgba(255,255,255,.08);border:1px solid var(--border);color:var(--text)}
-.btn-for{background:linear-gradient(135deg,var(--for),#16a34a);color:#fff}
-.btn-against{background:linear-gradient(135deg,var(--against),#ea580c);color:#fff}
+.btn-for{background:linear-gradient(135deg,var(--for),#16a34a);color:#fff;font-size:1.05rem}
+.btn-against{background:linear-gradient(135deg,var(--against),#ea580c);color:#fff;font-size:1.05rem}
 .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px}
 h1{font-size:1.35rem;color:var(--primary);text-align:center}
-#topic{font-size:1.08rem;line-height:1.45;text-align:center;padding:14px;background:rgba(236,72,153,.1);border-radius:12px;border:1px solid var(--border)}
-#timer{font-size:1.85rem;font-weight:800;text-align:center;color:var(--primary);font-family:monospace;min-height:2.2rem}
-#phase-chip{display:inline-block;margin:0 auto;padding:4px 12px;border-radius:999px;font-size:.68rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;background:rgba(236,72,153,.15);border:1px solid var(--border);color:var(--primary)}
+
+/* Home */
+input[type=text]{width:100%;padding:12px;border-radius:10px;border:1px solid var(--border);background:rgba(255,255,255,.06);color:var(--text);font-size:1rem}
 #err{color:#f87171;font-size:.85rem;text-align:center;min-height:18px}
-input[type=text]{width:100%;padding:12px;border-radius:10px;border:1px solid var(--border);background:rgba(255,255,255,.06);color:var(--text)}
+
+/* Lobby */
+#code-disp{font-size:2.2rem;font-weight:800;letter-spacing:.2em;color:var(--primary);font-family:monospace}
+.pl-chip{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:6px 10px;font-size:.82rem}
+.pl-chip .role-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+#players-list{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;justify-content:center}
+
+/* Topic */
+#topic{font-size:1.1rem;line-height:1.5;text-align:center;padding:16px;background:rgba(236,72,153,.1);border-radius:12px;border:1px solid var(--border);font-weight:600}
+
+/* My role card */
+#my-role-card{border-radius:14px;padding:18px;text-align:center;display:none}
+#my-role-card.role-for{background:rgba(34,197,94,.15);border:2px solid var(--for)}
+#my-role-card.role-against{background:rgba(249,115,22,.15);border:2px solid var(--against)}
+#my-role-card.role-judge{background:rgba(168,85,247,.15);border:2px solid var(--judge)}
+#my-role-label{font-size:.7rem;font-weight:700;letter-spacing:.15em;text-transform:uppercase;opacity:.7;margin-bottom:4px}
+#my-role-name{font-size:1.5rem;font-weight:800}
+#my-role-hint{font-size:.82rem;margin-top:6px;opacity:.8;line-height:1.4}
+
+/* Roles list */
+.role-row{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.05)}
+.role-row:last-child{border-bottom:none}
+.role-badge{font-size:.68rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:3px 8px;border-radius:999px;white-space:nowrap}
+.badge-for{background:rgba(34,197,94,.2);color:var(--for)}
+.badge-against{background:rgba(249,115,22,.2);color:var(--against)}
+.badge-judge{background:rgba(168,85,247,.2);color:var(--judge)}
+
+/* Timer */
+#timer-wrap{display:none}
+#timer-bar-bg{background:rgba(255,255,255,.08);border-radius:999px;height:6px;overflow:hidden;margin-bottom:6px}
+#timer-bar{height:100%;border-radius:999px;background:var(--primary);transition:width .25s linear,background .5s}
+#timer-txt{text-align:center;font-size:1.6rem;font-weight:800;font-family:monospace;color:var(--primary)}
+
+/* Phase chip */
+#phase-chip{display:inline-block;margin:0 auto;padding:4px 14px;border-radius:999px;font-size:.68rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;background:rgba(236,72,153,.15);border:1px solid var(--border);color:var(--primary)}
+
+/* Vote */
+#vote-area{display:none;flex-direction:column;gap:10px}
+#vote-title{text-align:center;font-weight:600;font-size:.92rem;color:var(--muted)}
+.judge-vote-count{text-align:center;font-size:.78rem;color:var(--muted);margin-top:-4px}
+
+/* Round result */
+#round-result-card{display:none;border-radius:14px;padding:20px;text-align:center}
+#round-result-card.win-for{background:rgba(34,197,94,.12);border:2px solid var(--for)}
+#round-result-card.win-against{background:rgba(249,115,22,.12);border:2px solid var(--against)}
+#round-result-card.win-tie{background:rgba(255,255,255,.05);border:2px solid rgba(255,255,255,.15)}
+#rr-title{font-size:1.3rem;font-weight:800;margin-bottom:4px}
+#rr-sub{font-size:.85rem;opacity:.7;margin-bottom:12px}
+#rr-scores{display:flex;flex-direction:column;gap:4px}
+.rr-score-row{display:flex;justify-content:space-between;align-items:center;padding:6px 10px;background:rgba(255,255,255,.05);border-radius:8px;font-size:.88rem}
+.rr-score-row b{font-size:1rem}
+
+/* Scoreboard inline */
+#score-inline{font-size:.8rem;color:var(--muted);text-align:center}
+
+/* Game over */
+.podium-row{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;margin-bottom:6px;background:rgba(255,255,255,.04)}
+.podium-row.p1{background:rgba(255,226,52,.1);border:1px solid rgba(255,226,52,.3)}
+.podium-row .rank{font-size:1.3rem;width:28px;text-align:center}
+.podium-row .pname{flex:1;font-weight:600}
+.podium-row .pscore{font-weight:800;font-size:1.1rem;color:var(--gold)}
+
+#deb-wait{text-align:center;color:var(--muted);font-size:.92rem;line-height:1.5}
 </style>
 </head>
 <body>
@@ -34,9 +98,13 @@ input[type=text]{width:100%;padding:12px;border-radius:10px;border:1px solid var
 <div id="dot"></div>
 <button id="back" onclick="location.href='index.html'">← Accueil</button>
 <div id="wrap">
+
+  <!-- HOME -->
   <div id="s-home" class="screen active">
     <h1>⚖️ Débat express</h1>
-    <p style="text-align:center;color:var(--muted);font-size:.85rem">Mode <b>3 joueurs</b> : à chaque manche, deux débatteurs (Pour / Contre) et un <b>juge</b> qui tranche. Les rôles tournent.</p>
+    <p style="text-align:center;color:var(--muted);font-size:.85rem">
+      Mode <b>3 à 6 joueurs</b> : 2 débatteurs (Pour / Contre) et le reste sont <b>juges</b>. Les rôles tournent.
+    </p>
     <div class="card">
       <input id="inp-name" type="text" placeholder="Ton prénom" maxlength="20" autocomplete="off">
       <div style="display:flex;gap:8px;margin-top:10px">
@@ -44,173 +112,365 @@ input[type=text]{width:100%;padding:12px;border-radius:10px;border:1px solid var
         <button class="btn btn-secondary" style="flex:1" onclick="toggleJoin()">Rejoindre</button>
       </div>
       <div id="join-area" style="display:none;flex-direction:column;gap:8px;margin-top:8px">
-        <input id="inp-code" maxlength="4" placeholder="Code" style="text-transform:uppercase;letter-spacing:.2em;text-align:center;font-weight:700">
+        <input id="inp-code" type="text" maxlength="4" placeholder="Code" style="text-transform:uppercase;letter-spacing:.2em;text-align:center;font-weight:700" autocomplete="off">
         <button class="btn btn-primary" onclick="joinR()">Rejoindre</button>
       </div>
-      <div id="err"></div>
+      <div id="err" style="margin-top:8px"></div>
     </div>
   </div>
+
+  <!-- LOBBY -->
   <div id="s-wait" class="screen">
     <div class="card" style="text-align:center">
-      <div style="font-size:.7rem;color:var(--muted)">Code</div>
-      <div id="code-disp" style="font-size:2rem;font-weight:800;letter-spacing:.2em;color:var(--primary);font-family:monospace">----</div>
-      <div id="wait-pl" style="margin-top:10px;font-size:.9rem"></div>
-      <div id="wait-hint" style="margin-top:8px;text-align:center;font-size:.82rem;color:var(--muted);min-height:2.4em"></div>
+      <div style="font-size:.7rem;color:var(--muted);letter-spacing:.1em;text-transform:uppercase">Code de la salle</div>
+      <div id="code-disp">----</div>
+      <div id="players-list"></div>
+      <div id="wait-hint" style="margin-top:10px;font-size:.82rem;color:var(--muted);min-height:2em"></div>
     </div>
-    <button id="btn-start" class="btn btn-primary" style="display:none" onclick="send({type:'start_debat'})">Lancer</button>
+    <button id="btn-start" class="btn btn-primary" style="display:none" onclick="send({type:'start_debat'})">🚀 Lancer la partie</button>
   </div>
+
+  <!-- GAME -->
   <div id="s-game" class="screen">
-    <div style="text-align:center"><span id="phase-chip"></span></div>
-    <div id="round-lbl" style="text-align:center;color:var(--muted);font-size:.8rem"></div>
-    <div id="topic"></div>
-    <div id="roles" class="card" style="font-size:.9rem"></div>
-    <div id="timer" style="display:none"></div>
-    <div id="vote-area" style="display:none;flex-direction:column;gap:10px">
-      <div id="vote-title" style="text-align:center;color:var(--muted);font-size:.85rem"></div>
-      <button class="btn btn-for" onclick="send({type:'debat_vote',side:'for'})">Victoire « Pour »</button>
-      <button class="btn btn-against" onclick="send({type:'debat_vote',side:'against'})">Victoire « Contre »</button>
+    <div style="display:flex;align-items:center;justify-content:space-between">
+      <span id="phase-chip"></span>
+      <span id="round-lbl" style="font-size:.78rem;color:var(--muted)"></span>
     </div>
-    <div id="deb-wait" style="display:none;text-align:center;color:var(--muted);font-size:.92rem;line-height:1.45"></div>
-    <div id="round-end" style="display:none;text-align:center;color:var(--muted)"></div>
+    <div id="topic"></div>
+    <div id="my-role-card">
+      <div id="my-role-label">Ton rôle</div>
+      <div id="my-role-name"></div>
+      <div id="my-role-hint"></div>
+    </div>
+    <div class="card" id="roles-card" style="font-size:.88rem;padding:12px 16px">
+      <div id="roles"></div>
+    </div>
+    <div id="timer-wrap">
+      <div id="timer-bar-bg"><div id="timer-bar" style="width:100%"></div></div>
+      <div id="timer-txt"></div>
+    </div>
+    <div id="vote-area">
+      <div id="vote-title">Qui a le mieux défendu son camp ?</div>
+      <div id="judge-count" class="judge-vote-count"></div>
+      <button class="btn btn-for" onclick="vote('for')">✅ Victoire « Pour »</button>
+      <button class="btn btn-against" onclick="vote('against')">✅ Victoire « Contre »</button>
+    </div>
+    <div id="round-result-card">
+      <div id="rr-title"></div>
+      <div id="rr-sub"></div>
+      <div id="rr-scores"></div>
+    </div>
+    <div id="deb-wait"></div>
+    <div id="score-inline"></div>
   </div>
+
+  <!-- GAME OVER -->
   <div id="s-over" class="screen">
-    <h1 style="text-align:center">🏆 Classement</h1>
-    <div id="final-scores" class="card"></div>
-    <button class="btn btn-primary" id="btn-restart" style="display:none" onclick="send({type:'restart_debat'})">Rejouer</button>
+    <h1>🏆 Classement final</h1>
+    <div class="card" id="final-scores"></div>
+    <button class="btn btn-primary" id="btn-restart" style="display:none" onclick="send({type:'restart_debat'})">🔄 Rejouer</button>
     <button class="btn btn-secondary" onclick="location.href='index.html'">Accueil</button>
   </div>
 </div>
+
 <script src="shared.js"></script>
 <script src="chat.js"></script>
 <script>
-const WS=(location.protocol==='https:'?'wss':'ws')+'://'+location.host+'/ws/debat';
-let ws=null,mySlot=-1,myName='',pending=null,timerId=null,lastServerSkew=0,lastEndAt=0,lastPhase='';
-function el(id){return document.getElementById(id)}
-function send(o){if(ws&&ws.readyState===1)ws.send(JSON.stringify(o))}
-function connect(){
-  ws=new WebSocket(WS);
-  ws.onopen=()=>{el('dot').classList.add('ok');if(window.ZapPlay)ZapPlay.hideLoader();if(pending){pending();pending=null}};
-  ws.onclose=()=>{el('dot').classList.remove('ok');setTimeout(connect,2000)};
-  ws.onmessage=e=>{let m;try{m=JSON.parse(e.data)}catch{return}handle(m)};
+const WS = (location.protocol === 'https:' ? 'wss' : 'ws') + '://' + location.host + '/ws/debat';
+let ws = null, mySlot = -1, myName = '', pending = null;
+let timerId = null, timerEndAt = 0, timerTotal = 0, lastServerSkew = 0, lastPhase = '';
+
+function el(id) { return document.getElementById(id); }
+function esc(s) { return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;'); }
+function send(o) { if (ws && ws.readyState === 1) ws.send(JSON.stringify(o)); }
+
+function connect() {
+  ws = new WebSocket(WS);
+  ws.onopen = () => {
+    el('dot').classList.add('ok');
+    if (window.ZapPlay) ZapPlay.hideLoader();
+    if (pending) { pending(); pending = null; }
+  };
+  ws.onclose = () => { el('dot').classList.remove('ok'); setTimeout(connect, 2000); };
+  ws.onmessage = e => { let m; try { m = JSON.parse(e.data); } catch { return; } handle(m); };
 }
 connect();
-function bindL(){if(window.ZapPlay)ZapPlay.setLoungeSender(t=>send({type:'lounge_chat',text:t}));else setTimeout(bindL,120)}
+
+function bindL() {
+  if (window.ZapPlay) ZapPlay.setLoungeSender(t => send({ type: 'lounge_chat', text: t }));
+  else setTimeout(bindL, 120);
+}
 bindL();
-function show(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));el(id).classList.add('active')}
-function clearTimer(){if(timerId){clearInterval(timerId);timerId=null}}
-function startCountdownTo(endTs,label){
+
+function show(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  el(id).classList.add('active');
+}
+
+function clearTimer() {
+  if (timerId) { clearInterval(timerId); timerId = null; }
+  el('timer-wrap').style.display = 'none';
+}
+
+function startCountdownTo(endTs, totalMs) {
   clearTimer();
-  lastEndAt=endTs;
-  el('timer').style.display='block';
-  const tick=()=>{
-    const now=Date.now()+lastServerSkew;
-    const left=Math.max(0,Math.ceil((endTs-now)/1000));
-    el('timer').textContent=(label?label+' · ':'')+left+' s';
-    if(left<=0)clearTimer();
+  timerEndAt = endTs;
+  timerTotal = totalMs;
+  el('timer-wrap').style.display = 'block';
+  const tick = () => {
+    const now = Date.now() + lastServerSkew;
+    const left = Math.max(0, endTs - now);
+    const secs = Math.ceil(left / 1000);
+    el('timer-txt').textContent = secs + ' s';
+    const pct = timerTotal > 0 ? (left / timerTotal) * 100 : 0;
+    el('timer-bar').style.width = pct + '%';
+    const bar = el('timer-bar');
+    if (pct > 50) bar.style.background = 'var(--for)';
+    else if (pct > 20) bar.style.background = 'var(--against)';
+    else bar.style.background = '#ef4444';
+    if (left <= 0) clearTimer();
   };
-  tick();timerId=setInterval(tick,250);
+  tick();
+  timerId = setInterval(tick, 250);
 }
-function createR(){
-  const n=el('inp-name').value.trim();if(!n){el('err').textContent='Prénom requis';return}
-  el('err').textContent='';if(window.ZapPlay)ZapPlay.savePseudo(n);myName=n;
-  const go=()=>send({type:'create_debat',name:n});
-  if(ws&&ws.readyState===1)go();else pending=go;
+
+function createR() {
+  const n = el('inp-name').value.trim();
+  if (!n) { el('err').textContent = 'Prénom requis'; return; }
+  el('err').textContent = '';
+  if (window.ZapPlay) ZapPlay.savePseudo(n);
+  myName = n;
+  const go = () => send({ type: 'create_debat', name: n });
+  if (ws && ws.readyState === 1) go(); else pending = go;
 }
-function joinR(){
-  let n=el('inp-name').value.trim();if(!n&&window.ZapPlay&&ZapPlay.getSavedPseudo)n=ZapPlay.getSavedPseudo().trim();
-  el('inp-name').value=n;
-  const c=el('inp-code').value.trim().toUpperCase();
-  if(!n||!c){el('err').textContent='Prénom + code';return}
-  el('err').textContent='';if(window.ZapPlay)ZapPlay.savePseudo(n);myName=n;
-  const go=()=>send({type:'join_debat',name:n,code:c});
-  if(ws&&ws.readyState===1)go();else pending=go;
+
+function joinR() {
+  let n = el('inp-name').value.trim();
+  if (!n && window.ZapPlay && ZapPlay.getSavedPseudo) n = ZapPlay.getSavedPseudo().trim();
+  el('inp-name').value = n;
+  const c = el('inp-code').value.trim().toUpperCase();
+  if (!n || !c) { el('err').textContent = 'Prénom + code requis'; return; }
+  el('err').textContent = '';
+  if (window.ZapPlay) ZapPlay.savePseudo(n);
+  myName = n;
+  const go = () => send({ type: 'join_debat', name: n, code: c });
+  if (ws && ws.readyState === 1) go(); else pending = go;
 }
-function toggleJoin(){const a=el('join-area');a.style.display=a.style.display==='flex'?'none':'flex';a.style.flexDirection='column'}
-function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;')}
-function handle(m){
-  if(m.type==='error'){el('err').textContent=m.msg;return}
-  if(m.type==='lounge_chat'&&window.ZapPlay){ZapPlay.addLoungeMessage(m);return}
-  if(m.type==='created_debat'){mySlot=m.slot;myName=m.name}
-  if(m.type==='welcome_debat'){mySlot=m.slot;myName=m.name}
-  if(m.type!=='debat_state')return;
-  const s=m;
-  if(typeof s.serverNow==='number')lastServerSkew=s.serverNow-Date.now();
-  if(mySlot<0&&myName){const me=s.players.find(p=>p.name===myName);if(me)mySlot=me.slot}
-  const isHost=mySlot===0;
-  if(s.phase!==lastPhase){lastPhase=s.phase;clearTimer()}
-  if(s.phase==='WAITING'){
-    el('code-disp').textContent=s.code||'----';
-    el('wait-pl').textContent=s.players.map(p=>p.name).join(' · ');
-    const need=3,has=s.players.length;
-    if(has>need)el('wait-hint').textContent='Trop de joueurs — ce mode est limité à 3.';
-    else if(isHost)el('wait-hint').textContent=has<need?('Invite exactement 2 ami'+(need-has===2?'s':'')+' ('+has+'/'+need+').'):'Les 3 sont là — lance la partie !';
-    else el('wait-hint').textContent=has<need?('En attente ('+has+'/'+need+')…'):'L’hôte peut lancer.';
-    el('btn-start').style.display=isHost&&has===need?'block':'none';
-    if(window.ZapPlay)ZapPlay.showLounge({players:s.players,mySlot,roomCode:s.code,gameName:'Débat express (3)'});
-    el('timer').style.display='none';
-    show('s-wait');return
+
+function toggleJoin() {
+  const a = el('join-area');
+  const open = a.style.display === 'flex';
+  a.style.display = open ? 'none' : 'flex';
+  a.style.flexDirection = 'column';
+}
+
+function vote(side) {
+  send({ type: 'debat_vote', side });
+  el('vote-area').style.display = 'none';
+  el('deb-wait').textContent = 'Vote envoyé — en attente des autres juges…';
+}
+
+function roleClass(slot, forSlot, againstSlot) {
+  if (slot === forSlot) return 'for';
+  if (slot === againstSlot) return 'against';
+  return 'judge';
+}
+
+function roleName(r) {
+  if (r === 'for') return '✅ Pour';
+  if (r === 'against') return '❌ Contre';
+  return '⚖️ Juge';
+}
+
+function roleHint(r) {
+  if (r === 'for') return 'Défends ce sujet bec et ongles — convaincre le ou les juges !';
+  if (r === 'against') return 'Démolie les arguments adverses — le juge doit voter pour toi !';
+  return 'Écoute les deux camps attentivement, puis vote pour le meilleur débatteur.';
+}
+
+function handle(m) {
+  if (m.type === 'error') { el('err').textContent = m.msg; return; }
+  if (m.type === 'lounge_chat' && window.ZapPlay) { ZapPlay.addLoungeMessage(m); return; }
+  if (m.type === 'created_debat') { mySlot = m.slot; myName = m.name; }
+  if (m.type === 'welcome_debat') { mySlot = m.slot; myName = m.name; }
+  if (m.type !== 'debat_state') return;
+
+  const s = m;
+  if (typeof s.serverNow === 'number') lastServerSkew = s.serverNow - Date.now();
+  if (mySlot < 0 && myName) {
+    const me = s.players.find(p => p.name === myName);
+    if (me) mySlot = me.slot;
   }
-  if(window.ZapPlay)ZapPlay.hideLounge();
-  el('round-lbl').textContent=s.round?'Manche '+s.round+' / '+s.totalRounds:'';
-  if(s.phase==='GAME_OVER'){
-    let h='<table style="width:100%">';
-    s.players.slice().sort((a,b)=>(b.score||0)-(a.score||0)).forEach((p,i)=>{
-      h+='<tr><td>'+(i+1)+'.</td><td>'+esc(p.name)+'</td><td style="text-align:right">'+(p.score||0)+' pts</td></tr>'
+
+  const isHost = mySlot === 0;
+
+  if (s.phase !== lastPhase) { lastPhase = s.phase; clearTimer(); }
+
+  // ── WAITING ──────────────────────────────────────────────
+  if (s.phase === 'WAITING') {
+    el('code-disp').textContent = s.code || '----';
+    const n = s.players.length;
+    // build player chips
+    let chips = '';
+    s.players.forEach((p, i) => {
+      const isMe = p.slot === mySlot;
+      const color = i === 0 ? 'var(--primary)' : i === 1 ? 'var(--for)' : i === 2 ? 'var(--against)' : 'var(--judge)';
+      chips += `<div class="pl-chip">${isMe ? '<b>' : ''}${esc(p.name)}${i === 0 ? ' 👑' : ''}${isMe ? '</b>' : ''}</div>`;
     });
-    h+='</table>';
-    el('final-scores').innerHTML=h;
-    el('btn-restart').style.display=isHost?'block':'none';
-    clearTimer();el('timer').style.display='none';show('s-over');return
-  }
-  show('s-game');
-  el('topic').textContent=s.topic||'';
-  const fn=s.players.find(p=>p.slot===s.forSlot),ag=s.players.find(p=>p.slot===s.againstSlot),jg=s.players.find(p=>p.slot===s.jurorSlot);
-  el('roles').innerHTML=
-    '<div><b style="color:var(--for)">Pour</b> : '+esc(fn?fn.name:'?')+'</div>'+
-    '<div style="margin-top:6px"><b style="color:var(--against)">Contre</b> : '+esc(ag?ag.name:'?')+'</div>'+
-    '<div style="margin-top:6px"><b style="color:var(--judge)">Juge</b> : '+esc(jg?jg.name:'?')+'</div>';
-  const isFor=mySlot===s.forSlot,isAgainst=mySlot===s.againstSlot,isJur=mySlot===s.jurorSlot;
-  el('vote-area').style.display='none';
-  el('round-end').style.display='none';
-  if(s.phase==='DEBATE'){
-    el('phase-chip').textContent='Débat';
-    if(s.debateEndsAt)startCountdownTo(s.debateEndsAt,'Débat');
-    el('deb-wait').style.display='block';
-    if(isFor)el('deb-wait').textContent='Tu défends le camp Pour — expose tes arguments (micro / vocal).';
-    else if(isAgainst)el('deb-wait').textContent='Tu défends le camp Contre — contre-arguments.';
-    else el('deb-wait').textContent='Tu es juge : écoute les deux camps, tu tranches au vote.';
-  }else if(s.phase==='VOTE'){
-    el('phase-chip').textContent='Vote du juge';
-    if(s.voteEndsAt)startCountdownTo(s.voteEndsAt,'Vote');
-    if(isJur){
-      el('deb-wait').style.display='none';
-      const voted=s.votes&&s.votes[mySlot]!==undefined;
-      if(!voted){
-        el('vote-area').style.display='flex';el('vote-area').style.flexDirection='column';
-        el('vote-title').textContent='Qui a le mieux défendu son camp ?';
-      }else{
-        el('deb-wait').style.display='block';el('deb-wait').textContent='Vote envoyé.';
-      }
-    }else{
-      el('deb-wait').style.display='block';
-      el('deb-wait').textContent=isFor||isAgainst?'Le juge délibère…':'';
+    el('players-list').innerHTML = chips;
+    const need = 3;
+    if (isHost) {
+      if (n < need) el('wait-hint').textContent = `Invite au moins ${need - n} ami${need - n > 1 ? 's' : ''} de plus (${n}/3 min, 6 max).`;
+      else el('wait-hint').textContent = `${n} joueurs prêts — lance quand tu veux !`;
+    } else {
+      el('wait-hint').textContent = n < need ? `En attente (${n}/3 min, 6 max)…` : `${n} joueurs — l'hôte peut lancer.`;
     }
-  }else if(s.phase==='ROUND_RESULT'){
-    el('phase-chip').textContent='Résultat';
-    clearTimer();el('timer').style.display='none';
-    el('deb-wait').style.display='none';
-    el('round-end').style.display='block';el('round-end').textContent='Manche terminée — prochaine dans un instant…';
+    el('btn-start').style.display = isHost && n >= need ? 'block' : 'none';
+    if (window.ZapPlay) ZapPlay.showLounge({ players: s.players, mySlot, roomCode: s.code, gameName: 'Débat express' });
+    show('s-wait');
+    return;
+  }
+
+  if (window.ZapPlay) ZapPlay.hideLounge();
+  el('round-lbl').textContent = s.round ? `Manche ${s.round} / ${s.totalRounds}` : '';
+
+  // ── GAME OVER ─────────────────────────────────────────────
+  if (s.phase === 'GAME_OVER') {
+    const sorted = s.players.slice().sort((a, b) => (b.score || 0) - (a.score || 0));
+    const medals = ['🥇', '🥈', '🥉'];
+    let h = '';
+    sorted.forEach((p, i) => {
+      h += `<div class="podium-row${i === 0 ? ' p1' : ''}">
+        <span class="rank">${medals[i] || (i + 1) + '.'}</span>
+        <span class="pname">${esc(p.name)}${p.slot === mySlot ? ' <span style="font-size:.7rem;opacity:.6">(toi)</span>' : ''}</span>
+        <span class="pscore">${p.score || 0} pts</span>
+      </div>`;
+    });
+    el('final-scores').innerHTML = h;
+    el('btn-restart').style.display = isHost ? 'block' : 'none';
+    clearTimer();
+    show('s-over');
+    return;
+  }
+
+  show('s-game');
+
+  const myRole = roleClass(mySlot, s.forSlot, s.againstSlot);
+  const forP = s.players.find(p => p.slot === s.forSlot);
+  const againstP = s.players.find(p => p.slot === s.againstSlot);
+  const judges = s.players.filter(p => p.slot !== s.forSlot && p.slot !== s.againstSlot);
+
+  // topic
+  el('topic').textContent = s.topic || '';
+
+  // my role card
+  const mrc = el('my-role-card');
+  mrc.style.display = 'block';
+  mrc.className = `role-${myRole}`;
+  el('my-role-label').textContent = 'Ton rôle';
+  el('my-role-name').textContent = roleName(myRole);
+  el('my-role-hint').textContent = roleHint(myRole);
+
+  // roles list
+  let rolesHtml = '';
+  const forColor = 'var(--for)', againstColor = 'var(--against)', judgeColor = 'var(--judge)';
+  rolesHtml += `<div class="role-row"><span class="role-badge badge-for">Pour</span><span>${esc(forP ? forP.name : '?')}</span></div>`;
+  rolesHtml += `<div class="role-row"><span class="role-badge badge-against">Contre</span><span>${esc(againstP ? againstP.name : '?')}</span></div>`;
+  judges.forEach(jg => {
+    rolesHtml += `<div class="role-row"><span class="role-badge badge-judge">Juge</span><span>${esc(jg.name)}</span></div>`;
+  });
+  el('roles').innerHTML = rolesHtml;
+
+  // reset dynamic zones
+  el('vote-area').style.display = 'none';
+  el('round-result-card').style.display = 'none';
+  el('deb-wait').textContent = '';
+
+  // ── DEBATE ───────────────────────────────────────────────
+  if (s.phase === 'DEBATE') {
+    el('phase-chip').textContent = '🎙️ Débat';
+    if (s.debateEndsAt) startCountdownTo(s.debateEndsAt, 40000);
+    if (myRole === 'for') el('deb-wait').textContent = '🎙️ Expose tes arguments Pour — convaincs le(s) juge(s) !';
+    else if (myRole === 'against') el('deb-wait').textContent = '🎙️ Démonte les arguments adverses — convaincs le(s) juge(s) !';
+    else el('deb-wait').textContent = '⚖️ Écoute attentivement les deux camps…';
+  }
+
+  // ── VOTE ─────────────────────────────────────────────────
+  else if (s.phase === 'VOTE') {
+    el('phase-chip').textContent = '🗳️ Vote';
+    if (s.voteEndsAt) startCountdownTo(s.voteEndsAt, 25000);
+    const isJudge = myRole === 'judge';
+    if (isJudge) {
+      const myVoted = s.votes && s.votes[mySlot] !== undefined;
+      if (!myVoted) {
+        el('vote-area').style.display = 'flex';
+        el('vote-area').style.flexDirection = 'column';
+        const totalJudges = judges.length;
+        const votedCount = Object.keys(s.votes || {}).length;
+        el('judge-count').textContent = totalJudges > 1 ? `${votedCount}/${totalJudges} juges ont voté` : '';
+      } else {
+        const totalJudges = judges.length;
+        const votedCount = Object.keys(s.votes || {}).length;
+        el('deb-wait').textContent = `Vote envoyé — ${votedCount}/${totalJudges} juge${totalJudges > 1 ? 's' : ''} ${votedCount > 1 ? 'ont' : 'a'} voté.`;
+      }
+    } else {
+      el('deb-wait').textContent = 'Le jury délibère…';
+    }
+  }
+
+  // ── ROUND_RESULT ──────────────────────────────────────────
+  else if (s.phase === 'ROUND_RESULT') {
+    el('phase-chip').textContent = '📊 Résultat';
+    clearTimer();
+    const rrc = el('round-result-card');
+    rrc.style.display = 'block';
+    const tally = s.votesTally || { for: 0, against: 0 };
+    let title = '', sub = '', cls = '';
+    if (s.roundWinner === null) {
+      title = '⚖️ Égalité !';
+      sub = `Votes : Pour ${tally.for} — Contre ${tally.against} • Personne ne marque.`;
+      cls = 'win-tie';
+    } else if (s.roundWinner === s.forSlot) {
+      const winner = s.players.find(p => p.slot === s.forSlot);
+      title = `✅ ${esc(winner ? winner.name : '?')} gagne !`;
+      sub = `Camp Pour • Votes : ${tally.for} pour / ${tally.against} contre • +2 pts`;
+      cls = 'win-for';
+    } else {
+      const winner = s.players.find(p => p.slot === s.againstSlot);
+      title = `❌ ${esc(winner ? winner.name : '?')} gagne !`;
+      sub = `Camp Contre • Votes : ${tally.against} contre / ${tally.for} pour • +2 pts`;
+      cls = 'win-against';
+    }
+    rrc.className = `${cls}`;
+    rrc.style.borderRadius = '14px';
+    rrc.style.padding = '20px';
+    rrc.style.textAlign = 'center';
+    el('rr-title').textContent = title;
+    el('rr-sub').textContent = sub;
+    // scores
+    const sorted = s.players.slice().sort((a, b) => (b.score || 0) - (a.score || 0));
+    let scH = '';
+    sorted.forEach(p => {
+      const isMe = p.slot === mySlot;
+      scH += `<div class="rr-score-row">${isMe ? '<b>' : ''}${esc(p.name)}${isMe ? '</b>' : ''}<b>${p.score || 0} pts</b></div>`;
+    });
+    el('rr-scores').innerHTML = scH;
   }
 }
-(function(){
-  const p=new URLSearchParams(location.search);
-  if(p.get('name'))el('inp-name').value=p.get('name');
-  if(p.get('code')){el('inp-code').value=p.get('code').toUpperCase();toggleJoin()}
-  if(p.get('create')==='1'&&p.get('name')){el('inp-name').value=p.get('name');setTimeout(createR,400)}
-  if(p.get('code')&&p.get('name')&&p.get('create')!=='1'){el('inp-name').value=p.get('name');setTimeout(joinR,500)}
+
+// URL params auto-join
+(function () {
+  const p = new URLSearchParams(location.search);
+  if (p.get('name')) el('inp-name').value = p.get('name');
+  if (p.get('code')) { el('inp-code').value = p.get('code').toUpperCase(); toggleJoin(); }
+  if (p.get('create') === '1' && p.get('name')) { el('inp-name').value = p.get('name'); setTimeout(createR, 400); }
+  if (p.get('code') && p.get('name') && p.get('create') !== '1') { el('inp-name').value = p.get('name'); setTimeout(joinR, 500); }
 })();
-el('inp-code')&&el('inp-code').addEventListener('input',e=>{e.target.value=e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,4)});
+
+el('inp-code') && el('inp-code').addEventListener('input', e => {
+  e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 4);
+});
 </script>
-<script>(function(){var sc=document.getElementById('zp-stars');if(!sc)return;for(var i=0;i<50;i++){var s=document.createElement('div');s.className='zp-star';s.style.cssText='left:'+Math.random()*100+'%;top:'+Math.random()*100+'%';sc.appendChild(s)}})();</script>
+<script>(function(){var sc=document.getElementById('zp-stars');if(!sc)return;for(var i=0;i<50;i++){var s=document.createElement('div');s.className='zp-star';s.style.cssText='left:'+Math.random()*100+'%;top:'+Math.random()*100+'%';sc.appendChild(s)}})()</script>
 </body>
 </html>

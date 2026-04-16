@@ -88,7 +88,7 @@ function getRoomsSnapshot() {
         gameName: GAME_NAMES[game],
         host: room.host,
         players: room.players.map(p => p.name),
-        maxPlayers: game==='loup'?10:game==='bomb'?6:game==='sumo'?4:game==='uno'?4:game==='paint'?4:game==='naval'?4:game==='imposteur'?8:game==='debat'?3:4,
+        maxPlayers: game==='loup'?10:game==='bomb'?6:game==='sumo'?4:game==='uno'?4:game==='paint'?4:game==='naval'?4:game==='imposteur'?8:game==='debat'?6:4,
         status: ['WAITING','SETUP','PLACING','COUNTDOWN'].includes(room.phase) ? 'waiting' : 'playing'
       });
     }
@@ -4500,78 +4500,174 @@ wssImposteur.on('connection', ws => {
 //  DÉBAT EXPRESS (pour / contre, vote public)
 // ════════════════════════════════════════════════════════
 const DEBAT_TOPICS = [
-  'La pizza : ananas ou jamais ?',
-  'Café ou thé le matin ?',
-  'Films ou livres pour s’évader ?',
-  'Semaine de 4 jours : pour ou contre ?',
-  'Sport ou études : qu’est-ce qui construit le plus ?',
-  'Chocolat noir ou chocolat au lait ?',
-  'Chien ou chat comme animal de compagnie ?',
-  'Le streaming remplace-t-il le cinéma ?',
-  'Téléphone au lit : toléré ou interdit ?',
-  'Écouter de la musique en travaillant : aide ou distraction ?',
-  'Vacances à la mer ou à la montagne ?',
-  'Ville animée ou campagne calme pour vivre ?',
-  'Écrans pour les enfants : limite stricte ou souple ?',
-  'L’école devrait-elle commencer plus tard ?',
-  'Sport individuel ou sport collectif ?'
+  // Food & boissons
+  ‘La pizza : ananas ou jamais ?’,
+  ‘Café ou thé le matin ?’,
+  ‘Chocolat noir ou chocolat au lait ?’,
+  ‘Ketchup ou moutarde : lequel mérite sa place dans le frigo ?’,
+  ‘Les sushis sont-ils surévalués ?’,
+  ‘Fast-food : plaisir coupable assumé ou habitude à bannir ?’,
+  ‘Petit-déjeuner salé ou sucré ?’,
+  ‘Le végétarisme devrait-il être la norme ?’,
+  ‘Cuisiner soi-même ou commander à livrer ?’,
+  ‘L’eau du robinet est-elle meilleure qu’en bouteille ?’,
+  ‘Glace vanille ou chocolat : laquelle gagne ?’,
+  ‘Manger épicé : torture ou plaisir ?’,
+  // Tech & numérique
+  ‘Le streaming remplace-t-il le cinéma ?’,
+  ‘Les réseaux sociaux font plus de mal que de bien.’,
+  ‘L’intelligence artificielle va-t-elle détruire des emplois ?’,
+  ‘Les jeux vidéo sont un art à part entière.’,
+  ‘Le télétravail est meilleur que le bureau.’,
+  ‘Les smartphones rendent-ils les gens plus stupides ?’,
+  ‘Internet devrait-il être une liberté fondamentale gratuite ?’,
+  ‘Les voitures électriques sont-elles vraiment écologiques ?’,
+  ‘TikTok est plus néfaste qu’utile.’,
+  ‘La réalité virtuelle remplacera les voyages.’,
+  // Lifestyle & société
+  ‘Semaine de 4 jours : pour ou contre ?’,
+  ‘Sport ou études : qu’est-ce qui construit le plus ?’,
+  ‘Téléphone au lit : toléré ou interdit ?’,
+  ‘Écouter de la musique en travaillant : aide ou distraction ?’,
+  ‘Vacances à la mer ou à la montagne ?’,
+  ‘Ville animée ou campagne calme pour vivre ?’,
+  ‘Écrans pour les enfants : limite stricte ou souple ?’,
+  ‘L’école devrait-elle commencer plus tard ?’,
+  ‘Sport individuel ou sport collectif ?’,
+  ‘Chien ou chat comme animal de compagnie ?’,
+  ‘Films ou livres pour s’évader ?’,
+  ‘Mieux vaut être riche et malheureux que pauvre et heureux.’,
+  ‘Le mariage est-il encore une institution utile ?’,
+  ‘Faut-il interdire les voitures en centre-ville ?’,
+  ‘Les selfies sont un signe de narcissisme.’,
+  ‘Le tatouage devrait être accepté dans tous les milieux professionnels.’,
+  ‘Mieux vaut avoir beaucoup d’amis superficiels ou peu d’amis proches ?’,
+  ‘Le bonheur s’achète-t-il avec de l’argent ?’,
+  // Débats classiques
+  ‘L’œuf ou la poule : lequel est venu en premier ?’,
+  ‘Le père Noël fait-il plus de bien que de mal aux enfants ?’,
+  ‘Faut-il interdire les devoirs à l’école primaire ?’,
+  ‘Le vote devrait-il être obligatoire ?’,
+  ‘La peine de mort est-elle jamais justifiable ?’,
+  ‘Les animaux devraient-ils avoir les mêmes droits que les humains ?’,
+  ‘Le sport de haut niveau devrait-il être financé par l’État ?’,
+  ‘L’art moderne est-il vraiment de l’art ?’,
+  ‘Les super-héros sont-ils un bon modèle pour les enfants ?’,
+  ‘La censure sur Internet est-elle acceptable ?’,
+  // Pop culture & divertissement
+  ‘Marvel ou DC : qui a les meilleurs super-héros ?’,
+  ‘Star Wars ou Star Trek ?’,
+  ‘Harry Potter ou Le Seigneur des Anneaux ?’,
+  ‘Les remakes de films sont-ils une bonne idée ?’,
+  ‘La musique d’aujourd’hui est-elle moins bonne qu’avant ?’,
+  ‘Le rap est-il la poésie du XXIe siècle ?’,
+  ‘Les émissions de téléréalité sont-elles néfastes ?’,
+  ‘Les jeux de plateau sont-ils meilleurs que les jeux vidéo ?’,
+  ‘Faut-il préférer lire le livre avant de voir le film ?’,
+  ‘Les dessins animés sont faits pour les enfants uniquement.’,
+  // Travail & argent
+  ‘L’argent fait-il le bonheur ?’,
+  ‘Faut-il faire le travail qu’on aime ou celui qui paie bien ?’,
+  ‘Le salaire minimum devrait être doublé.’,
+  ‘Les grandes entreprises sont-elles plus néfastes qu’utiles ?’,
+  ‘L’entrepreneuriat est-il la voie du succès ?’,
+  ‘Le chômage est-il toujours une question de volonté ?’,
+  // Environnement
+  ‘L’écologie devrait-elle primer sur l’économie ?’,
+  ‘Faut-il taxer les voyages en avion ?’,
+  ‘La viande de synthèse sauvera-t-elle la planète ?’,
+  ‘Les humains sont-ils condamnés à détruire la Terre ?’,
+  ‘L’énergie nucléaire est-elle une solution d’avenir ?’,
+  // Éducation & jeunesse
+  ‘L’uniforme scolaire : bonne ou mauvaise idée ?’,
+  ‘Les notes à l’école devraient être supprimées.’,
+  ‘Internet a-t-il remplacé les professeurs ?’,
+  ‘Faut-il apprendre le code dès le primaire ?’,
+  ‘Les études universitaires sont-elles encore nécessaires ?’,
+  // Bonus fun
+  ‘Le pizza-ananas est la meilleure pizza qui soit.’,
+  ‘Dormir est une perte de temps.’,
+  ‘Les lundi devraient être bannis.’,
+  ‘Les chats sont supérieurs aux chiens en tout point.’,
+  ‘Le printemps est la meilleure saison de l’année.’,
 ];
 const DEBAT_MS_DEBATE = 40000;
 const DEBAT_MS_VOTE = 25000;
+const DEBAT_MIN_PLAYERS = 3;
+const DEBAT_MAX_PLAYERS = 6;
 const debatRooms = new Map();
+
 function makeDebatRoom(code, host) {
   return {
-    code, host, players: [], phase: 'WAITING', round: 0, totalRounds: 6,
-    topic: '', forSlot: null, againstSlot: null, jurorSlot: null,
+    code, host, players: [], phase: ‘WAITING’, round: 0, totalRounds: 6,
+    topic: ‘’, forSlot: null, againstSlot: null,
     topicDeck: [], votes: {}, timer: null, scores: {},
+    roundWinner: null, votesTally: null,
     debateEndsAt: 0, voteEndsAt: 0
   };
 }
-/** 3 joueurs fixes (slots 0,1,2) : rotation équitable Pour / Contre / Juge */
-function debatRolesForRound(round1) {
-  const k = (round1 - 1) % 3;
-  if (k === 0) return { forSlot: 0, againstSlot: 1, jurorSlot: 2 };
-  if (k === 1) return { forSlot: 1, againstSlot: 2, jurorSlot: 0 };
-  return { forSlot: 2, againstSlot: 0, jurorSlot: 1 };
+
+/** N joueurs : forSlot=(round-1)%N, againstSlot=round%N, reste=juges */
+function debatRolesForRound(round1, n) {
+  const forSlot = (round1 - 1) % n;
+  const againstSlot = round1 % n;
+  return { forSlot, againstSlot };
 }
+
 function debatSnap(room) {
   return {
-    type: 'debat_state', phase: room.phase, code: room.code, host: room.host,
+    type: ‘debat_state’, phase: room.phase, code: room.code, host: room.host,
     round: room.round, totalRounds: room.totalRounds,
     topic: room.topic, forSlot: room.forSlot, againstSlot: room.againstSlot,
-    jurorSlot: room.jurorSlot,
     votes: room.votes,
+    roundWinner: room.roundWinner,
+    votesTally: room.votesTally,
     serverNow: Date.now(),
     debateEndsAt: room.debateEndsAt || 0,
     voteEndsAt: room.voteEndsAt || 0,
     players: room.players.map(p => ({ name: p.name, slot: p.slot, score: room.scores[p.slot] || 0 }))
   };
 }
+
 function debatBcast(room) {
   bcast(room.players, debatSnap(room));
 }
+
 function debatEndVote(room) {
   clearTimeout(room.timer);
   room.voteEndsAt = 0;
-  let forScore = 0, againstScore = 0;
+  let forVotes = 0, againstVotes = 0;
   Object.values(room.votes).forEach(v => {
-    if (v === 'for') forScore++;
-    else if (v === 'against') againstScore++;
+    if (v === ‘for’) forVotes++;
+    else if (v === ‘against’) againstVotes++;
   });
-  if (forScore > againstScore && room.forSlot !== null) {
-    room.scores[room.forSlot] = (room.scores[room.forSlot] || 0) + 1;
-  } else if (againstScore > forScore && room.againstSlot !== null) {
-    room.scores[room.againstSlot] = (room.scores[room.againstSlot] || 0) + 1;
+  room.votesTally = { for: forVotes, against: againstVotes };
+  if (forVotes > againstVotes && room.forSlot !== null) {
+    room.scores[room.forSlot] = (room.scores[room.forSlot] || 0) + 2;
+    // juges qui ont bien voté
+    Object.entries(room.votes).forEach(([slot, v]) => {
+      if (v === ‘for’) room.scores[Number(slot)] = (room.scores[Number(slot)] || 0) + 1;
+    });
+    room.roundWinner = room.forSlot;
+  } else if (againstVotes > forVotes && room.againstSlot !== null) {
+    room.scores[room.againstSlot] = (room.scores[room.againstSlot] || 0) + 2;
+    Object.entries(room.votes).forEach(([slot, v]) => {
+      if (v === ‘against’) room.scores[Number(slot)] = (room.scores[Number(slot)] || 0) + 1;
+    });
+    room.roundWinner = room.againstSlot;
+  } else {
+    room.roundWinner = null;
   }
-  room.phase = 'ROUND_RESULT';
+  room.phase = ‘ROUND_RESULT’;
   debatBcast(room);
-  room.timer = setTimeout(() => debatNextRound(room), 4000);
+  room.timer = setTimeout(() => debatNextRound(room), 5000);
 }
+
 function debatNextRound(room) {
   clearTimeout(room.timer);
   room.round++;
   if (room.round > room.totalRounds) {
-    room.phase = 'GAME_OVER';
+    room.phase = ‘GAME_OVER’;
     room.debateEndsAt = 0;
     room.voteEndsAt = 0;
     debatBcast(room);
@@ -4583,85 +4679,95 @@ function debatNextRound(room) {
   }
   const ti = room.topicDeck[(room.round - 1) % room.topicDeck.length];
   room.topic = DEBAT_TOPICS[ti];
-  const roles = debatRolesForRound(room.round);
+  const n = room.players.length;
+  const roles = debatRolesForRound(room.round, n);
   room.forSlot = roles.forSlot;
   room.againstSlot = roles.againstSlot;
-  room.jurorSlot = roles.jurorSlot;
-  room.phase = 'DEBATE';
+  room.phase = ‘DEBATE’;
   room.votes = {};
+  room.roundWinner = null;
+  room.votesTally = null;
   const now = Date.now();
   room.debateEndsAt = now + DEBAT_MS_DEBATE;
   room.voteEndsAt = 0;
   debatBcast(room);
   room.timer = setTimeout(() => {
-    if (room.phase === 'DEBATE') {
-      room.phase = 'VOTE';
+    if (room.phase === ‘DEBATE’) {
+      room.phase = ‘VOTE’;
       room.debateEndsAt = 0;
       room.voteEndsAt = Date.now() + DEBAT_MS_VOTE;
       debatBcast(room);
+      // auto-end vote when all judges voted
+      const judgeCount = room.players.length - 2;
+      if (judgeCount <= 0) { debatEndVote(room); return; }
       room.timer = setTimeout(() => debatEndVote(room), DEBAT_MS_VOTE);
     }
   }, DEBAT_MS_DEBATE);
 }
 
-wssDebat.on('connection', ws => {
+wssDebat.on(‘connection’, ws => {
   makeWS(wssDebat).alive(ws);
   let room = null;
-  ws.on('close', () => {
+  ws.on(‘close’, () => {
     makeWS(wssDebat).clear(ws);
     if (!room) return;
     const idx = room.players.findIndex(p => p.ws === ws);
     if (idx < 0) return;
     const name = room.players[idx].name;
+    const leavingSlot = room.players[idx].slot;
     room.players.splice(idx, 1);
-    room.players.forEach((p, i) => { p.slot = i; });
-    clearTimeout(room.timer);
+    // Ne pas renuméroter les slots pendant une partie active pour éviter de casser forSlot/againstSlot
+    if (room.phase === ‘WAITING’ || room.phase === ‘GAME_OVER’) {
+      room.players.forEach((p, i) => { p.slot = i; });
+    }
     if (room.players.length === 0) { debatRooms.delete(room.code); broadcastLobby(); return; }
     if (room.host === name && room.players.length) room.host = room.players[0].name;
-    bcast(room.players, { type: 'player_left', name });
-    if (room.phase !== 'WAITING' && room.phase !== 'GAME_OVER' && room.players.length !== 3) {
-      room.phase = 'WAITING';
+    bcast(room.players, { type: ‘player_left’, name });
+    if (room.phase !== ‘WAITING’ && room.phase !== ‘GAME_OVER’ && room.players.length < DEBAT_MIN_PLAYERS) {
+      clearTimeout(room.timer);
+      room.phase = ‘WAITING’;
     }
     debatBcast(room);
     broadcastLobby();
   });
-  ws.on('message', raw => {
+  ws.on(‘message’, raw => {
     let d; try { d = JSON.parse(raw); } catch { return; }
     const player = room ? room.players.find(p => p.ws === ws) : null;
-    if (d.type === 'lounge_chat') { handleLoungeChat(room, ws, d); return; }
+    if (d.type === ‘lounge_chat’) { handleLoungeChat(room, ws, d); return; }
     switch (d.type) {
-      case 'create_debat': {
-        const name = String(d.name || '').trim().slice(0, 20) || 'Joueur';
+      case ‘create_debat’: {
+        const name = String(d.name || ‘’).trim().slice(0, 20) || ‘Joueur’;
         const code = genCode(debatRooms);
         room = makeDebatRoom(code, name);
         room.players.push({ ws, name, slot: 0 });
         room.scores[0] = 0;
         debatRooms.set(code, room);
-        wsend(ws, { type: 'created_debat', code, slot: 0, name });
+        wsend(ws, { type: ‘created_debat’, code, slot: 0, name });
         wsend(ws, debatSnap(room));
         broadcastLobby();
         break;
       }
-      case 'join_debat': {
-        const code = String(d.code || '').trim().toUpperCase();
+      case ‘join_debat’: {
+        const code = String(d.code || ‘’).trim().toUpperCase();
         const r = debatRooms.get(code);
-        if (!r) { wsend(ws, { type: 'error', msg: 'Salle introuvable.' }); return; }
-        if (r.phase !== 'WAITING') { wsend(ws, { type: 'error', msg: 'Partie déjà commencée.' }); return; }
-        if (r.players.length >= 3) { wsend(ws, { type: 'error', msg: 'Partie à 3 joueurs : salle pleine.' }); return; }
-        const name = String(d.name || '').trim().slice(0, 20) || 'Joueur';
+        if (!r) { wsend(ws, { type: ‘error’, msg: ‘Salle introuvable.’ }); return; }
+        if (r.phase !== ‘WAITING’) { wsend(ws, { type: ‘error’, msg: ‘Partie déjà commencée.’ }); return; }
+        if (r.players.length >= DEBAT_MAX_PLAYERS) { wsend(ws, { type: ‘error’, msg: `Salle pleine (max ${DEBAT_MAX_PLAYERS} joueurs).` }); return; }
+        const name = String(d.name || ‘’).trim().slice(0, 20) || ‘Joueur’;
         const slot = r.players.length;
         r.players.push({ ws, name, slot });
         r.scores[slot] = 0;
         room = r;
-        wsend(ws, { type: 'welcome_debat', code, slot, name });
+        wsend(ws, { type: ‘welcome_debat’, code, slot, name });
         debatBcast(r);
         broadcastLobby();
         break;
       }
-      case 'start_debat': {
-        if (!room || !player || player.slot !== 0 || room.phase !== 'WAITING') return;
-        if (room.players.length !== 3) { wsend(ws, { type: 'error', msg: 'Il faut exactement 3 joueurs (2 débatteurs + 1 juge).' }); return; }
-        room.totalRounds = 6;
+      case ‘start_debat’: {
+        if (!room || !player || player.slot !== 0 || room.phase !== ‘WAITING’) return;
+        const n = room.players.length;
+        if (n < DEBAT_MIN_PLAYERS) { wsend(ws, { type: ‘error’, msg: `Il faut au moins ${DEBAT_MIN_PLAYERS} joueurs.` }); return; }
+        room.totalRounds = n * 2;
         room.round = 0;
         room.topicDeck = [];
         room.players.forEach(p => { room.scores[p.slot] = 0; });
@@ -4669,25 +4775,31 @@ wssDebat.on('connection', ws => {
         broadcastLobby();
         break;
       }
-      case 'debat_vote': {
-        if (!room || room.phase !== 'VOTE' || !player) return;
-        const side = d.side === 'for' ? 'for' : d.side === 'against' ? 'against' : null;
+      case ‘debat_vote’: {
+        if (!room || room.phase !== ‘VOTE’ || !player) return;
+        const side = d.side === ‘for’ ? ‘for’ : d.side === ‘against’ ? ‘against’ : null;
         if (!side) return;
         if (player.slot === room.forSlot || player.slot === room.againstSlot) return;
-        if (room.jurorSlot !== null && player.slot !== room.jurorSlot) return;
+        if (room.votes[player.slot] !== undefined) return;
         room.votes[player.slot] = side;
         debatBcast(room);
-        clearTimeout(room.timer);
-        debatEndVote(room);
+        // si tous les juges ont voté, fin immédiate
+        const judgeSlots = room.players
+          .map(p => p.slot)
+          .filter(s => s !== room.forSlot && s !== room.againstSlot);
+        const allVoted = judgeSlots.every(s => room.votes[s] !== undefined);
+        if (allVoted) { clearTimeout(room.timer); debatEndVote(room); }
         break;
       }
-      case 'restart_debat': {
-        if (!room || !player || player.slot !== 0 || room.phase !== 'GAME_OVER') return;
-        room.phase = 'WAITING';
+      case ‘restart_debat’: {
+        if (!room || !player || player.slot !== 0 || room.phase !== ‘GAME_OVER’) return;
+        room.phase = ‘WAITING’;
         room.round = 0;
-        room.topic = '';
+        room.topic = ‘’;
         room.topicDeck = [];
         room.votes = {};
+        room.roundWinner = null;
+        room.votesTally = null;
         room.debateEndsAt = 0;
         room.voteEndsAt = 0;
         room.players.forEach(p => { room.scores[p.slot] = 0; });
