@@ -254,7 +254,7 @@ input{width:100%;padding:11px 12px;border-radius:10px;border:1px solid var(--bor
     </symbol>
   </defs>
 </svg>
-<button id="home" data-i18n="common_back_home" onclick="location.href='index.html'">← Accueil</button>
+<button id="home" onclick="location.href='index.html'">← Accueil</button>
 <div id="dot"></div>
 <div id="gcount"><span id="gnum">3</span></div>
 
@@ -263,12 +263,12 @@ input{width:100%;padding:11px 12px;border-radius:10px;border:1px solid var(--bor
   <p class="sub">2 à 4 joueurs · grille 10×10 · flotte 5-4-3-3-2 · dernier en jeu gagne</p>
 
   <div id="name-screen" class="card">
-    <input id="name" maxlength="20" data-i18n-ph="common_name_ph" placeholder="Ton pseudo">
-    <button class="btn btn-primary" data-i18n="common_create_room" onclick="createGame()">Créer une salle</button>
-    <button class="btn btn-buzz" data-i18n="common_join_code" onclick="toggleJoin()">Rejoindre (code)</button>
+    <input id="name" maxlength="20" placeholder="Ton pseudo">
+    <button class="btn btn-primary" onclick="createGame()">Créer une salle</button>
+    <button class="btn btn-buzz" onclick="toggleJoin()">Rejoindre (code)</button>
     <div id="join-area">
       <input id="code" maxlength="4" placeholder="Code" style="text-transform:uppercase;text-align:center;letter-spacing:.15em">
-      <button class="btn btn-buzz" data-i18n="common_join" onclick="joinGame()">Rejoindre</button>
+      <button class="btn btn-buzz" onclick="joinGame()">Rejoindre</button>
     </div>
     <div id="err"></div>
   </div>
@@ -335,7 +335,7 @@ input{width:100%;padding:11px 12px;border-radius:10px;border:1px solid var(--bor
     <div id="over" class="card hidden" style="text-align:center">
       <div id="over-msg" style="font-size:1.2rem;font-weight:800;margin-bottom:10px"></div>
       <button class="btn btn-primary" onclick="send({type:'restart_naval'})">Rejouer</button>
-      <button class="btn btn-muted" data-i18n="common_home" style="margin-top:8px" onclick="location.href='index.html'">Accueil</button>
+      <button class="btn btn-muted" style="margin-top:8px" onclick="location.href='index.html'">Accueil</button>
     </div>
   </div>
 </div>

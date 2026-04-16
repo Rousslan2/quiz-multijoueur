@@ -147,7 +147,7 @@ input[type=text]::placeholder{color:var(--muted)}
 <body>
 <div class="zp-space-bg"><div class="zp-neb1"></div><div class="zp-neb2"></div><div class="zp-stars" id="zp-stars-quiz"></div><div class="zp-sgrid"></div><div class="zp-comet"></div></div>
 <div id="dot"></div>
-<button id="back-btn" onclick="location.href='index.html'">&#8592; <span data-i18n="ui_home">Accueil</span></button>
+<button id="back-btn" onclick="location.href='index.html'">&#8592; Accueil</button>
 <button id="sound-toggle" title="Sons on/off">&#128266;</button>
 <div id="cdown"><span id="cnum" class="cdown-n"></span><small>Préparez-vous !</small></div>
 <div id="confetti-wrap"></div>
@@ -158,16 +158,16 @@ input[type=text]::placeholder{color:var(--muted)}
   <div style="flex:1"></div>
   <div class="logo"><h1>Quiz Eclair</h1><p>Buzzez le premier !</p></div>
   <div class="card form-card">
-    <h2 data-i18n="ui_name_ph">Ton pseudo</h2>
+    <h2>Ton prénom</h2>
     <input id="inp-name" type="text" placeholder="Ex: Marie" maxlength="20" autocomplete="off">
     <div style="display:flex;gap:8px">
-      <button class="btn btn-primary" style="flex:1" onclick="doCreate()" data-i18n="lobby_create_btn">Créer la salle</button>
-      <button class="btn btn-secondary" style="flex:1" onclick="showJoinInput()" data-i18n="lobby_join">Rejoindre</button>
+      <button class="btn btn-primary" style="flex:1" onclick="doCreate()">Créer une salle</button>
+      <button class="btn btn-secondary" style="flex:1" onclick="showJoinInput()">Rejoindre (code)</button>
     </div>
     <div id="join-code-area" style="display:none;flex-direction:column;gap:8px">
       <input id="inp-code" type="text" placeholder="Code (ex: ABCD)" maxlength="4" autocomplete="off"
         style="text-transform:uppercase;letter-spacing:.12em;font-size:1.1rem;font-weight:700;text-align:center">
-      <button class="btn btn-secondary" onclick="doJoin()" data-i18n="lobby_join_btn">Rejoindre</button>
+      <button class="btn btn-secondary" onclick="doJoin()">Rejoindre</button>
     </div>
   </div>
   <div id="err"></div>
@@ -274,7 +274,7 @@ input[type=text]::placeholder{color:var(--muted)}
   <div id="go-winner"></div>
   <div class="final-scores" id="go-scores"></div>
   <button class="btn btn-primary" onclick="doRestart()">Rejouer</button>
-  <button class="btn btn-secondary" onclick="location.href='index.html'" data-i18n="ui_home">Accueil</button>
+  <button class="btn btn-secondary" onclick="location.href='index.html'">Accueil</button>
 </div>
 </div><!-- /wrap -->
 
