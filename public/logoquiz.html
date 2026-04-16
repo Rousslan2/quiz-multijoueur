@@ -20,6 +20,7 @@ h1{text-align:center;font-size:1.5rem;color:var(--primary)}
 .btn-primary{background:linear-gradient(135deg,var(--primary),#2563eb);color:#fff}
 .btn-secondary{background:rgba(255,255,255,.08);border:1px solid var(--border);color:var(--text)}
 .btn-buzz{background:linear-gradient(135deg,var(--buzz),#ea580c);color:#fff}
+.btn-buzz:disabled{opacity:.45;cursor:not-allowed;filter:grayscale(.3)}
 input[type=text]{width:100%;padding:12px;border-radius:10px;border:1px solid var(--border);background:rgba(255,255,255,.06);color:var(--text)}
 #logo-wrap{display:flex;flex-direction:column;align-items:center;gap:12px;padding:16px;background:rgba(59,130,246,.08);border-radius:14px;border:1px solid var(--border)}
 #logo-img{width:min(200px,70vw);height:min(200px,70vw);object-fit:contain;padding:18px;background:rgba(255,255,255,.04);border-radius:12px}
@@ -70,7 +71,7 @@ input[type=text]{width:100%;padding:12px;border-radius:10px;border:1px solid var
         </div>
         <div id="reveal-brand" style="display:none;text-align:center;margin-top:12px;font-size:1.2rem;font-weight:800;color:var(--primary)"></div>
       </div>
-      <button id="btn-buzz" class="btn btn-buzz" onclick="send({type:'logoquiz_buzz'})">Buzzer</button>
+      <button id="btn-buzz" class="btn btn-buzz" onclick="buzzClick()">Buzzer</button>
       <div id="answer-zone" class="hidden">
         <input id="ans-inp" type="text" placeholder="ex. Nike, Apple, McDonald's…" autocomplete="off">
         <button class="btn btn-primary" style="margin-top:8px" onclick="submitAns()">Valider</button>
@@ -89,9 +90,21 @@ input[type=text]{width:100%;padding:12px;border-radius:10px;border:1px solid var
 <script src="chat.js"></script>
 <script>
 const WS=(location.protocol==='https:'?'wss':'ws')+'://'+location.host+'/ws/logoquiz';
-let ws=null,mySlot=-1,myCode='',myName='',pending=null;
+let ws=null,mySlot=-1,myCode='',myName='',pending=null,buzzLocalLock=0;
 function $(id){return document.getElementById(id)}
 function send(o){if(ws&&ws.readyState===1)ws.send(JSON.stringify(o))}
+function buzzClick(){
+  if(Date.now()<buzzLocalLock)return;
+  buzzLocalLock=Date.now()+1100;
+  send({type:'logoquiz_buzz'});
+  updateBuzzButtonState();
+}
+function updateBuzzButtonState(){
+  const b=$('btn-buzz');if(!b)return;
+  if(b.style.display==='none')return;
+  b.disabled=Date.now()<buzzLocalLock;
+}
+setInterval(updateBuzzButtonState,200);
 function connect(){
   ws=new WebSocket(WS);
   ws.onopen=()=>{$('dot').classList.add('ok');if(window.ZapPlay)ZapPlay.hideLoader();if(pending){pending();pending=null}};
@@ -164,11 +177,19 @@ function handle(m){
     return
   }
   $('q-num').textContent='Question '+(s.qIndex+1)+' / '+s.total;
-  const img=$('logo-img'),hint=s.current&&s.current.hint?s.current.hint:'',url=s.current&&s.current.logoUrl?s.current.logoUrl:'';
+  const img=$('logo-img'),hint=s.current&&s.current.hint?s.current.hint:'',
+    url=s.current&&s.current.logoUrl?s.current.logoUrl:'',
+    fb=s.current&&s.current.logoUrlFallback?s.current.logoUrlFallback:'';
   if(url&&(s.phase==='QUESTION'||s.phase==='REVEAL')){
-    if(img.src!==url)img.src=url;
     img.style.display='block';
-    img.onerror=function(){img.style.display='none';$('hint-txt').textContent=hint||(s.current&&s.current.brand?'':'Indice indisponible')};
+    img.dataset.fb='';
+    img.onerror=function(){
+      if(fb&&!img.dataset.fb){img.dataset.fb='1';img.src=fb+'';return}
+      img.style.display='none';
+      $('hint-txt').textContent=hint||(s.current&&s.current.brand?'':'Indice indisponible');
+    };
+    const bust=url+(url.indexOf('?')>=0?'&':'?')+'v='+(s.qIndex+1);
+    img.src=bust;
   }else{img.style.display='none';img.removeAttribute('src')}
   $('hint-txt').textContent=s.phase==='QUESTION'?hint:(hint?('Indice : '+hint):'');
   const rb=$('reveal-brand');
@@ -177,7 +198,12 @@ function handle(m){
   }else{rb.style.display='none';rb.textContent=''}
   const buzz=s.buzzSlot;
   $('btn-buzz').style.display=s.phase==='QUESTION'&&buzz===null?'block':'none';
-  $('btn-buzz').disabled=false;
+  const openAt=s.buzzOpenAt||0;
+  if(s.phase==='QUESTION'&&buzz===null){
+    buzzLocalLock=0;
+    $('btn-buzz').disabled=Date.now()<openAt;
+    if(Date.now()<openAt)setTimeout(updateBuzzButtonState,Math.max(30,openAt-Date.now()+20));
+  }else $('btn-buzz').disabled=false;
   const az=$('answer-zone');
   if(s.phase==='QUESTION'&&buzz===mySlot){az.classList.remove('hidden');$('ans-inp').focus()}else{az.classList.add('hidden')}
   let sc='<div style="font-weight:700;margin-bottom:6px">Scores</div>';

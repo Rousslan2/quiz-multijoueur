@@ -4672,8 +4672,18 @@ wssPhrase.on('connection', ws => {
 //  LOGO QUIZ (logos SVG via CDN Simple Icons — usage éducatif / devinette)
 // ════════════════════════════════════════════════════════
 const SIMPLE_ICONS_VER = '13.21.0';
+const LOGOQUIZ_BUZZ_OPEN_MS = 500; // latence début de manche (anti spam instantané)
+const LOGOQUIZ_BUZZ_PLAYER_COOLDOWN_MS = 1200; // entre deux buzz du même joueur (manche en cours)
 function logoquizIconUrl(slug) {
   return `https://cdn.jsdelivr.net/npm/simple-icons@${SIMPLE_ICONS_VER}/icons/${slug}.svg`;
+}
+/** SVG coloré (Simple Icons CDN) — repli : SVG monochrome jsdelivr */
+function logoquizLogoUrls(item) {
+  const slug = item.slug;
+  const hex = String(item.brandHex || '000000').replace(/^#/, '');
+  const color = `https://cdn.simpleicons.org/${slug}/${hex}`;
+  const plain = logoquizIconUrl(slug);
+  return { color, plain };
 }
 function logoquizNormAns(s) {
   return String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
@@ -4688,46 +4698,84 @@ function logoquizAnswerOk(room, raw) {
   return ok.includes(g);
 }
 const LOGO_QUIZ_ITEMS = [
-  { slug: 'apple', brand: 'Apple', aliases: ['pomme'], hint: 'Tech & musique' },
-  { slug: 'google', brand: 'Google', aliases: [], hint: 'Moteur de recherche' },
-  { slug: 'nike', brand: 'Nike', aliases: [], hint: 'Sport — virgule' },
-  { slug: 'mcdonalds', brand: 'McDonald\'s', aliases: ['macdo', 'mcdo'], hint: 'Fast-food doré' },
-  { slug: 'starbucks', brand: 'Starbucks', aliases: [], hint: 'Café — sirène' },
-  { slug: 'amazon', brand: 'Amazon', aliases: [], hint: 'E-commerce — flèche sourire' },
-  { slug: 'microsoft', brand: 'Microsoft', aliases: [], hint: 'Windows & Xbox' },
-  { slug: 'facebook', brand: 'Facebook', aliases: ['meta'], hint: 'Réseau social bleu' },
-  { slug: 'x', brand: 'X', aliases: ['twitter'], hint: 'Réseau — ancien oiseau' },
-  { slug: 'instagram', brand: 'Instagram', aliases: ['insta'], hint: 'Photos — dégradé' },
-  { slug: 'youtube', brand: 'YouTube', aliases: ['yt'], hint: 'Vidéos — bouton play' },
-  { slug: 'netflix', brand: 'Netflix', aliases: [], hint: 'Streaming — N rouge' },
-  { slug: 'spotify', brand: 'Spotify', aliases: [], hint: 'Musique — lignes vertes' },
-  { slug: 'adidas', brand: 'Adidas', aliases: [], hint: 'Sport — 3 bandes' },
-  { slug: 'puma', brand: 'Puma', aliases: [], hint: 'Félin qui bondit' },
-  { slug: 'cocacola', brand: 'Coca-Cola', aliases: ['coca', 'cocacola'], hint: 'Soda rouge script' },
-  { slug: 'pepsi', brand: 'Pepsi', aliases: [], hint: 'Cola — cercle tricolore' },
-  { slug: 'samsung', brand: 'Samsung', aliases: [], hint: 'Galaxy & écrans' },
-  { slug: 'sony', brand: 'Sony', aliases: ['playstation'], hint: 'Console & image' },
-  { slug: 'lego', brand: 'Lego', aliases: [], hint: 'Briques à emboîter' }
+  { slug: 'apple', brand: 'Apple', brandHex: '000000', aliases: ['pomme'], hint: 'Tech & pomme' },
+  { slug: 'google', brand: 'Google', brandHex: '4285F4', aliases: [], hint: 'Moteur de recherche' },
+  { slug: 'nike', brand: 'Nike', brandHex: '111111', aliases: [], hint: 'Sport — virgule' },
+  { slug: 'mcdonalds', brand: 'McDonald\'s', brandHex: 'FBC817', aliases: ['macdo', 'mcdo'], hint: 'Fast-food — M doré' },
+  { slug: 'starbucks', brand: 'Starbucks', brandHex: '00704A', aliases: [], hint: 'Café — sirène verte' },
+  { slug: 'amazon', brand: 'Amazon', brandHex: 'FF9900', aliases: [], hint: 'E-commerce — flèche' },
+  { slug: 'microsoft', brand: 'Microsoft', brandHex: '5E5E5E', aliases: [], hint: 'Windows & Xbox' },
+  { slug: 'facebook', brand: 'Facebook', brandHex: '0866FF', aliases: ['meta'], hint: 'Réseau social bleu' },
+  { slug: 'x', brand: 'X', brandHex: '000000', aliases: ['twitter'], hint: 'Réseau — X noir' },
+  { slug: 'instagram', brand: 'Instagram', brandHex: 'E4405F', aliases: ['insta'], hint: 'Photos — dégradé' },
+  { slug: 'youtube', brand: 'YouTube', brandHex: 'FF0000', aliases: ['yt'], hint: 'Vidéos — play rouge' },
+  { slug: 'netflix', brand: 'Netflix', brandHex: 'E50914', aliases: [], hint: 'Streaming — N rouge' },
+  { slug: 'spotify', brand: 'Spotify', brandHex: '1ED760', aliases: [], hint: 'Musique — vert' },
+  { slug: 'adidas', brand: 'Adidas', brandHex: '000000', aliases: [], hint: 'Sport — 3 bandes' },
+  { slug: 'puma', brand: 'Puma', brandHex: '000000', aliases: [], hint: 'Félin qui bondit' },
+  { slug: 'cocacola', brand: 'Coca-Cola', brandHex: 'F40009', aliases: ['coca', 'cocacola'], hint: 'Soda rouge script' },
+  { slug: 'pepsi', brand: 'Pepsi', brandHex: '004B93', aliases: [], hint: 'Cola — bleu & rouge' },
+  { slug: 'samsung', brand: 'Samsung', brandHex: '1428A0', aliases: [], hint: 'Galaxy — bleu' },
+  { slug: 'sony', brand: 'Sony', brandHex: '000000', aliases: ['playstation'], hint: 'Électronique & jeux' },
+  { slug: 'lego', brand: 'Lego', brandHex: 'FF0000', aliases: [], hint: 'Briques rouges' },
+  { slug: 'tiktok', brand: 'TikTok', brandHex: '000000', aliases: [], hint: 'Courtes vidéos' },
+  { slug: 'discord', brand: 'Discord', brandHex: '5865F2', aliases: [], hint: 'Chat vocal gaming' },
+  { slug: 'twitch', brand: 'Twitch', brandHex: '9146FF', aliases: [], hint: 'Streaming live violet' },
+  { slug: 'reddit', brand: 'Reddit', brandHex: 'FF4500', aliases: [], hint: 'Forum — mascotte orange' },
+  { slug: 'whatsapp', brand: 'WhatsApp', brandHex: '25D366', aliases: [], hint: 'Messagerie verte' },
+  { slug: 'telegram', brand: 'Telegram', brandHex: '26A5E4', aliases: [], hint: 'Messagerie bleue' },
+  { slug: 'snapchat', brand: 'Snapchat', brandHex: 'FFFC00', aliases: [], hint: 'Stories — fantôme jaune' },
+  { slug: 'linkedin', brand: 'LinkedIn', brandHex: '0A66C2', aliases: [], hint: 'Réseau pro bleu' },
+  { slug: 'pinterest', brand: 'Pinterest', brandHex: 'BD081C', aliases: [], hint: 'Épingles — P rouge' },
+  { slug: 'airbnb', brand: 'Airbnb', brandHex: 'FF5A5F', aliases: [], hint: 'Location — symbole bélo' },
+  { slug: 'uber', brand: 'Uber', brandHex: '000000', aliases: [], hint: 'VTC noir' },
+  { slug: 'paypal', brand: 'PayPal', brandHex: '003087', aliases: [], hint: 'Paiement en ligne' },
+  { slug: 'visa', brand: 'Visa', brandHex: '1A1F71', aliases: [], hint: 'Carte bancaire bleue' },
+  { slug: 'mastercard', brand: 'Mastercard', brandHex: 'EB001B', aliases: [], hint: 'Deux cercles rouge & orange' },
+  { slug: 'playstation', brand: 'PlayStation', brandHex: '003791', aliases: ['ps'], hint: 'Console Sony' },
+  { slug: 'nintendo', brand: 'Nintendo', brandHex: 'E60012', aliases: [], hint: 'Switch & Mario' },
+  { slug: 'steam', brand: 'Steam', brandHex: '000000', aliases: [], hint: 'PC gaming — soupape' },
+  { slug: 'epicgames', brand: 'Epic Games', brandHex: '313131', aliases: ['epic'], hint: 'Fortnite & launcher' },
+  { slug: 'tesla', brand: 'Tesla', brandHex: 'CC0000', aliases: [], hint: 'Voitures électriques' },
+  { slug: 'bmw', brand: 'BMW', brandHex: '0066B1', aliases: [], hint: 'Auto — hélice bleu & blanc' },
+  { slug: 'mercedes', brand: 'Mercedes-Benz', brandHex: '242424', aliases: ['mercedes', 'mercedesbenz'], hint: 'Étoile sur capot' },
+  { slug: 'ferrari', brand: 'Ferrari', brandHex: 'D40000', aliases: [], hint: 'Cheval cabré rouge' },
+  { slug: 'porsche', brand: 'Porsche', brandHex: 'B12B28', aliases: [], hint: 'Sport auto allemand' },
+  { slug: 'shell', brand: 'Shell', brandHex: 'FFDD00', aliases: [], hint: 'Station — coquillage jaune & rouge' },
+  { slug: 'ikea', brand: 'IKEA', brandHex: '0058A3', aliases: [], hint: 'Meubles jaune & bleu' },
+  { slug: 'wikipedia', brand: 'Wikipedia', brandHex: '000000', aliases: [], hint: 'Encyclopédie libre' },
+  { slug: 'mozilla', brand: 'Mozilla', brandHex: '000000', aliases: ['firefox'], hint: 'Navigateur renard' },
+  { slug: 'airfrance', brand: 'Air France', brandHex: '002157', aliases: ['air france'], hint: 'Compagnie aérienne tricolore' },
+  { slug: 'renault', brand: 'Renault', brandHex: '000000', aliases: [], hint: 'Constructeur losange' },
+  { slug: 'peugeot', brand: 'Peugeot', brandHex: '002355', aliases: [], hint: 'Lion sur calandre' },
+  { slug: 'louisvuitton', brand: 'Louis Vuitton', brandHex: 'A85D2D', aliases: ['lv'], hint: 'Luxe — monogramme' },
+  { slug: 'chanel', brand: 'Chanel', brandHex: '000000', aliases: [], hint: 'Mode — double C' },
+  { slug: 'prada', brand: 'Prada', brandHex: '000000', aliases: [], hint: 'Mode italienne' },
+  { slug: 'rolex', brand: 'Rolex', brandHex: '006039', aliases: [], hint: 'Montre de luxe' },
+  { slug: 'duolingo', brand: 'Duolingo', brandHex: '58CC02', aliases: [], hint: 'App langues — hibou vert' },
+  { slug: 'bookingdotcom', brand: 'Booking.com', brandHex: '003580', aliases: ['booking'], hint: 'Réservation hôtels bleu' }
 ];
 const logoquizRooms = new Map();
 function makeLogoquizRoom(code, host) {
   return {
-    code, host, players: [], phase: 'WAITING', qIndex: 0, total: 10,
-    current: null, scores: {}, timer: null, buzzSlot: null, firstAnswer: null
+    code, host, players: [], phase: 'WAITING', qIndex: 0, total: 12,
+    deck: [], current: null, scores: {}, timer: null, buzzSlot: null, firstAnswer: null,
+    buzzOpenAt: 0, lastBuzzTry: {}
   };
 }
 function logoquizSnap(room) {
   let currentOut = null;
   if (room.current) {
-    const u = logoquizIconUrl(room.current.slug);
+    const { color, plain } = logoquizLogoUrls(room.current);
     if (room.phase === 'QUESTION') {
-      currentOut = { hint: room.current.hint, logoUrl: u };
+      currentOut = { hint: room.current.hint, logoUrl: color, logoUrlFallback: plain };
     } else {
       currentOut = {
         slug: room.current.slug,
         brand: room.current.brand,
         hint: room.current.hint,
-        logoUrl: u
+        logoUrl: color,
+        logoUrlFallback: plain
       };
     }
   }
@@ -4736,11 +4784,17 @@ function logoquizSnap(room) {
     qIndex: room.qIndex, total: room.total,
     current: currentOut,
     buzzSlot: room.buzzSlot,
+    buzzOpenAt: room.buzzOpenAt || 0,
+    buzzCooldownMs: LOGOQUIZ_BUZZ_PLAYER_COOLDOWN_MS,
     players: room.players.map(p => ({ name: p.name, slot: p.slot, score: room.scores[p.slot] || 0 }))
   };
 }
 function logoquizBcast(room) {
   bcast(room.players, logoquizSnap(room));
+}
+function logoquizBuildDeck(room) {
+  const n = Math.min(room.total || 12, LOGO_QUIZ_ITEMS.length);
+  room.deck = shuffle(LOGO_QUIZ_ITEMS.map((_, i) => i)).slice(0, n);
 }
 function logoquizStartQ(room) {
   clearTimeout(room.timer);
@@ -4750,12 +4804,16 @@ function logoquizStartQ(room) {
     broadcastLobby();
     return;
   }
-  const pool = shuffle(LOGO_QUIZ_ITEMS);
-  const pick = pool[room.qIndex % pool.length];
-  room.current = { ...pick, logoUrl: logoquizIconUrl(pick.slug) };
+  if (!room.deck || !room.deck.length || room.qIndex >= room.deck.length) {
+    logoquizBuildDeck(room);
+  }
+  const pick = LOGO_QUIZ_ITEMS[room.deck[room.qIndex]];
+  room.current = { ...pick };
   room.phase = 'QUESTION';
   room.buzzSlot = null;
   room.firstAnswer = null;
+  room.buzzOpenAt = Date.now() + LOGOQUIZ_BUZZ_OPEN_MS;
+  room.lastBuzzTry = {};
   logoquizBcast(room);
   room.timer = setTimeout(() => {
     if (room.phase === 'QUESTION') {
@@ -4824,7 +4882,8 @@ wssLogoquiz.on('connection', ws => {
         if (!room || !player || player.slot !== 0 || room.phase !== 'WAITING') return;
         if (room.players.length < 2) { wsend(ws, { type: 'error', msg: 'Il faut au moins 2 joueurs.' }); return; }
         room.qIndex = 0;
-        room.total = 10;
+        room.total = Math.min(12, LOGO_QUIZ_ITEMS.length);
+        room.deck = [];
         room.players.forEach(p => { room.scores[p.slot] = 0; });
         room.phase = 'COUNTDOWN';
         bcast(room.players, { type: 'countdown', seconds: 3 });
@@ -4836,6 +4895,17 @@ wssLogoquiz.on('connection', ws => {
       case 'logoquiz_buzz': {
         if (!room || room.phase !== 'QUESTION' || !player) return;
         if (room.buzzSlot !== null) return;
+        const now = Date.now();
+        if (now < (room.buzzOpenAt || 0)) {
+          wsend(ws, { type: 'error', msg: 'Patience — buzz disponible dans un instant.' });
+          return;
+        }
+        const lastTry = room.lastBuzzTry[player.slot] || 0;
+        if (now - lastTry < LOGOQUIZ_BUZZ_PLAYER_COOLDOWN_MS) {
+          wsend(ws, { type: 'error', msg: 'Tu buzz trop vite, attends un peu.' });
+          return;
+        }
+        room.lastBuzzTry[player.slot] = now;
         room.buzzSlot = player.slot;
         clearTimeout(room.timer);
         logoquizBcast(room);
@@ -4866,6 +4936,7 @@ wssLogoquiz.on('connection', ws => {
         if (!room || !player || player.slot !== 0 || room.phase !== 'GAME_OVER') return;
         room.phase = 'WAITING';
         room.qIndex = 0;
+        room.deck = [];
         room.current = null;
         room.buzzSlot = null;
         room.players.forEach(p => { room.scores[p.slot] = 0; });
