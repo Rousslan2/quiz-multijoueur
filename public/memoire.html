@@ -49,7 +49,7 @@ h2{font-size:1.5rem;font-weight:800;background:linear-gradient(135deg,var(--prim
 <body>
 <div class="zp-space-bg"><div class="zp-neb1"></div><div class="zp-neb2"></div><div class="zp-stars" id="zp-stars-memoire"></div><div class="zp-sgrid"></div><div class="zp-comet"></div></div>
 <div id="app">
-<button id="back" onclick="history.back()">← Retour</button>
+<button id="back" onclick="history.back()">← <span data-i18n="ui_back">Retour</span></button>
 <div id="dot"></div>
 
 <template id="tpl-sc">
@@ -64,14 +64,14 @@ h2{font-size:1.5rem;font-weight:800;background:linear-gradient(135deg,var(--prim
   <h2>🃏 Mémoire</h2>
   <div class="card" style="display:flex;flex-direction:column;gap:10px">
     <p style="text-align:center;color:var(--muted);font-size:.85rem">Retrouve les paires ! Le plus de paires remportées gagne · 2–4 joueurs</p>
-    <input id="name-input" type="text" maxlength="20" placeholder="Ton pseudo" autocomplete="off">
+    <input id="name-input" type="text" maxlength="20" placeholder="Ton pseudo" data-i18n-ph="ui_name_ph" autocomplete="off">
     <div style="display:flex;gap:8px">
-      <button class="btn btn-p" style="flex:1" onclick="createGame()">Créer une salle</button>
-      <button class="btn btn-s" style="flex:1" onclick="toggleJoin()">Rejoindre</button>
+      <button class="btn btn-p" style="flex:1" onclick="createGame()" data-i18n="lobby_create_btn">Créer la salle</button>
+      <button class="btn btn-s" style="flex:1" onclick="toggleJoin()" data-i18n="lobby_join">Rejoindre</button>
     </div>
     <div id="join-area" style="display:none;flex-direction:column;gap:8px">
-      <input id="code-in" type="text" maxlength="4" placeholder="Code ABCD" autocomplete="off" style="text-transform:uppercase;text-align:center;font-size:1.2rem;letter-spacing:.15em">
-      <button class="btn btn-p btn-full" onclick="joinGame()">Rejoindre →</button>
+      <input id="code-in" type="text" maxlength="4" placeholder="Code ABCD" data-i18n-ph="ui_code_ph" autocomplete="off" style="text-transform:uppercase;text-align:center;font-size:1.2rem;letter-spacing:.15em">
+      <button class="btn btn-p btn-full" onclick="joinGame()"><span data-i18n="lobby_join_btn">Rejoindre</span> →</button>
     </div>
     <p id="err" style="color:var(--bad);text-align:center;font-size:.85rem;min-height:18px"></p>
   </div>
