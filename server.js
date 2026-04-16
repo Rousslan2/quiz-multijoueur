@@ -4669,29 +4669,45 @@ wssPhrase.on('connection', ws => {
 });
 
 // ════════════════════════════════════════════════════════
-//  LOGO QUIZ (deviner la marque depuis le nom du logo)
+//  LOGO QUIZ (logos SVG via CDN Simple Icons — usage éducatif / devinette)
 // ════════════════════════════════════════════════════════
+const SIMPLE_ICONS_VER = '13.21.0';
+function logoquizIconUrl(slug) {
+  return `https://cdn.jsdelivr.net/npm/simple-icons@${SIMPLE_ICONS_VER}/icons/${slug}.svg`;
+}
+function logoquizNormAns(s) {
+  return String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '');
+}
+function logoquizAnswerOk(room, raw) {
+  const cur = room.current;
+  if (!cur) return false;
+  const g = logoquizNormAns(raw);
+  if (!g) return false;
+  const ok = [cur.brand, cur.slug, ...(cur.aliases || [])].map(logoquizNormAns);
+  return ok.includes(g);
+}
 const LOGO_QUIZ_ITEMS = [
-  { brand: 'Apple', hint: 'Pomme croquée' },
-  { brand: 'Google', hint: 'Moteur de recherche' },
-  { brand: 'Nike', hint: 'Swoosh' },
-  { brand: 'McDonald\'s', hint: 'Fast-food' },
-  { brand: 'Starbucks', hint: 'Café' },
-  { brand: 'Amazon', hint: 'Fleuve flèche' },
-  { brand: 'Microsoft', hint: 'Fenêtres' },
-  { brand: 'Facebook', hint: 'Réseau social' },
-  { brand: 'Twitter', hint: 'Oiseau X' },
-  { brand: 'Instagram', hint: 'Caméra ronde' },
-  { brand: 'YouTube', hint: 'Lecture vidéo' },
-  { brand: 'Netflix', hint: 'Streaming' },
-  { brand: 'Spotify', hint: 'Musique' },
-  { brand: 'Adidas', hint: '3 bandes' },
-  { brand: 'Puma', hint: 'Félin' },
-  { brand: 'Coca-Cola', hint: 'Soda rouge' },
-  { brand: 'Pepsi', hint: 'Cola bleu' },
-  { brand: 'Samsung', hint: 'Électronique coréen' },
-  { brand: 'Sony', hint: 'PlayStation' },
-  { brand: 'Lego', hint: 'Briques' }
+  { slug: 'apple', brand: 'Apple', aliases: ['pomme'], hint: 'Tech & musique' },
+  { slug: 'google', brand: 'Google', aliases: [], hint: 'Moteur de recherche' },
+  { slug: 'nike', brand: 'Nike', aliases: [], hint: 'Sport — virgule' },
+  { slug: 'mcdonalds', brand: 'McDonald\'s', aliases: ['macdo', 'mcdo'], hint: 'Fast-food doré' },
+  { slug: 'starbucks', brand: 'Starbucks', aliases: [], hint: 'Café — sirène' },
+  { slug: 'amazon', brand: 'Amazon', aliases: [], hint: 'E-commerce — flèche sourire' },
+  { slug: 'microsoft', brand: 'Microsoft', aliases: [], hint: 'Windows & Xbox' },
+  { slug: 'facebook', brand: 'Facebook', aliases: ['meta'], hint: 'Réseau social bleu' },
+  { slug: 'x', brand: 'X', aliases: ['twitter'], hint: 'Réseau — ancien oiseau' },
+  { slug: 'instagram', brand: 'Instagram', aliases: ['insta'], hint: 'Photos — dégradé' },
+  { slug: 'youtube', brand: 'YouTube', aliases: ['yt'], hint: 'Vidéos — bouton play' },
+  { slug: 'netflix', brand: 'Netflix', aliases: [], hint: 'Streaming — N rouge' },
+  { slug: 'spotify', brand: 'Spotify', aliases: [], hint: 'Musique — lignes vertes' },
+  { slug: 'adidas', brand: 'Adidas', aliases: [], hint: 'Sport — 3 bandes' },
+  { slug: 'puma', brand: 'Puma', aliases: [], hint: 'Félin qui bondit' },
+  { slug: 'cocacola', brand: 'Coca-Cola', aliases: ['coca', 'cocacola'], hint: 'Soda rouge script' },
+  { slug: 'pepsi', brand: 'Pepsi', aliases: [], hint: 'Cola — cercle tricolore' },
+  { slug: 'samsung', brand: 'Samsung', aliases: [], hint: 'Galaxy & écrans' },
+  { slug: 'sony', brand: 'Sony', aliases: ['playstation'], hint: 'Console & image' },
+  { slug: 'lego', brand: 'Lego', aliases: [], hint: 'Briques à emboîter' }
 ];
 const logoquizRooms = new Map();
 function makeLogoquizRoom(code, host) {
@@ -4701,12 +4717,24 @@ function makeLogoquizRoom(code, host) {
   };
 }
 function logoquizSnap(room) {
+  let currentOut = null;
+  if (room.current) {
+    const u = logoquizIconUrl(room.current.slug);
+    if (room.phase === 'QUESTION') {
+      currentOut = { hint: room.current.hint, logoUrl: u };
+    } else {
+      currentOut = {
+        slug: room.current.slug,
+        brand: room.current.brand,
+        hint: room.current.hint,
+        logoUrl: u
+      };
+    }
+  }
   return {
     type: 'logoquiz_state', phase: room.phase, code: room.code,
     qIndex: room.qIndex, total: room.total,
-    current: room.phase === 'QUESTION' && room.current
-      ? { hint: room.current.hint }
-      : room.current,
+    current: currentOut,
     buzzSlot: room.buzzSlot,
     players: room.players.map(p => ({ name: p.name, slot: p.slot, score: room.scores[p.slot] || 0 }))
   };
@@ -4723,7 +4751,8 @@ function logoquizStartQ(room) {
     return;
   }
   const pool = shuffle(LOGO_QUIZ_ITEMS);
-  room.current = pool[room.qIndex % pool.length];
+  const pick = pool[room.qIndex % pool.length];
+  room.current = { ...pick, logoUrl: logoquizIconUrl(pick.slug) };
   room.phase = 'QUESTION';
   room.buzzSlot = null;
   room.firstAnswer = null;
@@ -4823,10 +4852,9 @@ wssLogoquiz.on('connection', ws => {
       case 'logoquiz_answer': {
         if (!room || room.phase !== 'QUESTION' || !player) return;
         if (room.buzzSlot !== player.slot) return;
-        const ans = String(d.text || '').trim().toLowerCase();
-        const brand = room.current ? room.current.brand.toLowerCase() : '';
+        const ans = String(d.text || '').trim();
         clearTimeout(room.timer);
-        if (ans === brand) {
+        if (logoquizAnswerOk(room, ans)) {
           room.scores[player.slot] = (room.scores[player.slot] || 0) + 1;
         }
         room.phase = 'REVEAL';

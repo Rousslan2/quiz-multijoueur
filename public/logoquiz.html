@@ -21,7 +21,9 @@ h1{text-align:center;font-size:1.5rem;color:var(--primary)}
 .btn-secondary{background:rgba(255,255,255,.08);border:1px solid var(--border);color:var(--text)}
 .btn-buzz{background:linear-gradient(135deg,var(--buzz),#ea580c);color:#fff}
 input[type=text]{width:100%;padding:12px;border-radius:10px;border:1px solid var(--border);background:rgba(255,255,255,.06);color:var(--text)}
-#hint-box{font-size:1.15rem;text-align:center;padding:20px;background:rgba(59,130,246,.1);border-radius:12px;border:1px solid var(--border);min-height:80px;display:flex;align-items:center;justify-content:center}
+#logo-wrap{display:flex;flex-direction:column;align-items:center;gap:12px;padding:16px;background:rgba(59,130,246,.08);border-radius:14px;border:1px solid var(--border)}
+#logo-img{width:min(200px,70vw);height:min(200px,70vw);object-fit:contain;padding:18px;background:rgba(255,255,255,.04);border-radius:12px}
+#hint-txt{font-size:.95rem;text-align:center;color:var(--muted);max-width:280px;line-height:1.4}
 #gcount{position:fixed;inset:0;background:rgba(15,12,41,.88);display:none;align-items:center;justify-content:center;z-index:500}
 #gcount span{font-size:5rem;font-weight:800;color:var(--buzz)}
 #err{color:#f87171;font-size:.85rem;text-align:center;min-height:18px}
@@ -35,7 +37,7 @@ input[type=text]{width:100%;padding:12px;border-radius:10px;border:1px solid var
 <div id="app">
   <div id="name-screen">
     <h1>🏷️ Logo Quiz</h1>
-    <p style="text-align:center;color:var(--muted);font-size:.85rem;margin-bottom:8px">Indice sur la marque — buzzez et donnez le nom exact.</p>
+    <p style="text-align:center;color:var(--muted);font-size:.85rem;margin-bottom:8px">Logo affiché — buzzez et donnez le nom de la marque.</p>
     <div class="card">
       <input id="name" maxlength="20" placeholder="Ton pseudo" autocomplete="off">
       <div style="display:flex;gap:8px;margin-top:10px">
@@ -56,17 +58,21 @@ input[type=text]{width:100%;padding:12px;border-radius:10px;border:1px solid var
         <div id="room-code" style="font-size:2rem;font-family:monospace;letter-spacing:.2em;color:var(--primary);font-weight:800">----</div>
       </div>
       <div id="pl-wait" style="margin-top:10px;text-align:center;font-size:.9rem;color:var(--muted)"></div>
+      <div id="wait-hint" style="margin-top:8px;text-align:center;font-size:.82rem;color:var(--muted);min-height:2.4em"></div>
       <button id="start-btn" class="btn btn-primary" style="margin-top:12px;display:none" onclick="send({type:'start_logoquiz'})">Lancer</button>
     </div>
     <div id="play" class="hidden" style="display:flex;flex-direction:column;gap:10px">
       <div class="card">
         <div style="text-align:center;color:var(--muted);font-size:.75rem;margin-bottom:6px"><span id="q-num"></span></div>
-        <div id="hint-box"><span id="hint-txt"></span></div>
+        <div id="logo-wrap">
+          <img id="logo-img" alt="" decoding="async" style="display:none">
+          <span id="hint-txt"></span>
+        </div>
         <div id="reveal-brand" style="display:none;text-align:center;margin-top:12px;font-size:1.2rem;font-weight:800;color:var(--primary)"></div>
       </div>
       <button id="btn-buzz" class="btn btn-buzz" onclick="send({type:'logoquiz_buzz'})">Buzzer</button>
       <div id="answer-zone" class="hidden">
-        <input id="ans-inp" type="text" placeholder="Nom de la marque" autocomplete="off">
+        <input id="ans-inp" type="text" placeholder="ex. Nike, Apple, McDonald's…" autocomplete="off">
         <button class="btn btn-primary" style="margin-top:8px" onclick="submitAns()">Valider</button>
       </div>
       <div id="scores" class="card" style="font-size:.9rem"></div>
@@ -134,7 +140,13 @@ function handle(m){
     $('wait').classList.remove('hidden');$('play').classList.add('hidden');$('over').classList.add('hidden');
     $('room-code').textContent=s.code||'----';
     $('pl-wait').textContent=s.players.map(p=>p.name).join(' · ');
-    $('start-btn').style.display=isHost&&s.players.length>=2?'block':'none';
+    const need=2,has=s.players.length,miss=need-has;
+    if(isHost){
+      $('wait-hint').textContent=miss>0?('Il manque encore '+miss+' joueur'+(miss>1?'s':'')+' (minimum '+need+'). Partage le code !'):'Tout le monde est prêt — tu peux lancer.';
+    }else{
+      $('wait-hint').textContent=miss>0?('En attente de joueurs ('+has+'/'+need+')…'):'L’hôte peut lancer la partie.';
+    }
+    $('start-btn').style.display=isHost&&has>=need?'block':'none';
     if(window.ZapPlay)ZapPlay.showLounge({players:s.players,mySlot,roomCode:s.code,gameName:'Logo Quiz'});
     return
   }
@@ -152,8 +164,13 @@ function handle(m){
     return
   }
   $('q-num').textContent='Question '+(s.qIndex+1)+' / '+s.total;
-  const hint=s.current&&s.current.hint?s.current.hint:'';
-  $('hint-txt').textContent=hint;
+  const img=$('logo-img'),hint=s.current&&s.current.hint?s.current.hint:'',url=s.current&&s.current.logoUrl?s.current.logoUrl:'';
+  if(url&&(s.phase==='QUESTION'||s.phase==='REVEAL')){
+    if(img.src!==url)img.src=url;
+    img.style.display='block';
+    img.onerror=function(){img.style.display='none';$('hint-txt').textContent=hint||(s.current&&s.current.brand?'':'Indice indisponible')};
+  }else{img.style.display='none';img.removeAttribute('src')}
+  $('hint-txt').textContent=s.phase==='QUESTION'?hint:(hint?('Indice : '+hint):'');
   const rb=$('reveal-brand');
   if(s.phase==='REVEAL'&&s.current&&s.current.brand){
     rb.style.display='block';rb.textContent='Réponse : '+s.current.brand

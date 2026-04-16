@@ -31,7 +31,7 @@ function savePseudo(name){
 function autoFillPseudo(){
   const saved=getSavedPseudo();
   if(!saved)return;
-  const selectors=['#inp-name','#name-input','#inp-create-name','#inp-join-name'];
+  const selectors=['#inp-name','#name-input','#name','#inp-create-name','#inp-join-name'];
   selectors.forEach(sel=>{
     const el=document.querySelector(sel);
     if(el&&!el.value)el.value=saved;
@@ -39,7 +39,7 @@ function autoFillPseudo(){
 }
 
 function hookPseudoInputs(){
-  const selectors=['#inp-name','#name-input','#inp-create-name','#inp-join-name'];
+  const selectors=['#inp-name','#name-input','#name','#inp-create-name','#inp-join-name'];
   selectors.forEach(sel=>{
     const el=document.querySelector(sel);
     if(!el)return;

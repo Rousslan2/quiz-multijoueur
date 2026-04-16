@@ -53,6 +53,7 @@ input[type=text]{width:100%;padding:12px;border-radius:10px;border:1px solid var
       <div style="font-size:.7rem;color:var(--muted)">Code de la salle</div>
       <div id="code-disp" style="font-size:2.2rem;font-weight:800;letter-spacing:.2em;color:var(--primary);font-family:monospace">----</div>
       <div id="wait-players" style="margin-top:10px;font-size:.9rem"></div>
+      <div id="wait-hint" style="margin-top:8px;text-align:center;font-size:.82rem;color:var(--muted);min-height:2.4em"></div>
     </div>
     <button id="btn-start" class="btn btn-primary" style="display:none" onclick="send({type:'start_phrase'})">Lancer la partie</button>
   </div>
@@ -114,7 +115,13 @@ function handleMsg(m){
   if(s.phase==='WAITING'){
     el('code-disp').textContent=s.code||'----';
     el('wait-players').textContent=s.players.map(p=>p.name).join(' · ');
-    el('btn-start').style.display=isHost&&s.players.length>=3?'block':'none';
+    var need=3,has=s.players.length,miss=need-has;
+    if(isHost){
+      el('wait-hint').textContent=miss>0?('Il manque encore '+miss+' joueur'+(miss>1?'s':'')+' (minimum '+need+'). Partage le code !'):'Tout le monde est prêt — tu peux lancer.';
+    }else{
+      el('wait-hint').textContent=miss>0?('En attente de joueurs ('+has+'/'+need+')…'):'L’hôte peut lancer la partie.';
+    }
+    el('btn-start').style.display=isHost&&has>=need?'block':'none';
     if(window.ZapPlay)ZapPlay.showLounge({players:s.players,mySlot,roomCode:s.code,gameName:'Phrase interdite'});
     show('s-wait');return
   }
