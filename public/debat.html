@@ -81,7 +81,7 @@ input[type=text]{width:100%;padding:12px;border-radius:10px;border:1px solid var
 <script src="chat.js"></script>
 <script>
 const WS=(location.protocol==='https:'?'wss':'ws')+'://'+location.host+'/ws/debat';
-let ws=null,mySlot=-1,myName='',hostName='',pending=null,timerId=null,endTs=0;
+let ws=null,mySlot=-1,myName='',pending=null,timerId=null,endTs=0;
 function el(id){return document.getElementById(id)}
 function send(o){if(ws&&ws.readyState===1)ws.send(JSON.stringify(o))}
 function connect(){
@@ -128,10 +128,9 @@ function handle(m){
   if(m.type==='created_debat'){mySlot=m.slot;myName=m.name}
   if(m.type==='welcome_debat'){mySlot=m.slot;myName=m.name}
   if(m.type!=='debat_state')return;
-  const s=m;hostName=s.host||'';
+  const s=m;
   if(mySlot<0&&myName){const me=s.players.find(p=>p.name===myName);if(me)mySlot=me.slot}
-  const me=s.players.find(p=>p.slot===mySlot);
-  const isHost=me&&me.name===hostName;
+  const isHost=mySlot===0;
   if(s.phase==='WAITING'){
     el('code-disp').textContent=s.code||'----';
     el('wait-pl').textContent=s.players.map(p=>p.name).join(' · ');

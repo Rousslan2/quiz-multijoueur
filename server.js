@@ -4606,7 +4606,7 @@ wssPhrase.on('connection', ws => {
         break;
       }
       case 'start_phrase': {
-        if (!room || !player || player.name !== room.host || room.phase !== 'WAITING') return;
+        if (!room || !player || player.slot !== 0 || room.phase !== 'WAITING') return;
         if (room.players.length < 3) { wsend(ws, { type: 'error', msg: 'Il faut au moins 3 joueurs.' }); return; }
         room.totalRounds = 5;
         room.round = 0;
@@ -4618,7 +4618,7 @@ wssPhrase.on('connection', ws => {
       }
       case 'phrase_set_target': {
         if (!room || room.phase !== 'CHOOSE' || !player) return;
-        if (player.name !== room.host) return;
+        if (player.slot !== 0) return;
         const t = Number(d.targetSlot);
         if (!room.players.find(p => p.slot === t) || t === player.slot) return;
         room.targetSlot = t;
@@ -4652,7 +4652,7 @@ wssPhrase.on('connection', ws => {
         break;
       }
       case 'restart_phrase': {
-        if (!room || !player || player.name !== room.host || room.phase !== 'GAME_OVER') return;
+        if (!room || !player || player.slot !== 0 || room.phase !== 'GAME_OVER') return;
         room.phase = 'WAITING';
         room.round = 0;
         room.targetSlot = null;
@@ -4792,7 +4792,7 @@ wssLogoquiz.on('connection', ws => {
         break;
       }
       case 'start_logoquiz': {
-        if (!room || !player || player.name !== room.host || room.phase !== 'WAITING') return;
+        if (!room || !player || player.slot !== 0 || room.phase !== 'WAITING') return;
         if (room.players.length < 2) { wsend(ws, { type: 'error', msg: 'Il faut au moins 2 joueurs.' }); return; }
         room.qIndex = 0;
         room.total = 10;
@@ -4835,7 +4835,7 @@ wssLogoquiz.on('connection', ws => {
         break;
       }
       case 'restart_logoquiz': {
-        if (!room || !player || player.name !== room.host || room.phase !== 'GAME_OVER') return;
+        if (!room || !player || player.slot !== 0 || room.phase !== 'GAME_OVER') return;
         room.phase = 'WAITING';
         room.qIndex = 0;
         room.current = null;
@@ -4981,7 +4981,7 @@ wssDebat.on('connection', ws => {
         break;
       }
       case 'start_debat': {
-        if (!room || !player || player.name !== room.host || room.phase !== 'WAITING') return;
+        if (!room || !player || player.slot !== 0 || room.phase !== 'WAITING') return;
         if (room.players.length < 3) { wsend(ws, { type: 'error', msg: 'Il faut au moins 3 joueurs.' }); return; }
         room.totalRounds = 5;
         room.round = 0;
@@ -5003,7 +5003,7 @@ wssDebat.on('connection', ws => {
         break;
       }
       case 'restart_debat': {
-        if (!room || !player || player.name !== room.host || room.phase !== 'GAME_OVER') return;
+        if (!room || !player || player.slot !== 0 || room.phase !== 'GAME_OVER') return;
         room.phase = 'WAITING';
         room.round = 0;
         room.topic = '';
