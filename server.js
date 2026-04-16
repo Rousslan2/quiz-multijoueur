@@ -4450,7 +4450,9 @@ wssImposteur.on('connection', ws => {
     }
 
     else if (d.type === 'restart_imposteur') {
-      if (!room || room.phase !== 'GAME_OVER') return;
+      if (!room) return;
+      const isFinalScores = (room.phase === 'SCORES' && room.round >= room.totalRounds);
+      if (!(room.phase === 'GAME_OVER' || isFinalScores)) return;
       const p = room.players.find(p=>p.ws===ws);
       if (!p || p.name !== room.host) return;
       room.phase = 'WAITING';
