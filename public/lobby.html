@@ -274,12 +274,12 @@ select option{background:#0D0D1F;color:var(--text)}
 <div class="zp-space-bg"><div class="zp-neb1"></div><div class="zp-neb2"></div><div class="zp-stars" id="zp-stars-lobby"></div><div class="zp-sgrid"></div><div class="zp-comet"></div></div>
 
 <div class="header">
-  <a class="back-btn" href="index.html" data-i18n="nav_home">&#8592; Accueil</a>
+  <a class="back-btn" href="index.html">&#8592; Accueil</a>
   <div class="header-info">
-    <div class="header-title" data-i18n="lobby_title">Salles en ligne</div>
+    <div class="header-title">Salles en ligne</div>
     <div class="header-sub">
       <span class="live-dot"></span>
-      <span data-i18n="lobby_realtime">Temps réel</span>
+      Temps réel
     </div>
   </div>
 </div>
@@ -292,9 +292,9 @@ select option{background:#0D0D1F;color:var(--text)}
     <div class="action-card">
       <div class="action-title">
         <span class="action-title-icon">+</span>
-        <span data-i18n="lobby_create_room">Créer une salle</span>
+        Créer une salle
       </div>
-      <div class="action-desc" data-i18n="lobby_create_desc">Choisissez un jeu et partagez le code.</div>
+      <div class="action-desc">Choisissez un jeu et partagez le code.</div>
       <select id="sel-game">
         <option value="quiz">⚡ Quiz Éclair</option>
         <option value="draw">✏️ Dessin &amp; Devine</option>
@@ -314,14 +314,14 @@ select option{background:#0D0D1F;color:var(--text)}
         <option value="timeline">📅 Timeline</option>
         <option value="memo">🃏 Mémoire</option>
       </select>
-      <input type="text" id="inp-create-name" data-i18n-ph="ph_your_name" placeholder="Votre prénom" maxlength="20" autocomplete="off">
-      <button class="btn btn-create" onclick="doCreate()" data-i18n="lobby_create_btn">Créer la salle</button>
+      <input type="text" id="inp-create-name" placeholder="Votre prénom" maxlength="20" autocomplete="off">
+      <button class="btn btn-create" onclick="doCreate()">Créer la salle</button>
       <div id="create-status" class="status-msg"></div>
       <div id="code-box" style="display:none">
-        <div class="code-box" onclick="copyCode()" title="Cliquer pour copier" data-i18n-title="copy_click">
-          <div class="code-label" data-i18n="lobby_room_code">Code de la salle</div>
+        <div class="code-box" onclick="copyCode()" title="Cliquer pour copier">
+          <div class="code-label">Code de la salle</div>
           <div class="code-value" id="code-val">----</div>
-          <div class="code-hint" id="copy-hint" data-i18n="copy_click">Cliquer pour copier</div>
+          <div class="code-hint" id="copy-hint">Cliquer pour copier</div>
         </div>
       </div>
     </div>
@@ -330,12 +330,12 @@ select option{background:#0D0D1F;color:var(--text)}
     <div class="action-card join-card">
       <div class="action-title">
         <span class="action-title-icon">&#128273;</span>
-        <span data-i18n="lobby_join">Rejoindre</span>
+        Rejoindre
       </div>
-      <div class="action-desc" data-i18n="lobby_join_desc">Entrez le code 4 lettres partagé par l'hôte.</div>
-      <input class="code-input" type="text" id="inp-join-code" data-i18n-ph="ph_code" placeholder="CODE" maxlength="4" autocomplete="off">
-      <input type="text" id="inp-join-name" data-i18n-ph="ph_your_name" placeholder="Votre prénom" maxlength="20" autocomplete="off">
-      <button class="btn btn-join" onclick="doJoinCode()" data-i18n="lobby_join_btn">Rejoindre</button>
+      <div class="action-desc">Entrez le code 4 lettres partagé par l'hôte.</div>
+      <input class="code-input" type="text" id="inp-join-code" placeholder="CODE" maxlength="4" autocomplete="off">
+      <input type="text" id="inp-join-name" placeholder="Votre prénom" maxlength="20" autocomplete="off">
+      <button class="btn btn-join" onclick="doJoinCode()">Rejoindre</button>
       <div id="join-status" class="status-msg"></div>
     </div>
 
@@ -344,7 +344,7 @@ select option{background:#0D0D1F;color:var(--text)}
   <!-- Rooms list -->
   <div class="rooms-panel">
     <div class="rooms-panel-header">
-      <div class="rooms-title" data-i18n="lobby_available_rooms">&#128249; Salles disponibles</div>
+      <div class="rooms-title">&#128249; Salles disponibles</div>
       <span class="rooms-count" id="rooms-count">0 salle</span>
     </div>
     <div class="rooms-body" id="rooms-list">

@@ -113,7 +113,7 @@
     </button>
     <div id="chat-panel">
       <div id="chat-header">
-        <div><span id="chat-title">Chat</span><small id="chat-online">&#x25cf; en ligne</small></div>
+        <div><span>Chat</span><small id="chat-online">&#x25cf; en ligne</small></div>
         <button id="chat-close">&#10005;</button>
       </div>
       <div id="chat-name-row">
@@ -147,28 +147,6 @@
   const offline   = document.getElementById('chat-offline');
   const input     = document.getElementById('chat-input');
   const sendBtn   = document.getElementById('chat-send');
-
-  // ── i18n ─────────────────────────────────────────────────────────────────────
-  function tt(key, fallback) {
-    try {
-      if (window.ZapPlay && typeof ZapPlay.t === 'function') return ZapPlay.t(key);
-    } catch {}
-    return fallback;
-  }
-  function applyI18n() {
-    const title = document.getElementById('chat-title');
-    if (title) title.textContent = tt('chat_title', 'Chat');
-    const online = document.getElementById('chat-online');
-    if (online) online.innerHTML = '&#x25cf; ' + tt('chat_online', 'en ligne');
-    const phName = tt('chat_name_ph', 'Votre pseudo...');
-    if (nameInput) nameInput.placeholder = phName;
-    const phMsg = tt('chat_msg_ph', 'Message...');
-    if (input) input.placeholder = phMsg;
-    if (offline) offline.textContent = tt('chat_reconnect', 'Reconnexion...');
-    if (fab) fab.title = tt('chat_fab_title', 'Chat');
-  }
-  applyI18n();
-  window.addEventListener('zapplay:lang', applyI18n);
 
   if (myName) {
     nameInput.value = myName;

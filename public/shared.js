@@ -63,46 +63,6 @@ fr:{
   g_mem_n:'Mémoire',g_mem_d:'Retourne les cartes et retrouve les paires ! Tour par tour.',g_mem_b:'2–4 joueurs · Mémoire',
   g_imp_n:'Imposteur',g_imp_d:'Un mot secret, un traître parmi vous. Décrivez, bluffez, démasquez !',g_imp_b:'3–8 joueurs · Bluff',
   g_lob_n:'Salles en ligne',g_lob_d:'Créez ou rejoignez une salle, voyez les parties en cours en temps réel !',g_lob_b:'Lobby · Temps réel',
-
-  // Lobby page
-  lobby_back:'Accueil',
-  lobby_title:'Salles en ligne',
-  lobby_rt:'Temps réel',
-  lobby_create:'Créer une salle',
-  lobby_create_desc:'Choisissez un jeu et partagez le code.',
-  lobby_your_name_ph:'Votre prénom',
-  lobby_create_btn:'Créer la salle',
-  lobby_room_code:'Code de la salle',
-  lobby_copy:'Cliquer pour copier',
-  lobby_join:'Rejoindre',
-  lobby_join_desc:"Entrez le code 4 lettres partagé par l'hôte.",
-  lobby_join_btn:'Rejoindre',
-  lobby_rooms:'Salles disponibles',
-
-  // Chat global
-  chat_title:'Chat',
-  chat_online:'● en ligne',
-  chat_name_ph:'Votre pseudo...',
-  chat_reconnect:'Reconnexion...',
-  chat_msg_ph:'Message...',
-
-  // Imposteur
-  imp_home_back:'Accueil',
-  imp_wait_msg:'En attente des joueurs (3–8)…',
-  imp_waiting_others:'En attente des autres joueurs…',
-  imp_waiting_host:'En attente de l’hôte…',
-  imp_gameover_title:'Fin de partie !',
-  imp_rank:'Classement',
-  imp_replay:'Rejouer',
-  imp_quit:'Quitter',
-
-  // Word Bomb
-  bomb_back:'Accueil',
-  bomb_name_ph:'Ton pseudo',
-  bomb_create:'Créer une salle',
-  bomb_join_code:'Rejoindre (code)',
-  bomb_join:'Rejoindre',
-  bomb_home:'Accueil',
 },
 en:{
   l_tag:'Multiplayer Arcade',l_init:'Initializing',l_load:'Loading',l_conn:'Connecting',l_prep:'Preparing',
@@ -149,46 +109,6 @@ en:{
   g_mem_n:'Memory',g_mem_d:'Flip cards and find the pairs! Turn by turn.',g_mem_b:'2–4 players · Memory',
   g_imp_n:'Impostor',g_imp_d:'A secret word, a traitor among you. Describe, bluff, expose!',g_imp_b:'3–8 players · Bluff',
   g_lob_n:'Online Rooms',g_lob_d:'Create or join a room, see live games in real time!',g_lob_b:'Lobby · Real time',
-
-  // Lobby page
-  lobby_back:'Home',
-  lobby_title:'Online rooms',
-  lobby_rt:'Real-time',
-  lobby_create:'Create a room',
-  lobby_create_desc:'Choose a game and share the code.',
-  lobby_your_name_ph:'Your name',
-  lobby_create_btn:'Create room',
-  lobby_room_code:'Room code',
-  lobby_copy:'Click to copy',
-  lobby_join:'Join',
-  lobby_join_desc:'Enter the 4-letter code shared by the host.',
-  lobby_join_btn:'Join',
-  lobby_rooms:'Available rooms',
-
-  // Global chat
-  chat_title:'Chat',
-  chat_online:'● online',
-  chat_name_ph:'Your name...',
-  chat_reconnect:'Reconnecting...',
-  chat_msg_ph:'Message...',
-
-  // Impostor
-  imp_home_back:'Home',
-  imp_wait_msg:'Waiting for players (3–8)…',
-  imp_waiting_others:'Waiting for other players…',
-  imp_waiting_host:'Waiting for host…',
-  imp_gameover_title:'Game over!',
-  imp_rank:'Ranking',
-  imp_replay:'Play again',
-  imp_quit:'Quit',
-
-  // Word Bomb
-  bomb_back:'Home',
-  bomb_name_ph:'Your name',
-  bomb_create:'Create room',
-  bomb_join_code:'Join (code)',
-  bomb_join:'Join',
-  bomb_home:'Home',
 }};
 
 function t(key,vars){
@@ -213,7 +133,6 @@ function setLang(lang){
   applyLang();
   renderHistoryWidget('history-widget');
   renderSocialWidget('social-widget');
-  try{ window.dispatchEvent(new CustomEvent('zapplay:lang', { detail:{ lang: currentLang } })); }catch{}
 }
 
 function applyLang(){

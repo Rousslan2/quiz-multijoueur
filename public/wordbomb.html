@@ -163,7 +163,7 @@ input:focus{border-color:var(--primary)}
 <body>
 <div class="zp-space-bg"><div class="zp-neb1"></div><div class="zp-neb2"></div><div class="zp-stars" id="zp-stars-wordbomb"></div><div class="zp-sgrid"></div><div class="zp-comet"></div></div>
 <div id="gcount"><span id="gnum">3</span></div>
-<button id="back" onclick="location.href='index.html'" data-i18n="wb_back">← Accueil</button>
+<button id="back" onclick="location.href='index.html'">← Accueil</button>
 <button id="sound-btn" onclick="toggleSound()" title="Son">🔊</button>
 <div id="dot"></div>
 <div id="app">
@@ -171,12 +171,12 @@ input:focus{border-color:var(--primary)}
 
   <div id="name-screen">
     <div class="card" style="display:flex;flex-direction:column;gap:8px">
-      <input id="name" maxlength="20" placeholder="Ton pseudo" data-i18n-ph="wb_name_ph">
-      <button class="btn btn-primary" onclick="createGame()" data-i18n="wb_create">Créer une salle</button>
-      <button class="btn btn-buzz" onclick="toggleJoin()" data-i18n="wb_join_toggle">Rejoindre (code)</button>
+      <input id="name" maxlength="20" placeholder="Ton pseudo">
+      <button class="btn btn-primary" onclick="createGame()">Créer une salle</button>
+      <button class="btn btn-buzz" onclick="toggleJoin()">Rejoindre (code)</button>
       <div id="join-area">
         <input id="code" maxlength="4" placeholder="Code (ABCD)" style="text-transform:uppercase;letter-spacing:.14em;text-align:center">
-        <button class="btn btn-buzz" onclick="joinGame()" data-i18n="wb_join">Rejoindre</button>
+        <button class="btn btn-buzz" onclick="joinGame()">Rejoindre</button>
       </div>
       <div id="err" style="color:#fca5a5;font-size:.82rem;min-height:18px;text-align:center"></div>
     </div>
@@ -225,7 +225,7 @@ input:focus{border-color:var(--primary)}
     <div id="over" class="card hidden" style="text-align:center;display:flex;flex-direction:column;gap:10px">
       <div id="over-title" style="font-size:1.3rem;font-weight:800"></div>
       <button class="btn btn-primary" onclick="restart()">Rejouer</button>
-      <button class="btn btn-muted" onclick="location.href='index.html'" data-i18n="wb_home">Accueil</button>
+      <button class="btn btn-muted" onclick="location.href='index.html'">Accueil</button>
     </div>
   </div>
 </div>
