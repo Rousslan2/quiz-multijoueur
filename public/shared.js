@@ -944,7 +944,121 @@ function renderSocialWidget(containerId){
 }
 
 // ═══════════════════════════════════════════════════════
-//  4. INIT
+//  4. ANIMATION ACCUEIL NOUVEAUX JOUEURS
+// ═══════════════════════════════════════════════════════
+
+function showWelcomeScreen(){
+  if(document.getElementById('zp-welcome'))return;
+  const css=document.createElement('style');
+  css.id='zp-welcome-css';
+  css.textContent=[
+    '#zp-welcome{position:fixed;inset:0;z-index:99998;background:#06060F;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;animation:wc-bg-in .5s ease both;}',
+    '@keyframes wc-bg-in{from{opacity:0}to{opacity:1}}',
+    '#zp-welcome.hide{animation:wc-bg-out .7s ease forwards;pointer-events:none;}',
+    '@keyframes wc-bg-out{from{opacity:1;transform:scale(1)}to{opacity:0;transform:scale(1.04)}}',
+    '#zp-welcome::before{content:"";position:absolute;inset:0;background-image:linear-gradient(rgba(0,245,212,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(0,245,212,.04) 1px,transparent 1px);background-size:40px 40px;animation:wc-grid 10s linear infinite;}',
+    '@keyframes wc-grid{0%{transform:translateY(0)}100%{transform:translateY(40px)}}',
+    '#zp-welcome::after{content:"";position:absolute;left:0;right:0;height:200px;background:linear-gradient(transparent,rgba(0,245,212,.05),transparent);animation:wc-scan 3.5s linear infinite;pointer-events:none;}',
+    '@keyframes wc-scan{0%{top:-200px}100%{top:100vh}}',
+    '.wc-corner{position:absolute;width:40px;height:40px;border-color:rgba(0,245,212,.4);border-style:solid;}',
+    '.wc-corner.tl{top:16px;left:16px;border-width:2px 0 0 2px}',
+    '.wc-corner.tr{top:16px;right:16px;border-width:2px 2px 0 0}',
+    '.wc-corner.bl{bottom:16px;left:16px;border-width:0 0 2px 2px}',
+    '.wc-corner.br{bottom:16px;right:16px;border-width:0 2px 2px 0}',
+    '.wc-p{position:absolute;border-radius:50%;animation:wc-pfloat linear infinite;}',
+    '@keyframes wc-pfloat{0%{transform:translateY(100vh) translateX(0);opacity:0}10%{opacity:.5}90%{opacity:.2}100%{transform:translateY(-40px) translateX(15px);opacity:0}}',
+    '.wc-content{position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;text-align:center;padding:0 24px;width:100%;max-width:420px;}',
+    '.wc-eyebrow{font-family:"Orbitron",monospace;font-size:.52rem;font-weight:700;letter-spacing:.5em;text-transform:uppercase;color:rgba(0,245,212,.45);margin-bottom:14px;animation:wc-up .6s .1s ease both;}',
+    '@keyframes wc-up{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}',
+    '.wc-logo{font-family:"Orbitron",monospace;font-weight:900;font-size:clamp(3rem,14vw,5.5rem);letter-spacing:.06em;color:#00F5D4;text-shadow:0 0 24px rgba(0,245,212,.9),0 0 70px rgba(0,245,212,.35),0 0 140px rgba(0,245,212,.12);animation:wc-up .7s .2s cubic-bezier(.2,0,.2,1) both,wc-glitch 5s 2s infinite;margin-bottom:8px;}',
+    '@keyframes wc-glitch{0%,88%,100%{transform:translate(0);text-shadow:0 0 24px rgba(0,245,212,.9),0 0 70px rgba(0,245,212,.35)}89%{transform:translate(-4px,1px);text-shadow:-4px 0 #FF3864,4px 0 #FF6B35}90%{transform:translate(4px,-1px);text-shadow:4px 0 #FF6B35,-4px 0 #FF3864}91%{transform:translate(0);text-shadow:0 0 24px rgba(0,245,212,.9),0 0 70px rgba(0,245,212,.35)}92%{transform:translate(2px,2px);text-shadow:-2px 0 #FF3864}93%{transform:translate(0);text-shadow:0 0 24px rgba(0,245,212,.9),0 0 70px rgba(0,245,212,.35)}}',
+    '.wc-sub{font-family:"Exo 2",sans-serif;font-size:.82rem;font-weight:500;letter-spacing:.22em;text-transform:uppercase;color:rgba(90,90,120,.85);margin-bottom:36px;animation:wc-up .6s .38s ease both;}',
+    '.wc-card{background:rgba(14,14,34,.92);border:1px solid rgba(0,245,212,.14);border-top:2px solid rgba(0,245,212,.5);border-radius:18px;padding:30px 32px;width:100%;backdrop-filter:blur(14px);animation:wc-up .7s .52s cubic-bezier(.2,0,.2,1) both;box-shadow:0 0 80px rgba(0,245,212,.06),0 30px 60px rgba(0,0,0,.5);}',
+    '.wc-card-title{font-family:"Orbitron",monospace;font-size:.78rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#00F5D4;margin-bottom:8px;}',
+    '.wc-card-hint{font-family:"Exo 2",sans-serif;font-size:.73rem;color:rgba(90,90,120,.9);letter-spacing:.04em;line-height:1.55;margin-bottom:22px;}',
+    '.wc-inp{width:100%;background:rgba(0,0,0,.45);border:1px solid rgba(0,245,212,.22);border-radius:10px;padding:14px 18px;font-family:"Exo 2",sans-serif;font-size:1rem;font-weight:600;color:#E8E8F0;outline:none;text-align:center;letter-spacing:.06em;transition:border-color .2s,box-shadow .2s;animation:wc-border-pulse 3s 1.8s ease-in-out infinite;margin-bottom:14px;}',
+    '.wc-inp::placeholder{color:rgba(90,90,120,.65);}',
+    '.wc-inp:focus{border-color:rgba(0,245,212,.75);box-shadow:0 0 0 3px rgba(0,245,212,.12),0 0 24px rgba(0,245,212,.15);animation:none;}',
+    '@keyframes wc-border-pulse{0%,100%{border-color:rgba(0,245,212,.22);box-shadow:none}50%{border-color:rgba(0,245,212,.55);box-shadow:0 0 18px rgba(0,245,212,.12)}}',
+    '.wc-inp.wc-shake{animation:wc-shk .4s ease !important;}',
+    '@keyframes wc-shk{0%,100%{transform:translateX(0)}20%{transform:translateX(-8px)}40%{transform:translateX(8px)}60%{transform:translateX(-5px)}80%{transform:translateX(5px)}}',
+    '.wc-btn{width:100%;background:linear-gradient(135deg,rgba(0,245,212,.16),rgba(0,245,212,.07));border:1px solid rgba(0,245,212,.45);border-radius:10px;padding:15px;font-family:"Orbitron",monospace;font-size:.78rem;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#00F5D4;cursor:pointer;transition:background .2s,box-shadow .2s,transform .15s;position:relative;overflow:hidden;}',
+    '.wc-btn:hover{background:linear-gradient(135deg,rgba(0,245,212,.28),rgba(0,245,212,.14));box-shadow:0 0 28px rgba(0,245,212,.28),0 0 60px rgba(0,245,212,.1);transform:translateY(-2px);}',
+    '.wc-btn:active{transform:scale(.97);}',
+    '.wc-btn::before{content:"";position:absolute;top:0;left:-100%;width:100%;height:100%;background:linear-gradient(90deg,transparent,rgba(0,245,212,.18),transparent);transition:left .45s;}',
+    '.wc-btn:hover::before{left:100%;}',
+    '.wc-burst{position:fixed;border-radius:50%;pointer-events:none;animation:wc-burst-a .9s ease-out forwards;}',
+    '@keyframes wc-burst-a{0%{transform:translate(0,0) scale(1);opacity:1}100%{transform:var(--tx) scale(0);opacity:0}}',
+    '.wc-greet{position:absolute;font-family:"Orbitron",monospace;font-size:clamp(.95rem,4vw,1.4rem);font-weight:700;letter-spacing:.08em;color:#00F5D4;text-shadow:0 0 20px rgba(0,245,212,.7);opacity:0;text-align:center;padding:0 20px;transition:opacity .4s,transform .4s;}',
+  ].join('');
+  document.head.appendChild(css);
+
+  const ov=document.createElement('div');ov.id='zp-welcome';
+  ['tl','tr','bl','br'].forEach(c=>{const d=document.createElement('div');d.className='wc-corner '+c;ov.appendChild(d);});
+
+  const pColors=['#00F5D4','#FF3864','#3B82F6','#A855F7','#FFE234','#FF6B35'];
+  for(let i=0;i<22;i++){
+    const p=document.createElement('div');p.className='wc-p';
+    const sz=(.5+Math.random()*2.5).toFixed(1);
+    p.style.cssText='left:'+Math.round(Math.random()*100)+'%;width:'+sz+'px;height:'+sz+'px;background:'+pColors[i%pColors.length]+';animation-duration:'+(4+Math.random()*9).toFixed(1)+'s;animation-delay:'+(Math.random()*7).toFixed(1)+'s;opacity:0';
+    ov.appendChild(p);
+  }
+
+  const cont=document.createElement('div');cont.className='wc-content';
+  cont.innerHTML='<div class="wc-eyebrow">— Première connexion —</div>'
+    +'<div class="wc-logo">ZapPlay</div>'
+    +'<div class="wc-sub">Arcade Multijoueur · En ligne</div>'
+    +'<div class="wc-card">'
+      +'<div class="wc-card-title">Choisis ton pseudo</div>'
+      +'<div class="wc-card-hint">Il sera utilisé dans tous les jeux &amp; chats.<br>Tu pourras le changer depuis ton profil.</div>'
+      +'<input id="wc-inp" class="wc-inp" type="text" placeholder="Ex : FlashZap, NeonRider…" maxlength="20" autocomplete="off" spellcheck="false">'
+      +'<button id="wc-btn" class="wc-btn">Entrer dans l\'arène ⚡</button>'
+    +'</div>';
+  ov.appendChild(cont);
+
+  const greet=document.createElement('div');greet.className='wc-greet';ov.appendChild(greet);
+  document.body.prepend(ov);
+  setTimeout(()=>{const el=document.getElementById('wc-inp');if(el)el.focus();},900);
+
+  function submit(){
+    const inp=document.getElementById('wc-inp');
+    const val=inp?inp.value.trim():'';
+    if(!val){
+      if(inp){inp.classList.remove('wc-shake');void inp.offsetWidth;inp.classList.add('wc-shake');}
+      return;
+    }
+    savePseudo(val);
+    const btn=document.getElementById('wc-btn');
+    if(btn){
+      const r=btn.getBoundingClientRect();
+      const cx=r.left+r.width/2,cy=r.top+r.height/2;
+      const bc=['#00F5D4','#FF3864','#FFE234','#3B82F6','#A855F7','#FF6B35','#22C55E'];
+      for(let i=0;i<28;i++){
+        const bp=document.createElement('div');bp.className='wc-burst';
+        const ang=(i/28)*Math.PI*2;
+        const dist=55+Math.random()*90;
+        const sz=2+Math.random()*5;
+        bp.style.cssText='left:'+cx+'px;top:'+cy+'px;width:'+sz+'px;height:'+sz+'px;background:'+bc[i%bc.length]+';--tx:translate('+Math.cos(ang)*dist+'px,'+Math.sin(ang)*dist+'px)';
+        document.body.appendChild(bp);
+        setTimeout(()=>bp.remove(),950);
+      }
+    }
+    greet.textContent='Bienvenue, '+val+' !';
+    setTimeout(()=>{greet.style.cssText='opacity:1;transform:translateY(0);';cont.style.cssText='opacity:0;transform:scale(.95);transition:opacity .35s,transform .35s;';},80);
+    setTimeout(()=>{
+      ov.classList.add('hide');
+      setTimeout(()=>{ov.remove();const c=document.getElementById('zp-welcome-css');if(c)c.remove();},750);
+      renderHistoryWidget('history-widget');
+      renderSocialWidget('social-widget');
+    },1300);
+  }
+
+  const btn=document.getElementById('wc-btn');if(btn)btn.addEventListener('click',submit);
+  const inp=document.getElementById('wc-inp');if(inp)inp.addEventListener('keydown',e=>{if(e.key==='Enter')submit();});
+}
+
+// ═══════════════════════════════════════════════════════
+//  5. INIT
 // ═══════════════════════════════════════════════════════
 
 if(document.readyState==='loading'){
@@ -966,6 +1080,7 @@ function init(){
     if(document.visibilityState!=='hidden') touchPresence();
   });
   if(isIndex){
+    if(!getSavedPseudo()) showWelcomeScreen();
     renderHistoryWidget('history-widget');
     renderSocialWidget('social-widget');
     setInterval(()=>renderSocialWidget('social-widget'),12000);
@@ -979,7 +1094,8 @@ window.ZapPlay={
   hideLoader,showLoader,
   saveGameResult,getHistory,getStats,renderHistoryWidget,clearHistory,exportHistory,
   renderSocialWidget,
-  showLounge,hideLounge,setLoungeSender,addLoungeMessage
+  showLounge,hideLounge,setLoungeSender,addLoungeMessage,
+  showWelcomeScreen
 };
 
 })();
