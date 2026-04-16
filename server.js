@@ -32,6 +32,9 @@ const wssJustePrix = new WebSocket.Server({ noServer: true });
 const wssTimeline  = new WebSocket.Server({ noServer: true });
 const wssMemo      = new WebSocket.Server({ noServer: true });
 const wssImposteur = new WebSocket.Server({ noServer: true });
+const wssPhrase = new WebSocket.Server({ noServer: true });
+const wssLogoquiz = new WebSocket.Server({ noServer: true });
+const wssDebat = new WebSocket.Server({ noServer: true });
 
 server.on('upgrade', (req, socket, head) => {
   const routes = {
@@ -41,7 +44,8 @@ server.on('upgrade', (req, socket, head) => {
     '/ws/loup':wssLoup,'/ws/uno':wssUno,'/ws/paint':wssPaint,'/ws/naval':wssNaval,
     '/ws/typer':wssTyper,'/ws/anagramme':wssAnagramme,'/ws/justeprix':wssJustePrix,
     '/ws/timeline':wssTimeline,'/ws/memo':wssMemo,
-    '/ws/imposteur':wssImposteur
+    '/ws/imposteur':wssImposteur,
+    '/ws/phrase':wssPhrase,'/ws/logoquiz':wssLogoquiz,'/ws/debat':wssDebat
   };
   const h = routes[req.url];
   if (h) h.handleUpgrade(req, socket, head, ws => h.emit('connection', ws));
@@ -71,12 +75,13 @@ const GAME_NAMES = {
   morpion:'Morpion', taboo:'Mots Interdits', emoji:'Devinette Emoji',
   loup:'Loup-Garou', uno:'Uno', bomb:'Word Bomb', sumo:'Sumo Arena', paint:'Paint.io',
   naval:'Bataille navale', typer:'Typer Race', anagramme:'Anagramme',
-  justeprix:'Juste Prix', timeline:'Timeline', memo:'Mémoire', imposteur:'Imposteur'
+  justeprix:'Juste Prix', timeline:'Timeline', memo:'Mémoire', imposteur:'Imposteur',
+  phrase:'Phrase interdite', logoquiz:'Logo Quiz', debat:'Débat express'
 };
 
 function getRoomsSnapshot() {
   const all = [];
-  const maps = { quiz:quizRooms, draw:drawRooms, p4:p4Rooms, morpion:morpionRooms, taboo:tabooRooms, emoji:emojiRooms, loup:loupRooms, uno:unoRooms, bomb:bombRooms, sumo:sumoRooms, paint:paintRooms, naval:navalRooms, typer:typerRooms, anagramme:anagrammeRooms, justeprix:justeprixRooms, timeline:timelineRooms, memo:memoRooms, imposteur:imposteurRooms };
+  const maps = { quiz:quizRooms, draw:drawRooms, p4:p4Rooms, morpion:morpionRooms, taboo:tabooRooms, emoji:emojiRooms, loup:loupRooms, uno:unoRooms, bomb:bombRooms, sumo:sumoRooms, paint:paintRooms, naval:navalRooms, typer:typerRooms, anagramme:anagrammeRooms, justeprix:justeprixRooms, timeline:timelineRooms, memo:memoRooms, imposteur:imposteurRooms, phrase:phraseRooms, logoquiz:logoquizRooms, debat:debatRooms };
   for (const [game, map] of Object.entries(maps)) {
     for (const [code, room] of map) {
       all.push({
@@ -85,7 +90,7 @@ function getRoomsSnapshot() {
         gameName: GAME_NAMES[game],
         host: room.host,
         players: room.players.map(p => p.name),
-        maxPlayers: game==='loup'?10:game==='bomb'?6:game==='sumo'?4:game==='uno'?4:game==='paint'?4:game==='naval'?4:game==='imposteur'?8:4,
+        maxPlayers: game==='loup'?10:game==='bomb'?6:game==='sumo'?4:game==='uno'?4:game==='paint'?4:game==='naval'?4:game==='imposteur'?8:game==='phrase'?8:game==='logoquiz'?8:game==='debat'?8:4,
         status: ['WAITING','SETUP','PLACING','COUNTDOWN'].includes(room.phase) ? 'waiting' : 'playing'
       });
     }
@@ -4490,6 +4495,526 @@ wssImposteur.on('connection', ws => {
       room.host = room.players[0].name;
     imposteurBcast(room);
     broadcastLobby();
+  });
+});
+
+// ════════════════════════════════════════════════════════
+//  PHRASE INTERDITE (fait dire une phrase à un joueur, vote)
+// ════════════════════════════════════════════════════════
+const phraseRooms = new Map();
+function makePhraseRoom(code, host) {
+  return {
+    code, host, players: [], phase: 'WAITING', round: 0, totalRounds: 5,
+    targetSlot: null, phrase: '', votes: {}, timer: null, scores: {}
+  };
+}
+function phraseSnap(room) {
+  return {
+    type: 'phrase_state', phase: room.phase, code: room.code, host: room.host,
+    round: room.round, totalRounds: room.totalRounds,
+    targetSlot: room.targetSlot, phrase: room.phrase,
+    votes: room.votes,
+    players: room.players.map(p => ({ name: p.name, slot: p.slot, score: room.scores[p.slot] || 0 }))
+  };
+}
+function phraseBcast(room) {
+  bcast(room.players, phraseSnap(room));
+}
+function phraseStartRound(room) {
+  clearTimeout(room.timer);
+  room.round++;
+  if (room.round > room.totalRounds) {
+    room.phase = 'GAME_OVER';
+    phraseBcast(room);
+    broadcastLobby();
+    return;
+  }
+  room.phase = 'CHOOSE';
+  room.targetSlot = null;
+  room.phrase = '';
+  room.votes = {};
+  phraseBcast(room);
+}
+function phraseEndVote(room) {
+  clearTimeout(room.timer);
+  const tally = {};
+  room.players.forEach(p => { tally[p.slot] = 0; });
+  Object.values(room.votes).forEach(t => { if (tally[t] !== undefined) tally[t]++; });
+  const max = Math.max(...Object.values(tally), 0);
+  const winners = room.players.filter(p => tally[p.slot] === max && max > 0);
+  if (winners.length === 1) {
+    room.scores[winners[0].slot] = (room.scores[winners[0].slot] || 0) + 1;
+  }
+  room.phase = 'ROUND_RESULT';
+  phraseBcast(room);
+  room.timer = setTimeout(() => phraseStartRound(room), 4000);
+}
+
+wssPhrase.on('connection', ws => {
+  makeWS(wssPhrase).alive(ws);
+  let room = null;
+  ws.on('close', () => {
+    makeWS(wssPhrase).clear(ws);
+    if (!room) return;
+    const idx = room.players.findIndex(p => p.ws === ws);
+    if (idx < 0) return;
+    const name = room.players[idx].name;
+    room.players.splice(idx, 1);
+    room.players.forEach((p, i) => { p.slot = i; });
+    clearTimeout(room.timer);
+    if (room.players.length === 0) { phraseRooms.delete(room.code); broadcastLobby(); return; }
+    if (room.host === name && room.players.length) room.host = room.players[0].name;
+    bcast(room.players, { type: 'player_left', name });
+    if (room.phase !== 'WAITING' && room.phase !== 'GAME_OVER' && room.players.length < 3) {
+      room.phase = 'WAITING';
+      room.round = 0;
+    }
+    phraseBcast(room);
+    broadcastLobby();
+  });
+  ws.on('message', raw => {
+    let d; try { d = JSON.parse(raw); } catch { return; }
+    const player = room ? room.players.find(p => p.ws === ws) : null;
+    if (d.type === 'lounge_chat') { handleLoungeChat(room, ws, d); return; }
+    switch (d.type) {
+      case 'create_phrase': {
+        const name = String(d.name || '').trim().slice(0, 20) || 'Joueur';
+        const code = genCode(phraseRooms);
+        room = makePhraseRoom(code, name);
+        room.players.push({ ws, name, slot: 0 });
+        room.scores[0] = 0;
+        phraseRooms.set(code, room);
+        wsend(ws, { type: 'created_phrase', code, slot: 0, name });
+        wsend(ws, phraseSnap(room));
+        broadcastLobby();
+        break;
+      }
+      case 'join_phrase': {
+        const code = String(d.code || '').trim().toUpperCase();
+        const r = phraseRooms.get(code);
+        if (!r) { wsend(ws, { type: 'error', msg: 'Salle introuvable.' }); return; }
+        if (r.phase !== 'WAITING') { wsend(ws, { type: 'error', msg: 'Partie déjà commencée.' }); return; }
+        if (r.players.length >= 8) { wsend(ws, { type: 'error', msg: 'Salle pleine.' }); return; }
+        const name = String(d.name || '').trim().slice(0, 20) || 'Joueur';
+        const slot = r.players.length;
+        r.players.push({ ws, name, slot });
+        r.scores[slot] = 0;
+        room = r;
+        wsend(ws, { type: 'welcome_phrase', code, slot, name });
+        phraseBcast(r);
+        broadcastLobby();
+        break;
+      }
+      case 'start_phrase': {
+        if (!room || !player || player.name !== room.host || room.phase !== 'WAITING') return;
+        if (room.players.length < 3) { wsend(ws, { type: 'error', msg: 'Il faut au moins 3 joueurs.' }); return; }
+        room.totalRounds = 5;
+        room.round = 0;
+        room.scores = {};
+        room.players.forEach(p => { room.scores[p.slot] = 0; });
+        phraseStartRound(room);
+        broadcastLobby();
+        break;
+      }
+      case 'phrase_set_target': {
+        if (!room || room.phase !== 'CHOOSE' || !player) return;
+        if (player.name !== room.host) return;
+        const t = Number(d.targetSlot);
+        if (!room.players.find(p => p.slot === t) || t === player.slot) return;
+        room.targetSlot = t;
+        room.phase = 'ENTER_PHRASE';
+        phraseBcast(room);
+        break;
+      }
+      case 'phrase_submit': {
+        if (!room || room.phase !== 'ENTER_PHRASE' || !player) return;
+        if (player.slot !== room.targetSlot) return;
+        const text = String(d.text || '').trim().slice(0, 200);
+        if (!text) return;
+        room.phrase = text;
+        room.phase = 'VOTE';
+        room.votes = {};
+        phraseBcast(room);
+        clearTimeout(room.timer);
+        room.timer = setTimeout(() => phraseEndVote(room), 25000);
+        break;
+      }
+      case 'phrase_vote': {
+        if (!room || room.phase !== 'VOTE' || !player) return;
+        if (room.votes[player.slot] !== undefined) return;
+        const t = Number(d.targetSlot);
+        if (!room.players.find(p => p.slot === t) || t === player.slot) return;
+        room.votes[player.slot] = t;
+        phraseBcast(room);
+        if (Object.keys(room.votes).length >= room.players.length - 1) {
+          phraseEndVote(room);
+        }
+        break;
+      }
+      case 'restart_phrase': {
+        if (!room || !player || player.name !== room.host || room.phase !== 'GAME_OVER') return;
+        room.phase = 'WAITING';
+        room.round = 0;
+        room.targetSlot = null;
+        room.phrase = '';
+        room.votes = {};
+        room.players.forEach(p => { room.scores[p.slot] = 0; });
+        clearTimeout(room.timer);
+        phraseBcast(room);
+        broadcastLobby();
+        break;
+      }
+    }
+  });
+});
+
+// ════════════════════════════════════════════════════════
+//  LOGO QUIZ (deviner la marque depuis le nom du logo)
+// ════════════════════════════════════════════════════════
+const LOGO_QUIZ_ITEMS = [
+  { brand: 'Apple', hint: 'Pomme croquée' },
+  { brand: 'Google', hint: 'Moteur de recherche' },
+  { brand: 'Nike', hint: 'Swoosh' },
+  { brand: 'McDonald\'s', hint: 'Fast-food' },
+  { brand: 'Starbucks', hint: 'Café' },
+  { brand: 'Amazon', hint: 'Fleuve flèche' },
+  { brand: 'Microsoft', hint: 'Fenêtres' },
+  { brand: 'Facebook', hint: 'Réseau social' },
+  { brand: 'Twitter', hint: 'Oiseau X' },
+  { brand: 'Instagram', hint: 'Caméra ronde' },
+  { brand: 'YouTube', hint: 'Lecture vidéo' },
+  { brand: 'Netflix', hint: 'Streaming' },
+  { brand: 'Spotify', hint: 'Musique' },
+  { brand: 'Adidas', hint: '3 bandes' },
+  { brand: 'Puma', hint: 'Félin' },
+  { brand: 'Coca-Cola', hint: 'Soda rouge' },
+  { brand: 'Pepsi', hint: 'Cola bleu' },
+  { brand: 'Samsung', hint: 'Électronique coréen' },
+  { brand: 'Sony', hint: 'PlayStation' },
+  { brand: 'Lego', hint: 'Briques' }
+];
+const logoquizRooms = new Map();
+function makeLogoquizRoom(code, host) {
+  return {
+    code, host, players: [], phase: 'WAITING', qIndex: 0, total: 10,
+    current: null, scores: {}, timer: null, buzzSlot: null, firstAnswer: null
+  };
+}
+function logoquizSnap(room) {
+  return {
+    type: 'logoquiz_state', phase: room.phase, code: room.code,
+    qIndex: room.qIndex, total: room.total,
+    current: room.phase === 'QUESTION' && room.current
+      ? { hint: room.current.hint }
+      : room.current,
+    buzzSlot: room.buzzSlot,
+    players: room.players.map(p => ({ name: p.name, slot: p.slot, score: room.scores[p.slot] || 0 }))
+  };
+}
+function logoquizBcast(room) {
+  bcast(room.players, logoquizSnap(room));
+}
+function logoquizStartQ(room) {
+  clearTimeout(room.timer);
+  if (room.qIndex >= room.total) {
+    room.phase = 'GAME_OVER';
+    logoquizBcast(room);
+    broadcastLobby();
+    return;
+  }
+  const pool = shuffle(LOGO_QUIZ_ITEMS);
+  room.current = pool[room.qIndex % pool.length];
+  room.phase = 'QUESTION';
+  room.buzzSlot = null;
+  room.firstAnswer = null;
+  logoquizBcast(room);
+  room.timer = setTimeout(() => {
+    if (room.phase === 'QUESTION') {
+      room.phase = 'REVEAL';
+      logoquizBcast(room);
+      room.timer = setTimeout(() => { room.qIndex++; logoquizStartQ(room); }, 3000);
+    }
+  }, 15000);
+}
+
+wssLogoquiz.on('connection', ws => {
+  makeWS(wssLogoquiz).alive(ws);
+  let room = null;
+  ws.on('close', () => {
+    makeWS(wssLogoquiz).clear(ws);
+    if (!room) return;
+    const idx = room.players.findIndex(p => p.ws === ws);
+    if (idx < 0) return;
+    const name = room.players[idx].name;
+    room.players.splice(idx, 1);
+    room.players.forEach((p, i) => { p.slot = i; });
+    clearTimeout(room.timer);
+    if (room.players.length === 0) { logoquizRooms.delete(room.code); broadcastLobby(); return; }
+    if (room.host === name && room.players.length) room.host = room.players[0].name;
+    bcast(room.players, { type: 'player_left', name });
+    if (['QUESTION', 'REVEAL', 'COUNTDOWN'].includes(room.phase) && room.players.length < 2) {
+      room.phase = 'WAITING';
+    }
+    logoquizBcast(room);
+    broadcastLobby();
+  });
+  ws.on('message', raw => {
+    let d; try { d = JSON.parse(raw); } catch { return; }
+    const player = room ? room.players.find(p => p.ws === ws) : null;
+    if (d.type === 'lounge_chat') { handleLoungeChat(room, ws, d); return; }
+    switch (d.type) {
+      case 'create_logoquiz': {
+        const name = String(d.name || '').trim().slice(0, 20) || 'Joueur';
+        const code = genCode(logoquizRooms);
+        room = makeLogoquizRoom(code, name);
+        room.players.push({ ws, name, slot: 0 });
+        room.scores[0] = 0;
+        logoquizRooms.set(code, room);
+        wsend(ws, { type: 'created_logoquiz', code, slot: 0, name });
+        wsend(ws, logoquizSnap(room));
+        broadcastLobby();
+        break;
+      }
+      case 'join_logoquiz': {
+        const code = String(d.code || '').trim().toUpperCase();
+        const r = logoquizRooms.get(code);
+        if (!r) { wsend(ws, { type: 'error', msg: 'Salle introuvable.' }); return; }
+        if (r.phase !== 'WAITING') { wsend(ws, { type: 'error', msg: 'Partie déjà commencée.' }); return; }
+        if (r.players.length >= 8) { wsend(ws, { type: 'error', msg: 'Salle pleine.' }); return; }
+        const name = String(d.name || '').trim().slice(0, 20) || 'Joueur';
+        const slot = r.players.length;
+        r.players.push({ ws, name, slot });
+        r.scores[slot] = 0;
+        room = r;
+        wsend(ws, { type: 'welcome_logoquiz', code, slot, name });
+        logoquizBcast(r);
+        broadcastLobby();
+        break;
+      }
+      case 'start_logoquiz': {
+        if (!room || !player || player.name !== room.host || room.phase !== 'WAITING') return;
+        if (room.players.length < 2) { wsend(ws, { type: 'error', msg: 'Il faut au moins 2 joueurs.' }); return; }
+        room.qIndex = 0;
+        room.total = 10;
+        room.players.forEach(p => { room.scores[p.slot] = 0; });
+        room.phase = 'COUNTDOWN';
+        bcast(room.players, { type: 'countdown', seconds: 3 });
+        clearTimeout(room.timer);
+        room.timer = setTimeout(() => logoquizStartQ(room), 3000);
+        broadcastLobby();
+        break;
+      }
+      case 'logoquiz_buzz': {
+        if (!room || room.phase !== 'QUESTION' || !player) return;
+        if (room.buzzSlot !== null) return;
+        room.buzzSlot = player.slot;
+        clearTimeout(room.timer);
+        logoquizBcast(room);
+        room.timer = setTimeout(() => {
+          if (room.phase === 'QUESTION' && room.buzzSlot === player.slot) {
+            room.phase = 'REVEAL';
+            clearTimeout(room.timer);
+            logoquizBcast(room);
+            room.timer = setTimeout(() => { room.qIndex++; logoquizStartQ(room); }, 3000);
+          }
+        }, 12000);
+        break;
+      }
+      case 'logoquiz_answer': {
+        if (!room || room.phase !== 'QUESTION' || !player) return;
+        if (room.buzzSlot !== player.slot) return;
+        const ans = String(d.text || '').trim().toLowerCase();
+        const brand = room.current ? room.current.brand.toLowerCase() : '';
+        clearTimeout(room.timer);
+        if (ans === brand) {
+          room.scores[player.slot] = (room.scores[player.slot] || 0) + 1;
+        }
+        room.phase = 'REVEAL';
+        logoquizBcast(room);
+        room.timer = setTimeout(() => { room.qIndex++; logoquizStartQ(room); }, 3000);
+        break;
+      }
+      case 'restart_logoquiz': {
+        if (!room || !player || player.name !== room.host || room.phase !== 'GAME_OVER') return;
+        room.phase = 'WAITING';
+        room.qIndex = 0;
+        room.current = null;
+        room.buzzSlot = null;
+        room.players.forEach(p => { room.scores[p.slot] = 0; });
+        clearTimeout(room.timer);
+        logoquizBcast(room);
+        broadcastLobby();
+        break;
+      }
+    }
+  });
+});
+
+// ════════════════════════════════════════════════════════
+//  DÉBAT EXPRESS (pour / contre, vote public)
+// ════════════════════════════════════════════════════════
+const DEBAT_TOPICS = [
+  'Le pizza est meilleure avec ou sans ananas ?',
+  'Le café est-il meilleur que le thé ?',
+  'Les films sont-ils mieux que les livres ?',
+  'Faut-il travailler 4 jours par semaine ?',
+  'Le sport est-il plus important que les études ?',
+  'Le chocolat est-il meilleur que la vanille ?',
+  'Les chats sont-ils meilleurs que les chiens ?',
+  'Le streaming a-t-il tué le cinéma ?',
+  'Le téléphone au lit : oui ou non ?',
+  'La musique classique est-elle ennuyeuse ?'
+];
+const debatRooms = new Map();
+function makeDebatRoom(code, host) {
+  return {
+    code, host, players: [], phase: 'WAITING', round: 0, totalRounds: 5,
+    topic: '', forSlot: null, againstSlot: null,
+    votes: {}, timer: null, scores: {}
+  };
+}
+function debatSnap(room) {
+  return {
+    type: 'debat_state', phase: room.phase, code: room.code, host: room.host,
+    round: room.round, totalRounds: room.totalRounds,
+    topic: room.topic, forSlot: room.forSlot, againstSlot: room.againstSlot,
+    votes: room.votes,
+    players: room.players.map(p => ({ name: p.name, slot: p.slot, score: room.scores[p.slot] || 0 }))
+  };
+}
+function debatBcast(room) {
+  bcast(room.players, debatSnap(room));
+}
+function debatEndVote(room) {
+  clearTimeout(room.timer);
+  let forScore = 0, againstScore = 0;
+  Object.values(room.votes).forEach(v => {
+    if (v === 'for') forScore++;
+    else if (v === 'against') againstScore++;
+  });
+  if (forScore > againstScore && room.forSlot !== null) {
+    room.scores[room.forSlot] = (room.scores[room.forSlot] || 0) + 1;
+  } else if (againstScore > forScore && room.againstSlot !== null) {
+    room.scores[room.againstSlot] = (room.scores[room.againstSlot] || 0) + 1;
+  }
+  room.phase = 'ROUND_RESULT';
+  debatBcast(room);
+  room.timer = setTimeout(() => debatNextRound(room), 4000);
+}
+function debatNextRound(room) {
+  clearTimeout(room.timer);
+  room.round++;
+  if (room.round > room.totalRounds) {
+    room.phase = 'GAME_OVER';
+    debatBcast(room);
+    broadcastLobby();
+    return;
+  }
+  room.topic = DEBAT_TOPICS[(room.round - 1) % DEBAT_TOPICS.length];
+  const sh = shuffle(room.players.map(p => p.slot));
+  room.forSlot = sh[0];
+  room.againstSlot = sh.find(s => s !== room.forSlot) ?? sh[1];
+  room.phase = 'DEBATE';
+  room.votes = {};
+  debatBcast(room);
+  room.timer = setTimeout(() => {
+    if (room.phase === 'DEBATE') {
+      room.phase = 'VOTE';
+      debatBcast(room);
+      room.timer = setTimeout(() => debatEndVote(room), 20000);
+    }
+  }, 45000);
+}
+
+wssDebat.on('connection', ws => {
+  makeWS(wssDebat).alive(ws);
+  let room = null;
+  ws.on('close', () => {
+    makeWS(wssDebat).clear(ws);
+    if (!room) return;
+    const idx = room.players.findIndex(p => p.ws === ws);
+    if (idx < 0) return;
+    const name = room.players[idx].name;
+    room.players.splice(idx, 1);
+    room.players.forEach((p, i) => { p.slot = i; });
+    clearTimeout(room.timer);
+    if (room.players.length === 0) { debatRooms.delete(room.code); broadcastLobby(); return; }
+    if (room.host === name && room.players.length) room.host = room.players[0].name;
+    bcast(room.players, { type: 'player_left', name });
+    if (room.phase !== 'WAITING' && room.phase !== 'GAME_OVER' && room.players.length < 3) {
+      room.phase = 'WAITING';
+    }
+    debatBcast(room);
+    broadcastLobby();
+  });
+  ws.on('message', raw => {
+    let d; try { d = JSON.parse(raw); } catch { return; }
+    const player = room ? room.players.find(p => p.ws === ws) : null;
+    if (d.type === 'lounge_chat') { handleLoungeChat(room, ws, d); return; }
+    switch (d.type) {
+      case 'create_debat': {
+        const name = String(d.name || '').trim().slice(0, 20) || 'Joueur';
+        const code = genCode(debatRooms);
+        room = makeDebatRoom(code, name);
+        room.players.push({ ws, name, slot: 0 });
+        room.scores[0] = 0;
+        debatRooms.set(code, room);
+        wsend(ws, { type: 'created_debat', code, slot: 0, name });
+        wsend(ws, debatSnap(room));
+        broadcastLobby();
+        break;
+      }
+      case 'join_debat': {
+        const code = String(d.code || '').trim().toUpperCase();
+        const r = debatRooms.get(code);
+        if (!r) { wsend(ws, { type: 'error', msg: 'Salle introuvable.' }); return; }
+        if (r.phase !== 'WAITING') { wsend(ws, { type: 'error', msg: 'Partie déjà commencée.' }); return; }
+        if (r.players.length >= 8) { wsend(ws, { type: 'error', msg: 'Salle pleine.' }); return; }
+        const name = String(d.name || '').trim().slice(0, 20) || 'Joueur';
+        const slot = r.players.length;
+        r.players.push({ ws, name, slot });
+        r.scores[slot] = 0;
+        room = r;
+        wsend(ws, { type: 'welcome_debat', code, slot, name });
+        debatBcast(r);
+        broadcastLobby();
+        break;
+      }
+      case 'start_debat': {
+        if (!room || !player || player.name !== room.host || room.phase !== 'WAITING') return;
+        if (room.players.length < 3) { wsend(ws, { type: 'error', msg: 'Il faut au moins 3 joueurs.' }); return; }
+        room.totalRounds = 5;
+        room.round = 0;
+        room.players.forEach(p => { room.scores[p.slot] = 0; });
+        debatNextRound(room);
+        broadcastLobby();
+        break;
+      }
+      case 'debat_vote': {
+        if (!room || room.phase !== 'VOTE' || !player) return;
+        const side = d.side === 'for' ? 'for' : d.side === 'against' ? 'against' : null;
+        if (!side) return;
+        if (player.slot === room.forSlot || player.slot === room.againstSlot) return;
+        room.votes[player.slot] = side;
+        debatBcast(room);
+        if (Object.keys(room.votes).length >= room.players.length - 2) {
+          debatEndVote(room);
+        }
+        break;
+      }
+      case 'restart_debat': {
+        if (!room || !player || player.name !== room.host || room.phase !== 'GAME_OVER') return;
+        room.phase = 'WAITING';
+        room.round = 0;
+        room.topic = '';
+        room.votes = {};
+        room.players.forEach(p => { room.scores[p.slot] = 0; });
+        clearTimeout(room.timer);
+        debatBcast(room);
+        broadcastLobby();
+        break;
+      }
+    }
   });
 });
 

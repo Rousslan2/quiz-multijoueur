@@ -313,6 +313,10 @@ select option{background:#0D0D1F;color:var(--text)}
         <option value="justeprix">💰 Juste Prix</option>
         <option value="timeline">📅 Timeline</option>
         <option value="memo">🃏 Mémoire</option>
+        <option value="phrase">🤐 Phrase interdite</option>
+        <option value="logoquiz">🏷️ Logo Quiz</option>
+        <option value="debat">⚖️ Débat express</option>
+        <option value="imposteur">🕵️ Imposteur</option>
       </select>
       <input type="text" id="inp-create-name" placeholder="Votre prénom" maxlength="20" autocomplete="off">
       <button class="btn btn-create" onclick="doCreate()">Créer la salle</button>
@@ -362,12 +366,14 @@ const GAME_URLS = {
   sumo:'sumo.html', paint:'paint.html', naval:'naval.html',
   typer:'typer.html', anagramme:'anagramme.html',
   justeprix:'justeprix.html', timeline:'timeline.html', memo:'memoire.html',
+  phrase:'phrase.html', logoquiz:'logoquiz.html', debat:'debat.html',
   imposteur:'imposteur.html'
 };
 const GAME_ICONS = {
   quiz:'⚡', draw:'✏️', p4:'🟠', morpion:'✖️', taboo:'🚫', emoji:'🌟',
   loup:'🐺', uno:'🃏', bomb:'💣', sumo:'🥋', paint:'🎨', naval:'⚓',
   typer:'⌨️', anagramme:'🔤', justeprix:'💰', timeline:'📅', memo:'🃏',
+  phrase:'🤐', logoquiz:'🏷️', debat:'⚖️',
   imposteur:'🕵️'
 };
 

@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<link rel="stylesheet" href="theme.css">
+<title>ZapPlay — Débat express</title>
+<style>
+:root{--primary:#ec4899;--card:#0E0E22;--border:rgba(236,72,153,.25);--text:#E8E8F0;--muted:#5A5A78;--for:#22c55e;--against:#f97316}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;color:var(--text);font-family:'Exo 2',sans-serif;overflow:hidden}
+#wrap{max-width:520px;margin:0 auto;padding:56px 14px 16px;min-height:100dvh;display:flex;flex-direction:column;gap:12px}
+#dot{position:fixed;top:10px;right:12px;width:8px;height:8px;border-radius:50%;background:#ef4444;z-index:50}
+#dot.ok{background:#22c55e}
+#back{position:fixed;top:8px;left:10px;background:rgba(255,255,255,.06);border:1px solid var(--border);color:var(--muted);padding:6px 12px;border-radius:8px;cursor:pointer;font-size:.75rem;z-index:50}
+.screen{display:none;flex-direction:column;gap:12px;flex:1;min-height:0;overflow-y:auto}
+.screen.active{display:flex}
+.btn{width:100%;padding:14px;border:none;border-radius:10px;font-weight:700;cursor:pointer;font-size:1rem}
+.btn-primary{background:linear-gradient(135deg,var(--primary),#db2777);color:#fff}
+.btn-secondary{background:rgba(255,255,255,.08);border:1px solid var(--border);color:var(--text)}
+.btn-for{background:linear-gradient(135deg,var(--for),#16a34a);color:#fff}
+.btn-against{background:linear-gradient(135deg,var(--against),#ea580c);color:#fff}
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px}
+h1{font-size:1.35rem;color:var(--primary);text-align:center}
+#topic{font-size:1.1rem;line-height:1.45;text-align:center;padding:14px;background:rgba(236,72,153,.1);border-radius:12px;border:1px solid var(--border)}
+#timer{font-size:2rem;font-weight:800;text-align:center;color:var(--primary);font-family:monospace}
+#err{color:#f87171;font-size:.85rem;text-align:center;min-height:18px}
+input[type=text]{width:100%;padding:12px;border-radius:10px;border:1px solid var(--border);background:rgba(255,255,255,.06);color:var(--text)}
+</style>
+</head>
+<body>
+<div class="zp-space-bg"><div class="zp-neb1"></div><div class="zp-neb2"></div><div class="zp-stars" id="zp-stars"></div><div class="zp-sgrid"></div><div class="zp-comet"></div></div>
+<div id="dot"></div>
+<button id="back" onclick="location.href='index.html'">← Accueil</button>
+<div id="wrap">
+  <div id="s-home" class="screen active">
+    <h1>⚖️ Débat express</h1>
+    <p style="text-align:center;color:var(--muted);font-size:.85rem">Sujet tiré au sort — deux orateurs, le public vote.</p>
+    <div class="card">
+      <input id="inp-name" type="text" placeholder="Ton prénom" maxlength="20" autocomplete="off">
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <button class="btn btn-primary" style="flex:1" onclick="createR()">Créer</button>
+        <button class="btn btn-secondary" style="flex:1" onclick="toggleJoin()">Rejoindre</button>
+      </div>
+      <div id="join-area" style="display:none;flex-direction:column;gap:8px;margin-top:8px">
+        <input id="inp-code" maxlength="4" placeholder="Code" style="text-transform:uppercase;letter-spacing:.2em;text-align:center;font-weight:700">
+        <button class="btn btn-primary" onclick="joinR()">Rejoindre</button>
+      </div>
+      <div id="err"></div>
+    </div>
+  </div>
+  <div id="s-wait" class="screen">
+    <div class="card" style="text-align:center">
+      <div style="font-size:.7rem;color:var(--muted)">Code</div>
+      <div id="code-disp" style="font-size:2rem;font-weight:800;letter-spacing:.2em;color:var(--primary);font-family:monospace">----</div>
+      <div id="wait-pl" style="margin-top:10px;font-size:.9rem"></div>
+    </div>
+    <button id="btn-start" class="btn btn-primary" style="display:none" onclick="send({type:'start_debat'})">Lancer</button>
+  </div>
+  <div id="s-game" class="screen">
+    <div id="round-lbl" style="text-align:center;color:var(--muted);font-size:.8rem"></div>
+    <div id="topic"></div>
+    <div id="roles" class="card" style="font-size:.9rem"></div>
+    <div id="timer" style="display:none"></div>
+    <div id="vote-area" style="display:none;flex-direction:column;gap:10px">
+      <div style="text-align:center;color:var(--muted);font-size:.85rem">Qui a le mieux défendu son camp ?</div>
+      <button class="btn btn-for" onclick="send({type:'debat_vote',side:'for'})">Pour</button>
+      <button class="btn btn-against" onclick="send({type:'debat_vote',side:'against'})">Contre</button>
+    </div>
+    <div id="deb-wait" style="display:none;text-align:center;color:var(--muted)">Les orateurs s’expriment…</div>
+    <div id="round-end" style="display:none;text-align:center;color:var(--muted)">Vote en cours ou résultat…</div>
+  </div>
+  <div id="s-over" class="screen">
+    <h1 style="text-align:center">🏆 Classement</h1>
+    <div id="final-scores" class="card"></div>
+    <button class="btn btn-primary" id="btn-restart" style="display:none" onclick="send({type:'restart_debat'})">Rejouer</button>
+    <button class="btn btn-secondary" onclick="location.href='index.html'">Accueil</button>
+  </div>
+</div>
+<script src="shared.js"></script>
+<script src="chat.js"></script>
+<script>
+const WS=(location.protocol==='https:'?'wss':'ws')+'://'+location.host+'/ws/debat';
+let ws=null,mySlot=-1,myName='',hostName='',pending=null,timerId=null,endTs=0;
+function el(id){return document.getElementById(id)}
+function send(o){if(ws&&ws.readyState===1)ws.send(JSON.stringify(o))}
+function connect(){
+  ws=new WebSocket(WS);
+  ws.onopen=()=>{el('dot').classList.add('ok');if(window.ZapPlay)ZapPlay.hideLoader();if(pending){pending();pending=null}};
+  ws.onclose=()=>{el('dot').classList.remove('ok');setTimeout(connect,2000)};
+  ws.onmessage=e=>{let m;try{m=JSON.parse(e.data)}catch{return}handle(m)};
+}
+connect();
+function bindL(){if(window.ZapPlay)ZapPlay.setLoungeSender(t=>send({type:'lounge_chat',text:t}));else setTimeout(bindL,120)}
+bindL();
+function show(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));el(id).classList.add('active')}
+function clearTimer(){if(timerId){clearInterval(timerId);timerId=null}}
+function startLocalTimer(sec){
+  clearTimer();endTs=Date.now()+sec*1000;
+  el('timer').style.display='block';
+  const tick=()=>{
+    const left=Math.max(0,Math.ceil((endTs-Date.now())/1000));
+    el('timer').textContent=left+' s';
+    if(left<=0)clearTimer()
+  };
+  tick();timerId=setInterval(tick,250)
+}
+function createR(){
+  const n=el('inp-name').value.trim();if(!n){el('err').textContent='Prénom requis';return}
+  el('err').textContent='';if(window.ZapPlay)ZapPlay.savePseudo(n);myName=n;
+  const go=()=>send({type:'create_debat',name:n});
+  if(ws&&ws.readyState===1)go();else pending=go;
+}
+function joinR(){
+  let n=el('inp-name').value.trim();if(!n&&window.ZapPlay&&ZapPlay.getSavedPseudo)n=ZapPlay.getSavedPseudo().trim();
+  el('inp-name').value=n;
+  const c=el('inp-code').value.trim().toUpperCase();
+  if(!n||!c){el('err').textContent='Prénom + code';return}
+  el('err').textContent='';if(window.ZapPlay)ZapPlay.savePseudo(n);myName=n;
+  const go=()=>send({type:'join_debat',name:n,code:c});
+  if(ws&&ws.readyState===1)go();else pending=go;
+}
+function toggleJoin(){const a=el('join-area');a.style.display=a.style.display==='flex'?'none':'flex';a.style.flexDirection='column'}
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;')}
+function handle(m){
+  if(m.type==='error'){el('err').textContent=m.msg;return}
+  if(m.type==='lounge_chat'&&window.ZapPlay){ZapPlay.addLoungeMessage(m);return}
+  if(m.type==='created_debat'){mySlot=m.slot;myName=m.name}
+  if(m.type==='welcome_debat'){mySlot=m.slot;myName=m.name}
+  if(m.type!=='debat_state')return;
+  const s=m;hostName=s.host||'';
+  if(mySlot<0&&myName){const me=s.players.find(p=>p.name===myName);if(me)mySlot=me.slot}
+  const me=s.players.find(p=>p.slot===mySlot);
+  const isHost=me&&me.name===hostName;
+  if(s.phase==='WAITING'){
+    el('code-disp').textContent=s.code||'----';
+    el('wait-pl').textContent=s.players.map(p=>p.name).join(' · ');
+    el('btn-start').style.display=isHost&&s.players.length>=3?'block':'none';
+    if(window.ZapPlay)ZapPlay.showLounge({players:s.players,mySlot,roomCode:s.code,gameName:'Débat express'});
+    clearTimer();el('timer').style.display='none';
+    show('s-wait');return
+  }
+  if(window.ZapPlay)ZapPlay.hideLounge();
+  el('round-lbl').textContent=s.round?'Manche '+s.round+' / '+s.totalRounds:'';
+  if(s.phase==='GAME_OVER'){
+    let h='<table style="width:100%">';
+    s.players.slice().sort((a,b)=>(b.score||0)-(a.score||0)).forEach((p,i)=>{
+      h+='<tr><td>'+(i+1)+'.</td><td>'+esc(p.name)+'</td><td style="text-align:right">'+(p.score||0)+' pts</td></tr>'
+    });
+    h+='</table>';
+    el('final-scores').innerHTML=h;
+    el('btn-restart').style.display=isHost?'block':'none';
+    clearTimer();show('s-over');return
+  }
+  show('s-game');
+  el('topic').textContent=s.topic||'';
+  const fn=s.players.find(p=>p.slot===s.forSlot);
+  const ag=s.players.find(p=>p.slot===s.againstSlot);
+  el('roles').innerHTML='<div><b style="color:var(--for)">Pour</b> : '+esc(fn?fn.name:'?')+'</div><div style="margin-top:6px"><b style="color:var(--against)">Contre</b> : '+esc(ag?ag.name:'?')+'</div>';
+  const isFor=mySlot===s.forSlot,isAgainst=mySlot===s.againstSlot;
+  el('vote-area').style.display='none';
+  el('round-end').style.display='none';
+  if(s.phase==='DEBATE'){
+    startLocalTimer(45);
+    el('deb-wait').style.display='block';
+    if(isFor||isAgainst)el('deb-wait').textContent='Tu es orateur — défends ton camp (45 s).';
+    else el('deb-wait').textContent='Les orateurs débattent — 45 s.';
+  }else if(s.phase==='VOTE'){
+    clearTimer();el('timer').style.display='none';
+    const voted=s.votes&&s.votes[mySlot]!==undefined;
+    if(isFor||isAgainst){
+      el('deb-wait').style.display='block';el('deb-wait').textContent='Les spectateurs votent…'
+    }else{
+      el('deb-wait').style.display='none';
+      if(!voted){
+        el('vote-area').style.display='flex';el('vote-area').style.flexDirection='column'
+      }else{
+        el('round-end').style.display='block';el('round-end').textContent='Vote enregistré'
+      }
+    }
+  }else if(s.phase==='ROUND_RESULT'){
+    clearTimer();el('timer').style.display='none';
+    el('deb-wait').style.display='none';
+    el('round-end').style.display='block';el('round-end').textContent='Résultat de la manche…'
+  }
+}
+(function(){
+  const p=new URLSearchParams(location.search);
+  if(p.get('name'))el('inp-name').value=p.get('name');
+  if(p.get('code')){el('inp-code').value=p.get('code').toUpperCase();toggleJoin()}
+  if(p.get('create')==='1'&&p.get('name')){el('inp-name').value=p.get('name');setTimeout(createR,400)}
+  if(p.get('code')&&p.get('name')&&p.get('create')!=='1'){el('inp-name').value=p.get('name');setTimeout(joinR,500)}
+})();
+el('inp-code')&&el('inp-code').addEventListener('input',e=>{e.target.value=e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,4)});
+</script>
+<script>(function(){var sc=document.getElementById('zp-stars');if(!sc)return;for(var i=0;i<50;i++){var s=document.createElement('div');s.className='zp-star';s.style.cssText='left:'+Math.random()*100+'%;top:'+Math.random()*100+'%';sc.appendChild(s)}})();</script>
+</body>
+</html>
