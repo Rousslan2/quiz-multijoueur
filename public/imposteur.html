@@ -253,6 +253,10 @@ input[type=text]::placeholder{color:var(--muted)}
   <div class="word-reveal" id="sc-word"></div>
   <button id="sc-next" class="btn btn-primary" style="display:none;max-width:280px;align-self:center" onclick="send({type:'next_round'})">Manche suivante &rarr;</button>
   <div class="muted-pill" id="sc-wait" style="display:none">En attente de l&apos;h&ocirc;te&hellip;</div>
+  <div id="sc-end-actions" style="display:none;gap:10px;max-width:340px;align-self:center;width:100%">
+    <button class="btn btn-secondary" style="flex:1" onclick="doReplay()">Rejouer</button>
+    <button class="btn btn-secondary" style="flex:1" onclick="location.href='index.html'">Quitter</button>
+  </div>
 </div>
 
 <!-- GAME OVER -->
@@ -709,8 +713,10 @@ function renderScores(s){
   });
   el('sc-word').textContent=s.word?'Le mot \xe9tait : '+s.word:'';
   var isLast=s.round>=s.totalRounds;
+  var endActions=el('sc-end-actions');
   el('sc-next').style.display=isHost&&!isLast?'block':'none';
   el('sc-wait').style.display=isHost||isLast?'none':'block';
+  if(endActions) endActions.style.display=isLast?'flex':'none';
 }
 
 // ── GAME OVER ──────────────────────────────────────────────────
