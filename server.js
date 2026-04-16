@@ -2271,6 +2271,7 @@ function bombSnap(room){
   return {
     type:'bomb_state',
     phase:room.phase, code:room.code, turn:room.turn, syllable:room.syllable,
+    serverNow: Date.now(),
     turnEndsAt:room.turnEndsAt||0, turnMs:room.turnMs,
     recentWords:room.recentWords.slice(-10),
     players:room.players.map(p=>({name:p.name,slot:p.slot,alive:p.alive,lives:p.lives,score:p.score}))
@@ -3724,6 +3725,67 @@ const JUSTE_PRIX_QS=[
   {q:"Hauteur de la Tour Eiffel en mètres",answer:330},
   {q:"Année de sortie de Minecraft",answer:2011},
   {q:"Prix moyen d'un croissant à Paris (€)",answer:1.4},
+  // ── Nourriture / quotidien ───────────────────────────────────────────────
+  {q:"Prix d'une pizza Margherita au restaurant (€)",answer:11},
+  {q:"Prix d'un menu kebab + frites (€)",answer:10},
+  {q:"Prix d'un paquet de pâtes 500g (€)",answer:1.4},
+  {q:"Prix d'une tablette de chocolat 100g (€)",answer:1.6},
+  {q:"Prix d'un litre de lait (€)",answer:1.2},
+  {q:"Prix d'un kilo de pommes (€)",answer:2.4},
+  {q:"Prix d'un kilo de bananes (€)",answer:2.0},
+  {q:"Prix d'un kilo de tomates (€)",answer:3.5},
+  {q:"Prix d'un kilo de riz (€)",answer:2.1},
+  {q:"Prix d'une bouteille d'eau 1,5L (€)",answer:0.7},
+  {q:"Prix d'un pack de 6 œufs (€)",answer:2.2},
+  {q:"Prix d'un kilo de poulet (filet) (€)",answer:12},
+  {q:"Prix d'un kilo de fromage type emmental (€)",answer:11},
+  {q:"Prix d'une crêpe sucre en crêperie (€)",answer:4},
+  {q:"Prix d'un bubble tea (€)",answer:6.5},
+  {q:"Prix d'un menu fast-food (burger + frites + boisson) (€)",answer:12},
+  {q:"Prix d'une canette 33cl (€)",answer:1.2},
+  {q:"Prix d'un paquet de chips 150g (€)",answer:2.0},
+  {q:"Prix d'un pot de yaourt (x1) (€)",answer:0.6},
+  // ── Transports / voyages ─────────────────────────────────────────────────
+  {q:"Prix d'un plein d'essence (50L) (€)",answer:90},
+  {q:"Prix d'un ticket de bus en ville (€)",answer:1.8},
+  {q:"Prix d'un aller simple TER court trajet (€)",answer:8},
+  {q:"Prix d'un aller Paris-Lyon en TGV (moyenne €)",answer:65},
+  {q:"Prix d'un Uber de 5 km en ville (€)",answer:12},
+  {q:"Prix d'un billet d'avion low-cost Europe (moyenne €)",answer:80},
+  {q:"Vitesse maximale d'un TGV (km/h)",answer:320},
+  {q:"Vitesse maximale sur autoroute en France (km/h)",answer:130},
+  // ── Tech / divertissement ────────────────────────────────────────────────
+  {q:"Prix d'une Nintendo Switch neuve (€)",answer:299},
+  {q:"Prix d'une PS5 (standard) neuve (€)",answer:549},
+  {q:"Prix d'une manette PS5 (€)",answer:70},
+  {q:"Prix d'une paire d'AirPods (moyenne €)",answer:149},
+  {q:"Prix d'un abonnement Netflix standard (€/mois)",answer:13.5},
+  {q:"Prix d'un abonnement Spotify Premium (€/mois)",answer:11},
+  {q:"Prix d'un jeu vidéo AAA neuf (€)",answer:70},
+  {q:"Prix d'un clavier mécanique entrée de gamme (€)",answer:60},
+  {q:"Prix d'une souris gaming (€)",answer:45},
+  // ── Maison / services ────────────────────────────────────────────────────
+  {q:"Prix d'une coupe de cheveux homme (€)",answer:20},
+  {q:"Prix d'une coupe de cheveux femme (€)",answer:35},
+  {q:"Prix d'une place de cinéma (€)",answer:12},
+  {q:"Prix d'un billet de concert (moyenne €)",answer:45},
+  {q:"Prix d'une paire de baskets (moyenne €)",answer:80},
+  {q:"Prix d'un jean (moyenne €)",answer:60},
+  {q:"Prix d'un t-shirt (moyenne €)",answer:15},
+  {q:"Prix d'un livre poche (€)",answer:9},
+  {q:"Prix d'un menu au restaurant (plat + boisson) (€)",answer:18},
+  {q:"Prix d'un mois de salle de sport (moyenne €)",answer:30},
+  // ── Culture générale (nombres “fixes”) ────────────────────────────────────
+  {q:"Nombre de minutes dans une journée",answer:1440},
+  {q:"Nombre de secondes dans une heure",answer:3600},
+  {q:"Nombre de continents sur Terre",answer:7},
+  {q:"Nombre de jours dans une année bissextile",answer:366},
+  {q:"Nombre de touches sur un clavier AZERTY (approx.)",answer:105},
+  {q:"Nombre de dents chez l'adulte",answer:32},
+  {q:"Nombre de joueurs sur un terrain de football (total)",answer:22},
+  {q:"Hauteur du Mont Blanc (m)",answer:4808},
+  {q:"Longueur d'un marathon (km)",answer:42.195},
+  {q:"Nombre de litres dans 1 m³",answer:1000},
 ];
 
 const justeprixRooms=new Map();
@@ -4068,6 +4130,56 @@ const IMPOSTEUR_WORDS = {
   aliments: ['pizza','chocolat','pastèque','sushi','croissant','fromage','ananas','pieuvre','escargot','chou-fleur','framboise','noix de coco','piment','ratatouille','fondue','crêpe','guacamole','kimchi','pho','tacos','churros','waffle','bagel','mochi','tiramisu','baklava','choucroute','hummus','lasagne','couscous']
 };
 
+// Paires "à l'envers" pour le mot imposteur (fallback: mot différent)
+const IMPOSTEUR_OPPOSITES = [
+  ['fraise','cerise'],
+  ['pomme','poire'],
+  ['chocolat','vanille'],
+  ['pizza','burger'],
+  ['sushi','tacos'],
+  ['croissant','bagel'],
+  ['ananas','pastèque'],
+  ['fromage','chocolat'],
+  ['chien','chat'],
+  ['lion','tigre'],
+  ['renard','loup'],
+  ['panda','koala'],
+  ['hibou','aigle'],
+  ['plage','montagne'],
+  ['désert','jungle'],
+  ['bibliothèque','musée'],
+  ['château','prison'],
+  ['avion','sous-marin'],
+  ['épée','bouclier'],
+  ['loupe','télescope'],
+  ['nager','courir'],
+  ['danser','méditer'],
+  ['chuchoter','applaudir']
+].map(([a,b])=>[String(a).toLowerCase(),String(b).toLowerCase()]);
+
+function imposteurAllWordsFlat() {
+  return Object.values(IMPOSTEUR_WORDS).flat();
+}
+
+function imposteurPickDifferentWord(notWord) {
+  const flat = imposteurAllWordsFlat();
+  if (!flat.length) return '???';
+  const target = String(notWord||'').toLowerCase();
+  for (let i = 0; i < 20; i++) {
+    const w = flat[Math.floor(Math.random() * flat.length)];
+    if (String(w).toLowerCase() !== target) return w;
+  }
+  return flat[0];
+}
+
+function imposteurPickOpposite(word) {
+  const w = String(word||'').trim().toLowerCase();
+  if (!w) return imposteurPickDifferentWord(word);
+  const pair = IMPOSTEUR_OPPOSITES.find(([a,b]) => a === w || b === w);
+  if (pair) return pair[0] === w ? pair[1] : pair[0];
+  return imposteurPickDifferentWord(word);
+}
+
 function imposteurPickWord() {
   const cats = Object.keys(IMPOSTEUR_WORDS);
   const cat  = cats[Math.floor(Math.random() * cats.length)];
@@ -4088,6 +4200,7 @@ function makeImposteurRoom(code, host) {
   return { code, host, players:[], phase:'WAITING',
            round:0, totalRounds:5, nbImposteurs:1,
            word:null, imposteurSlots:[], descOrder:[], descIndex:0,
+           imposteurWord:null,
            descriptions:[], votes:{}, scores:{}, guessResult:null, timer:null };
 }
 
@@ -4099,11 +4212,15 @@ function imposteurSnap(room, forSlot) {
       o.isImposteur = room.imposteurSlots.includes(p.slot);
     return o;
   });
+  const showRoleToPlayer = room.phase !== 'WAITING';
   return {
     type:'imposteur_state', phase:room.phase,
     round:room.round, totalRounds:room.totalRounds, nbImposteurs:room.nbImposteurs,
     players, code:room.code, host:room.host,
-    word: room.phase==='DESCRIBE'||room.phase==='VOTE' ? (isImposteur ? null : room.word) : null,
+    myRole: showRoleToPlayer ? (isImposteur ? 'imposteur' : 'civil') : null,
+    word: (room.phase==='DESCRIBE'||room.phase==='VOTE')
+      ? (isImposteur ? room.imposteurWord : room.word)
+      : (['REVEAL','GUESS','SCORES','GAME_OVER'].includes(room.phase) ? room.word : null),
     descOrder:room.descOrder, descIndex:room.descIndex,
     descriptions:room.descriptions,
     votes: ['REVEAL','GUESS','SCORES','GAME_OVER'].includes(room.phase) ? room.votes : {},
@@ -4121,6 +4238,7 @@ function imposteurBcast(room) {
 function imposteurStartRound(room) {
   room.round++;
   room.word = imposteurPickWord();
+  room.imposteurWord = imposteurPickOpposite(room.word);
   room.descriptions = [];
   room.votes = {};
   room.eliminated = null;

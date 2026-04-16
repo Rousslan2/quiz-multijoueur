@@ -478,7 +478,8 @@ function doCreate(){
 
 function joinRoom(code, game){
   const name = document.getElementById('inp-join-name').value.trim()
-             || document.getElementById('inp-create-name').value.trim();
+             || document.getElementById('inp-create-name').value.trim()
+             || (window.ZapPlay ? ZapPlay.getSavedPseudo() : '');
   if(!name){
     document.getElementById('inp-join-name').focus();
     showStatus(document.getElementById('join-status'),'Entre ton prénom d\'abord !','err');

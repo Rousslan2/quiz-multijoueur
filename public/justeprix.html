@@ -298,6 +298,18 @@ $('val-in').addEventListener('keydown',e=>{ if(e.key==='Enter') submitGuess(); }
     const name=p.get('name'); $('name-input').value=name;
     pendingAction=()=>send({type:'create_justeprix',name});
   }
+  if(p.get('code') && !p.get('name') && window.ZapPlay && ZapPlay.getSavedPseudo){
+    const saved = ZapPlay.getSavedPseudo();
+    if(saved) $('name-input').value = saved;
+  }
+  // Auto-join when arriving from lobby with ?code=....
+  if(p.get('code') && ($('name-input').value||'').trim()){
+    const tryJoin = () => {
+      if(ws && ws.readyState===1) joinGame();
+      else pendingAction = () => joinGame();
+    };
+    setTimeout(tryJoin, 120);
+  }
 })();
 function bindLoungeSender(){if(window.ZapPlay)ZapPlay.setLoungeSender(text=>send({type:'lounge_chat',text}));else setTimeout(bindLoungeSender,120);}
 bindLoungeSender();

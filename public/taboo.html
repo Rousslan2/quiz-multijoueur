@@ -479,6 +479,17 @@ function connect() {
     const ci = document.getElementById('code-input');
     if(ci) ci.value = p.get('code').toUpperCase();
     showJoinT();
+    // Auto-join depuis le lobby: pseudo via URL ou pseudo sauvegardé ZapPlay
+    if (!p.get('name') && window.ZapPlay && ZapPlay.getSavedPseudo) {
+      const saved = ZapPlay.getSavedPseudo();
+      if (saved) document.getElementById('name-input').value = saved;
+    }
+    const nm = (document.getElementById('name-input').value || '').trim();
+    if (nm) {
+      myName = nm;
+      pendingAction = () => send({ type: 'join_taboo', name: nm, code: (ci ? ci.value : '').trim().toUpperCase() });
+      connect();
+    }
   }
   if (p.get('create') === '1' && p.get('name')) {
     const name = p.get('name');

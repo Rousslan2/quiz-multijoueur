@@ -432,7 +432,16 @@ if(window.ZapPlay && !$('name').value){
   const saved=window.ZapPlay.getSavedPseudo&&window.ZapPlay.getSavedPseudo();
   if(saved) $('name').value=saved;
 }
-if(p.get('code')){ $('code').value=p.get('code').toUpperCase(); $('join-area').style.display='flex'; }
+if(p.get('code')){
+  $('code').value=p.get('code').toUpperCase();
+  $('join-area').style.display='flex';
+  // Auto-join from lobby if code is provided (name can be saved pseudo)
+  if($('name').value.trim()){
+    const action=()=>send({type:'join_sumo',name:$('name').value.trim().slice(0,20)||'Joueur',code:$('code').value.trim().toUpperCase()});
+    if(ws&&ws.readyState===1) action();
+    else { pendingAction=action; if(!ws||ws.readyState===3) connect(); }
+  }
+}
 if(p.get('create')==='1'&&p.get('name')){
   const n=p.get('name'); $('name').value=n; myName=n;
   const action=()=>send({type:'create_sumo',name:n});

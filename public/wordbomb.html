@@ -235,6 +235,7 @@ const WS_URL = `${location.protocol==='https:'?'wss':'ws'}://${location.host}/ws
 let ws=null,mySlot=-1,myCode='',myName='',state=null,pendingAction=null,timerInt=null,lastPhase='';
 let activeTurnEndsAt=0;
 let activeTimerKey='';
+let serverOffsetMs = 0;
 let soundOn=true,audioCtx=null,lastTickSecond=-1,lastRecentKey='';
 let fuseOsc=null,fuseGain=null,fuseLfo=null,fuseLfoGain=null;
 let feedbackTimeout=null,myCombo=0;
@@ -431,6 +432,11 @@ function render(){
     $('recent').innerHTML = rec.length ? rec.slice().reverse().map(r=>`<div class="r"><b>${r.name}</b> : ${r.word}</div>`).join('') : '<div class="r">Aucun mot pour le moment.</div>';
     const turnEndsAt = Number(state.turnEndsAt||0);
     const turnMs = Number(state.turnMs||12000);
+    // Sync: compute server/client clock offset (serverNow included in bomb_state)
+    if(state.serverNow){
+      const sn = Number(state.serverNow);
+      if(Number.isFinite(sn) && sn>0) serverOffsetMs = sn - Date.now();
+    }
     const timerKey = `${state.turn}|${state.syllable||''}|${turnEndsAt}`;
     if(timerKey !== activeTimerKey){
       startTimer(turnEndsAt, turnMs, timerKey);
@@ -461,9 +467,10 @@ function startTimer(endTs, turnMs, timerKey){
     if($('time-left')) $('time-left').textContent='--.-s';
     return;
   }
-  // Robustesse: si l'horloge client/serveur diffère, on anime quand même localement.
   const now = Date.now();
-  let initialLeft = Number(endTs) - now;
+  // Use server-synced time for consistent countdown
+  const nowServer = now + (serverOffsetMs||0);
+  let initialLeft = Number(endTs) - nowServer;
   if(!Number.isFinite(initialLeft) || initialLeft < 250 || initialLeft > (roundMs + 5000)){
     initialLeft = roundMs;
   }
@@ -512,6 +519,15 @@ if(window.ZapPlay && !$('name').value){
   if(saved) $('name').value=saved;
 }
 if(p.get('code')){ $('code').value=p.get('code').toUpperCase(); $('join-area').style.display='flex'; }
+// Auto-join when coming from lobby (code + saved/URL name)
+if(p.get('code') && $('name').value){
+  const n = $('name').value.trim().slice(0,20);
+  if(n){
+    myName = n;
+    pendingAction = () => send({type:'join_bomb', name:n, code:$('code').value.trim().toUpperCase()});
+    if(!ws || ws.readyState===3) connect();
+  }
+}
 if(p.get('create')==='1'&&p.get('name')){
   const n=p.get('name'); $('name').value=n; myName=n;
   pendingAction=()=>send({type:'create_bomb',name:n}); connect();

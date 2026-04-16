@@ -150,6 +150,19 @@ function restart(){ send({type:'restart_memo'}); }
     const name=p.get('name'); $('name-input').value=name;
     pendingAction=()=>send({type:'create_memo',name});
   }
+  // Auto-fill pseudo depuis ZapPlay si manquant
+  if(p.get('code') && !p.get('name') && window.ZapPlay && ZapPlay.getSavedPseudo){
+    const saved = ZapPlay.getSavedPseudo();
+    if(saved) $('name-input').value = saved;
+  }
+  // Auto-join depuis le lobby si code présent
+  if(p.get('code') && ($('name-input').value||'').trim()){
+    const tryJoin = () => {
+      if(ws && ws.readyState===1) joinGame();
+      else pendingAction = () => joinGame();
+    };
+    setTimeout(tryJoin, 120);
+  }
 })();
 
 function flipCard(id){

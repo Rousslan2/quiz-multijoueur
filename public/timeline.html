@@ -273,6 +273,18 @@ function handleMsg(d){
     const name=p.get('name'); $('name-input').value=name;
     pendingAction=()=>send({type:'create_timeline',name});
   }
+  if(p.get('code') && !p.get('name') && window.ZapPlay && ZapPlay.getSavedPseudo){
+    const saved = ZapPlay.getSavedPseudo();
+    if(saved) $('name-input').value = saved;
+  }
+  // Auto-join when arriving from lobby with ?code=....
+  if(p.get('code') && ($('name-input').value||'').trim()){
+    const tryJoin = () => {
+      if(ws && ws.readyState===1) joinGame();
+      else pendingAction = () => joinGame();
+    };
+    setTimeout(tryJoin, 120);
+  }
 })();
 
 function updateState(d){
