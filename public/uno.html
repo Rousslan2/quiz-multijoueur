@@ -188,12 +188,12 @@ input[type=text]::placeholder{color:var(--muted)}
 
 <!-- Color picker overlay -->
 <div id="color-picker">
-  <h3>Choisir une couleur</h3>
+  <h3 data-i18n="uno_choose_color">Choisir une couleur</h3>
   <div class="color-grid">
-    <button class="color-choice rouge" onclick="pickColor('rouge')"><span>&#x1F534;</span><span class="color-choice-label">Rouge</span></button>
-    <button class="color-choice bleu" onclick="pickColor('bleu')"><span>&#x1F535;</span><span class="color-choice-label">Bleu</span></button>
-    <button class="color-choice vert" onclick="pickColor('vert')"><span>&#x1F7E2;</span><span class="color-choice-label">Vert</span></button>
-    <button class="color-choice jaune" onclick="pickColor('jaune')"><span>&#x1F7E1;</span><span class="color-choice-label">Jaune</span></button>
+    <button class="color-choice rouge" onclick="pickColor('rouge')"><span>&#x1F534;</span><span class="color-choice-label" data-i18n="uno_color_red">Rouge</span></button>
+    <button class="color-choice bleu" onclick="pickColor('bleu')"><span>&#x1F535;</span><span class="color-choice-label" data-i18n="uno_color_blue">Bleu</span></button>
+    <button class="color-choice vert" onclick="pickColor('vert')"><span>&#x1F7E2;</span><span class="color-choice-label" data-i18n="uno_color_green">Vert</span></button>
+    <button class="color-choice jaune" onclick="pickColor('jaune')"><span>&#x1F7E1;</span><span class="color-choice-label" data-i18n="uno_color_yellow">Jaune</span></button>
   </div>
 </div>
 
@@ -207,7 +207,7 @@ input[type=text]::placeholder{color:var(--muted)}
   <div style="flex:1"></div>
   <div class="logo">
     <h1>&#x1F0CF; UNO</h1>
-    <p>Le jeu de cartes classique !</p>
+    <p data-i18n="uno_classic">Le jeu de cartes classique !</p>
   </div>
   <div class="form-card">
     <div class="form-label" data-i18n="ui_name_ph">Ton pseudo</div>
@@ -229,14 +229,14 @@ input[type=text]::placeholder{color:var(--muted)}
 <!-- WAIT -->
 <div id="s-wait" class="screen">
   <div style="flex:1"></div>
-  <div style="font-size:.78rem;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;text-align:center">Code de la salle</div>
-  <div class="wait-code-box" onclick="copyCode()" title="Cliquer pour copier">
+  <div style="font-size:.78rem;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;text-align:center" data-i18n="uno_room_code">Code de la salle</div>
+  <div class="wait-code-box" onclick="copyCode()" data-i18n-title="uno_click_copy" title="Cliquer pour copier">
     <div id="wait-code">----</div>
-    <div id="wait-copy-hint">Cliquer pour copier</div>
+    <div id="wait-copy-hint" data-i18n="uno_click_copy">Cliquer pour copier</div>
   </div>
-  <div id="wait-msg" style="color:var(--muted);font-size:.9rem;text-align:center">En attente des joueurs (2-4)&hellip;</div>
+  <div id="wait-msg" style="color:var(--muted);font-size:.9rem;text-align:center" data-i18n="uno_wait_room">En attente des joueurs (2-4)&hellip;</div>
   <div id="wait-players"></div>
-  <button id="start-btn" class="btn btn-primary" onclick="doStart()">&#x25B6; Démarrer la partie</button>
+  <button id="start-btn" class="btn btn-primary" onclick="doStart()" data-i18n="uno_start">▶ Démarrer la partie</button>
   <div id="wait-err" style="color:#fca5a5;font-size:.85rem;min-height:18px;text-align:center"></div>
   <div style="flex:2"></div>
 </div>
@@ -245,21 +245,21 @@ input[type=text]::placeholder{color:var(--muted)}
 <div id="s-game" class="screen">
   <div id="others-area"></div>
   <div id="center-area">
-    <div id="direction-indicator"><span id="dir-arrow">&#x25B6;</span> <span id="dir-text">Sens horaire</span></div>
+    <div id="direction-indicator"><span id="dir-arrow">&#x25B6;</span> <span id="dir-text" data-i18n="uno_dir_cw">Sens horaire</span></div>
     <div id="draw-stack-badge">+0 cartes&nbsp;&#x26A0;</div>
     <div id="pile-row">
-      <div class="uno-card deck-card" onclick="doDraw()" title="Piocher">
+      <div class="uno-card deck-card" onclick="doDraw()" data-i18n-title="uno_draw_title" title="Piocher">
         <span style="font-size:1.8rem">&#x1F0CF;</span>
       </div>
       <div id="top-card" class="uno-card top-card rouge">5</div>
     </div>
-    <div id="my-turn-badge">C'est ton tour !</div>
+    <div id="my-turn-badge" data-i18n="uno_turn_badge">C'est ton tour !</div>
   </div>
   <div id="hand-area">
-    <div id="hand-label">Ta main</div>
+    <div id="hand-label" data-i18n="uno_hand">Ta main</div>
     <div id="hand-scroll"></div>
     <div id="action-row">
-      <button id="draw-btn" onclick="doDraw()">+1 Piocher</button>
+      <button id="draw-btn" onclick="doDraw()" data-i18n="uno_draw_one">+1 Piocher</button>
       <button id="uno-btn" onclick="doUno()">UNO !</button>
     </div>
   </div>
@@ -268,9 +268,9 @@ input[type=text]::placeholder{color:var(--muted)}
 <!-- GAME OVER -->
 <div id="s-over" class="screen">
   <div id="over-icon">&#x1F3C6;</div>
-  <div id="over-title">Fin de partie</div>
+  <div id="over-title" data-i18n="uno_over_title">Fin de partie</div>
   <div id="over-sub"></div>
-  <button class="btn btn-primary" style="max-width:280px" onclick="location.href='index.html'">Retour à l'accueil</button>
+  <button class="btn btn-primary" style="max-width:280px" onclick="location.href='index.html'" data-i18n="uno_back_home">Retour à l'accueil</button>
 </div>
 
 </div><!-- #wrap -->
@@ -314,8 +314,8 @@ function copyCode() {
   if (!myCode) return;
   navigator.clipboard.writeText(myCode).then(() => {
     const el = document.getElementById('wait-copy-hint');
-    el.textContent = 'Copié !'; el.style.color = 'var(--correct)';
-    setTimeout(() => { el.textContent = 'Cliquer pour copier'; el.style.color = ''; }, 1500);
+    el.textContent = (window.ZapPlay ? ZapPlay.t('uno_copied') : 'Copié !'); el.style.color = 'var(--correct)';
+    setTimeout(() => { el.textContent = (window.ZapPlay ? ZapPlay.t('uno_click_copy') : 'Cliquer pour copier'); el.style.color = ''; }, 1500);
   }).catch(() => {});
 }
 
@@ -361,7 +361,7 @@ function doDraw() {
 
 function doUno() {
   send({ type:'uno_said' });
-  toast('UNO annoncé !');
+  toast(window.ZapPlay ? ZapPlay.t('uno_said') : 'UNO annoncé !');
 }
 
 function doCatchUno(targetSlot) {
@@ -411,8 +411,12 @@ function handle(m) {
       break;
 
     case 'player_left':
-      setWaitErr((m.name||'Un joueur') + ' a quitté.');
-      toast((m.name||'Un joueur') + ' a quitté.');
+      {
+        const who = m.name || (window.ZapPlay ? ZapPlay.t('uno_player_left_generic') : 'Un joueur');
+        const msg = window.ZapPlay ? ZapPlay.t('uno_player_left', { name: who }) : (who + ' a quitté.');
+        setWaitErr(msg);
+        toast(msg);
+      }
       break;
     case 'lounge_chat':
       if(window.ZapPlay)ZapPlay.addLoungeMessage(m);
@@ -424,12 +428,18 @@ function handle(m) {
       break;
 
     case 'uno_played':
-      toast((m.slot === mySlot ? 'Tu as joué' : m.name + ' a joué') + ' ' + cardLabel(m.card));
+      toast((m.slot === mySlot
+        ? (window.ZapPlay ? ZapPlay.t('uno_you_played', { card: cardLabel(m.card) }) : ('Tu as joué ' + cardLabel(m.card)))
+        : (window.ZapPlay ? ZapPlay.t('uno_x_played', { name: m.name, card: cardLabel(m.card) }) : (m.name + ' a joué ' + cardLabel(m.card)))
+      ));
       break;
 
     case 'uno_drew':
       if (m.count > 1)
-        toast((m.slot === mySlot ? 'Tu pioche' : m.name + ' pioche') + ' ' + m.count + ' cartes !', 2500);
+        toast((m.slot === mySlot
+          ? (window.ZapPlay ? ZapPlay.tc('uno_you_draw', m.count, { n: m.count }) : ('Tu pioches ' + m.count + ' cartes !'))
+          : (window.ZapPlay ? ZapPlay.tc('uno_x_draw', m.count, { n: m.count, name: m.name }) : (m.name + ' pioche ' + m.count + ' cartes !'))
+        ), 2500);
       // Shake effect if targeted
       if (m.count > 1 && m.slot === mySlot) {
         const hw = document.getElementById('hand-area');
@@ -441,11 +451,11 @@ function handle(m) {
       break;
 
     case 'uno_said':
-      if (m.slot !== mySlot) toast(m.name + ' dit UNO !', 2000);
+      if (m.slot !== mySlot) toast(window.ZapPlay ? ZapPlay.t('uno_other_said', { name: m.name }) : (m.name + ' dit UNO !'), 2000);
       break;
 
     case 'uno_caught':
-      toast(m.catcher + ' attrape ' + m.target + ' sans UNO ! +2 cartes !', 3000);
+      toast(window.ZapPlay ? ZapPlay.t('uno_caught', { catcher: m.catcher, target: m.target }) : (m.catcher + ' attrape ' + m.target + ' sans UNO ! +2 cartes !'), 3000);
       hideCatchArea();
       break;
 
@@ -456,8 +466,12 @@ function handle(m) {
         ZapPlay.saveGameResult({game:'uno',gameName:'Uno',players:pNames,winner:m.winnerName||'?',myName:pNames[mySlot]||'',myScore:0,isWinner:isMe});
       }
       document.getElementById('over-icon').textContent = isMe ? '🎉' : '😔';
-      document.getElementById('over-title').textContent = isMe ? 'Tu as gagné !' : (m.winnerName || 'Quelqu\'un') + ' a gagné !';
-      document.getElementById('over-sub').textContent = isMe ? 'Bravo, tu as vidé ta main !' : 'Meilleure chance la prochaine fois !';
+      document.getElementById('over-title').textContent = isMe
+        ? (window.ZapPlay ? ZapPlay.t('uno_win_me') : 'Tu as gagné !')
+        : (window.ZapPlay ? ZapPlay.t('uno_win_other', { name: (m.winnerName || '?') }) : ((m.winnerName || 'Quelqu\'un') + ' a gagné !'));
+      document.getElementById('over-sub').textContent = isMe
+        ? (window.ZapPlay ? ZapPlay.t('uno_win_me_sub') : 'Bravo, tu as vidé ta main !')
+        : (window.ZapPlay ? ZapPlay.t('uno_win_other_sub') : 'Meilleure chance la prochaine fois !');
       if (isMe) spawnConfetti();
       hideCatchArea();
       show('s-over');
@@ -506,13 +520,17 @@ function renderGame(m) {
 
   // Direction
   document.getElementById('dir-arrow').textContent = m.direction === 1 ? '▶' : '◀';
-  document.getElementById('dir-text').textContent = m.direction === 1 ? 'Sens horaire' : 'Sens anti-horaire';
+  document.getElementById('dir-text').textContent = m.direction === 1
+    ? (window.ZapPlay ? ZapPlay.t('uno_dir_cw') : 'Sens horaire')
+    : (window.ZapPlay ? ZapPlay.t('uno_dir_ccw') : 'Sens anti-horaire');
 
   // Draw stack badge
   const dsb = document.getElementById('draw-stack-badge');
   if (m.drawStack > 0) {
     dsb.style.display = 'block';
-    dsb.textContent = '+' + m.drawStack + ' carte' + (m.drawStack > 1 ? 's' : '') + ' en attente ⚠';
+    dsb.textContent = window.ZapPlay
+      ? ZapPlay.tc('uno_stack', m.drawStack, { n: m.drawStack })
+      : ('+' + m.drawStack + ' carte' + (m.drawStack > 1 ? 's' : '') + ' en attente ⚠');
   } else {
     dsb.style.display = 'none';
   }
@@ -531,10 +549,12 @@ function renderGame(m) {
   const drawBtn = document.getElementById('draw-btn');
   drawBtn.disabled = !isMyTurn;
   if (m.drawStack > 0) {
-    drawBtn.textContent = '+' + m.drawStack + ' Piocher (obligatoire)';
+    drawBtn.textContent = window.ZapPlay
+      ? ZapPlay.t('uno_draw_must', { n: m.drawStack })
+      : ('+' + m.drawStack + ' Piocher (obligatoire)');
     drawBtn.style.borderColor = 'rgba(239,68,68,.5)';
   } else {
-    drawBtn.textContent = '+1 Piocher';
+    drawBtn.textContent = window.ZapPlay ? ZapPlay.t('uno_draw_one') : '+1 Piocher';
     drawBtn.style.borderColor = '';
   }
 
@@ -544,10 +564,10 @@ function renderGame(m) {
     unoBtn.style.display = 'block';
     if (myHand.length === 1) {
       unoBtn.classList.add('flash');
-      unoBtn.textContent = 'UNO ! ⚡';
+      unoBtn.textContent = window.ZapPlay ? ZapPlay.t('uno_uno_btn_flash') : 'UNO ! ⚡';
     } else {
       unoBtn.classList.remove('flash');
-      unoBtn.textContent = 'UNO !';
+      unoBtn.textContent = window.ZapPlay ? ZapPlay.t('uno_uno_btn') : 'UNO !';
     }
   } else {
     unoBtn.style.display = 'none';
@@ -582,7 +602,7 @@ function updateCatchArea(m) {
   if (catchable.length > 0) {
     catchArea.style.display = 'block';
     catchArea.innerHTML = catchable.map(p =>
-      `<button class="catch-btn" onclick="doCatchUno(${p.slot})">&#128073; Attraper ${esc(p.name)} (sans UNO !)</button>`
+      `<button class="catch-btn" onclick="doCatchUno(${p.slot})">${(window.ZapPlay?ZapPlay.t('uno_catch_btn',{name:esc(p.name)}):('👉 Attraper '+esc(p.name)+' (sans UNO !)'))}</button>`
     ).join('');
     // Auto-hide after 2.5s
     clearTimeout(catchAreaTimeout);
@@ -652,10 +672,16 @@ function cardSymbol(value) {
 function cardLabel(card) {
   if (!card) return '?';
   const v = card.value;
-  if (v === 'skip') return 'Skip';
-  if (v === 'reverse') return 'Reverse';
+  if (v === 'skip') return window.ZapPlay ? ZapPlay.t('uno_card_skip') : 'Skip';
+  if (v === 'reverse') return window.ZapPlay ? ZapPlay.t('uno_card_reverse') : 'Reverse';
   return v;
 }
+
+// Rerender on language switch so dynamic labels update
+window.addEventListener('zapplay:lang', () => {
+  if (!gameState) return;
+  renderGame(gameState);
+});
 
 function esc(s) {
   return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');

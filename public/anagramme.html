@@ -59,9 +59,9 @@ h2{font-size:1.5rem;font-weight:800;background:linear-gradient(135deg,var(--prim
 
 <!-- Name -->
 <div id="scr-name">
-  <h2>🔤 Anagramme</h2>
+  <h2>🔤 <span data-i18n="ana_title">Anagramme</span></h2>
   <div class="card" style="display:flex;flex-direction:column;gap:10px">
-    <p style="text-align:center;color:var(--muted);font-size:.85rem">Déchiffre le mot avant les autres ! 8 manches · 2–4 joueurs</p>
+    <p style="text-align:center;color:var(--muted);font-size:.85rem" data-i18n="ana_tagline">Déchiffre le mot avant les autres ! 8 manches · 2–4 joueurs</p>
     <input id="name-input" type="text" maxlength="20" placeholder="Ton pseudo" data-i18n-ph="ui_name_ph" autocomplete="off">
     <div style="display:flex;gap:8px">
       <button class="btn btn-p" style="flex:1" onclick="createGame()" data-i18n="ui_create_room">Créer une salle</button>
@@ -77,22 +77,22 @@ h2{font-size:1.5rem;font-weight:800;background:linear-gradient(135deg,var(--prim
 
 <!-- Wait -->
 <div id="scr-wait" class="hidden">
-  <h2>🔤 Anagramme</h2>
+  <h2>🔤 <span data-i18n="ana_title">Anagramme</span></h2>
   <div class="card" style="display:flex;flex-direction:column;gap:12px;align-items:center">
     <div class="code-box" onclick="copyCode()">
-      <div style="font-size:.62rem;color:var(--muted);letter-spacing:.08em;margin-bottom:4px">CODE DE LA SALLE</div>
+      <div style="font-size:.62rem;color:var(--muted);letter-spacing:.08em;margin-bottom:4px" data-i18n="ana_room_code">CODE DE LA SALLE</div>
       <div class="code-big" id="w-code">----</div>
-      <div style="font-size:.62rem;color:var(--muted);margin-top:4px">Cliquer pour copier</div>
+      <div style="font-size:.62rem;color:var(--muted);margin-top:4px" data-i18n="ana_click_copy">Cliquer pour copier</div>
     </div>
     <div style="display:flex;flex-wrap:wrap;gap:8px" id="w-players"></div>
-    <button id="start-btn" class="btn btn-p btn-full hidden" onclick="startGame()">▶ Lancer</button>
+    <button id="start-btn" class="btn btn-p btn-full hidden" onclick="startGame()" data-i18n="ana_start">▶ Lancer</button>
     <p id="w-hint" style="color:var(--muted);font-size:.82rem"></p>
   </div>
 </div>
 
 <!-- Countdown -->
 <div id="scr-cd" class="hidden" style="min-height:50vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px">
-  <p style="color:var(--muted);letter-spacing:.1em;text-transform:uppercase;font-size:.9rem">Prêts ?</p>
+  <p style="color:var(--muted);letter-spacing:.1em;text-transform:uppercase;font-size:.9rem" data-i18n="quiz_prepare">Prêts ?</p>
   <div class="big-num" id="cd-n">3</div>
 </div>
 
@@ -142,6 +142,7 @@ h2{font-size:1.5rem;font-weight:800;background:linear-gradient(135deg,var(--prim
 const WS_URL = `${location.protocol==='https:'?'wss':'ws'}://${location.host}/ws/anagramme`;
 let ws, mySlot=-1, myCode='', timerIv=null, timerAnim=null, locked=false;
 let pendingAction=null;
+let lastState=null;
 const $ = id => document.getElementById(id);
 const show = id => $(id).classList.remove('hidden');
 const hide = id => $(id).classList.add('hidden');
@@ -224,7 +225,7 @@ function handleMsg(d){
       mySlot=d.slot; myCode=d.code;
       hide('scr-name'); show('scr-wait');
       $('w-code').textContent=d.code;
-      $('w-hint').textContent='En attente du lancement…'; break;
+      $('w-hint').textContent=window.ZapPlay?ZapPlay.t('ana_wait_launch'):'En attente du lancement…'; break;
     case 'anagramme_state': updateState(d); break;
     case 'countdown':{
       ['scr-wait','scr-name','scr-rnd'].forEach(hide);
@@ -236,12 +237,12 @@ function handleMsg(d){
     }
     case 'anagramme_round':
       locked=false; ['scr-cd','scr-rnd'].forEach(hide); show('scr-play');
-      $('rnd-info').textContent='MANCHE '+d.round+'/'+d.totalRounds;
+      $('rnd-info').textContent=window.ZapPlay?ZapPlay.t('ana_round',{cur:d.round,total:d.totalRounds}):('MANCHE '+d.round+'/'+d.totalRounds);
       $('scramble-disp').textContent=d.scrambled.toUpperCase();
       $('guess-in').value=''; $('guess-in').disabled=false; $('guess-in').focus();
       $('feed').textContent=''; buildDots(d.wordLen); startTimer(20); break;
     case 'anagramme_wrong':
-      $('feed').textContent='✗ Mauvaise réponse !'; $('feed').style.color='var(--bad)';
+      $('feed').textContent=window.ZapPlay?ZapPlay.t('ana_wrong'):'✗ Mauvaise réponse !'; $('feed').style.color='var(--bad)';
       $('guess-in').classList.add('shake');
       setTimeout(()=>$('guess-in').classList.remove('shake'),400);
       $('guess-in').value=''; break;
@@ -249,28 +250,31 @@ function handleMsg(d){
       clearInterval(timerIv); locked=true;
       ['scr-play'].forEach(hide); show('scr-rnd');
       $('rnd-word').textContent=d.word.toUpperCase();
-      $('rnd-result').textContent=d.slot===mySlot?'🎉 Tu as trouvé !':(d.winner+' a trouvé !');
+      $('rnd-result').textContent = d.slot===mySlot
+        ? (window.ZapPlay?ZapPlay.t('ana_you_found'):'🎉 Tu as trouvé !')
+        : (window.ZapPlay?ZapPlay.t('ana_x_found',{name:d.winner}):(d.winner+' a trouvé !'));
       break;
     }
     case 'anagramme_timeout':{
       clearInterval(timerIv); locked=true;
       ['scr-play'].forEach(hide); show('scr-rnd');
       $('rnd-word').textContent=d.word.toUpperCase();
-      $('rnd-result').textContent='Temps écoulé — personne n\'a trouvé'; $('rnd-result').style.color='var(--muted)';
+      $('rnd-result').textContent=window.ZapPlay?ZapPlay.t('ana_timeout'):'Temps écoulé — personne n\'a trouvé'; $('rnd-result').style.color='var(--muted)';
       break;
     }
     case 'error': $('err').textContent=d.msg; break;
-    case 'game_abandoned': alert('Un joueur a quitté.'); location.reload(); break;
+    case 'game_abandoned': alert(window.ZapPlay?ZapPlay.t('ana_abandoned'):'Un joueur a quitté.'); location.reload(); break;
     case 'lounge_chat': if(window.ZapPlay)ZapPlay.addLoungeMessage(d); break;
   }
 }
 function updateState(d){
+  lastState=d;
   if(d.phase==='WAITING'){
     ['scr-cd','scr-play','scr-rnd','scr-over'].forEach(hide); show('scr-wait');
     $('w-code').textContent=d.code;
     const pw=$('w-players'); pw.textContent='';
     d.players.forEach(p=>{ const c=document.createElement('span'); c.className='p-chip'; c.textContent=(p.slot===0?'👑 ':'')+p.name; pw.appendChild(c); });
-    if(mySlot===0) show('start-btn'); else $('w-hint').textContent='En attente du joueur 1…';
+    if(mySlot===0) show('start-btn'); else $('w-hint').textContent=window.ZapPlay?ZapPlay.t('ana_wait_p1'):'En attente du joueur 1…';
     if(window.ZapPlay)ZapPlay.showLounge({players:d.players,mySlot,roomCode:d.code,gameName:'Anagramme'});
   }
   if(d.phase==='PLAYING'){if(window.ZapPlay)ZapPlay.hideLounge(); renderScores(d.players,'score-bar');}
@@ -279,8 +283,15 @@ function updateState(d){
     if(window.ZapPlay)ZapPlay.hideLounge();
     ['scr-play','scr-rnd'].forEach(hide); show('scr-over');
     const sorted=[...d.players].sort((a,b)=>b.score-a.score);
-    $('winner-txt').textContent=sorted[0]?sorted[0].name+' gagne !':'';
-    renderRanks(sorted.map((p,i)=>({me:p.slot===mySlot,medal:medals[i]||'🏅',name:p.name,pts:p.score+' pts'})),'final-ranks');
+    $('winner-txt').textContent = sorted[0]
+      ? (window.ZapPlay?ZapPlay.t('ana_x_wins',{name:sorted[0].name}):(sorted[0].name+' gagne !'))
+      : '';
+    renderRanks(sorted.map((p,i)=>({
+      me:p.slot===mySlot,
+      medal:medals[i]||'🏅',
+      name:p.name,
+      pts:(window.ZapPlay?ZapPlay.t('ana_pts',{n:p.score}):(p.score+' pts'))
+    })),'final-ranks');
   }
 }
 $('guess-in').addEventListener('keydown',e=>{ if(e.key==='Enter') submitGuess(); });
@@ -296,6 +307,12 @@ $('guess-in').addEventListener('keydown',e=>{ if(e.key==='Enter') submitGuess();
 })();
 function bindLoungeSender(){if(window.ZapPlay)ZapPlay.setLoungeSender(text=>send({type:'lounge_chat',text}));else setTimeout(bindLoungeSender,120);}
 bindLoungeSender();
+
+// Refresh dynamic strings on language switch
+window.addEventListener('zapplay:lang', () => {
+  // shared.js re-applies data-i18n; refresh state-driven strings too
+  if (lastState) updateState(lastState);
+});
 </script>
 <script src="shared.js"></script>
 <script src="chat.js"></script>
