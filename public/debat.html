@@ -6,7 +6,7 @@
 <link rel="stylesheet" href="theme.css">
 <title>ZapPlay — Débat express</title>
 <style>
-:root{--primary:#ec4899;--card:#0E0E22;--border:rgba(236,72,153,.25);--text:#E8E8F0;--muted:#5A5A78;--for:#22c55e;--against:#f97316}
+:root{--primary:#ec4899;--card:#0E0E22;--border:rgba(236,72,153,.25);--text:#E8E8F0;--muted:#5A5A78;--for:#22c55e;--against:#f97316;--judge:#a855f7}
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;color:var(--text);font-family:'Exo 2',sans-serif;overflow:hidden}
 #wrap{max-width:520px;margin:0 auto;padding:56px 14px 16px;min-height:100dvh;display:flex;flex-direction:column;gap:12px}
@@ -22,8 +22,9 @@ html,body{height:100%;color:var(--text);font-family:'Exo 2',sans-serif;overflow:
 .btn-against{background:linear-gradient(135deg,var(--against),#ea580c);color:#fff}
 .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px}
 h1{font-size:1.35rem;color:var(--primary);text-align:center}
-#topic{font-size:1.1rem;line-height:1.45;text-align:center;padding:14px;background:rgba(236,72,153,.1);border-radius:12px;border:1px solid var(--border)}
-#timer{font-size:2rem;font-weight:800;text-align:center;color:var(--primary);font-family:monospace}
+#topic{font-size:1.08rem;line-height:1.45;text-align:center;padding:14px;background:rgba(236,72,153,.1);border-radius:12px;border:1px solid var(--border)}
+#timer{font-size:1.85rem;font-weight:800;text-align:center;color:var(--primary);font-family:monospace;min-height:2.2rem}
+#phase-chip{display:inline-block;margin:0 auto;padding:4px 12px;border-radius:999px;font-size:.68rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;background:rgba(236,72,153,.15);border:1px solid var(--border);color:var(--primary)}
 #err{color:#f87171;font-size:.85rem;text-align:center;min-height:18px}
 input[type=text]{width:100%;padding:12px;border-radius:10px;border:1px solid var(--border);background:rgba(255,255,255,.06);color:var(--text)}
 </style>
@@ -35,7 +36,7 @@ input[type=text]{width:100%;padding:12px;border-radius:10px;border:1px solid var
 <div id="wrap">
   <div id="s-home" class="screen active">
     <h1>⚖️ Débat express</h1>
-    <p style="text-align:center;color:var(--muted);font-size:.85rem">Sujet tiré au sort — deux orateurs, le public vote.</p>
+    <p style="text-align:center;color:var(--muted);font-size:.85rem">Mode <b>3 joueurs</b> : à chaque manche, deux débatteurs (Pour / Contre) et un <b>juge</b> qui tranche. Les rôles tournent.</p>
     <div class="card">
       <input id="inp-name" type="text" placeholder="Ton prénom" maxlength="20" autocomplete="off">
       <div style="display:flex;gap:8px;margin-top:10px">
@@ -59,17 +60,18 @@ input[type=text]{width:100%;padding:12px;border-radius:10px;border:1px solid var
     <button id="btn-start" class="btn btn-primary" style="display:none" onclick="send({type:'start_debat'})">Lancer</button>
   </div>
   <div id="s-game" class="screen">
+    <div style="text-align:center"><span id="phase-chip"></span></div>
     <div id="round-lbl" style="text-align:center;color:var(--muted);font-size:.8rem"></div>
     <div id="topic"></div>
     <div id="roles" class="card" style="font-size:.9rem"></div>
     <div id="timer" style="display:none"></div>
     <div id="vote-area" style="display:none;flex-direction:column;gap:10px">
-      <div style="text-align:center;color:var(--muted);font-size:.85rem">Qui a le mieux défendu son camp ?</div>
-      <button class="btn btn-for" onclick="send({type:'debat_vote',side:'for'})">Pour</button>
-      <button class="btn btn-against" onclick="send({type:'debat_vote',side:'against'})">Contre</button>
+      <div id="vote-title" style="text-align:center;color:var(--muted);font-size:.85rem"></div>
+      <button class="btn btn-for" onclick="send({type:'debat_vote',side:'for'})">Victoire « Pour »</button>
+      <button class="btn btn-against" onclick="send({type:'debat_vote',side:'against'})">Victoire « Contre »</button>
     </div>
-    <div id="deb-wait" style="display:none;text-align:center;color:var(--muted)">Les orateurs s’expriment…</div>
-    <div id="round-end" style="display:none;text-align:center;color:var(--muted)">Vote en cours ou résultat…</div>
+    <div id="deb-wait" style="display:none;text-align:center;color:var(--muted);font-size:.92rem;line-height:1.45"></div>
+    <div id="round-end" style="display:none;text-align:center;color:var(--muted)"></div>
   </div>
   <div id="s-over" class="screen">
     <h1 style="text-align:center">🏆 Classement</h1>
@@ -82,7 +84,7 @@ input[type=text]{width:100%;padding:12px;border-radius:10px;border:1px solid var
 <script src="chat.js"></script>
 <script>
 const WS=(location.protocol==='https:'?'wss':'ws')+'://'+location.host+'/ws/debat';
-let ws=null,mySlot=-1,myName='',pending=null,timerId=null,endTs=0;
+let ws=null,mySlot=-1,myName='',pending=null,timerId=null,lastServerSkew=0,lastEndAt=0,lastPhase='';
 function el(id){return document.getElementById(id)}
 function send(o){if(ws&&ws.readyState===1)ws.send(JSON.stringify(o))}
 function connect(){
@@ -96,15 +98,17 @@ function bindL(){if(window.ZapPlay)ZapPlay.setLoungeSender(t=>send({type:'lounge
 bindL();
 function show(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));el(id).classList.add('active')}
 function clearTimer(){if(timerId){clearInterval(timerId);timerId=null}}
-function startLocalTimer(sec){
-  clearTimer();endTs=Date.now()+sec*1000;
+function startCountdownTo(endTs,label){
+  clearTimer();
+  lastEndAt=endTs;
   el('timer').style.display='block';
   const tick=()=>{
-    const left=Math.max(0,Math.ceil((endTs-Date.now())/1000));
-    el('timer').textContent=left+' s';
-    if(left<=0)clearTimer()
+    const now=Date.now()+lastServerSkew;
+    const left=Math.max(0,Math.ceil((endTs-now)/1000));
+    el('timer').textContent=(label?label+' · ':'')+left+' s';
+    if(left<=0)clearTimer();
   };
-  tick();timerId=setInterval(tick,250)
+  tick();timerId=setInterval(tick,250);
 }
 function createR(){
   const n=el('inp-name').value.trim();if(!n){el('err').textContent='Prénom requis';return}
@@ -130,20 +134,20 @@ function handle(m){
   if(m.type==='welcome_debat'){mySlot=m.slot;myName=m.name}
   if(m.type!=='debat_state')return;
   const s=m;
+  if(typeof s.serverNow==='number')lastServerSkew=s.serverNow-Date.now();
   if(mySlot<0&&myName){const me=s.players.find(p=>p.name===myName);if(me)mySlot=me.slot}
   const isHost=mySlot===0;
+  if(s.phase!==lastPhase){lastPhase=s.phase;clearTimer()}
   if(s.phase==='WAITING'){
     el('code-disp').textContent=s.code||'----';
     el('wait-pl').textContent=s.players.map(p=>p.name).join(' · ');
-    var need=3,has=s.players.length,miss=need-has;
-    if(isHost){
-      el('wait-hint').textContent=miss>0?('Il manque encore '+miss+' joueur'+(miss>1?'s':'')+' (minimum '+need+'). Partage le code !'):'Tout le monde est prêt — tu peux lancer.';
-    }else{
-      el('wait-hint').textContent=miss>0?('En attente de joueurs ('+has+'/'+need+')…'):'L’hôte peut lancer la partie.';
-    }
-    el('btn-start').style.display=isHost&&has>=need?'block':'none';
-    if(window.ZapPlay)ZapPlay.showLounge({players:s.players,mySlot,roomCode:s.code,gameName:'Débat express'});
-    clearTimer();el('timer').style.display='none';
+    const need=3,has=s.players.length;
+    if(has>need)el('wait-hint').textContent='Trop de joueurs — ce mode est limité à 3.';
+    else if(isHost)el('wait-hint').textContent=has<need?('Invite exactement 2 ami'+(need-has===2?'s':'')+' ('+has+'/'+need+').'):'Les 3 sont là — lance la partie !';
+    else el('wait-hint').textContent=has<need?('En attente ('+has+'/'+need+')…'):'L’hôte peut lancer.';
+    el('btn-start').style.display=isHost&&has===need?'block':'none';
+    if(window.ZapPlay)ZapPlay.showLounge({players:s.players,mySlot,roomCode:s.code,gameName:'Débat express (3)'});
+    el('timer').style.display='none';
     show('s-wait');return
   }
   if(window.ZapPlay)ZapPlay.hideLounge();
@@ -156,38 +160,46 @@ function handle(m){
     h+='</table>';
     el('final-scores').innerHTML=h;
     el('btn-restart').style.display=isHost?'block':'none';
-    clearTimer();show('s-over');return
+    clearTimer();el('timer').style.display='none';show('s-over');return
   }
   show('s-game');
   el('topic').textContent=s.topic||'';
-  const fn=s.players.find(p=>p.slot===s.forSlot);
-  const ag=s.players.find(p=>p.slot===s.againstSlot);
-  el('roles').innerHTML='<div><b style="color:var(--for)">Pour</b> : '+esc(fn?fn.name:'?')+'</div><div style="margin-top:6px"><b style="color:var(--against)">Contre</b> : '+esc(ag?ag.name:'?')+'</div>';
-  const isFor=mySlot===s.forSlot,isAgainst=mySlot===s.againstSlot;
+  const fn=s.players.find(p=>p.slot===s.forSlot),ag=s.players.find(p=>p.slot===s.againstSlot),jg=s.players.find(p=>p.slot===s.jurorSlot);
+  el('roles').innerHTML=
+    '<div><b style="color:var(--for)">Pour</b> : '+esc(fn?fn.name:'?')+'</div>'+
+    '<div style="margin-top:6px"><b style="color:var(--against)">Contre</b> : '+esc(ag?ag.name:'?')+'</div>'+
+    '<div style="margin-top:6px"><b style="color:var(--judge)">Juge</b> : '+esc(jg?jg.name:'?')+'</div>';
+  const isFor=mySlot===s.forSlot,isAgainst=mySlot===s.againstSlot,isJur=mySlot===s.jurorSlot;
   el('vote-area').style.display='none';
   el('round-end').style.display='none';
   if(s.phase==='DEBATE'){
-    startLocalTimer(45);
+    el('phase-chip').textContent='Débat';
+    if(s.debateEndsAt)startCountdownTo(s.debateEndsAt,'Débat');
     el('deb-wait').style.display='block';
-    if(isFor||isAgainst)el('deb-wait').textContent='Tu es orateur — défends ton camp (45 s).';
-    else el('deb-wait').textContent='Les orateurs débattent — 45 s.';
+    if(isFor)el('deb-wait').textContent='Tu défends le camp Pour — expose tes arguments (micro / vocal).';
+    else if(isAgainst)el('deb-wait').textContent='Tu défends le camp Contre — contre-arguments.';
+    else el('deb-wait').textContent='Tu es juge : écoute les deux camps, tu tranches au vote.';
   }else if(s.phase==='VOTE'){
-    clearTimer();el('timer').style.display='none';
-    const voted=s.votes&&s.votes[mySlot]!==undefined;
-    if(isFor||isAgainst){
-      el('deb-wait').style.display='block';el('deb-wait').textContent='Les spectateurs votent…'
-    }else{
+    el('phase-chip').textContent='Vote du juge';
+    if(s.voteEndsAt)startCountdownTo(s.voteEndsAt,'Vote');
+    if(isJur){
       el('deb-wait').style.display='none';
+      const voted=s.votes&&s.votes[mySlot]!==undefined;
       if(!voted){
-        el('vote-area').style.display='flex';el('vote-area').style.flexDirection='column'
+        el('vote-area').style.display='flex';el('vote-area').style.flexDirection='column';
+        el('vote-title').textContent='Qui a le mieux défendu son camp ?';
       }else{
-        el('round-end').style.display='block';el('round-end').textContent='Vote enregistré'
+        el('deb-wait').style.display='block';el('deb-wait').textContent='Vote envoyé.';
       }
+    }else{
+      el('deb-wait').style.display='block';
+      el('deb-wait').textContent=isFor||isAgainst?'Le juge délibère…':'';
     }
   }else if(s.phase==='ROUND_RESULT'){
+    el('phase-chip').textContent='Résultat';
     clearTimer();el('timer').style.display='none';
     el('deb-wait').style.display='none';
-    el('round-end').style.display='block';el('round-end').textContent='Résultat de la manche…'
+    el('round-end').style.display='block';el('round-end').textContent='Manche terminée — prochaine dans un instant…';
   }
 }
 (function(){

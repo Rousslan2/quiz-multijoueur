@@ -90,7 +90,7 @@ function getRoomsSnapshot() {
         gameName: GAME_NAMES[game],
         host: room.host,
         players: room.players.map(p => p.name),
-        maxPlayers: game==='loup'?10:game==='bomb'?6:game==='sumo'?4:game==='uno'?4:game==='paint'?4:game==='naval'?4:game==='imposteur'?8:game==='phrase'?8:game==='logoquiz'?8:game==='debat'?8:4,
+        maxPlayers: game==='loup'?10:game==='bomb'?6:game==='sumo'?4:game==='uno'?4:game==='paint'?4:game==='naval'?4:game==='imposteur'?8:game==='phrase'?8:game==='logoquiz'?8:game==='debat'?3:4,
         status: ['WAITING','SETUP','PLACING','COUNTDOWN'].includes(room.phase) ? 'waiting' : 'playing'
       });
     }
@@ -4953,31 +4953,50 @@ wssLogoquiz.on('connection', ws => {
 //  DÉBAT EXPRESS (pour / contre, vote public)
 // ════════════════════════════════════════════════════════
 const DEBAT_TOPICS = [
-  'Le pizza est meilleure avec ou sans ananas ?',
-  'Le café est-il meilleur que le thé ?',
-  'Les films sont-ils mieux que les livres ?',
-  'Faut-il travailler 4 jours par semaine ?',
-  'Le sport est-il plus important que les études ?',
-  'Le chocolat est-il meilleur que la vanille ?',
-  'Les chats sont-ils meilleurs que les chiens ?',
-  'Le streaming a-t-il tué le cinéma ?',
-  'Le téléphone au lit : oui ou non ?',
-  'La musique classique est-elle ennuyeuse ?'
+  'La pizza : ananas ou jamais ?',
+  'Café ou thé le matin ?',
+  'Films ou livres pour s’évader ?',
+  'Semaine de 4 jours : pour ou contre ?',
+  'Sport ou études : qu’est-ce qui construit le plus ?',
+  'Chocolat noir ou chocolat au lait ?',
+  'Chien ou chat comme animal de compagnie ?',
+  'Le streaming remplace-t-il le cinéma ?',
+  'Téléphone au lit : toléré ou interdit ?',
+  'Écouter de la musique en travaillant : aide ou distraction ?',
+  'Vacances à la mer ou à la montagne ?',
+  'Ville animée ou campagne calme pour vivre ?',
+  'Écrans pour les enfants : limite stricte ou souple ?',
+  'L’école devrait-elle commencer plus tard ?',
+  'Sport individuel ou sport collectif ?'
 ];
+const DEBAT_MS_DEBATE = 40000;
+const DEBAT_MS_VOTE = 25000;
 const debatRooms = new Map();
 function makeDebatRoom(code, host) {
   return {
-    code, host, players: [], phase: 'WAITING', round: 0, totalRounds: 5,
-    topic: '', forSlot: null, againstSlot: null,
-    votes: {}, timer: null, scores: {}
+    code, host, players: [], phase: 'WAITING', round: 0, totalRounds: 6,
+    topic: '', forSlot: null, againstSlot: null, jurorSlot: null,
+    topicDeck: [], votes: {}, timer: null, scores: {},
+    debateEndsAt: 0, voteEndsAt: 0
   };
+}
+/** 3 joueurs fixes (slots 0,1,2) : rotation équitable Pour / Contre / Juge */
+function debatRolesForRound(round1) {
+  const k = (round1 - 1) % 3;
+  if (k === 0) return { forSlot: 0, againstSlot: 1, jurorSlot: 2 };
+  if (k === 1) return { forSlot: 1, againstSlot: 2, jurorSlot: 0 };
+  return { forSlot: 2, againstSlot: 0, jurorSlot: 1 };
 }
 function debatSnap(room) {
   return {
     type: 'debat_state', phase: room.phase, code: room.code, host: room.host,
     round: room.round, totalRounds: room.totalRounds,
     topic: room.topic, forSlot: room.forSlot, againstSlot: room.againstSlot,
+    jurorSlot: room.jurorSlot,
     votes: room.votes,
+    serverNow: Date.now(),
+    debateEndsAt: room.debateEndsAt || 0,
+    voteEndsAt: room.voteEndsAt || 0,
     players: room.players.map(p => ({ name: p.name, slot: p.slot, score: room.scores[p.slot] || 0 }))
   };
 }
@@ -4986,6 +5005,7 @@ function debatBcast(room) {
 }
 function debatEndVote(room) {
   clearTimeout(room.timer);
+  room.voteEndsAt = 0;
   let forScore = 0, againstScore = 0;
   Object.values(room.votes).forEach(v => {
     if (v === 'for') forScore++;
@@ -5005,24 +5025,36 @@ function debatNextRound(room) {
   room.round++;
   if (room.round > room.totalRounds) {
     room.phase = 'GAME_OVER';
+    room.debateEndsAt = 0;
+    room.voteEndsAt = 0;
     debatBcast(room);
     broadcastLobby();
     return;
   }
-  room.topic = DEBAT_TOPICS[(room.round - 1) % DEBAT_TOPICS.length];
-  const sh = shuffle(room.players.map(p => p.slot));
-  room.forSlot = sh[0];
-  room.againstSlot = sh.find(s => s !== room.forSlot) ?? sh[1];
+  if (!room.topicDeck || !room.topicDeck.length) {
+    room.topicDeck = shuffle(DEBAT_TOPICS.map((_, i) => i));
+  }
+  const ti = room.topicDeck[(room.round - 1) % room.topicDeck.length];
+  room.topic = DEBAT_TOPICS[ti];
+  const roles = debatRolesForRound(room.round);
+  room.forSlot = roles.forSlot;
+  room.againstSlot = roles.againstSlot;
+  room.jurorSlot = roles.jurorSlot;
   room.phase = 'DEBATE';
   room.votes = {};
+  const now = Date.now();
+  room.debateEndsAt = now + DEBAT_MS_DEBATE;
+  room.voteEndsAt = 0;
   debatBcast(room);
   room.timer = setTimeout(() => {
     if (room.phase === 'DEBATE') {
       room.phase = 'VOTE';
+      room.debateEndsAt = 0;
+      room.voteEndsAt = Date.now() + DEBAT_MS_VOTE;
       debatBcast(room);
-      room.timer = setTimeout(() => debatEndVote(room), 20000);
+      room.timer = setTimeout(() => debatEndVote(room), DEBAT_MS_VOTE);
     }
-  }, 45000);
+  }, DEBAT_MS_DEBATE);
 }
 
 wssDebat.on('connection', ws => {
@@ -5040,7 +5072,7 @@ wssDebat.on('connection', ws => {
     if (room.players.length === 0) { debatRooms.delete(room.code); broadcastLobby(); return; }
     if (room.host === name && room.players.length) room.host = room.players[0].name;
     bcast(room.players, { type: 'player_left', name });
-    if (room.phase !== 'WAITING' && room.phase !== 'GAME_OVER' && room.players.length < 3) {
+    if (room.phase !== 'WAITING' && room.phase !== 'GAME_OVER' && room.players.length !== 3) {
       room.phase = 'WAITING';
     }
     debatBcast(room);
@@ -5068,7 +5100,7 @@ wssDebat.on('connection', ws => {
         const r = debatRooms.get(code);
         if (!r) { wsend(ws, { type: 'error', msg: 'Salle introuvable.' }); return; }
         if (r.phase !== 'WAITING') { wsend(ws, { type: 'error', msg: 'Partie déjà commencée.' }); return; }
-        if (r.players.length >= 8) { wsend(ws, { type: 'error', msg: 'Salle pleine.' }); return; }
+        if (r.players.length >= 3) { wsend(ws, { type: 'error', msg: 'Partie à 3 joueurs : salle pleine.' }); return; }
         const name = String(d.name || '').trim().slice(0, 20) || 'Joueur';
         const slot = r.players.length;
         r.players.push({ ws, name, slot });
@@ -5081,9 +5113,10 @@ wssDebat.on('connection', ws => {
       }
       case 'start_debat': {
         if (!room || !player || player.slot !== 0 || room.phase !== 'WAITING') return;
-        if (room.players.length < 3) { wsend(ws, { type: 'error', msg: 'Il faut au moins 3 joueurs.' }); return; }
-        room.totalRounds = 5;
+        if (room.players.length !== 3) { wsend(ws, { type: 'error', msg: 'Il faut exactement 3 joueurs (2 débatteurs + 1 juge).' }); return; }
+        room.totalRounds = 6;
         room.round = 0;
+        room.topicDeck = [];
         room.players.forEach(p => { room.scores[p.slot] = 0; });
         debatNextRound(room);
         broadcastLobby();
@@ -5094,11 +5127,11 @@ wssDebat.on('connection', ws => {
         const side = d.side === 'for' ? 'for' : d.side === 'against' ? 'against' : null;
         if (!side) return;
         if (player.slot === room.forSlot || player.slot === room.againstSlot) return;
+        if (room.jurorSlot !== null && player.slot !== room.jurorSlot) return;
         room.votes[player.slot] = side;
         debatBcast(room);
-        if (Object.keys(room.votes).length >= room.players.length - 2) {
-          debatEndVote(room);
-        }
+        clearTimeout(room.timer);
+        debatEndVote(room);
         break;
       }
       case 'restart_debat': {
@@ -5106,7 +5139,10 @@ wssDebat.on('connection', ws => {
         room.phase = 'WAITING';
         room.round = 0;
         room.topic = '';
+        room.topicDeck = [];
         room.votes = {};
+        room.debateEndsAt = 0;
+        room.voteEndsAt = 0;
         room.players.forEach(p => { room.scores[p.slot] = 0; });
         clearTimeout(room.timer);
         debatBcast(room);
