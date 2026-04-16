@@ -79,14 +79,6 @@ fr:{
   lobby_join_btn:'Rejoindre',
   lobby_rooms:'Salles disponibles',
 
-  // UI commun
-  ui_home:'Accueil',
-  ui_back:'Retour',
-  ui_quit:'Quitter',
-  ui_replay:'Rejouer',
-  ui_name_ph:'Ton pseudo',
-  ui_code_ph:'Code (ex: ABCD)',
-
   // Chat global
   chat_title:'Chat',
   chat_online:'● en ligne',
@@ -173,14 +165,6 @@ en:{
   lobby_join_btn:'Join',
   lobby_rooms:'Available rooms',
 
-  // Common UI
-  ui_home:'Home',
-  ui_back:'Back',
-  ui_quit:'Quit',
-  ui_replay:'Play again',
-  ui_name_ph:'Your name',
-  ui_code_ph:'Code (e.g. ABCD)',
-
   // Global chat
   chat_title:'Chat',
   chat_online:'● online',
@@ -238,12 +222,6 @@ function applyLang(){
   });
   document.querySelectorAll('[data-i18n-ph]').forEach(el=>{
     el.placeholder=t(el.getAttribute('data-i18n-ph'));
-  });
-  document.querySelectorAll('[data-i18n-title]').forEach(el=>{
-    el.title = t(el.getAttribute('data-i18n-title'));
-  });
-  document.querySelectorAll('[data-i18n-aria]').forEach(el=>{
-    el.setAttribute('aria-label', t(el.getAttribute('data-i18n-aria')));
   });
   document.documentElement.lang=currentLang;
   /* update live rooms count if on index */
