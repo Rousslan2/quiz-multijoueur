@@ -146,7 +146,20 @@ body {
   min-height:46px;
   transition: transform .18s cubic-bezier(.2,0,.2,1), box-shadow .18s, background .18s, border-color .18s;
   user-select:none;
+  position:relative;
+  transform-style:preserve-3d;
 }
+.btn-cta::after{
+  content:'';
+  position:absolute;inset:-2px;
+  border-radius:14px;
+  background: radial-gradient(460px 140px at 20% 20%, rgba(0,245,212,.28), transparent 55%);
+  opacity:0;
+  transition: opacity .18s;
+  pointer-events:none;
+  transform: translateZ(-1px);
+}
+.btn-cta:hover::after{opacity:.75}
 .btn-cta.primary{
   color:#041018;
   background: linear-gradient(135deg, rgba(0,245,212,1), rgba(59,130,246,.92));
@@ -159,6 +172,19 @@ body {
   border:1px solid rgba(255,255,255,.12);
 }
 .btn-cta.ghost:hover{transform:translateY(-2px);border-color:rgba(0,245,212,.22);box-shadow:0 16px 48px rgba(0,0,0,.35)}
+
+/* ── HERO POLISH (premium) ── */
+.hero-card{transform: translateZ(0)}
+.hero-card::after{
+  content:'';
+  position:absolute;inset:0;
+  background:
+    linear-gradient(90deg, rgba(255,255,255,.045), transparent 36%, rgba(255,255,255,.03) 62%, transparent),
+    radial-gradient(1200px 420px at 50% 0%, rgba(255,255,255,.03), transparent 70%);
+  mix-blend-mode: overlay;
+  opacity:.65;
+  pointer-events:none;
+}
 
 .hero-metrics{
   margin-top:14px;
@@ -591,11 +617,11 @@ body {
 <section class="hero" aria-label="Accueil">
   <div class="hero-grid">
     <div class="hero-card hero-left">
-      <div class="hero-eyebrow"><span class="pip"></span> MODE MULTIJOUEUR EN TEMPS RÉEL</div>
-      <div class="hero-title">Le <span class="grad">quiz multijoueur</span> qui claque.</div>
+      <div class="hero-eyebrow"><span class="pip"></span> ZAPPLAY · MINI‑JEUX MULTIJOUEUR EN TEMPS RÉEL</div>
+      <div class="hero-title">Les <span class="grad">mini‑jeux</span> qui claquent.</div>
       <p class="hero-sub">
-        Rejoins une salle, lance un jeu, et enchaîne les manches avec tes potes.
-        Design gaming moderne, chat intégré, et parties ultra rapides.
+        Rejoins une salle, choisis un mini‑jeu, et enchaîne les manches avec tes potes.
+        Expérience gaming premium, chat intégré, et parties ultra rapides.
       </p>
       <div class="hero-cta">
         <a class="btn-cta primary" href="lobby.html">🏠 SALONS EN LIGNE</a>
