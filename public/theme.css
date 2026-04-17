@@ -526,3 +526,136 @@ body > *:not(.zp-space-bg) {
   text-transform: uppercase; letter-spacing: .1em;
   text-align: center; margin-bottom: 6px;
 }
+
+/* ─────────────────────────────────────────────
+   RESPONSIVE — règles globales pour tous les jeux
+   ───────────────────────────────────────────── */
+
+/* Empêche tout débordement horizontal sur toutes les pages */
+html, body {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+/* Safe-area pour appareils avec encoche (iPhone etc.) */
+body {
+  padding-left: env(safe-area-inset-left, 0);
+  padding-right: env(safe-area-inset-right, 0);
+}
+
+/* Les médias ne dépassent jamais leur conteneur */
+img, video, canvas, svg {
+  max-width: 100%;
+  height: auto;
+}
+/* Mais laisse les canvas de jeu garder leur ratio explicite */
+canvas[data-fixed-size], canvas.game-canvas { height: auto; }
+
+/* Fallback pour navigateurs sans 100dvh — utilise 100vh */
+@supports not (height: 100dvh) {
+  body { min-height: 100vh; }
+}
+
+/* Les inputs et textareas respectent la largeur du conteneur */
+input, textarea, select, button {
+  max-width: 100%;
+}
+/* Évite le zoom iOS automatique sur focus d'input (nécessite >= 16px) */
+input, textarea, select {
+  font-size: max(16px, 1rem);
+}
+
+/* Empêche le texte trop long de casser la mise en page */
+h1, h2, h3, .card-name, .player-name {
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+}
+
+/* ── Breakpoint tablette : ≤ 768px ── */
+@media (max-width: 768px) {
+  /* Réduit le padding principal sur les conteneurs de jeu */
+  #app, .wrap, main {
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+  }
+}
+
+/* ── Breakpoint mobile : ≤ 540px ── */
+@media (max-width: 540px) {
+  /* Cibles tactiles minimum 40px pour accessibilité */
+  button, .btn, .zp-start-btn, .zp-back-btn, .zp-choice-btn, .zp-vote-btn, a.btn {
+    min-height: 40px;
+  }
+
+  /* Titres fluides sur petit écran */
+  h1 { font-size: clamp(1.1rem, 5vw, 1.6rem) !important; }
+  h2 { font-size: clamp(1rem, 4.5vw, 1.3rem) !important; }
+
+  /* Padding réduit sur les cartes néon */
+  .neon-card { padding: 14px 12px 12px; }
+
+  /* Chips joueurs plus compactes */
+  .zp-player-chip { padding: 6px 10px; font-size: .7rem; }
+  .zp-score-chip { min-width: 60px; padding: 5px 8px; }
+  .zp-score-chip .zp-sc-pts { font-size: .95rem; }
+
+  /* Code de salle plus petit mais lisible */
+  .zp-code-val { font-size: 1.5rem; letter-spacing: .18em; }
+
+  /* Cache la grille de fond décorative pour alléger le GPU */
+  .zp-space-bg .zp-sgrid { opacity: .5; }
+  .zp-space-bg .zp-neb1 { width: 380px; height: 380px; }
+  .zp-space-bg .zp-neb2 { width: 320px; height: 320px; }
+}
+
+/* ── Breakpoint petit mobile : ≤ 380px ── */
+@media (max-width: 380px) {
+  #app, .wrap, main {
+    padding-left: 8px !important;
+    padding-right: 8px !important;
+  }
+  .neon-card { padding: 12px 10px 10px; }
+  .zp-code-val { font-size: 1.3rem; }
+}
+
+/* ── Mode paysage sur petit écran (smartphone tourné) ── */
+@media (max-height: 500px) and (orientation: landscape) {
+  /* Réduit la hauteur des en-têtes pour libérer de la place au gameplay */
+  .header { padding: 20px 16px 12px !important; }
+  body { padding-bottom: 16px !important; }
+}
+
+/* ── Mode paysage très étroit (≤ 420px de hauteur) ── */
+/* Autorise le scroll si le contenu dépasse l'écran en hauteur */
+@media (max-height: 420px) {
+  html, body {
+    overflow-y: auto !important;
+    height: auto !important;
+    min-height: 100dvh;
+  }
+}
+
+/* ── Correction grilles de jeu sur mobile ── */
+@media (max-width: 540px) {
+  /* Bataille navale : rétrécit les grilles pour qu'elles tiennent côte-à-côte ou empilées */
+  .board-wrap { gap: 14px !important; }
+  /* Plateau Puissance 4 / Morpion : pas de débordement */
+  .zp-p4-board { max-width: 100%; }
+  /* Cartes Uno : wrap propre */
+  .zp-uno-card { min-width: 0; }
+  /* Grilles de lobby : 1 colonne sur mobile */
+  .rooms-grid, .room-list { grid-template-columns: 1fr !important; }
+}
+
+/* ── Accessibilité : respect de la préférence "reduce motion" ── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+  .zp-space-bg .zp-comet,
+  .zp-space-bg .zp-neb1,
+  .zp-space-bg .zp-neb2,
+  .particles { display: none !important; }
+}
