@@ -261,7 +261,10 @@ function handle(m){
 function sendInput(){
   if(!state || state.phase!=='RACE') return;
   inputSeq++;
-  send({type:'hill_input',seq:inputSeq,left:!!keys.left,right:!!keys.right,nitro:!!nitroDown});
+  const tilt = (keys.right?1:0) - (keys.left?1:0);
+  const t = keys.right ? 1 : 0;
+  const b = keys.left ? 0.35 : 0;
+  send({type:'hill_input',seq:inputSeq,t,b,tilt,nitro:!!nitroDown});
 }
 setInterval(sendInput, 50);
 
@@ -342,14 +345,16 @@ function draw(){
   // powerups
   if(Array.isArray(state.powerups)){
     state.powerups.forEach(p=>{
-      if(p.takenBy!=null) return;
+      const taken = (p.takenBySlot!=null) || (p.takenBy!=null);
+      if(taken) return;
       const x=p.x*scale, y=-p.y*scale;
-      ctx.fillStyle=p.type==='nitro'?'rgba(255,226,52,.95)':'rgba(0,245,212,.95)';
+      const kind = p.kind || p.type;
+      ctx.fillStyle=kind==='nitro'?'rgba(255,226,52,.95)':'rgba(0,245,212,.95)';
       ctx.beginPath(); ctx.arc(x,y-14,10,0,Math.PI*2); ctx.fill();
       ctx.fillStyle='rgba(0,0,0,.5)';
       ctx.font='800 12px Orbitron, monospace';
       ctx.textAlign='center'; ctx.textBaseline='middle';
-      ctx.fillText(p.type==='nitro'?'N':'F', x, y-14);
+      ctx.fillText(kind==='nitro'?'N':'F', x, y-14);
     });
   }
 

@@ -4855,6 +4855,14 @@ function hillSlopeAt(seed, x){
   return (hillHeightAt(seed, x + dx) - hillHeightAt(seed, x - dx)) / (2 * dx);
 }
 
+function hillBuildTerrain(seed, fromX=-200, toX=3200, step=20){
+  const pts = [];
+  for(let x=fromX; x<=toX; x+=step){
+    pts.push({ x, y: hillHeightAt(seed, x) });
+  }
+  return pts;
+}
+
 const HILL_VEHICLES = {
   car:   { name:'Voiture', mass:1.0, accel: 34, brake: 46, maxV: 58, stability: 1.0, fuelUse: 0.18 },
   buggy: { name:'Buggy',  mass:0.8, accel: 38, brake: 44, maxV: 64, stability: 0.9, fuelUse: 0.20 },
@@ -4876,6 +4884,7 @@ function hillMakeRoom(code, host){
     players: [],
     phase: 'WAITING', // WAITING | COUNTDOWN | RACE | GAME_OVER
     seed,
+    terrain: hillBuildTerrain(seed),
     startAt: 0,
     endAt: 0,
     tick: 0,
@@ -4933,6 +4942,7 @@ function hillSnap(room, forSlot=null){
     code: room.code,
     host: room.host,
     seed: room.seed,
+    terrain: room.terrain,
     serverNow: Date.now(),
     startAt: room.startAt,
     endAt: room.endAt,
