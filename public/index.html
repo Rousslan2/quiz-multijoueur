@@ -22,6 +22,8 @@
   --text:   #E8E8F0;
   --muted:  #5A5A78;
   --border: rgba(0,245,212,.10);
+  --glass: rgba(255,255,255,.06);
+  --glass2: rgba(255,255,255,.03);
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
@@ -34,6 +36,11 @@ body {
   font-family: 'Exo 2', sans-serif;
   padding-bottom: 80px;
   overflow-x: hidden;
+}
+
+/* ── ACCESSIBILITÉ / PERF ── */
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{animation-duration:0.001ms!important;animation-iteration-count:1!important;transition-duration:0.001ms!important;scroll-behavior:auto!important}
 }
 
 /* ── PARTICLES ── */
@@ -51,6 +58,213 @@ body {
 
 /* ── WRAP ── */
 .wrap { position: relative; z-index: 1; }
+
+/* ── HERO (UI/UX Pro Max: hiérarchie + CTA clair) ── */
+.hero{
+  position:relative;
+  padding:62px 16px 22px;
+  max-width:980px;
+  margin:0 auto;
+}
+.hero-grid{
+  display:grid;
+  grid-template-columns: 1.12fr .88fr;
+  gap:18px;
+  align-items:stretch;
+}
+@media(max-width:860px){.hero-grid{grid-template-columns:1fr;}}
+
+.hero-card{
+  position:relative;
+  border-radius:18px;
+  border:1px solid rgba(0,245,212,.14);
+  background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
+  overflow:hidden;
+  box-shadow:
+    0 0 0 1px rgba(0,245,212,.06),
+    0 18px 80px rgba(0,0,0,.55);
+  backdrop-filter: blur(10px);
+}
+.hero-card::before{
+  content:'';
+  position:absolute;inset:-2px;
+  background:
+    radial-gradient(600px 220px at 20% 18%, rgba(0,245,212,.20), transparent 60%),
+    radial-gradient(520px 260px at 84% 48%, rgba(255,56,100,.16), transparent 58%),
+    radial-gradient(520px 260px at 60% 90%, rgba(59,130,246,.12), transparent 62%);
+  pointer-events:none;
+}
+.hero-left{padding:22px 20px 20px;}
+.hero-eyebrow{
+  font-family:'Orbitron',monospace;
+  font-size:.62rem;
+  letter-spacing:.38em;
+  text-transform:uppercase;
+  color:rgba(0,245,212,.55);
+  display:flex;align-items:center;gap:10px;
+}
+.hero-eyebrow .pip{
+  width:7px;height:7px;border-radius:50%;
+  background:var(--teal);
+  box-shadow:0 0 18px rgba(0,245,212,.55);
+  animation: blink 2.2s ease-in-out infinite;
+}
+.hero-title{
+  margin-top:12px;
+  font-family:'Orbitron',monospace;
+  font-weight:900;
+  letter-spacing:.03em;
+  font-size:clamp(2.2rem,4.8vw,3.2rem);
+  line-height:1.05;
+  text-shadow:0 0 32px rgba(0,245,212,.20);
+}
+.hero-title .grad{
+  background: linear-gradient(135deg, #00F5D4 0%, #3B82F6 45%, #FF3864 100%);
+  -webkit-background-clip:text;
+  background-clip:text;
+  -webkit-text-fill-color:transparent;
+}
+.hero-sub{
+  margin-top:12px;
+  color:rgba(232,232,240,.82);
+  font-size:.94rem;
+  line-height:1.65;
+  max-width:58ch;
+}
+.hero-cta{
+  margin-top:16px;
+  display:flex;flex-wrap:wrap;gap:10px;
+}
+.btn-cta{
+  appearance:none;border:none;cursor:pointer;text-decoration:none;
+  display:inline-flex;align-items:center;justify-content:center;gap:10px;
+  padding:12px 14px;border-radius:12px;
+  font-family:'Orbitron',monospace;
+  font-weight:800;
+  letter-spacing:.08em;
+  font-size:.78rem;
+  min-height:46px;
+  transition: transform .18s cubic-bezier(.2,0,.2,1), box-shadow .18s, background .18s, border-color .18s;
+  user-select:none;
+}
+.btn-cta.primary{
+  color:#041018;
+  background: linear-gradient(135deg, rgba(0,245,212,1), rgba(59,130,246,.92));
+  box-shadow: 0 0 0 1px rgba(0,245,212,.20), 0 14px 40px rgba(0,245,212,.18);
+}
+.btn-cta.primary:hover{transform:translateY(-2px);box-shadow:0 0 0 1px rgba(0,245,212,.35),0 16px 50px rgba(0,245,212,.24)}
+.btn-cta.ghost{
+  color:var(--text);
+  background: rgba(255,255,255,.06);
+  border:1px solid rgba(255,255,255,.12);
+}
+.btn-cta.ghost:hover{transform:translateY(-2px);border-color:rgba(0,245,212,.22);box-shadow:0 16px 48px rgba(0,0,0,.35)}
+
+.hero-metrics{
+  margin-top:14px;
+  display:flex;flex-wrap:wrap;gap:10px;
+  color:var(--muted);
+  font-size:.78rem;
+}
+.chip{
+  display:inline-flex;align-items:center;gap:8px;
+  padding:8px 10px;
+  border-radius:999px;
+  border:1px solid rgba(255,255,255,.10);
+  background: rgba(0,0,0,.18);
+}
+.chip b{color:rgba(232,232,240,.9);font-weight:700}
+
+.hero-right{padding:18px;}
+.scene{
+  position:relative;
+  height: 260px;
+  border-radius:16px;
+  overflow:hidden;
+  border:1px solid rgba(255,255,255,.10);
+  background:
+    radial-gradient(700px 240px at 20% 10%, rgba(0,245,212,.12), transparent 60%),
+    radial-gradient(560px 260px at 90% 60%, rgba(255,56,100,.10), transparent 60%),
+    linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02));
+}
+.scene::before{
+  content:'';
+  position:absolute;inset:-40%;
+  background:
+    linear-gradient(rgba(0,245,212,.07) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(0,245,212,.07) 1px,transparent 1px);
+  background-size: 44px 44px;
+  transform: perspective(700px) rotateX(64deg) translateY(20px);
+  transform-origin: 50% 40%;
+  opacity:.35;
+  animation: grid-float 7.5s ease-in-out infinite;
+  filter: drop-shadow(0 0 22px rgba(0,245,212,.15));
+}
+@keyframes grid-float{
+  0%,100%{transform:perspective(700px) rotateX(64deg) translateY(24px) translateX(0)}
+  50%{transform:perspective(700px) rotateX(64deg) translateY(12px) translateX(10px)}
+}
+.float-card{
+  position:absolute;
+  width: 168px; height: 106px;
+  border-radius:16px;
+  border:1px solid rgba(255,255,255,.16);
+  background: linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.03));
+  box-shadow: 0 20px 60px rgba(0,0,0,.55);
+  transform-style:preserve-3d;
+  padding:14px 14px 12px;
+  backdrop-filter: blur(10px);
+}
+.float-card::after{
+  content:'';
+  position:absolute;inset:-2px;
+  border-radius:18px;
+  background: radial-gradient(420px 160px at 20% 20%, rgba(0,245,212,.22), transparent 55%);
+  opacity:.9;
+  pointer-events:none;
+  transform: translateZ(-1px);
+}
+.float-card .k{font-family:'Orbitron',monospace;font-size:.58rem;letter-spacing:.22em;text-transform:uppercase;color:rgba(232,232,240,.62)}
+.float-card .v{margin-top:8px;font-size:1.25rem;font-weight:900;color:rgba(232,232,240,.94);text-shadow:0 0 16px rgba(0,245,212,.18)}
+.float-card.a{left:16px;top:18px;animation: floatA 6.5s ease-in-out infinite;}
+.float-card.b{right:14px;top:36px;width:182px;animation: floatB 7.2s ease-in-out infinite;}
+.float-card.c{left:54px;bottom:18px;width:210px;animation: floatC 8.2s ease-in-out infinite;}
+@keyframes floatA{0%,100%{transform:translateY(0) rotateX(10deg) rotateY(-10deg)}50%{transform:translateY(-10px) rotateX(14deg) rotateY(-6deg)}}
+@keyframes floatB{0%,100%{transform:translateY(0) rotateX(-8deg) rotateY(10deg)}50%{transform:translateY(-12px) rotateX(-12deg) rotateY(14deg)}}
+@keyframes floatC{0%,100%{transform:translateY(0) rotateX(6deg) rotateY(6deg)}50%{transform:translateY(-14px) rotateX(10deg) rotateY(10deg)}}
+
+.hero-mini{
+  margin-top:12px;
+  display:flex;gap:10px;flex-wrap:wrap;
+}
+.mini{
+  flex:1;
+  min-width: 140px;
+  border-radius:14px;
+  padding:12px 12px;
+  border:1px solid rgba(255,255,255,.10);
+  background: rgba(0,0,0,.18);
+}
+.mini .t{font-family:'Orbitron',monospace;font-size:.56rem;letter-spacing:.18em;text-transform:uppercase;color:rgba(232,232,240,.56)}
+.mini .d{margin-top:8px;font-size:.86rem;color:rgba(232,232,240,.86);line-height:1.45}
+
+/* ── GRID / CARDS 3D ── */
+.grid-wrap{max-width:980px;margin:0 auto;padding: 4px 14px 0;}
+.section-label{max-width:980px;}
+.grid{max-width:980px;}
+.game-card{
+  transform-style:preserve-3d;
+  perspective: 900px;
+}
+.game-card .zp-shine{transform:translateZ(1px);}
+.game-card[data-tilt]{will-change: transform;}
+.game-card::after{transform: translateZ(-1px);}
+.card-icon{transform: translateZ(22px);}
+.card-name{transform: translateZ(18px);}
+.card-desc,.card-badge{transform: translateZ(12px);}
+
+/* bouton focus */
+.btn-cta:focus-visible,.game-card:focus-visible{outline:2px solid rgba(0,245,212,.55);outline-offset:3px}
 
 /* ── HEADER ── */
 .header {
@@ -374,16 +588,43 @@ body {
 
 <div class="wrap">
 
-<div class="header">
-  <div class="header-eyebrow">— Bienvenue sur —</div>
-  <div class="logo">ZapPlay</div>
-  <div class="logo-line"><span class="logo-line-text">Arcade Multijoueur</span></div>
-  <div class="tagline">Jouez ensemble · En temps réel</div>
-  <div class="online-bar"><span class="live-dot"></span> <span id="online-count">Salles en ligne</span></div>
-</div>
+<section class="hero" aria-label="Accueil">
+  <div class="hero-grid">
+    <div class="hero-card hero-left">
+      <div class="hero-eyebrow"><span class="pip"></span> MODE MULTIJOUEUR EN TEMPS RÉEL</div>
+      <div class="hero-title">Le <span class="grad">quiz multijoueur</span> qui claque.</div>
+      <p class="hero-sub">
+        Rejoins une salle, lance un jeu, et enchaîne les manches avec tes potes.
+        Design gaming moderne, chat intégré, et parties ultra rapides.
+      </p>
+      <div class="hero-cta">
+        <a class="btn-cta primary" href="lobby.html">🏠 SALONS EN LIGNE</a>
+        <a class="btn-cta ghost" href="#games">🎮 VOIR LES JEUX</a>
+      </div>
+      <div class="hero-metrics">
+        <span class="chip">🟢 <b id="online-count">Salles en ligne</b></span>
+        <span class="chip">⚡ <b>Rapide</b> · manches courtes</span>
+        <span class="chip">💬 <b>Chat</b> · dans les salons</span>
+      </div>
+    </div>
 
-<div class="section-label">Jeux disponibles</div>
+    <div class="hero-card hero-right">
+      <div class="scene" aria-hidden="true">
+        <div class="float-card a"><div class="k">MATCH</div><div class="v">QUIZ</div></div>
+        <div class="float-card b"><div class="k">MODE</div><div class="v">ARCADE</div></div>
+        <div class="float-card c"><div class="k">RANG</div><div class="v">#1</div></div>
+      </div>
+      <div class="hero-mini">
+        <div class="mini"><div class="t">Conseil</div><div class="d">Ouvre un salon, partage le code, et lance.</div></div>
+        <div class="mini"><div class="t">Tip</div><div class="d">Sur mobile : appuie sur les cartes, elles “tilt”.</div></div>
+      </div>
+    </div>
+  </div>
+</section>
 
+<div class="section-label" id="games">Jeux disponibles</div>
+
+<div class="grid-wrap">
 <div class="grid">
 
   <a class="game-card neon-card c-teal" href="quiz.html">
@@ -564,6 +805,9 @@ body {
 
 <div class="footer">ZapPlay <span>·</span> Arcade multijoueur</div>
 
+  </div>
+</div>
+
 </div><!-- .wrap -->
 
 <script>
@@ -608,6 +852,52 @@ fetch('/api/rooms').then(r=>r.json()).then(rooms=>{
   const el = document.getElementById('online-count');
   if(el) el.textContent = rooms.length + ' salle' + (rooms.length !== 1 ? 's' : '') + ' en ligne';
 }).catch(()=>{});
+
+// UI/UX Pro Max: micro-interactions 3D (tilt), safe + performant
+(function(){
+  const cards = Array.from(document.querySelectorAll('.game-card'));
+  if(!cards.length) return;
+
+  const clamp=(v,min,max)=>Math.max(min,Math.min(max,v));
+  const supportsHover = matchMedia && matchMedia('(hover:hover)').matches;
+
+  cards.forEach(c=>{
+    c.setAttribute('data-tilt','1');
+    let raf=0, lastX=0, lastY=0;
+
+    const apply=()=>{
+      raf=0;
+      const r=c.getBoundingClientRect();
+      const px=(lastX - r.left) / Math.max(1,r.width);
+      const py=(lastY - r.top)  / Math.max(1,r.height);
+      const rx = clamp((0.5 - py) * 10, -9, 9);
+      const ry = clamp((px - 0.5) * 12, -10, 10);
+      c.style.transform = `translateY(-4px) rotateX(${rx}deg) rotateY(${ry}deg) scale(1.02)`;
+    };
+
+    const onMove = (x,y)=>{
+      lastX=x; lastY=y;
+      if(!raf) raf=requestAnimationFrame(apply);
+    };
+    const reset = ()=>{
+      if(raf){cancelAnimationFrame(raf);raf=0;}
+      c.style.transform='';
+    };
+
+    // Desktop hover
+    if(supportsHover){
+      c.addEventListener('mousemove', (e)=>onMove(e.clientX,e.clientY));
+      c.addEventListener('mouseleave', reset);
+    }
+
+    // Mobile: quick tilt on touch (no continuous tracking)
+    c.addEventListener('touchstart', (e)=>{
+      const t=e.touches && e.touches[0]; if(!t) return;
+      onMove(t.clientX,t.clientY);
+      setTimeout(reset, 420);
+    }, {passive:true});
+  });
+})();
 </script>
 <script src="shared.js"></script>
 <script src="chat.js"></script>
