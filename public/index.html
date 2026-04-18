@@ -1327,9 +1327,24 @@ body.home-page .hero-right { animation-delay: -6s; }
   box-shadow: 0 0 0 1px rgba(255,255,255,.35), 0 12px 36px rgba(0,232,212,.12);
 }
 .zp-nav-cta-sub { font-size: .65rem; font-weight: 600; opacity: .75; letter-spacing: .04em; }
+.zp-home-account-chip {
+  font-size: .68rem;
+  font-weight: 700;
+  letter-spacing: .04em;
+  color: rgba(0, 232, 212, 0.95);
+  padding: 5px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(0, 232, 212, 0.28);
+  background: rgba(0, 232, 212, 0.08);
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 @media (max-width: 520px) {
   .zp-nav-inner { padding: 10px 12px; border-radius: 20px; flex-wrap: wrap; }
   .zp-nav-link--muted { display: none; }
+  .zp-home-account-chip { display: none; }
 }
 
 /* ═══ HOME · Section compte (mise en avant) ═══ */
@@ -1644,6 +1659,7 @@ body.home-page .footer .zp-admin-nav.zp-admin-visible {
 <header class="zp-nav" role="navigation" aria-label="Navigation principale">
   <div class="zp-nav-inner">
     <a class="zp-nav-brand" href="index.html">ZapPlay</a>
+    <span id="zp-home-account-chip" class="zp-home-account-chip" hidden></span>
     <div class="zp-nav-links">
       <a class="zp-nav-link" href="lobby.html">Lobby</a>
       <a class="zp-nav-link" href="#games">Jeux</a>

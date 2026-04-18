@@ -26,7 +26,8 @@ function confetti(opts){
   const spread = opts.spread || 1.0;
 
   const cvs = document.createElement('canvas');
-  cvs.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:99998;';
+  /* Sous la barre globale (10050) et les modales shell, au-dessus du jeu */
+  cvs.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:10040;';
   document.body.appendChild(cvs);
   const ctx = cvs.getContext('2d');
   const dpr = Math.min(window.devicePixelRatio||1, 2);

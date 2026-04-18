@@ -259,13 +259,18 @@
     nav.setAttribute('role', 'navigation');
     nav.innerHTML =
       '<div class="zp-nav-global-inner">' +
+      '<a class="zp-nav-global-back" href="/lobby.html" id="zp-nav-back-lobby" title="Lobby des salons">← Lobby</a>' +
       '<a class="zp-nav-global-brand" href="/index.html">ZapPlay</a>' +
       '<nav class="zp-nav-global-links" aria-label="Liens">' +
       '<a href="/index.html">Accueil</a>' +
-      '<a href="/lobby.html">Lobby</a>' +
+      '<a href="/lobby.html">Salons</a>' +
       '<a href="/account.html" id="zp-nav-global-account-link">Compte</a>' +
       '</nav>' +
+      '<span id="zp-nav-account-chip" class="zp-nav-account-chip" hidden></span>' +
       '<div class="zp-nav-global-actions">' +
+      (typeof Notification !== 'undefined'
+        ? '<button type="button" class="zp-nav-global-icon" id="zp-nav-notify" title="Notifications navigateur" aria-label="Notifications">🔔</button>'
+        : '') +
       '<button type="button" class="zp-nav-global-icon" id="zp-nav-rules" title="Règles du jeu" aria-label="Règles">📖</button>' +
       '<button type="button" class="zp-nav-global-icon" id="zp-nav-sound" title="Effets sonores" aria-label="Effets sonores">🔊</button>' +
       '</div>' +
@@ -277,7 +282,57 @@
     document.getElementById('zp-nav-sound').addEventListener('click', function () {
       setSoundMuted(!isSoundMuted());
     });
+    const nbtn = document.getElementById('zp-nav-notify');
+    if (nbtn) initNotifyButton(nbtn);
     updateMuteButton();
+  }
+
+  function injectHomeNotifyButton() {
+    if (typeof Notification === 'undefined') return;
+    if (document.getElementById('zp-home-notify')) return;
+    const inner = document.querySelector('body.home-page .zp-nav-inner');
+    if (!inner) return;
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.id = 'zp-home-notify';
+    btn.className = 'zp-home-notify-btn';
+    btn.setAttribute('aria-label', 'Notifications navigateur');
+    btn.title = 'Activer les alertes (parties, salons)';
+    btn.textContent = Notification.permission === 'granted' ? '🔔' : '🔕';
+    inner.insertBefore(btn, inner.firstChild.nextSibling);
+    initNotifyButton(btn);
+  }
+
+  function initNotifyButton(btn) {
+    function sync() {
+      if (!('Notification' in window)) {
+        btn.hidden = true;
+        return;
+      }
+      var p = Notification.permission;
+      if (p === 'granted') {
+        btn.textContent = '🔔';
+        btn.classList.add('on');
+        btn.title = 'Notifications activées';
+      } else if (p === 'denied') {
+        btn.hidden = true;
+      } else {
+        btn.textContent = '🔕';
+        btn.classList.remove('on');
+        btn.title = 'Activer les alertes (tour, salon…)';
+      }
+    }
+    sync();
+    btn.addEventListener('click', function () {
+      if (!('Notification' in window)) return;
+      if (Notification.permission === 'granted') return;
+      Notification.requestPermission().then(function (perm) {
+        sync();
+        if (perm === 'granted' && window.ZapPlay && typeof window.ZapPlay.notifyIfAllowed === 'function') {
+          window.ZapPlay.notifyIfAllowed('ZapPlay', 'Tu recevras des alertes quand une action t’attend (onglet en arrière-plan).');
+        }
+      });
+    });
   }
 
   function injectRulesPanel() {
@@ -312,6 +367,8 @@
     });
     document.getElementById('zp-rules-backdrop').classList.add('on');
     document.getElementById('zp-rules-panel').classList.add('on');
+    var closeBtn = document.getElementById('zp-rules-close');
+    if (closeBtn) closeBtn.focus();
   }
 
   function closeRules() {
@@ -319,6 +376,8 @@
     const p = document.getElementById('zp-rules-panel');
     if (b) b.classList.remove('on');
     if (p) p.classList.remove('on');
+    var rulesBtn = document.getElementById('zp-nav-rules');
+    if (rulesBtn) rulesBtn.focus();
   }
 
   function injectEndOverlay() {
@@ -388,6 +447,7 @@
     if (window.ZapPlay && typeof window.ZapPlay.updateNavAccountUI === 'function') {
       window.ZapPlay.updateNavAccountUI();
     }
+    if (getGameKey() === 'home') injectHomeNotifyButton();
 
     document.addEventListener('keydown', function (e) {
       if (e.key === 'Escape') closeRules();
@@ -399,6 +459,14 @@
       window.ZapPlay.setDocumentTitle = setDocumentTitle;
       window.ZapPlay.showGameOver = showGameOver;
       window.ZapPlay.hideGameOver = hideGameOver;
+      window.ZapPlay.notifyIfAllowed =
+        window.ZapPlay.notifyIfAllowed ||
+        function (title, body) {
+          try {
+            if (!('Notification' in window) || Notification.permission !== 'granted') return;
+            new Notification(title || 'ZapPlay', { body: body || '', icon: '/favicon.svg' });
+          } catch (_) {}
+        };
     }
   }
 

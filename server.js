@@ -570,6 +570,19 @@ const ALL_Q = [
   {text:"Quelle est la racine carrée de 144 ?",opts:["10","11","12","13"],ans:2,cat:'culture',diff:1},
   {text:"Quel est le plus petit nombre premier ?",opts:["0","1","2","3"],ans:2,cat:'culture',diff:2},
   {text:"Qui a peint 'Guernica' ?",opts:["Dalí","Picasso","Miró","Goya"],ans:1,cat:'culture',diff:2},
+  // ── Lot contenu 2026 ──
+  {text:"Quelle IA a popularisé le chat conversationnel grand public en 2022–2023 ?",opts:["AlphaGo","Stable Diffusion","ChatGPT","Siri"],ans:2,cat:'tech',diff:1},
+  {text:"Quel réseau social a été renommé « X » ?",opts:["Instagram","Snapchat","Twitter","TikTok"],ans:2,cat:'tech',diff:1},
+  {text:"Quelle console Nintendo est sortie en 2017 ?",opts:["Wii U","Switch","3DS","GameCube"],ans:1,cat:'culture',diff:1},
+  {text:"Quel film a remporté l’Oscar du meilleur film en 2024 ?",opts:["Barbie","Oppenheimer","Poor Things","Killers of the Flower Moon"],ans:1,cat:'cinema',diff:2},
+  {text:"Quelle série met en scène un jeu du calamar ?",opts:["Alice in Borderland","Squid Game","3%","Sweet Home"],ans:1,cat:'cinema',diff:1},
+  {text:"Quel pays a remporté l’Eurovision 2024 (édition Suède) ?",opts:["France","Israël","Suisse","Croatie"],ans:2,cat:'musique',diff:3},
+  {text:"Quelle est la capitale de l’Ukraine ?",opts:["Kharkiv","Odessa","Kyiv","Lviv"],ans:2,cat:'geo',diff:1},
+  {text:"Quel océan borde la côte ouest des États-Unis ?",opts:["Atlantique","Indien","Pacifique","Arctique"],ans:2,cat:'geo',diff:1},
+  {text:"Quelle planète est la plus proche du Soleil ?",opts:["Vénus","Terre","Mercure","Mars"],ans:2,cat:'sciences',diff:1},
+  {text:"Combien de côtés a un pentagone ?",opts:["4","5","6","7"],ans:1,cat:'culture',diff:1},
+  {text:"Qui a écrit « Les Misérables » ?",opts:["Molière","Victor Hugo","Flaubert","Zola"],ans:1,cat:'culture',diff:1},
+  {text:"Quel sport se joue avec une raquette et une navette (volant) ?",opts:["Tennis","Badminton","Squash","Padel"],ans:1,cat:'sport',diff:1},
 ];
 
 function getServerStats() {

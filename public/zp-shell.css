@@ -13,6 +13,59 @@
   /* léger dégradé pour détacher la barre du décor */
   background: linear-gradient(180deg, rgba(3, 3, 18, 0.92) 0%, rgba(3, 3, 18, 0.55) 70%, transparent 100%);
 }
+.zp-nav-global-back {
+  flex-shrink: 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-decoration: none;
+  color: rgba(236, 236, 244, 0.88);
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
+  transition: background 0.15s, border-color 0.15s;
+}
+.zp-nav-global-back:hover {
+  color: #fff;
+  background: rgba(0, 232, 212, 0.12);
+  border-color: rgba(0, 232, 212, 0.25);
+}
+.zp-nav-account-chip {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: rgba(0, 232, 212, 0.95);
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(0, 232, 212, 0.28);
+  background: rgba(0, 232, 212, 0.08);
+  max-width: min(140px, 28vw);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.zp-nav-global-icon.on {
+  border-color: rgba(0, 232, 212, 0.45);
+  color: var(--teal, #00e8d4);
+}
+.zp-home-notify-btn {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.06);
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+  color: var(--text, #ececf4);
+  transition: background 0.15s, border-color 0.15s;
+}
+.zp-home-notify-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(0, 232, 212, 0.35);
+}
 .zp-nav-global-inner {
   pointer-events: auto;
   max-width: min(1100px, 100%);
@@ -110,6 +163,16 @@ body.zp-has-shell .header {
     row-gap: 6px;
     padding: 8px 12px;
   }
+  .zp-nav-global-back {
+    order: 0;
+    width: 100%;
+    text-align: center;
+  }
+  .zp-nav-account-chip {
+    order: 2;
+    max-width: 100%;
+    text-align: center;
+  }
   .zp-nav-global-links {
     order: 3;
     width: 100%;
@@ -143,6 +206,7 @@ body.zp-has-shell .header {
   left: 50%;
   top: 50%;
   transform: translate(-50%, -50%) scale(0.96);
+  outline: none;
   width: min(400px, calc(100vw - 32px));
   max-height: min(70vh, 520px);
   overflow: auto;

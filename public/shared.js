@@ -296,6 +296,33 @@ function logoutAccount(){
   updateNavAccountUI();
 }
 
+function notifyIfAllowed(title, body){
+  try{
+    if(!('Notification' in window) || Notification.permission !== 'granted') return;
+    if(typeof document !== 'undefined' && document.visibilityState === 'visible') return;
+    new Notification(title || 'ZapPlay', { body: body || '', icon: '/favicon.svg' });
+  }catch(_){}
+}
+
+function setAccountChipEl(el, tok, email){
+  if(!el) return;
+  if(tok){
+    el.hidden = false;
+    if(email){
+      const short = email.split('@')[0];
+      el.textContent = short.length > 14 ? short.slice(0, 12) + '…' : short;
+      el.title = email;
+    }else{
+      el.textContent = 'Connecté';
+      el.title = 'Compte ZapPlay';
+    }
+  }else{
+    el.hidden = true;
+    el.textContent = '';
+    el.removeAttribute('title');
+  }
+}
+
 /** Met à jour les libellés nav (accueil + barre globale) selon la session compte */
 function updateNavAccountUI(){
   const tok = getAccountToken();
@@ -313,6 +340,8 @@ function updateNavAccountUI(){
   const ctaSub = document.getElementById('zp-nav-cta-sub');
   const ctaWrap = document.getElementById('zp-nav-account-cta');
   const globalAcc = document.getElementById('zp-nav-global-account-link');
+  setAccountChipEl(document.getElementById('zp-nav-account-chip'), tok, email);
+  setAccountChipEl(document.getElementById('zp-home-account-chip'), tok, email);
 
   if(tok){
     if(loginLink){
@@ -1605,7 +1634,7 @@ function initAdminNavVisibility(){
 window.ZapPlay={
   getSavedPseudo,savePseudo,
   getOrCreateDeviceId,syncProfileWithServer,pullProfileFromServer,
-  getAccountToken,setAccountSession,logoutAccount,updateNavAccountUI,
+  getAccountToken,setAccountSession,logoutAccount,updateNavAccountUI,notifyIfAllowed,
   computeBadges,
   hideLoader,showLoader,
   saveGameResult,getHistory,getStats,renderHistoryWidget,clearHistory,exportHistory,
