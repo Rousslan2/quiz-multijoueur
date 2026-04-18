@@ -1,5 +1,5 @@
 /* ─────────────────────────────────────────────
-   ZapPlay — theme.css  (Neon Ultra · Deep Space)
+   ZapPlay — theme.css  (Aurora · Glass · 2026)
    Partagé par tous les jeux + lobby + index
    ───────────────────────────────────────────── */
 
@@ -54,12 +54,12 @@ html.fx-page-in.fx-page-in-done body{ opacity:1; transform: none; }
   padding:14px 22px; font-family:'Orbitron',monospace;
   font-weight:800; letter-spacing:.1em; text-transform:uppercase;
   color:#041018;
-  background: linear-gradient(135deg, var(--teal), #3B82F6);
+  background: linear-gradient(135deg, var(--teal), var(--blue));
   border:none; cursor:pointer; overflow:hidden;
-  box-shadow: 0 0 0 1px rgba(0,245,212,.35), 0 18px 48px rgba(0,245,212,.22);
+  box-shadow: 0 0 0 1px rgba(0,232,212,.28), 0 18px 48px rgba(0,232,212,.18);
   transition: transform .18s cubic-bezier(.2,0,.2,1), box-shadow .18s;
 }
-.zp-premium-btn:hover{ transform: translateY(-2px); box-shadow: 0 0 0 1px rgba(0,245,212,.55), 0 24px 70px rgba(0,245,212,.35); }
+.zp-premium-btn:hover{ transform: translateY(-2px); box-shadow: 0 0 0 1px rgba(0,232,212,.45), 0 24px 70px rgba(0,232,212,.28); }
 .zp-premium-btn::before{
   content:''; position:absolute; inset:0;
   background: linear-gradient(110deg, transparent 30%, rgba(255,255,255,.45) 50%, transparent 70%);
@@ -118,43 +118,60 @@ html.fx-page-in.fx-page-in-done body{ opacity:1; transform: none; }
 }
 
 
-/* ── VARIABLES ── */
+/* ── VARIABLES (charte unifiée) ── */
 :root {
-  --bg:     #06060F;
-  --bg2:    #0D0D1F;
-  --card:   #0E0E22;
-  --teal:   #00F5D4;
-  --orange: #FF6B35;
-  --pink:   #FF3864;
-  --gold:   #FFE234;
-  --blue:   #3B82F6;
-  --green:  #22C55E;
-  --purple: #A855F7;
-  --text:   #E8E8F0;
-  --muted:  #5A5A78;
-  --border: rgba(0,245,212,.10);
+  --bg:       #030312;
+  --bg2:      #0a0a1a;
+  --card:     #12121f;
+  --card2:    #18182c;
+  --teal:     #00E8D4;
+  --orange:   #FF7033;
+  --pink:     #FF4D6D;
+  --gold:     #F5D547;
+  --blue:     #5B9FFF;
+  --green:    #34D399;
+  --purple:   #A78BFA;
+  --text:     #ECECF4;
+  --muted:    #7A8098;
+  --border:   rgba(255,255,255,.085);
+  --glass:    rgba(255,255,255,.055);
+  --glass2:   rgba(255,255,255,.03);
+  --radius:   16px;
+  --shadow:   0 24px 64px rgba(0,0,0,.45);
 }
 
-/* ── BASE BODY — override per-game backgrounds ── */
+/* ── BASE BODY — fond profond + légers halos ── */
 html, body {
-  background: #03030A !important;
+  background: var(--bg) !important;
+  background-image:
+    radial-gradient(ellipse 100% 70% at 50% -15%, rgba(0,232,212,.09), transparent 52%),
+    radial-gradient(ellipse 70% 50% at 95% 30%, rgba(91,159,255,.07), transparent 50%),
+    radial-gradient(ellipse 60% 45% at 5% 60%, rgba(167,139,250,.06), transparent 48%),
+    linear-gradient(180deg, #030312 0%, #06061c 55%, #040414 100%) !important;
 }
 
-/* ── SCANLINES OVERLAY (body::before) ── */
+/* Grain / vignette très légers (pas de scanlines agressives) */
 body::before {
   content: '';
   position: fixed; inset: 0; z-index: 999; pointer-events: none;
-  background: repeating-linear-gradient(
-    0deg,
-    transparent, transparent 3px,
-    rgba(0,0,0,.07) 3px, rgba(0,0,0,.07) 4px
-  );
+  background:
+    radial-gradient(ellipse 90% 70% at 50% 40%, transparent 40%, rgba(0,0,0,.35) 100%),
+    repeating-linear-gradient(
+      0deg,
+      transparent, transparent 2px,
+      rgba(255,255,255,.012) 2px, rgba(255,255,255,.012) 3px
+    );
+  opacity: .55;
+  mix-blend-mode: overlay;
 }
 
 /* ── DEEP SPACE BACKGROUND ── */
 .zp-space-bg {
   position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden;
-  background: radial-gradient(ellipse at 30% 20%, #0a0520, #03030A);
+  background:
+    radial-gradient(ellipse 80% 60% at 25% 15%, rgba(167,139,250,.12), transparent 55%),
+    radial-gradient(ellipse 70% 55% at 85% 25%, rgba(0,232,212,.08), transparent 52%),
+    linear-gradient(165deg, #05051a 0%, #030312 45%, #08081f 100%);
 }
 
 /* Ensure all game content sits above the fixed space bg */
@@ -163,15 +180,15 @@ body > *:not(.zp-space-bg) {
   z-index: 1;
 }
 .zp-space-bg .zp-neb1 {
-  position: absolute; width: 600px; height: 600px; border-radius: 50%;
-  background: radial-gradient(circle, rgba(168,85,247,.13), transparent 65%);
-  top: -200px; right: -100px; filter: blur(60px);
+  position: absolute; width: 640px; height: 640px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(167,139,250,.16), rgba(91,159,255,.06) 45%, transparent 68%);
+  top: -200px; right: -100px; filter: blur(68px);
   animation: zp-nebdrift 20s ease-in-out infinite alternate;
 }
 .zp-space-bg .zp-neb2 {
-  position: absolute; width: 500px; height: 500px; border-radius: 50%;
-  background: radial-gradient(circle, rgba(255,56,100,.09), transparent 65%);
-  bottom: -100px; left: -80px; filter: blur(50px);
+  position: absolute; width: 520px; height: 520px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(0,232,212,.10), rgba(255,77,109,.08) 48%, transparent 68%);
+  bottom: -100px; left: -80px; filter: blur(56px);
   animation: zp-nebdrift 26s ease-in-out infinite alternate-reverse;
 }
 .zp-space-bg .zp-stars { position: absolute; inset: 0; }
@@ -186,9 +203,11 @@ body > *:not(.zp-space-bg) {
 .zp-space-bg .zp-sgrid {
   position: absolute; inset: 0;
   background-image:
-    linear-gradient(rgba(168,85,247,.025) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(168,85,247,.025) 1px, transparent 1px);
-  background-size: 40px 40px;
+    linear-gradient(rgba(255,255,255,.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,.028) 1px, transparent 1px);
+  background-size: 48px 48px;
+  opacity: .45;
+  mask-image: radial-gradient(ellipse 100% 80% at 50% 20%, #000 0%, transparent 75%);
 }
 .zp-space-bg .zp-comet {
   position: absolute; height: 1px; width: 80px;
@@ -207,37 +226,37 @@ body > *:not(.zp-space-bg) {
   100% { transform: translate(30px, 25px) scale(1.08); }
 }
 
-/* ── NEON CARD ── */
+/* ── NEON CARD (verre + accent) ── */
 .neon-card {
-  background: var(--card);
-  border: 1px solid rgba(255,255,255,.05);
+  background:
+    linear-gradient(165deg, rgba(255,255,255,.07) 0%, rgba(255,255,255,.02) 45%, rgba(0,0,0,.12) 100%);
+  border: 1px solid var(--border);
   border-top: 3px solid var(--teal);
-  border-radius: 14px;
+  border-radius: var(--radius);
   padding: 18px 16px 16px;
   position: relative;
   overflow: hidden;
-  transition: transform .22s cubic-bezier(.2,0,.2,1), box-shadow .22s;
+  backdrop-filter: blur(12px) saturate(140%);
+  -webkit-backdrop-filter: blur(12px) saturate(140%);
+  box-shadow: 0 0 0 1px rgba(255,255,255,.04), var(--shadow);
+  transition: transform .22s cubic-bezier(.2,0,.2,1), box-shadow .22s, border-color .22s;
 }
-/* scanlines overlay au hover */
 .neon-card::before {
   content: '';
   position: absolute; inset: 0;
-  background: repeating-linear-gradient(0deg,
-    transparent, transparent 2px,
-    rgba(0,0,0,.12) 2px, rgba(0,0,0,.12) 4px);
-  opacity: 0; transition: opacity .2s; pointer-events: none;
+  background: linear-gradient(135deg, rgba(255,255,255,.06) 0%, transparent 42%);
+  opacity: .5; pointer-events: none;
 }
-/* corner glow */
 .neon-card::after {
   content: '';
-  position: absolute; bottom: -20px; right: -20px;
-  width: 80px; height: 80px; border-radius: 50%;
-  background: var(--teal);
-  opacity: 0; transition: opacity .25s; pointer-events: none;
+  position: absolute; bottom: -28px; right: -28px;
+  width: 100px; height: 100px; border-radius: 50%;
+  background: radial-gradient(circle, var(--teal), transparent 70%);
+  opacity: 0; transition: opacity .28s; pointer-events: none;
+  filter: blur(8px);
 }
-.neon-card:hover { transform: translateY(-5px) scale(1.015); }
-.neon-card:hover::before { opacity: 1; }
-.neon-card:hover::after  { opacity: .3; }
+.neon-card:hover { transform: translateY(-4px) scale(1.01); box-shadow: 0 0 0 1px rgba(0,232,212,.12), 0 28px 72px rgba(0,0,0,.55); }
+.neon-card:hover::after { opacity: .22; }
 
 /* shimmer */
 .neon-card .zp-shine {
@@ -250,36 +269,36 @@ body > *:not(.zp-space-bg) {
 /* ── COULEURS PAR JEU (border-top + glow) ── */
 .neon-card.c-teal   { border-top-color: var(--teal); }
 .neon-card.c-teal::after   { background: var(--teal); }
-.neon-card.c-teal:hover    { box-shadow: 0 0 0 1px rgba(0,245,212,.5), 0 12px 40px rgba(0,245,212,.15); }
+.neon-card.c-teal:hover    { box-shadow: 0 0 0 1px rgba(0,232,212,.4), 0 16px 48px rgba(0,232,212,.12); }
 
 .neon-card.c-orange { border-top-color: var(--orange); }
 .neon-card.c-orange::after { background: var(--orange); }
-.neon-card.c-orange:hover  { box-shadow: 0 0 0 1px rgba(255,107,53,.5), 0 12px 40px rgba(255,107,53,.12); }
+.neon-card.c-orange:hover  { box-shadow: 0 0 0 1px rgba(255,112,51,.4), 0 16px 48px rgba(255,112,51,.12); }
 
 .neon-card.c-pink   { border-top-color: var(--pink); }
 .neon-card.c-pink::after   { background: var(--pink); }
-.neon-card.c-pink:hover    { box-shadow: 0 0 0 1px rgba(255,56,100,.5), 0 12px 40px rgba(255,56,100,.12); }
+.neon-card.c-pink:hover    { box-shadow: 0 0 0 1px rgba(255,77,109,.4), 0 16px 48px rgba(255,77,109,.12); }
 
 .neon-card.c-blue   { border-top-color: var(--blue); }
 .neon-card.c-blue::after   { background: var(--blue); }
-.neon-card.c-blue:hover    { box-shadow: 0 0 0 1px rgba(59,130,246,.5), 0 12px 40px rgba(59,130,246,.12); }
+.neon-card.c-blue:hover    { box-shadow: 0 0 0 1px rgba(91,159,255,.4), 0 16px 48px rgba(91,159,255,.12); }
 
 .neon-card.c-purple { border-top-color: var(--purple); }
 .neon-card.c-purple::after { background: var(--purple); }
-.neon-card.c-purple:hover  { box-shadow: 0 0 0 1px rgba(168,85,247,.5), 0 12px 40px rgba(168,85,247,.12); }
+.neon-card.c-purple:hover  { box-shadow: 0 0 0 1px rgba(167,139,250,.4), 0 16px 48px rgba(167,139,250,.12); }
 
 .neon-card.c-gold   { border-top-color: var(--gold); }
 .neon-card.c-gold::after   { background: var(--gold); }
-.neon-card.c-gold:hover    { box-shadow: 0 0 0 1px rgba(255,226,52,.5), 0 12px 40px rgba(255,226,52,.12); }
+.neon-card.c-gold:hover    { box-shadow: 0 0 0 1px rgba(245,213,71,.4), 0 16px 48px rgba(245,213,71,.12); }
 
 .neon-card.c-green  { border-top-color: var(--green); }
 .neon-card.c-green::after  { background: var(--green); }
-.neon-card.c-green:hover   { box-shadow: 0 0 0 1px rgba(34,197,94,.5), 0 12px 40px rgba(34,197,94,.12); }
+.neon-card.c-green:hover   { box-shadow: 0 0 0 1px rgba(52,211,153,.4), 0 16px 48px rgba(52,211,153,.12); }
 
 /* ── CODE BOX ── */
 .zp-code-box {
-  background: rgba(0,245,212,.05);
-  border: 1px solid rgba(0,245,212,.18);
+  background: rgba(0,232,212,.05);
+  border: 1px solid rgba(0,232,212,.18);
   border-radius: 12px; padding: 14px 16px;
   cursor: pointer; position: relative; overflow: hidden; text-align: center;
   animation: zp-code-pulse 3s ease-in-out infinite;
@@ -294,17 +313,17 @@ body > *:not(.zp-space-bg) {
   pointer-events: none;
 }
 @keyframes zp-code-pulse {
-  0%,100% { border-color: rgba(0,245,212,.18); box-shadow: none; }
-  50%      { border-color: rgba(0,245,212,.4);  box-shadow: 0 0 18px rgba(0,245,212,.12); }
+  0%,100% { border-color: rgba(0,232,212,.18); box-shadow: none; }
+  50%      { border-color: rgba(0,232,212,.4);  box-shadow: 0 0 18px rgba(0,232,212,.12); }
 }
 .zp-code-label {
   font-size: .55rem; letter-spacing: .25em; text-transform: uppercase;
-  color: rgba(0,245,212,.45); font-family: monospace; margin-bottom: 4px;
+  color: rgba(0,232,212,.45); font-family: monospace; margin-bottom: 4px;
 }
 .zp-code-val {
   font-size: 2rem; font-weight: 900; letter-spacing: .25em;
   color: var(--teal); font-family: monospace;
-  text-shadow: 0 0 18px rgba(0,245,212,.65);
+  text-shadow: 0 0 18px rgba(0,232,212,.65);
 }
 .zp-code-hint { font-size: .55rem; color: var(--muted); margin-top: 4px; letter-spacing: .1em; }
 
@@ -331,11 +350,11 @@ body > *:not(.zp-space-bg) {
 
 .zp-player-chip.host { background: rgba(255,226,52,.07); border-color: rgba(255,226,52,.25); color: var(--gold); }
 .zp-player-chip.host .zp-chip-dot  { background: var(--gold);   box-shadow: 0 0 6px var(--gold); }
-.zp-player-chip.p2   { background: rgba(0,245,212,.06); border-color: rgba(0,245,212,.22); color: var(--teal); }
+.zp-player-chip.p2   { background: rgba(0,232,212,.06); border-color: rgba(0,232,212,.22); color: var(--teal); }
 .zp-player-chip.p2   .zp-chip-dot  { background: var(--teal);   box-shadow: 0 0 6px var(--teal); }
-.zp-player-chip.p3   { background: rgba(59,130,246,.06); border-color: rgba(59,130,246,.22); color: var(--blue); }
+.zp-player-chip.p3   { background: rgba(91,159,255,.06); border-color: rgba(91,159,255,.22); color: var(--blue); }
 .zp-player-chip.p3   .zp-chip-dot  { background: var(--blue);   box-shadow: 0 0 6px var(--blue); }
-.zp-player-chip.p4   { background: rgba(255,56,100,.06); border-color: rgba(255,56,100,.22); color: var(--pink); }
+.zp-player-chip.p4   { background: rgba(255,77,109,.06); border-color: rgba(255,77,109,.22); color: var(--pink); }
 .zp-player-chip.p4   .zp-chip-dot  { background: var(--pink);   box-shadow: 0 0 6px var(--pink); }
 
 /* ── START BUTTON ── */
@@ -343,10 +362,10 @@ body > *:not(.zp-space-bg) {
   width: 100%; padding: 14px; border-radius: 10px;
   font-weight: 800; font-size: .9rem; font-family: monospace;
   letter-spacing: .1em; text-transform: uppercase; cursor: pointer;
-  background: linear-gradient(135deg, rgba(0,245,212,.18), rgba(0,245,212,.08));
-  border: 1px solid rgba(0,245,212,.45); color: var(--teal);
+  background: linear-gradient(135deg, rgba(0,232,212,.18), rgba(0,232,212,.08));
+  border: 1px solid rgba(0,232,212,.45); color: var(--teal);
   position: relative; overflow: hidden;
-  box-shadow: 0 0 22px rgba(0,245,212,.12);
+  box-shadow: 0 0 22px rgba(0,232,212,.12);
   transition: box-shadow .2s, background .2s;
 }
 .zp-start-btn::before {
@@ -358,8 +377,8 @@ body > *:not(.zp-space-bg) {
   pointer-events: none;
 }
 .zp-start-btn:hover {
-  box-shadow: 0 0 34px rgba(0,245,212,.28);
-  background: linear-gradient(135deg, rgba(0,245,212,.24), rgba(0,245,212,.12));
+  box-shadow: 0 0 34px rgba(0,232,212,.28);
+  background: linear-gradient(135deg, rgba(0,232,212,.24), rgba(0,232,212,.12));
 }
 
 /* ── SCORE CHIP ── */
@@ -379,13 +398,13 @@ body > *:not(.zp-space-bg) {
   opacity: .6; pointer-events: none;
 }
 .zp-score-chip.me {
-  border-color: rgba(0,245,212,.4);
-  background: rgba(0,245,212,.06);
-  box-shadow: 0 0 12px rgba(0,245,212,.1);
+  border-color: rgba(0,232,212,.4);
+  background: rgba(0,232,212,.06);
+  box-shadow: 0 0 12px rgba(0,232,212,.1);
 }
 .zp-score-chip .zp-sc-name  { font-size: .6rem; color: var(--muted); margin-bottom: 2px; }
 .zp-score-chip .zp-sc-pts   { font-weight: 900; font-size: 1.1rem; color: var(--teal); font-family: monospace;
-  text-shadow: 0 0 10px rgba(0,245,212,.4); }
+  text-shadow: 0 0 10px rgba(0,232,212,.4); }
 .zp-score-chip.me .zp-sc-pts { color: var(--gold); text-shadow: 0 0 10px rgba(255,226,52,.4); }
 
 /* ── TIMER BAR ── */
@@ -393,7 +412,7 @@ body > *:not(.zp-space-bg) {
 .zp-timer-fill {
   height: 100%; border-radius: 3px;
   background: linear-gradient(90deg, var(--teal), var(--gold));
-  box-shadow: 0 0 8px rgba(0,245,212,.45);
+  box-shadow: 0 0 8px rgba(0,232,212,.45);
   transition: width .5s linear;
 }
 
@@ -407,7 +426,7 @@ body > *:not(.zp-space-bg) {
   transition: transform .18s cubic-bezier(.2,0,.2,1), border-color .18s, background .18s, box-shadow .18s;
   transform-style: preserve-3d;
 }
-.zp-choice-btn:hover:not(.correct):not(.wrong){ transform: translateY(-2px) translateZ(4px); box-shadow: 0 10px 24px rgba(0,245,212,.12); }
+.zp-choice-btn:hover:not(.correct):not(.wrong){ transform: translateY(-2px) translateZ(4px); box-shadow: 0 10px 24px rgba(0,232,212,.12); }
 .zp-choice-btn:active{ transform: translateY(0) scale(.99); }
 .zp-choice-btn::before {
   content: '';
@@ -417,27 +436,27 @@ body > *:not(.zp-space-bg) {
     rgba(0,0,0,.12) 2px, rgba(0,0,0,.12) 4px);
   pointer-events: none;
 }
-.zp-choice-btn:hover  { border-color: rgba(0,245,212,.4); background: rgba(0,245,212,.07); }
+.zp-choice-btn:hover  { border-color: rgba(0,232,212,.4); background: rgba(0,232,212,.07); }
 .zp-choice-btn.correct { border-color: rgba(34,197,94,.55); background: rgba(34,197,94,.1); color: var(--green);
   box-shadow: 0 0 12px rgba(34,197,94,.2); }
 .zp-choice-btn.wrong   { border-color: rgba(239,68,68,.45); background: rgba(239,68,68,.08); color: #EF4444; }
 
 /* ── BACK BUTTON ── */
 .zp-back-btn {
-  background: rgba(0,245,212,.06); border: 1px solid rgba(0,245,212,.2);
+  background: rgba(0,232,212,.06); border: 1px solid rgba(0,232,212,.2);
   color: var(--teal); padding: 7px 16px; border-radius: 8px;
   font-size: .72rem; font-family: monospace; font-weight: 700;
   letter-spacing: .05em; cursor: pointer; text-decoration: none;
   display: inline-flex; align-items: center; gap: 6px;
   transition: background .18s, box-shadow .18s;
 }
-.zp-back-btn:hover { background: rgba(0,245,212,.12); box-shadow: 0 0 14px rgba(0,245,212,.15); }
+.zp-back-btn:hover { background: rgba(0,232,212,.12); box-shadow: 0 0 14px rgba(0,232,212,.15); }
 
 /* ── GLITCH ICON (hover sur icône de carte) ── */
 @keyframes zp-glitch-icon {
   0%,90%,100% { transform: translate(0); filter: none; }
-  91% { transform: translateX(-3px); filter: drop-shadow(3px 0 #FF3864) drop-shadow(-3px 0 #3B82F6); }
-  92% { transform: translateX(3px);  filter: drop-shadow(-3px 0 #FF6B35); }
+  91% { transform: translateX(-3px); filter: drop-shadow(3px 0 #FF4D6D) drop-shadow(-3px 0 #5B9FFF); }
+  92% { transform: translateX(3px);  filter: drop-shadow(-3px 0 #FF7033); }
   93% { transform: translate(0); filter: none; }
 }
 .zp-glitch-icon:hover { animation: zp-glitch-icon .6s ease; }
@@ -447,14 +466,14 @@ body > *:not(.zp-space-bg) {
   0%,86%,100% {
     transform: translate(0);
     color: var(--teal);
-    text-shadow: 0 0 22px rgba(0,245,212,.8), 0 0 60px rgba(0,245,212,.3);
+    text-shadow: 0 0 22px rgba(0,232,212,.8), 0 0 60px rgba(0,232,212,.3);
   }
   87% { transform: translate(-5px, 2px); color: var(--teal);
-    text-shadow: -5px 0 var(--pink), 5px 0 var(--orange), 0 0 30px rgba(0,245,212,.5); }
+    text-shadow: -5px 0 var(--pink), 5px 0 var(--orange), 0 0 30px rgba(0,232,212,.5); }
   88% { transform: translate(5px,-2px); color: #fff;
     text-shadow: 5px 0 var(--orange), -5px 0 var(--blue); }
   89% { transform: translate(0); color: var(--teal);
-    text-shadow: 0 0 22px rgba(0,245,212,.8); }
+    text-shadow: 0 0 22px rgba(0,232,212,.8); }
   90% { transform: translate(-3px,1px);
     text-shadow: -3px 0 var(--pink); }
   91% { transform: translate(0); }
@@ -478,7 +497,7 @@ body > *:not(.zp-space-bg) {
 .zp-p4-board {
   display: grid; grid-template-columns: repeat(7, 1fr);
   gap: 6px;
-  background: rgba(0,0,0,.3); border: 1px solid rgba(59,130,246,.12);
+  background: rgba(0,0,0,.3); border: 1px solid rgba(91,159,255,.12);
   border-radius: 10px; padding: 8px;
 }
 .zp-p4-cell {
@@ -488,7 +507,7 @@ body > *:not(.zp-space-bg) {
 }
 .zp-p4-cell.p0 {
   background: var(--blue);
-  box-shadow: 0 0 10px rgba(59,130,246,.6), 0 0 22px rgba(59,130,246,.25);
+  box-shadow: 0 0 10px rgba(91,159,255,.6), 0 0 22px rgba(91,159,255,.25);
   animation: zp-drop-in .25s ease-out;
 }
 .zp-p4-cell.p1 {
@@ -510,7 +529,7 @@ body > *:not(.zp-space-bg) {
 /* ── GAME-SPECIFIC: MÉMOIRE CARDS ── */
 .zp-mem-card {
   aspect-ratio: 1; border-radius: 10px;
-  border: 2px solid rgba(168,85,247,.2);
+  border: 2px solid rgba(167,139,250,.2);
   background: rgba(255,255,255,.04);
   display: flex; align-items: center; justify-content: center;
   font-size: 1.4rem; cursor: pointer;
@@ -518,9 +537,9 @@ body > *:not(.zp-space-bg) {
   user-select: none;
 }
 .zp-mem-card:hover:not(.disabled):not(.matched) {
-  background: rgba(168,85,247,.1); border-color: rgba(168,85,247,.45);
+  background: rgba(167,139,250,.1); border-color: rgba(167,139,250,.45);
 }
-.zp-mem-card.flipped  { background: rgba(168,85,247,.1); border-color: rgba(168,85,247,.55); }
+.zp-mem-card.flipped  { background: rgba(167,139,250,.1); border-color: rgba(167,139,250,.55); }
 .zp-mem-card.matched  {
   background: rgba(34,197,94,.08); border-color: rgba(34,197,94,.45);
   cursor: default; animation: zp-match-glow 2s ease-in-out infinite;

@@ -20,7 +20,7 @@ function confetti(opts){
   if(prefersReduced) return;
   opts = opts || {};
   const count = opts.count || 140;
-  const colors = opts.colors || ['#00F5D4','#FF3864','#3B82F6','#A855F7','#FFE234','#FF6B35','#22C55E'];
+  const colors = opts.colors || ['#00E8D4','#FF4D6D','#5B9FFF','#A78BFA','#F5D547','#FF7033','#34D399'];
   const duration = opts.duration || 3500;
   const originY = opts.originY != null ? opts.originY : 0.35;
   const spread = opts.spread || 1.0;
@@ -332,8 +332,8 @@ function mountHero3D(container){
 
     // soft vignette gradient
     const bg = ctx.createRadialGradient(cx + mouseX*40, cy + mouseY*30, 40, cx, cy, Math.max(W,H)*0.7);
-    bg.addColorStop(0, 'rgba(0,245,212,0.09)');
-    bg.addColorStop(0.55, 'rgba(59,130,246,0.04)');
+    bg.addColorStop(0, 'rgba(0,232,212,0.09)');
+    bg.addColorStop(0.55, 'rgba(91,159,255,0.04)');
     bg.addColorStop(1, 'rgba(0,0,0,0)');
     ctx.fillStyle = bg;
     ctx.fillRect(0,0,W,H);

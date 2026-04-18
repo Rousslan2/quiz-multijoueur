@@ -6,7 +6,7 @@
 <link rel="stylesheet" href="theme.css">
 <title>ZapPlay &mdash; Imposteur</title>
 <style>
-:root{--bg:#06060F;--bg2:#0D0D1F;--card:#0E0E22;--border:rgba(255,56,100,.12);--primary:#FF3864;--primary2:#cc2d4f;--text:#E8E8F0;--muted:#5A5A78;--r:14px}
+:root{--bg:#030312;--bg2:#0a0a1a;--card:#12121f;--border:rgba(255,77,109,.12);--primary:#FF4D6D;--primary2:#cc2d4f;--text:#E8E8F0;--muted:#7A8098;--r:14px}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html,body{height:100%;color:var(--text);font-family:'Exo 2',system-ui,sans-serif;overflow:hidden}
 #wrap{height:100dvh;display:flex;flex-direction:column;max-width:500px;margin:0 auto;padding:0 12px;gap:14px;justify-content:center}
@@ -18,7 +18,7 @@ html,body{height:100%;color:var(--text);font-family:'Exo 2',system-ui,sans-serif
 .btn-secondary{background:rgba(255,255,255,.08);color:var(--text);border:1px solid var(--border)}
 .btn-success{background:#16a34a;color:#fff}
 .btn-opt{flex:1;padding:12px;border:1px solid var(--border);border-radius:10px;background:var(--card);color:var(--muted);cursor:pointer;font-size:1rem;font-weight:600;transition:.2s;touch-action:manipulation}
-.btn-opt.sel{border-color:var(--primary);color:var(--primary);background:rgba(255,56,100,.12);box-shadow:0 0 12px rgba(255,56,100,.18)}
+.btn-opt.sel{border-color:var(--primary);color:var(--primary);background:rgba(255,77,109,.12);box-shadow:0 0 12px rgba(255,77,109,.18)}
 input[type=text]{background:rgba(255,255,255,.06);border:1.5px solid var(--border);border-radius:10px;padding:13px 15px;font-size:16px;color:var(--text);width:100%;outline:none;transition:border-color .15s}
 input[type=text]:focus{border-color:var(--primary)}
 input[type=text]::placeholder{color:var(--muted)}
@@ -28,7 +28,7 @@ input[type=text]::placeholder{color:var(--muted)}
 
 /* HOME */
 #s-home{justify-content:center}
-.logo h1{font-size:2rem;font-weight:800;color:var(--primary);text-shadow:0 0 20px rgba(255,56,100,.5);text-align:center}
+.logo h1{font-size:2rem;font-weight:800;color:var(--primary);text-shadow:0 0 20px rgba(255,77,109,.5);text-align:center}
 .logo p{color:var(--muted);text-align:center;font-size:.9rem;margin-top:4px}
 
 /* DOT */
@@ -39,8 +39,8 @@ input[type=text]::placeholder{color:var(--muted)}
 
 /* WAIT */
 #s-wait{align-items:center;text-align:center}
-#wait-code{font-size:3rem;font-weight:800;letter-spacing:.18em;color:var(--primary);font-family:monospace;text-shadow:0 0 20px rgba(255,56,100,.4)}
-.code-box{background:rgba(255,56,100,.08);border:2px solid rgba(255,56,100,.3);border-radius:12px;padding:12px 20px;cursor:pointer;text-align:center}
+#wait-code{font-size:3rem;font-weight:800;letter-spacing:.18em;color:var(--primary);font-family:monospace;text-shadow:0 0 20px rgba(255,77,109,.4)}
+.code-box{background:rgba(255,77,109,.08);border:2px solid rgba(255,77,109,.3);border-radius:12px;padding:12px 20px;cursor:pointer;text-align:center}
 #wait-players{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;max-width:340px;margin:4px 0}
 .player-chip{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:6px 14px;font-size:.85rem;font-weight:600}
 .player-chip.host{border-color:#f59e0b;color:#f59e0b}
@@ -51,8 +51,8 @@ input[type=text]::placeholder{color:var(--muted)}
 .opt-row{display:flex;gap:10px;width:100%}
 
 /* DESCRIBE */
-.word-card{border:2px solid var(--primary);border-radius:16px;background:rgba(255,56,100,.1);padding:16px 24px;text-align:center;animation:wpulse 2s ease-in-out infinite}
-@keyframes wpulse{0%,100%{box-shadow:0 0 14px rgba(255,56,100,.4)}50%{box-shadow:0 0 32px rgba(255,56,100,.6)}}
+.word-card{border:2px solid var(--primary);border-radius:16px;background:rgba(255,77,109,.1);padding:16px 24px;text-align:center;animation:wpulse 2s ease-in-out infinite}
+@keyframes wpulse{0%,100%{box-shadow:0 0 14px rgba(255,77,109,.4)}50%{box-shadow:0 0 32px rgba(255,77,109,.6)}}
 .word-label{font-size:.75rem;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.06em}
 .word-val{font-size:2rem;font-weight:900;color:var(--primary);letter-spacing:.05em}
 .word-val.unk{color:#444;font-style:italic;font-size:1.5rem}
@@ -77,18 +77,18 @@ input[type=text]::placeholder{color:var(--muted)}
 .vote-btns{display:flex;flex-wrap:wrap;gap:10px;justify-content:center}
 .vote-btn{padding:10px 18px;border:1px solid var(--border);border-radius:50px;background:var(--card);color:var(--text);cursor:pointer;display:flex;align-items:center;gap:8px;transition:.2s;font-size:.9rem;font-weight:600;touch-action:manipulation}
 .vote-btn .av{width:26px;height:26px;border-radius:50%;background:#2a2a5a;display:flex;align-items:center;justify-content:center;font-size:.75rem;font-weight:700}
-.vote-btn:hover:not(:disabled){border-color:var(--primary);color:var(--primary);box-shadow:0 0 10px rgba(255,56,100,.2)}
-.vote-btn.voted{border-color:var(--primary);background:rgba(255,56,100,.12);color:var(--primary)}
+.vote-btn:hover:not(:disabled){border-color:var(--primary);color:var(--primary);box-shadow:0 0 10px rgba(255,77,109,.2)}
+.vote-btn.voted{border-color:var(--primary);background:rgba(255,77,109,.12);color:var(--primary)}
 .vote-btn:disabled{opacity:.4;cursor:not-allowed}
 
 /* REVEAL */
 .rv-list{display:flex;flex-direction:column;gap:8px}
 .rv-row{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:var(--card);border:1px solid var(--border);border-radius:10px}
-.rv-row.top{border-color:var(--primary);box-shadow:0 0 12px rgba(255,56,100,.18)}
+.rv-row.top{border-color:var(--primary);box-shadow:0 0 12px rgba(255,77,109,.18)}
 .rv-name{color:var(--text);font-weight:600}
 .rv-dots{display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end}
 .rv-dot{width:22px;height:22px;border-radius:50%;background:#2a2a5a;display:flex;align-items:center;justify-content:center;font-size:.7rem;border:1px solid #3a3a6a}
-.elim-box{border:2px solid var(--primary);border-radius:16px;padding:20px 24px;text-align:center;background:rgba(255,56,100,.1);animation:popin .5s cubic-bezier(.34,1.56,.64,1)}
+.elim-box{border:2px solid var(--primary);border-radius:16px;padding:20px 24px;text-align:center;background:rgba(255,77,109,.1);animation:popin .5s cubic-bezier(.34,1.56,.64,1)}
 @keyframes popin{from{opacity:0;transform:scale(.7)}to{opacity:1;transform:scale(1)}}
 .elim-label{font-size:.75rem;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.06em}
 .elim-name{font-size:1.8rem;font-weight:900;color:var(--primary)}
@@ -108,7 +108,7 @@ input[type=text]::placeholder{color:var(--muted)}
 /* SCORES */
 .score-list{display:flex;flex-direction:column;gap:8px}
 .score-row{display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--card);border:1px solid var(--border);border-radius:12px}
-.score-row.me{border-color:var(--primary);background:rgba(255,56,100,.08)}
+.score-row.me{border-color:var(--primary);background:rgba(255,77,109,.08)}
 .sr-rank{font-size:1rem;font-weight:900;width:24px;text-align:center;color:var(--muted)}
 .sr-av{width:32px;height:32px;border-radius:50%;background:#2a2a5a;display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0}
 .sr-name{flex:1;color:var(--text);font-weight:600}
@@ -127,8 +127,8 @@ input[type=text]::placeholder{color:var(--muted)}
 #confetti-canvas{position:fixed;inset:0;pointer-events:none;z-index:999}
 
 /* TIMER */
-.timer-wrap{width:100%;height:5px;background:rgba(255,56,100,.1);border-radius:3px;overflow:hidden}
-.timer-fill{height:100%;background:linear-gradient(90deg,var(--primary),#ff8042);border-radius:3px;box-shadow:0 0 6px rgba(255,56,100,.5);transition:width .9s linear}
+.timer-wrap{width:100%;height:5px;background:rgba(255,77,109,.1);border-radius:3px;overflow:hidden}
+.timer-fill{height:100%;background:linear-gradient(90deg,var(--primary),#ff8042);border-radius:3px;box-shadow:0 0 6px rgba(255,77,109,.5);transition:width .9s linear}
 
 .sec-label{font-size:.8rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
 .word-reveal{color:var(--muted);font-size:.9rem;text-align:center}
@@ -137,7 +137,7 @@ input[type=text]::placeholder{color:var(--muted)}
 <link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;600;700;800&display=swap" rel="stylesheet">
 </head>
 <body>
-<div class="zp-space-bg"><div class="zp-neb1" style="background:radial-gradient(ellipse at 30% 40%,rgba(255,56,100,.12) 0%,transparent 65%)"></div><div class="zp-neb2" style="background:radial-gradient(ellipse at 70% 60%,rgba(255,56,100,.07) 0%,transparent 60%)"></div><div class="zp-stars" id="zp-stars-imp"></div><div class="zp-sgrid"></div><div class="zp-comet"></div></div>
+<div class="zp-space-bg"><div class="zp-neb1" style="background:radial-gradient(ellipse at 30% 40%,rgba(255,77,109,.12) 0%,transparent 65%)"></div><div class="zp-neb2" style="background:radial-gradient(ellipse at 70% 60%,rgba(255,77,109,.07) 0%,transparent 60%)"></div><div class="zp-stars" id="zp-stars-imp"></div><div class="zp-sgrid"></div><div class="zp-comet"></div></div>
 <div id="dot"></div>
 <button id="back-btn" onclick="location.href='index.html'">&#8592; Accueil</button>
 <canvas id="confetti-canvas"></canvas>
@@ -169,7 +169,7 @@ input[type=text]::placeholder{color:var(--muted)}
   <div style="flex:1"></div>
   <div class="code-box" onclick="copyCode()">
     <div style="font-size:.75rem;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.06em">Code de la salle</div>
-    <div id="wait-code" class="wait-code-big" style="font-size:3rem;font-weight:800;letter-spacing:.18em;color:var(--primary);font-family:monospace;text-shadow:0 0 20px rgba(255,56,100,.4)">----</div>
+    <div id="wait-code" class="wait-code-big" style="font-size:3rem;font-weight:800;letter-spacing:.18em;color:var(--primary);font-family:monospace;text-shadow:0 0 20px rgba(255,77,109,.4)">----</div>
     <div id="copy-hint" style="font-size:.7rem;color:var(--muted);margin-top:2px">Appuyer pour copier</div>
   </div>
   <div id="wait-msg" style="color:var(--muted);font-size:.85rem;text-align:center">En attente des joueurs (3&ndash;8)&hellip;</div>
@@ -261,7 +261,7 @@ input[type=text]::placeholder{color:var(--muted)}
 
 <!-- GAME OVER -->
 <div id="s-gameover" class="screen">
-  <div style="font-size:1.6rem;font-weight:900;color:var(--primary);text-align:center;text-shadow:0 0 20px rgba(255,56,100,.5)">Fin de partie !</div>
+  <div style="font-size:1.6rem;font-weight:900;color:var(--primary);text-align:center;text-shadow:0 0 20px rgba(255,77,109,.5)">Fin de partie !</div>
   <div class="podium" id="go-podium"></div>
   <div style="text-align:center;color:var(--muted);font-size:.78rem;text-transform:uppercase;letter-spacing:.08em;margin-top:4px">Classement</div>
   <div class="score-list" id="go-list"></div>
@@ -757,7 +757,7 @@ function launchConfetti(){
   var canvas=el('confetti-canvas'); if(!canvas) return;
   canvas.width=window.innerWidth; canvas.height=window.innerHeight;
   var ctx=canvas.getContext('2d');
-  var colors=['#FF3864','#ff8042','#22c55e','#3b82f6','#a855f7','#f59e0b'];
+  var colors=['#FF4D6D','#ff8042','#34d399','#5B9FFF','#A78BFA','#f59e0b'];
   var parts=[];
   for(var i=0;i<120;i++) parts.push({x:Math.random()*canvas.width,y:-20-Math.random()*200,vx:(Math.random()-.5)*4,vy:2+Math.random()*4,r:4+Math.random()*6,c:colors[Math.floor(Math.random()*colors.length)],rot:Math.random()*360,rv:(Math.random()-.5)*8});
   var fr=0;

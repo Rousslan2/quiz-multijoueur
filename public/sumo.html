@@ -7,8 +7,8 @@
 <title>ZapPlay — Sumo Arena</title>
 <style>
 :root{
-  --primary:#00F5D4;--buzz:#FF6B35;--ok:#22c55e;--bad:#ef4444;
-  --text:#E8E8F0;--muted:#5A5A78;--card:#0E0E22;--border:rgba(0,245,212,.10)
+  --primary:#00E8D4;--buzz:#FF7033;--ok:#22c55e;--bad:#ef4444;
+  --text:#E8E8F0;--muted:#7A8098;--card:#12121f;--border:rgba(0,232,212,.10)
 }
 *{box-sizing:border-box;margin:0;padding:0}
 body{
@@ -232,7 +232,7 @@ function drawArena(){
   ctx.clearRect(0,0,W,H);
   
   // Sol hors du ring
-  ctx.fillStyle='#0D0D1F'; ctx.fillRect(0,0,W,H);
+  ctx.fillStyle='#0a0a1a'; ctx.fillRect(0,0,W,H);
   
   // Dohyo (sable)
   ctx.beginPath(); ctx.arc(cx,cy,ringR,0,Math.PI*2);
