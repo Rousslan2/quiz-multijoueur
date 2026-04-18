@@ -5,7 +5,23 @@ const WebSocket = require('ws');
 const path      = require('path');
 const os        = require('os');
 const frenchWordsPkg = require('an-array-of-french-words');
+const adminLib = require('./lib/admin');
 let QRCode; try { QRCode = require('qrcode'); } catch {}
+
+const ADMIN_TOKEN = process.env.ADMIN_TOKEN || '';
+let adminConfig = adminLib.loadAdminConfig();
+
+function adminAuth(req, res, next) {
+  if (!ADMIN_TOKEN) {
+    return res.status(503).json({ error: 'Admin désactivé: définissez ADMIN_TOKEN sur le serveur.' });
+  }
+  const h = req.headers.authorization || '';
+  const tok = h.startsWith('Bearer ') ? h.slice(7) : (req.query.token || req.body?.token || '');
+  if (tok !== ADMIN_TOKEN) {
+    return res.status(401).json({ error: 'Non autorisé' });
+  }
+  next();
+}
 
 const app    = express();
 const server = http.createServer(app);
@@ -97,6 +113,43 @@ function getRoomsSnapshot() {
 }
 
 app.get('/api/rooms', (_, res) => res.json(getRoomsSnapshot()));
+
+/** Liste des jeux masqués (menu / lobby) — lecture seule, sans secret */
+app.get('/api/public/config', (_, res) => {
+  res.json({ hiddenGames: adminConfig.hiddenGames || [] });
+});
+
+app.get('/api/admin/config', adminAuth, (_, res) => {
+  res.json({ hiddenGames: adminConfig.hiddenGames || [] });
+});
+
+app.put('/api/admin/config', adminAuth, (req, res) => {
+  try {
+    const hidden = Array.isArray(req.body?.hiddenGames) ? req.body.hiddenGames : [];
+    adminConfig = adminLib.saveAdminConfig({ hiddenGames: hidden });
+    res.json(adminConfig);
+  } catch (e) {
+    res.status(400).json({ error: String(e.message || e) });
+  }
+});
+
+app.post('/api/admin/bots', adminAuth, (req, res) => {
+  try {
+    const game = req.body?.game;
+    const code = req.body?.code;
+    const count = req.body?.count ?? 1;
+    const prefix = req.body?.prefix || 'Bot';
+    const host = req.body?.host || '127.0.0.1';
+    const out = adminLib.spawnTestBots({
+      game, code, count, prefix,
+      port: PORT,
+      host,
+    });
+    res.json(out);
+  } catch (e) {
+    res.status(400).json({ error: String(e.message || e) });
+  }
+});
 
 // ── Lobby WebSocket ───────────────────────────────────────────────────────────
 const lobbyClients = new Set();
