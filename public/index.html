@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="fr" class="home-page">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -29,18 +29,101 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 html { height: 100%; }
 
-body {
+/* Fond « menu principal » : couches plus riches (ne touche pas aux autres pages) */
+html.home-page {
   min-height: 100%;
-  background-color: #03030A;
+  background:
+    radial-gradient(ellipse 130% 90% at 50% -8%, rgba(0,245,212,.16), transparent 52%),
+    radial-gradient(ellipse 900px 700px at 12% 35%, rgba(59,130,246,.14), transparent 62%),
+    radial-gradient(ellipse 900px 650px at 92% 18%, rgba(168,85,247,.12), transparent 58%),
+    radial-gradient(ellipse 120% 70% at 50% 105%, rgba(255,56,100,.10), transparent 55%),
+    radial-gradient(ellipse 100% 80% at 50% 50%, #070714 0%, #03030A 55%, #05051a 100%) !important;
+}
+html.home-page body.home-page {
+  background: transparent !important;
+  background-color: transparent !important;
+}
+
+body.home-page {
+  min-height: 100%;
   color: var(--text);
   font-family: 'Exo 2', sans-serif;
   padding-bottom: 80px;
   overflow-x: hidden;
 }
 
+/* Scanlines un peu plus discrètes sur l’accueil */
+body.home-page::before { opacity: .32; }
+
+/* Couche Deep Space renforcée (au-dessus du dégradé html) */
+body.home-page .zp-space-bg {
+  background:
+    radial-gradient(ellipse 100% 85% at 50% 0%, rgba(0,245,212,.08), transparent 48%),
+    radial-gradient(ellipse 70% 55% at 72% 22%, rgba(59,130,246,.10), transparent 55%),
+    linear-gradient(165deg, #06051a 0%, #03030a 38%, #08061c 100%);
+}
+body.home-page .zp-space-bg .zp-neb1 {
+  width: 760px; height: 760px;
+  top: -240px; right: -140px;
+  background: radial-gradient(circle, rgba(0,245,212,.16), rgba(168,85,247,.08) 45%, transparent 68%);
+  filter: blur(72px);
+}
+body.home-page .zp-space-bg .zp-neb2 {
+  width: 680px; height: 680px;
+  bottom: -140px; left: -100px;
+  background: radial-gradient(circle, rgba(255,56,100,.11), rgba(59,130,246,.08) 48%, transparent 68%);
+  filter: blur(62px);
+}
+body.home-page .zp-aurora {
+  position: absolute; left: -25%; width: 150%; pointer-events: none;
+  border-radius: 50%; filter: blur(88px); opacity: .42;
+}
+body.home-page .zp-aurora-a {
+  top: -8%; height: 42vh;
+  background: linear-gradient(100deg, transparent 0%, rgba(0,245,212,.22) 38%, rgba(59,130,246,.14) 62%, transparent 100%);
+  animation: home-aurora 22s ease-in-out infinite;
+}
+body.home-page .zp-aurora-b {
+  top: 28%; height: 38vh;
+  background: linear-gradient(95deg, transparent 0%, rgba(168,85,247,.14) 40%, rgba(255,56,100,.10) 65%, transparent 100%);
+  animation: home-aurora 28s ease-in-out infinite reverse;
+}
+@keyframes home-aurora {
+  0%, 100% { transform: translateX(-4%) translateY(0) scaleY(1); opacity: .38; }
+  50% { transform: translateX(5%) translateY(12px) scaleY(1.05); opacity: .52; }
+}
+body.home-page .zp-vignette {
+  position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(ellipse 95% 75% at 50% 35%, transparent 45%, rgba(0,0,0,.38) 100%);
+}
+body.home-page .zp-depth {
+  position: absolute; inset: 0; pointer-events: none; opacity: .55;
+  background-image:
+    linear-gradient(rgba(0,245,212,.028) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,245,212,.02) 1px, transparent 1px);
+  background-size: 64px 64px;
+  mask-image: radial-gradient(ellipse 100% 85% at 50% 0%, #000 0%, transparent 72%);
+  animation: home-depth 48s linear infinite;
+}
+@keyframes home-depth {
+  from { background-position: 0 0, 0 0; }
+  to   { background-position: 0 320px, 320px 0; }
+}
+body.home-page .zp-space-bg .zp-sgrid {
+  opacity: .9;
+  background-image:
+    linear-gradient(rgba(0,245,212,.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,245,212,.03) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: radial-gradient(ellipse 110% 80% at 50% 5%, rgba(0,0,0,.75), transparent 72%);
+}
+
 /* ── ACCESSIBILITÉ / PERF ── */
 @media (prefers-reduced-motion: reduce){
   *,*::before,*::after{animation-duration:0.001ms!important;animation-iteration-count:1!important;transition-duration:0.001ms!important;scroll-behavior:auto!important}
+  body.home-page .zp-aurora-a,
+  body.home-page .zp-aurora-b,
+  body.home-page .zp-depth { animation: none !important; }
 }
 
 /* ── PARTICLES ── */
@@ -670,14 +753,18 @@ body {
 .footer span { color: var(--teal); opacity: .5; }
 </style>
 </head>
-<body>
+<body class="home-page">
 
 <!-- Deep Space Background -->
 <div class="zp-space-bg">
+  <div class="zp-aurora zp-aurora-a" aria-hidden="true"></div>
+  <div class="zp-aurora zp-aurora-b" aria-hidden="true"></div>
   <div class="zp-neb1"></div>
   <div class="zp-neb2"></div>
   <div class="zp-stars" id="bg-stars"></div>
   <div class="zp-sgrid"></div>
+  <div class="zp-depth" aria-hidden="true"></div>
+  <div class="zp-vignette" aria-hidden="true"></div>
   <div class="zp-comet"></div>
   <div class="particles" id="bg-particles"></div>
 </div>
