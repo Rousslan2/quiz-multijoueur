@@ -1340,7 +1340,7 @@ function renderState(st) {
 
     const winsArr = wins || [];
     if (winnerSlot < 0) document.getElementById('go-winner').textContent = 'Égalité !';
-    else if (winnerSlot === mySlot) document.getElementById('go-winner').textContent = 'Tu as gagné ! 🏆';
+    else if (winnerSlot === mySlot) { document.getElementById('go-winner').textContent = 'Tu as gagné ! 🏆'; if(window.ZapFX) ZapFX.confetti({count:200}); }
     else document.getElementById('go-winner').textContent = (players.find(p=>p.slot===winnerSlot)?.name || '?') + ' a gagné !';
 
     const sc = document.getElementById('go-scores');
@@ -1361,6 +1361,7 @@ function renderState(st) {
   }
 }
 </script>
+<script src="fx.js"></script>
 <script src="shared.js"></script>
 <script src="chat.js"></script>
 <script>(function(){var sc=document.getElementById('zp-stars-draw');if(!sc)return;for(var i=0;i<60;i++){var s=document.createElement('div');s.className='zp-star';var sz=(.4+Math.random()*1.6).toFixed(1);s.style.cssText='left:'+Math.random()*100+'%;top:'+Math.random()*100+'%;width:'+sz+'px;height:'+sz+'px;opacity:'+((.2+Math.random()*.8).toFixed(2))+';animation-duration:'+(2+Math.random()*4).toFixed(1)+'s;animation-delay:'+(Math.random()*5).toFixed(1)+'s';sc.appendChild(s);}})();</script>

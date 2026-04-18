@@ -33,13 +33,56 @@ h2{font-size:1.5rem;font-weight:800;background:linear-gradient(135deg,var(--prim
 .sc-chip.active-turn{border-color:var(--primary);box-shadow:0 0 10px rgba(168,85,247,.3)}
 .sc-name{color:var(--muted);font-size:.7rem;margin-bottom:2px}
 .sc-pts{font-weight:800;font-size:1.1rem;color:var(--primary)}
-#card-grid{display:grid;gap:6px;margin-top:4px}
-.mem-card{aspect-ratio:1;border-radius:10px;border:2px solid rgba(168,85,247,.2);background:rgba(255,255,255,.04);cursor:pointer;font-size:1.6rem;display:flex;align-items:center;justify-content:center;transition:transform .15s,background .15s,border-color .15s,box-shadow .15s;user-select:none;-webkit-tap-highlight-color:transparent}
-.mem-card:hover:not(.disabled):not(.matched){background:rgba(168,85,247,.1);border-color:rgba(168,85,247,.45);box-shadow:0 0 12px rgba(168,85,247,.2)}
-.mem-card.flipped{background:rgba(168,85,247,.12);border-color:rgba(168,85,247,.55);box-shadow:0 0 14px rgba(168,85,247,.25)}
-.mem-card.matched{background:rgba(34,197,94,.08);border-color:rgba(34,197,94,.45);cursor:default;animation:mem-match-glow 2s ease-in-out infinite}
-@keyframes mem-match-glow{0%,100%{box-shadow:0 0 8px rgba(34,197,94,.25)}50%{box-shadow:0 0 22px rgba(34,197,94,.5)}}
-.mem-card.disabled{cursor:not-allowed;opacity:.55}
+#card-grid{display:grid;gap:8px;margin-top:4px;perspective:1200px}
+.mem-card{
+  aspect-ratio:1; position:relative;
+  cursor:pointer; user-select:none; -webkit-tap-highlight-color:transparent;
+  transform-style: preserve-3d;
+  transition: transform .55s cubic-bezier(.2,0,.2,1), filter .25s;
+  will-change: transform;
+}
+.mem-face{
+  position:absolute; inset:0; border-radius:12px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:1.7rem; font-weight:800;
+  backface-visibility: hidden; -webkit-backface-visibility: hidden;
+  border:2px solid rgba(168,85,247,.25);
+  box-shadow: 0 8px 22px rgba(0,0,0,.45), inset 0 0 0 1px rgba(255,255,255,.04);
+}
+.mem-back{
+  background:
+    radial-gradient(120% 80% at 30% 10%, rgba(168,85,247,.35), transparent 55%),
+    radial-gradient(120% 80% at 80% 90%, rgba(0,245,212,.18), transparent 60%),
+    linear-gradient(135deg, #1a0f2b, #10142b);
+  color: rgba(255,255,255,.9);
+  text-shadow: 0 0 8px rgba(168,85,247,.7);
+}
+.mem-back::before{
+  content:'?';
+  font-family:'Orbitron',monospace; font-weight:900; font-size:1.6rem;
+  color: rgba(168,85,247,.85);
+  text-shadow: 0 0 14px rgba(168,85,247,.6), 0 0 34px rgba(168,85,247,.3);
+}
+.mem-back::after{
+  content:''; position:absolute; inset:6px;
+  border-radius:9px;
+  border:1px dashed rgba(168,85,247,.35);
+  pointer-events:none;
+}
+.mem-front{
+  transform: rotateY(180deg);
+  background: linear-gradient(180deg, rgba(168,85,247,.14), rgba(168,85,247,.05));
+  border-color: rgba(168,85,247,.55);
+}
+.mem-card:hover:not(.disabled):not(.matched):not(.flipped){ transform: translateY(-3px) scale(1.02); }
+.mem-card.flipped, .mem-card.matched{ transform: rotateY(180deg); }
+.mem-card.matched .mem-front{
+  background: linear-gradient(180deg, rgba(34,197,94,.18), rgba(34,197,94,.05));
+  border-color: rgba(34,197,94,.55);
+  animation: mem-match-glow 2s ease-in-out infinite;
+}
+@keyframes mem-match-glow{0%,100%{box-shadow:0 0 10px rgba(34,197,94,.3), inset 0 0 0 1px rgba(255,255,255,.05)}50%{box-shadow:0 0 26px rgba(34,197,94,.55), inset 0 0 0 1px rgba(255,255,255,.05)}}
+.mem-card.disabled{cursor:not-allowed;filter: brightness(.7) saturate(.6)}
 .mem-card.no-turn{cursor:default}
 .rank-row{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;border-radius:8px;background:rgba(255,255,255,.05);font-size:.88rem;gap:8px}
 .rank-row.me{background:rgba(168,85,247,.1);border:1px solid rgba(168,85,247,.2)}
@@ -204,8 +247,12 @@ function renderGrid(cards, myTurn){
     if(card.matched) el.classList.add('matched');
     else if(card.flipped) el.classList.add('flipped');
     else if(!myTurn) el.classList.add('no-turn');
-    if(card.face) el.textContent=card.face;
-    else el.textContent='';
+
+    const back=document.createElement('div'); back.className='mem-face mem-back';
+    const front=document.createElement('div'); front.className='mem-face mem-front';
+    if(card.face) front.textContent=card.face;
+    el.appendChild(back); el.appendChild(front);
+
     if(myTurn&&!card.matched&&!card.flipped){
       const idx=i;
       el.addEventListener('click',()=>flipCard(idx));
@@ -266,6 +313,7 @@ function updateState(d){
     ['scr-play'].forEach(hide); show('scr-over');
     const sorted=[...d.players].sort((a,b)=>b.score-a.score);
     $('winner-txt').textContent=sorted[0]?sorted[0].name+' gagne avec '+sorted[0].score+' paire'+(sorted[0].score>1?'s':'')+'!':'Match nul !';
+    if(sorted[0] && sorted[0].slot===mySlot && window.ZapFX) ZapFX.confetti({count:180});
     const tpl=$('tpl-rank'); const c=$('final-ranks'); c.textContent='';
     sorted.forEach((p,i)=>{
       const node=tpl.content.cloneNode(true);
@@ -285,6 +333,7 @@ function updateState(d){
 function bindLoungeSender(){if(window.ZapPlay)ZapPlay.setLoungeSender(text=>send({type:'lounge_chat',text}));else setTimeout(bindLoungeSender,120);}
 bindLoungeSender();
 </script>
+<script src="fx.js"></script>
 <script src="shared.js"></script>
 <script src="chat.js"></script>
 <script>(function(){var sc=document.getElementById('zp-stars-memoire');if(!sc)return;for(var i=0;i<60;i++){var s=document.createElement('div');s.className='zp-star';var sz=(.4+Math.random()*1.6).toFixed(1);s.style.cssText='left:'+Math.random()*100+'%;top:'+Math.random()*100+'%;width:'+sz+'px;height:'+sz+'px;opacity:'+((.2+Math.random()*.8).toFixed(2))+';animation-duration:'+(2+Math.random()*4).toFixed(1)+'s;animation-delay:'+(Math.random()*5).toFixed(1)+'s';sc.appendChild(s);}})();</script>

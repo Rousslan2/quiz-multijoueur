@@ -450,6 +450,7 @@ function render(){
     resetCombo();
     const winName = state.winnerSlot>=0 ? (players.find(p=>p.slot===state.winnerSlot)?.name||'') : '';
     $('over-title').textContent = state.winnerSlot>=0 ? `🏆 ${winName} gagne !` : 'Égalité !';
+    if(lastPhase!=='GAME_OVER' && state.winnerSlot===mySlot && window.ZapFX) ZapFX.confetti({count:200});
     if(lastPhase!=='GAME_OVER' && window.ZapPlay){
       const pNames=players.map(p=>p.name);
       ZapPlay.saveGameResult({game:'bomb',gameName:'Word Bomb',players:pNames,winner:winName||'Égalité',myName,myScore:players.find(p=>p.slot===mySlot)?.score||0,isWinner:state.winnerSlot===mySlot});
@@ -537,6 +538,7 @@ $('code').addEventListener('input',e=>{e.target.value=e.target.value.toUpperCase
 $('code').addEventListener('keydown',e=>{if(e.key==='Enter')joinGame();});
 $('word').addEventListener('keydown',e=>{if(e.key==='Enter')sendWord();});
 </script>
+<script src="fx.js"></script>
 <script src="shared.js"></script>
 <script src="chat.js"></script>
 <script>(function(){var sc=document.getElementById('zp-stars-wordbomb');if(!sc)return;for(var i=0;i<60;i++){var s=document.createElement('div');s.className='zp-star';var sz=(.4+Math.random()*1.6).toFixed(1);s.style.cssText='left:'+Math.random()*100+'%;top:'+Math.random()*100+'%;width:'+sz+'px;height:'+sz+'px;opacity:'+((.2+Math.random()*.8).toFixed(2))+';animation-duration:'+(2+Math.random()*4).toFixed(1)+'s;animation-delay:'+(Math.random()*5).toFixed(1)+'s';sc.appendChild(s);}})();</script>

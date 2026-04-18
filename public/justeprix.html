@@ -274,6 +274,7 @@ function updateState(d){
     ['scr-play','scr-rev'].forEach(hide); show('scr-over');
     const sorted=[...d.players].sort((a,b)=>b.score-a.score);
     $('winner-txt').textContent=sorted[0]?sorted[0].name+' gagne !':'';
+    if(sorted[0] && sorted[0].slot===mySlot && window.ZapFX) ZapFX.confetti({count:180});
     const tpl=$('tpl-rank'); const c=$('final-ranks'); c.textContent='';
     sorted.forEach((p,i)=>{
       const node=tpl.content.cloneNode(true);
@@ -314,6 +315,7 @@ $('val-in').addEventListener('keydown',e=>{ if(e.key==='Enter') submitGuess(); }
 function bindLoungeSender(){if(window.ZapPlay)ZapPlay.setLoungeSender(text=>send({type:'lounge_chat',text}));else setTimeout(bindLoungeSender,120);}
 bindLoungeSender();
 </script>
+<script src="fx.js"></script>
 <script src="shared.js"></script>
 <script src="chat.js"></script>
 <script>(function(){var sc=document.getElementById('zp-stars-justeprix');if(!sc)return;for(var i=0;i<60;i++){var s=document.createElement('div');s.className='zp-star';var sz=(.4+Math.random()*1.6).toFixed(1);s.style.cssText='left:'+Math.random()*100+'%;top:'+Math.random()*100+'%;width:'+sz+'px;height:'+sz+'px;opacity:'+((.2+Math.random()*.8).toFixed(2))+';animation-duration:'+(2+Math.random()*4).toFixed(1)+'s;animation-delay:'+(Math.random()*5).toFixed(1)+'s';sc.appendChild(s);}})();</script>

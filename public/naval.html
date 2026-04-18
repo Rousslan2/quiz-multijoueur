@@ -31,8 +31,17 @@ input{width:100%;padding:11px 12px;border-radius:10px;border:1px solid var(--bor
 #err{color:#fecaca;font-size:.85rem;text-align:center;min-height:18px}
 #game-screen{display:none;flex-direction:column;gap:14px}
 #game-screen.on{display:flex}
-.board-wrap{display:flex;flex-wrap:wrap;gap:28px;justify-content:center;align-items:flex-start}
+.board-wrap{display:flex;flex-wrap:wrap;gap:28px;justify-content:center;align-items:flex-start;perspective:1600px;perspective-origin:50% 40%}
 .board-title{font-size:.88rem;color:#e2e8f0;text-transform:uppercase;letter-spacing:.12em;margin-bottom:8px;text-align:center;font-weight:700;text-shadow:0 1px 2px rgba(0,0,0,.35)}
+/* Tilt 3D sur la table de combat */
+.board-wrap .map-chart{
+  transform: rotateX(12deg) rotateZ(-.4deg);
+  transform-origin: 50% 70%;
+  transition: transform .6s cubic-bezier(.2,0,.2,1), box-shadow .6s;
+  will-change: transform;
+}
+.board-wrap .map-chart:hover{ transform: rotateX(6deg) rotateZ(0) translateY(-4px); }
+@media(max-width:720px){ .board-wrap .map-chart{ transform:none; } }
 /* Carte marine — cadre parchemin + grille océan */
 .map-chart{
   position:relative;padding:18px 20px 22px;border-radius:20px;
@@ -82,7 +91,7 @@ input{width:100%;padding:11px 12px;border-radius:10px;border:1px solid var(--bor
   box-shadow:inset 0 1px 0 rgba(255,255,255,.06);
   overflow:visible;
 }
-.cell:not(.disabled):hover{transform:scale(1.04);box-shadow:0 0 0 2px rgba(56,189,248,.35);z-index:1}
+.cell:not(.disabled):hover{transform:translateZ(8px) scale(1.08);box-shadow:0 0 0 2px rgba(56,189,248,.45),0 8px 18px rgba(0,0,0,.4);z-index:1}
 .cell.miss{
   background:radial-gradient(circle at 35% 35%,rgba(255,255,255,.25),transparent 45%),
     linear-gradient(145deg,#1e3a4a,#0f172a);
@@ -643,8 +652,9 @@ function render(){
       const w=state.winnerSlot;
       const winName=w>=0?names[w]:'';
       $('over-msg').textContent=w===mySlot?'Victoire !':`Victoire de ${winName} !`;
-      if(lastPhase!=='GAME_OVER' && window.ZapPlay){
-        ZapPlay.saveGameResult({game:'naval',gameName:'Bataille navale',players:names,winner:winName||'?',myName,isWinner:w===mySlot,myScore:0});
+      if(lastPhase!=='GAME_OVER'){
+        if(window.ZapPlay) ZapPlay.saveGameResult({game:'naval',gameName:'Bataille navale',players:names,winner:winName||'?',myName,isWinner:w===mySlot,myScore:0});
+        if(w===mySlot && window.ZapFX) ZapFX.confetti({count:200});
       }
     }
     lastPhase=phase;
@@ -708,6 +718,7 @@ if(q.get('create')==='1'&&q.get('name')){
 $('name').addEventListener('keydown',e=>{if(e.key==='Enter')createGame();});
 $('code').addEventListener('input',e=>{e.target.value=e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,'');});
 </script>
+<script src="fx.js"></script>
 <script src="shared.js"></script>
 <script src="chat.js"></script>
 <script>(function(){var sc=document.getElementById('zp-stars-naval');if(!sc)return;for(var i=0;i<60;i++){var s=document.createElement('div');s.className='zp-star';var sz=(.4+Math.random()*1.6).toFixed(1);s.style.cssText='left:'+Math.random()*100+'%;top:'+Math.random()*100+'%;width:'+sz+'px;height:'+sz+'px;opacity:'+((.2+Math.random()*.8).toFixed(2))+';animation-duration:'+(2+Math.random()*4).toFixed(1)+'s;animation-delay:'+(Math.random()*5).toFixed(1)+'s';sc.appendChild(s);}})();</script>

@@ -32,7 +32,12 @@ h2{font-size:1.5rem;font-weight:800;background:linear-gradient(135deg,var(--prim
 .sc-chip.me{border-color:rgba(255,56,100,.5)}
 .sc-name{color:var(--muted);font-size:.7rem;margin-bottom:2px}
 .sc-pts{font-weight:800;font-size:1.1rem;color:var(--primary)}
-#scramble-disp{font-size:2.8rem;font-weight:900;letter-spacing:.25em;text-align:center;color:var(--primary);text-shadow:0 0 30px rgba(255,56,100,.35);font-family:monospace;padding:8px 0}
+#scramble-disp{font-size:2.8rem;font-weight:900;letter-spacing:.25em;text-align:center;color:var(--primary);text-shadow:0 0 30px rgba(255,56,100,.35);font-family:monospace;padding:14px 0;perspective:800px;transform-style:preserve-3d}
+#scramble-disp span{display:inline-block;transform-style:preserve-3d;animation:zp-letter-float 3.6s ease-in-out infinite;text-shadow:0 0 18px rgba(255,56,100,.5),0 6px 14px rgba(0,0,0,.45)}
+#scramble-disp span:nth-child(2n){animation-delay:-.6s}
+#scramble-disp span:nth-child(3n){animation-delay:-1.2s}
+#scramble-disp span:nth-child(4n){animation-delay:-1.8s}
+@keyframes zp-letter-float{0%,100%{transform:translateY(0) rotateX(0) rotateY(0)}25%{transform:translateY(-4px) rotateY(8deg)}50%{transform:translateY(0) rotateX(6deg) rotateY(-6deg)}75%{transform:translateY(-3px) rotateY(-8deg)}}
 .timer-wrap{height:6px;background:rgba(255,255,255,.08);border-radius:3px;overflow:hidden}
 .timer-bar{height:100%;border-radius:3px;background:linear-gradient(90deg,var(--primary),var(--gold));transition:width .25s linear}
 .hint-dots{display:flex;gap:6px;justify-content:center;margin-top:4px}
@@ -237,7 +242,7 @@ function handleMsg(d){
     case 'anagramme_round':
       locked=false; ['scr-cd','scr-rnd'].forEach(hide); show('scr-play');
       $('rnd-info').textContent='MANCHE '+d.round+'/'+d.totalRounds;
-      $('scramble-disp').textContent=d.scrambled.toUpperCase();
+      $('scramble-disp').innerHTML=d.scrambled.toUpperCase().split('').map(ch=>`<span>${ch}</span>`).join('');
       $('guess-in').value=''; $('guess-in').disabled=false; $('guess-in').focus();
       $('feed').textContent=''; buildDots(d.wordLen); startTimer(20); break;
     case 'anagramme_wrong':
@@ -281,6 +286,7 @@ function updateState(d){
     const sorted=[...d.players].sort((a,b)=>b.score-a.score);
     $('winner-txt').textContent=sorted[0]?sorted[0].name+' gagne !':'';
     renderRanks(sorted.map((p,i)=>({me:p.slot===mySlot,medal:medals[i]||'🏅',name:p.name,pts:p.score+' pts'})),'final-ranks');
+    if(sorted[0] && sorted[0].slot===mySlot && window.ZapFX) ZapFX.confetti({count:180});
   }
 }
 $('guess-in').addEventListener('keydown',e=>{ if(e.key==='Enter') submitGuess(); });
@@ -297,6 +303,7 @@ $('guess-in').addEventListener('keydown',e=>{ if(e.key==='Enter') submitGuess();
 function bindLoungeSender(){if(window.ZapPlay)ZapPlay.setLoungeSender(text=>send({type:'lounge_chat',text}));else setTimeout(bindLoungeSender,120);}
 bindLoungeSender();
 </script>
+<script src="fx.js"></script>
 <script src="shared.js"></script>
 <script src="chat.js"></script>
 <script>(function(){var sc=document.getElementById('zp-stars-anagramme');if(!sc)return;for(var i=0;i<60;i++){var s=document.createElement('div');s.className='zp-star';var sz=(.4+Math.random()*1.6).toFixed(1);s.style.cssText='left:'+Math.random()*100+'%;top:'+Math.random()*100+'%;width:'+sz+'px;height:'+sz+'px;opacity:'+((.2+Math.random()*.8).toFixed(2))+';animation-duration:'+(2+Math.random()*4).toFixed(1)+'s;animation-delay:'+(Math.random()*5).toFixed(1)+'s';sc.appendChild(s);}})();</script>

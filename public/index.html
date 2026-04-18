@@ -232,6 +232,7 @@ body {
 }
 .float-card{
   position:absolute;
+  z-index:2;
   width: 168px; height: 106px;
   border-radius:16px;
   border:1px solid rgba(255,255,255,.16);
@@ -241,6 +242,8 @@ body {
   padding:14px 14px 12px;
   backdrop-filter: blur(10px);
 }
+.fx-hero-canvas{ z-index:0; opacity:.95; }
+.scene > *:not(.fx-hero-canvas){ position:absolute; z-index:2; }
 .float-card::after{
   content:'';
   position:absolute;inset:-2px;
@@ -702,14 +705,14 @@ body {
     </div>
 
     <div class="hero-card hero-right">
-      <div class="scene" aria-hidden="true">
-        <div class="float-card a"><div class="k">MATCH</div><div class="v">QUIZ</div></div>
-        <div class="float-card b"><div class="k">MODE</div><div class="v">ARCADE</div></div>
-        <div class="float-card c"><div class="k">RANG</div><div class="v">#1</div></div>
+      <div class="scene" aria-hidden="true" data-hero-3d>
+        <div class="float-card a fx-float"><div class="k">MATCH</div><div class="v">QUIZ</div></div>
+        <div class="float-card b fx-float" style="animation-delay:-2s"><div class="k">MODE</div><div class="v">ARCADE</div></div>
+        <div class="float-card c fx-float" style="animation-delay:-4s"><div class="k">RANG</div><div class="v">#1</div></div>
       </div>
       <div class="hero-mini">
         <div class="mini"><div class="t">Conseil</div><div class="d">Ouvre un salon, partage le code, et lance.</div></div>
-        <div class="mini"><div class="t">Tip</div><div class="d">Sur mobile : appuie sur les cartes, elles “tilt”.</div></div>
+        <div class="mini"><div class="t">Tip</div><div class="d">Sur mobile : appuie sur les cartes, elles "tilt".</div></div>
       </div>
     </div>
   </div>
@@ -942,11 +945,25 @@ body {
   }
 })();
 
-// Live rooms count
+// Live rooms count (animated count-up via fx.js)
 fetch('/api/rooms').then(r=>r.json()).then(rooms=>{
   const el = document.getElementById('online-count');
-  if(el) el.textContent = rooms.length + ' salle' + (rooms.length !== 1 ? 's' : '') + ' en ligne';
+  if(!el) return;
+  const n = rooms.length;
+  const plural = n !== 1 ? 's' : '';
+  // Animate number then append label
+  const span = document.createElement('span');
+  span.textContent = '0';
+  el.textContent = ''; el.appendChild(span);
+  el.insertAdjacentText('beforeend', ' salle' + plural + ' en ligne');
+  if(window.ZapFX) ZapFX.countUp(span, n, 1200);
+  else span.textContent = n;
 }).catch(()=>{});
+
+// Auto-reveal non-card sections on scroll (cards already have card-in animation)
+document.querySelectorAll('.section-label, .panel').forEach(el=>{
+  el.setAttribute('data-reveal','fade');
+});
 
 // UI/UX Pro Max: micro-interactions 3D (tilt), safe + performant
 (function(){
@@ -994,6 +1011,7 @@ fetch('/api/rooms').then(r=>r.json()).then(rooms=>{
   });
 })();
 </script>
+<script src="fx.js"></script>
 <script src="shared.js"></script>
 <script src="chat.js"></script>
 </body>

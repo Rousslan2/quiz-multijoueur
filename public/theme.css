@@ -3,6 +3,121 @@
    Partagé par tous les jeux + lobby + index
    ───────────────────────────────────────────── */
 
+/* ============================================================
+   FX PREMIUM — Ripple · Reveal · Confetti · Page‑in · 3D flip
+   (classes auto-appliquées par fx.js)
+   ============================================================ */
+
+/* Ripple */
+.zp-ripple{
+  position:absolute; border-radius:50%;
+  transform: translate(-50%,-50%) scale(0);
+  background: radial-gradient(circle, rgba(255,255,255,.35) 0%, rgba(255,255,255,.18) 40%, rgba(255,255,255,0) 70%);
+  pointer-events:none;
+  animation: zp-ripple .6s cubic-bezier(.22,.61,.36,1) forwards;
+  mix-blend-mode: screen;
+}
+@keyframes zp-ripple{
+  to{ transform: translate(-50%,-50%) scale(1); opacity:0; }
+}
+
+/* Page entry transition */
+html.fx-page-in body{ opacity:0; transform: translateY(8px) scale(.995); transition: opacity .5s ease, transform .5s cubic-bezier(.2,0,.2,1); }
+html.fx-page-in.fx-page-in-done body{ opacity:1; transform: none; }
+
+/* Scroll reveal */
+[data-reveal]{
+  opacity:0; transform: translateY(22px);
+  transition: opacity .7s cubic-bezier(.2,0,.2,1), transform .7s cubic-bezier(.2,0,.2,1);
+}
+[data-reveal="fade"]{ transform:none; }
+[data-reveal="left"]{ transform: translateX(-30px); }
+[data-reveal="right"]{ transform: translateX(30px); }
+[data-reveal="zoom"]{ transform: scale(.92); }
+[data-reveal="flip"]{ transform: perspective(900px) rotateX(-20deg) translateY(12px); }
+[data-reveal].fx-revealed{ opacity:1; transform:none; }
+
+/* Tilt optimization */
+[data-tilt]{ will-change: transform; transform-style: preserve-3d; }
+
+/* Premium glass surface */
+.zp-glass{
+  background: linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.025));
+  border:1px solid rgba(255,255,255,.08);
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+}
+
+/* Premium neon glow button */
+.zp-premium-btn{
+  position:relative; border-radius:14px;
+  padding:14px 22px; font-family:'Orbitron',monospace;
+  font-weight:800; letter-spacing:.1em; text-transform:uppercase;
+  color:#041018;
+  background: linear-gradient(135deg, var(--teal), #3B82F6);
+  border:none; cursor:pointer; overflow:hidden;
+  box-shadow: 0 0 0 1px rgba(0,245,212,.35), 0 18px 48px rgba(0,245,212,.22);
+  transition: transform .18s cubic-bezier(.2,0,.2,1), box-shadow .18s;
+}
+.zp-premium-btn:hover{ transform: translateY(-2px); box-shadow: 0 0 0 1px rgba(0,245,212,.55), 0 24px 70px rgba(0,245,212,.35); }
+.zp-premium-btn::before{
+  content:''; position:absolute; inset:0;
+  background: linear-gradient(110deg, transparent 30%, rgba(255,255,255,.45) 50%, transparent 70%);
+  transform: translateX(-120%); transition: transform .7s cubic-bezier(.2,0,.2,1);
+}
+.zp-premium-btn:hover::before{ transform: translateX(120%); }
+
+/* Winner/hero pulse */
+@keyframes zp-pop-in{
+  0%{ transform: scale(.4); opacity:0; }
+  70%{ transform: scale(1.12); opacity:1; }
+  100%{ transform: scale(1); }
+}
+.fx-pop-in{ animation: zp-pop-in .55s cubic-bezier(.2,0,.2,1) both; }
+
+/* 3D card flip base (réutilisable) */
+.fx-flip{ perspective: 900px; }
+.fx-flip-inner{
+  position: relative; width:100%; height:100%;
+  transition: transform .55s cubic-bezier(.2,0,.2,1);
+  transform-style: preserve-3d;
+}
+.fx-flip.is-flipped .fx-flip-inner{ transform: rotateY(180deg); }
+.fx-flip-face{
+  position:absolute; inset:0;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  display:flex; align-items:center; justify-content:center;
+  border-radius:inherit;
+}
+.fx-flip-back{ transform: rotateY(180deg); }
+
+/* Floating breathing */
+@keyframes zp-float-breath{
+  0%,100%{ transform: translateY(0) rotate(0); }
+  50%{ transform: translateY(-6px) rotate(.6deg); }
+}
+.fx-float{ animation: zp-float-breath 5s ease-in-out infinite; }
+
+/* Shine sweep */
+@keyframes zp-shine-sweep{
+  0%{ background-position: -120% 0; }
+  100%{ background-position: 220% 0; }
+}
+.fx-shine-text{
+  background: linear-gradient(90deg, rgba(255,255,255,.2) 0%, rgba(255,255,255,.9) 50%, rgba(255,255,255,.2) 100%);
+  background-size: 220% 100%;
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent; color: transparent;
+  animation: zp-shine-sweep 3.5s linear infinite;
+}
+
+/* Accessibility */
+@media (prefers-reduced-motion: reduce){
+  .zp-ripple, .fx-shine-text, .fx-float, [data-reveal]{ animation:none!important; transition:none!important; opacity:1!important; transform:none!important; }
+}
+
+
 /* ── VARIABLES ── */
 :root {
   --bg:     #06060F;
@@ -289,8 +404,11 @@ body > *:not(.zp-space-bg) {
   background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.1);
   color: var(--text); cursor: pointer; text-align: left;
   position: relative; overflow: hidden;
-  transition: border-color .15s, background .15s;
+  transition: transform .18s cubic-bezier(.2,0,.2,1), border-color .18s, background .18s, box-shadow .18s;
+  transform-style: preserve-3d;
 }
+.zp-choice-btn:hover:not(.correct):not(.wrong){ transform: translateY(-2px) translateZ(4px); box-shadow: 0 10px 24px rgba(0,245,212,.12); }
+.zp-choice-btn:active{ transform: translateY(0) scale(.99); }
 .zp-choice-btn::before {
   content: '';
   position: absolute; inset: 0;

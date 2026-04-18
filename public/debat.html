@@ -173,6 +173,7 @@ input[type=text]{width:100%;padding:12px;border-radius:10px;border:1px solid var
   </div>
 </div>
 
+<script src="fx.js"></script>
 <script src="shared.js"></script>
 <script src="chat.js"></script>
 <script>
@@ -350,6 +351,7 @@ function handle(m) {
     el('btn-restart').style.display = isHost ? 'block' : 'none';
     clearTimer();
     show('s-over');
+    if(sorted[0] && sorted[0].slot===mySlot && window.ZapFX) ZapFX.confetti({count:200});
     return;
   }
 
