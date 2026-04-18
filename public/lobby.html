@@ -63,6 +63,24 @@ body{
 }
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.15}}
 
+.ping-badge{
+  font-size:.62rem;font-family:'Orbitron',monospace;
+  letter-spacing:.06em;color:var(--muted);
+  padding:4px 10px;border-radius:999px;
+  border:1px solid rgba(255,255,255,.08);
+  background:rgba(0,0,0,.2);
+}
+.ping-badge b{color:var(--teal);font-weight:700}
+
+.lobby-filters{
+  display:grid;
+  grid-template-columns:1fr 1fr 1fr;
+  gap:10px;margin-bottom:14px;
+}
+@media(max-width:640px){.lobby-filters{grid-template-columns:1fr}}
+.lobby-filters label{font-size:.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;
+  font-family:'Orbitron',monospace; display:block;margin-bottom:4px}
+
 /* ── MAIN ── */
 .main{
   position:relative;z-index:1;
@@ -280,6 +298,7 @@ select option{background:#0a0a1a;color:var(--text)}
     <div class="header-sub">
       <span class="live-dot"></span>
       Temps réel
+      <span class="ping-badge" id="lobby-ping" title="Latence WebSocket">Ping <b>—</b> ms</span>
     </div>
     <div style="margin-top:8px;font-size:.68rem"><a href="admin.html" style="color:var(--teal);opacity:.7">Admin</a></div>
   </div>
@@ -350,6 +369,26 @@ select option{background:#0a0a1a;color:var(--text)}
       <div class="rooms-title">&#128249; Salles disponibles</div>
       <span class="rooms-count" id="rooms-count">0 salle</span>
     </div>
+    <div class="rooms-body" style="padding-top:0;padding-bottom:0;border-bottom:1px solid var(--border)">
+      <div class="lobby-filters">
+        <div>
+          <label for="filter-search">Recherche</label>
+          <input type="text" id="filter-search" placeholder="Code, hôte, jeu…" autocomplete="off">
+        </div>
+        <div>
+          <label for="filter-status">Statut</label>
+          <select id="filter-status">
+            <option value="all">Toutes</option>
+            <option value="waiting">En attente</option>
+            <option value="playing">En cours</option>
+          </select>
+        </div>
+        <div>
+          <label for="filter-game">Jeu</label>
+          <select id="filter-game"><option value="all">Tous les jeux</option></select>
+        </div>
+      </div>
+    </div>
     <div class="rooms-body" id="rooms-list">
       <div class="spinner"></div>
     </div>
@@ -378,6 +417,8 @@ const GAME_ICONS = {
 
 let createdCode = null;
 let lobbyWs = null;
+let allRooms = [];
+let pingTimer = null;
 
 // URL param auto-fill
 const urlParams = new URLSearchParams(location.search);
@@ -393,21 +434,91 @@ fetch('/api/public/config').then(r=>r.json()).then(cfg=>{
   Array.from(sel.options).forEach(opt=>{
     if(hidden.has(opt.value)) opt.remove();
   });
+  const fg = document.getElementById('filter-game');
+  if(fg){
+    fg.innerHTML = '<option value="all">Tous les jeux</option>';
+    Array.from(sel.options).forEach(opt=>{
+      const o = document.createElement('option');
+      o.value = opt.value;
+      o.textContent = opt.textContent.replace(/^[^\s]+\s*/,'');
+      fg.appendChild(o);
+    });
+  }
 }).catch(()=>{});
+
+function sendLobbyPing(){
+  if(!lobbyWs || lobbyWs.readyState !== WebSocket.OPEN) return;
+  lobbyWs._pingStart = Date.now();
+  try{ lobbyWs.send(JSON.stringify({ type:'ping', t: lobbyWs._pingStart })); }catch(e){}
+}
 
 // WebSocket lobby
 function connectLobby(){
   lobbyWs = new WebSocket((location.protocol==='https:'?'wss':'ws')+'://'+location.host+'/ws/lobby');
-  lobbyWs.onopen = () => { if(window.ZapPlay) ZapPlay.hideLoader(); };
-  lobbyWs.onmessage = e => {
-    try{ const m=JSON.parse(e.data); if(m.type==='rooms') renderRooms(m.rooms); }catch{}
+  lobbyWs.onopen = () => {
+    if(window.ZapPlay) ZapPlay.hideLoader();
+    sendLobbyPing();
+    if(pingTimer) clearInterval(pingTimer);
+    pingTimer = setInterval(sendLobbyPing, 5000);
   };
-  lobbyWs.onclose = () => setTimeout(connectLobby, 2000);
+  lobbyWs.onmessage = e => {
+    try{
+      const m = JSON.parse(e.data);
+      if(m.type === 'pong'){
+        const ms = Math.round(Date.now() - (m.client||0));
+        const el = document.getElementById('lobby-ping');
+        if(el) el.innerHTML = 'Ping <b>'+ms+'</b> ms';
+        return;
+      }
+      if(m.type === 'rooms'){
+        allRooms = m.rooms || [];
+        renderRoomsFiltered();
+      }
+    }catch(err){}
+  };
+  lobbyWs.onclose = () => {
+    if(pingTimer){ clearInterval(pingTimer); pingTimer = null; }
+    setTimeout(connectLobby, 2000);
+  };
 }
 connectLobby();
 
+fetch('/api/rooms').then(r=>r.json()).then(rooms=>{
+  allRooms = rooms || [];
+  renderRoomsFiltered();
+}).catch(()=>{});
+
 // Fallback refresh
-setInterval(()=>{ fetch('/api/rooms').then(r=>r.json()).then(renderRooms).catch(()=>{}); }, 5000);
+setInterval(()=>{ fetch('/api/rooms').then(r=>r.json()).then(rooms=>{ allRooms = rooms; renderRoomsFiltered(); }).catch(()=>{}); }, 5000);
+
+function getFilteredRooms(){
+  let list = allRooms.slice();
+  const q = (document.getElementById('filter-search')||{}).value;
+  const qq = String(q||'').trim().toLowerCase();
+  const st = (document.getElementById('filter-status')||{}).value || 'all';
+  const g = (document.getElementById('filter-game')||{}).value || 'all';
+  if(qq){
+    list = list.filter(r =>
+      String(r.code||'').toLowerCase().includes(qq) ||
+      String(r.host||'').toLowerCase().includes(qq) ||
+      String(r.gameName||'').toLowerCase().includes(qq)
+    );
+  }
+  if(st === 'waiting') list = list.filter(r => r.status === 'waiting');
+  if(st === 'playing') list = list.filter(r => r.status === 'playing');
+  if(g && g !== 'all') list = list.filter(r => r.game === g);
+  return list;
+}
+
+function renderRoomsFiltered(){
+  renderRooms(getFilteredRooms());
+}
+
+['filter-search','filter-status','filter-game'].forEach(id=>{
+  const el = document.getElementById(id);
+  if(el) el.addEventListener('input', renderRoomsFiltered);
+  if(el) el.addEventListener('change', renderRoomsFiltered);
+});
 
 function escHtml(s){
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -416,7 +527,13 @@ function escHtml(s){
 function renderRooms(rooms){
   const list = document.getElementById('rooms-list');
   const cnt  = document.getElementById('rooms-count');
-  cnt.textContent = rooms.length + ' salle' + (rooms.length !== 1 ? 's' : '');
+  const total = allRooms.length;
+  const shown = rooms.length;
+  if(total && shown !== total){
+    cnt.textContent = shown + ' / ' + total + ' salle' + (total !== 1 ? 's' : '');
+  }else{
+    cnt.textContent = shown + ' salle' + (shown !== 1 ? 's' : '');
+  }
 
   if(!rooms.length){
     list.textContent = '';
@@ -500,6 +617,14 @@ function joinRoom(code, game){
     showStatus(document.getElementById('join-status'),'Entre ton prénom d\'abord !','err');
     return;
   }
+  try{
+    const room = allRooms.find(r=>r.code===code && r.game===game);
+    localStorage.setItem('zapplay_last_room', JSON.stringify({
+      code, game,
+      gameName: room ? room.gameName : game,
+      at: Date.now()
+    }));
+  }catch(e){}
   location.href = GAME_URLS[game] + '?code=' + code + '&name=' + encodeURIComponent(name);
 }
 
@@ -513,6 +638,14 @@ function doJoinCode(){
     const room = rooms.find(r=>r.code===code);
     if(!room){ showStatus(statusEl,'Salle introuvable. Vérifie le code.','err'); return; }
     if(room.players.length >= room.maxPlayers){ showStatus(statusEl,'Cette salle est pleine !','err'); return; }
+    try{
+      localStorage.setItem('zapplay_last_room', JSON.stringify({
+        code: room.code,
+        game: room.game,
+        gameName: room.gameName,
+        at: Date.now()
+      }));
+    }catch(e){}
     location.href = GAME_URLS[room.game] + '?code=' + code + '&name=' + encodeURIComponent(name);
   }).catch(()=>showStatus(statusEl,'Erreur réseau. Réessaie.','err'));
 }

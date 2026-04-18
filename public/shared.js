@@ -3,6 +3,7 @@
 
 const STORAGE_KEY_NAME = 'zapplay_pseudo';
 const STORAGE_KEY_HISTORY = 'zapplay_history';
+const STORAGE_KEY_DEVICE = 'zapplay_device_v1';
 const STORAGE_KEY_SOCIAL = 'zapplay_social_v1';
 const STORAGE_KEY_PRESENCE = 'zapplay_presence_v1';
 const MAX_HISTORY = 50;
@@ -26,6 +27,7 @@ function savePseudo(name){
   localStorage.setItem(STORAGE_KEY_NAME,clean);
   localStorage.setItem('chat_name',clean);
   touchSocialProfile(clean);
+  scheduleProfileSync();
 }
 
 function autoFillPseudo(){
@@ -225,6 +227,64 @@ function buildResultSignature(data){
   return [data.game||'?',data.winner||'?',data.myName||getSavedPseudo(),data.myScore??0,players].join('::');
 }
 
+function getOrCreateDeviceId(){
+  try{
+    let id=localStorage.getItem(STORAGE_KEY_DEVICE);
+    if(id&&/^[a-zA-Z0-9_-]{1,80}$/.test(id))return id;
+    const rnd='zp'+Math.random().toString(36).slice(2)+Date.now().toString(36);
+    id=rnd.slice(0,40);
+    localStorage.setItem(STORAGE_KEY_DEVICE,id);
+    return id;
+  }catch{ return 'zp'+Date.now().toString(36); }
+}
+
+function replaceHistory(arr){
+  if(!Array.isArray(arr))return;
+  const clean=arr.slice(0,MAX_HISTORY).map(e=>({
+    game:e.game||'?',
+    gameName:e.gameName||e.game||'?',
+    date:Number(e.date)||0,
+    signature:String(e.signature||''),
+    players:Array.isArray(e.players)?e.players:[],
+    winner:e.winner==null?null:String(e.winner),
+    myName:String(e.myName||getSavedPseudo()),
+    myScore:Number(e.myScore)||0,
+    isWinner:!!e.isWinner,
+    scores:e.scores&&typeof e.scores==='object'?e.scores:{}
+  })).filter(e=>e.signature);
+  localStorage.setItem(STORAGE_KEY_HISTORY,JSON.stringify(clean));
+}
+
+let profileSyncTimer=null;
+function scheduleProfileSync(){
+  if(profileSyncTimer)return;
+  profileSyncTimer=setTimeout(()=>{
+    profileSyncTimer=null;
+    syncProfileWithServer();
+  },1200);
+}
+
+function syncProfileWithServer(){
+  const deviceId=getOrCreateDeviceId();
+  const body=JSON.stringify({
+    deviceId,
+    displayName:getSavedPseudo(),
+    history:getHistory()
+  });
+  return fetch('/api/profile/sync',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body
+  }).then(r=>{
+    if(!r.ok)return null;
+    return r.json();
+  }).then(j=>{
+    if(!j||!Array.isArray(j.history))return;
+    replaceHistory(j.history);
+    window.dispatchEvent(new CustomEvent('zapplay-profile-synced'));
+  }).catch(()=>{});
+}
+
 function saveGameResult(data){
   const signature=buildResultSignature(data);
   const now=Date.now();
@@ -252,10 +312,38 @@ function saveGameResult(data){
   });
   if(history.length>MAX_HISTORY)history.length=MAX_HISTORY;
   localStorage.setItem(STORAGE_KEY_HISTORY,JSON.stringify(history));
+  scheduleProfileSync();
 }
 
 function clearHistory(){
   localStorage.removeItem(STORAGE_KEY_HISTORY);
+  scheduleProfileSync();
+}
+
+function mergeHistoryArrays(a,b){
+  const map=new Map();
+  [...(a||[]),...(b||[])].forEach(raw=>{
+    if(!raw||!raw.signature)return;
+    const prev=map.get(raw.signature);
+    const d=Number(raw.date)||0;
+    if(!prev||(d>(prev.date||0)))map.set(raw.signature,raw);
+  });
+  const out=[...map.values()].sort((x,y)=>(y.date||0)-(x.date||0));
+  if(out.length>MAX_HISTORY)out.length=MAX_HISTORY;
+  return out;
+}
+
+function pullProfileFromServer(){
+  const id=getOrCreateDeviceId();
+  return fetch('/api/profile/'+encodeURIComponent(id))
+    .then(r=>{ if(r.status===404)return null; return r.json(); })
+    .then(j=>{
+      if(!j||!Array.isArray(j.history))return;
+      const merged=mergeHistoryArrays(getHistory(),j.history);
+      replaceHistory(merged);
+      window.dispatchEvent(new CustomEvent('zapplay-profile-synced'));
+    })
+    .catch(()=>{});
 }
 
 function exportHistory(){
@@ -1239,6 +1327,8 @@ function init(){
   if(!isIndex){injectLoader();loaderShownAt=Date.now();}
   autoFillPseudo();
   hookPseudoInputs();
+  getOrCreateDeviceId();
+  pullProfileFromServer().then(()=>syncProfileWithServer());
   touchPresence();
   setInterval(()=>{
     if(document.visibilityState!=='hidden') touchPresence();
@@ -1251,6 +1341,9 @@ function init(){
     renderHistoryWidget('history-widget');
     renderSocialWidget('social-widget');
     setInterval(()=>renderSocialWidget('social-widget'),12000);
+    document.addEventListener('zapplay-profile-synced', ()=>{
+      renderHistoryWidget('history-widget');
+    });
   }
   // Auto-hide loader after 5s max
   if(!isIndex)setTimeout(hideLoader,8000);
@@ -1258,6 +1351,7 @@ function init(){
 
 window.ZapPlay={
   getSavedPseudo,savePseudo,
+  getOrCreateDeviceId,syncProfileWithServer,pullProfileFromServer,
   hideLoader,showLoader,
   saveGameResult,getHistory,getStats,renderHistoryWidget,clearHistory,exportHistory,
   renderSocialWidget,

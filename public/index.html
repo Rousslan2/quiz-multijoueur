@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>ZapPlay — Jeux multijoueur en ligne</title>
+<meta name="theme-color" content="#030312">
+<link rel="manifest" href="/manifest.webmanifest">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Exo+2:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -941,6 +943,14 @@ body.home-page .hero-right { animation-delay: -6s; }
   </div>
 </section>
 
+<section id="zp-resume-wrap" class="resume-wrap" aria-label="Reprendre" style="display:none;max-width:1040px;margin:0 auto 8px;padding:0 16px">
+  <div class="resume-strip" style="display:flex;flex-wrap:wrap;align-items:center;gap:12px;padding:14px 16px;border-radius:16px;border:1px solid rgba(0,232,212,.16);background:rgba(255,255,255,.04);backdrop-filter:blur(10px)">
+    <span style="font-family:Orbitron,monospace;font-size:.62rem;letter-spacing:.2em;color:rgba(0,232,212,.65);text-transform:uppercase">Reprendre</span>
+    <span id="zp-resume-label" style="font-size:.88rem;color:var(--text)"></span>
+    <a id="zp-resume-link" class="btn-cta primary" href="lobby.html" style="margin-left:auto;font-size:.72rem;min-height:40px;padding:8px 14px">Ouvrir le salon</a>
+  </div>
+</section>
+
 <div class="section-label" id="games">Jeux disponibles</div>
 
 <div class="grid-wrap">
@@ -1209,20 +1219,69 @@ body.home-page .hero-right { animation-delay: -6s; }
   }).catch(()=>{});
 })();
 
-// Live rooms count (animated count-up via fx.js)
-fetch('/api/rooms').then(r=>r.json()).then(rooms=>{
+// Stats + compteur salles
+fetch('/api/public/stats').then(r=>r.json()).then(s=>{
   const el = document.getElementById('online-count');
   if(!el) return;
-  const n = rooms.length;
+  const n = s.roomsTotal != null ? s.roomsTotal : 0;
   const plural = n !== 1 ? 's' : '';
-  // Animate number then append label
   const span = document.createElement('span');
   span.textContent = '0';
   el.textContent = ''; el.appendChild(span);
   el.insertAdjacentText('beforeend', ' salle' + plural + ' en ligne');
   if(window.ZapFX) ZapFX.countUp(span, n, 1200);
   else span.textContent = n;
-}).catch(()=>{});
+}).catch(()=>{
+  fetch('/api/rooms').then(r=>r.json()).then(rooms=>{
+    const el = document.getElementById('online-count');
+    if(!el) return;
+    const n = rooms.length;
+    const plural = n !== 1 ? 's' : '';
+    const span = document.createElement('span');
+    span.textContent = '0';
+    el.textContent = ''; el.appendChild(span);
+    el.insertAdjacentText('beforeend', ' salle' + plural + ' en ligne');
+    if(window.ZapFX) ZapFX.countUp(span, n, 1200);
+    else span.textContent = n;
+  }).catch(()=>{});
+});
+
+// Dernière salle (mémorisée depuis le lobby)
+(function(){
+  const LS = 'zapplay_last_room';
+  const wrap = document.getElementById('zp-resume-wrap');
+  const label = document.getElementById('zp-resume-label');
+  const link = document.getElementById('zp-resume-link');
+  const GAME_URLS = {
+    quiz:'quiz.html', draw:'draw.html', p4:'p4.html',
+    morpion:'morpion.html', taboo:'taboo.html', emoji:'emoji.html',
+    loup:'loup.html', uno:'uno.html', bomb:'wordbomb.html',
+    sumo:'sumo.html', paint:'paint.html', naval:'naval.html',
+    typer:'typer.html', anagramme:'anagramme.html',
+    justeprix:'justeprix.html', timeline:'timeline.html', memo:'memoire.html',
+    debat:'debat.html', imposteur:'imposteur.html'
+  };
+  try{
+    const raw = localStorage.getItem(LS);
+    if(!raw) return;
+    const o = JSON.parse(raw);
+    if(!o || !o.code || !o.game) return;
+    if (Date.now() - (o.at||0) > 48*3600000) return;
+    const url = GAME_URLS[o.game];
+    if(!url) return;
+    const name = (window.ZapPlay && ZapPlay.getSavedPseudo) ? ZapPlay.getSavedPseudo() : '';
+    if(name) link.href = url + '?code=' + encodeURIComponent(o.code) + '&name=' + encodeURIComponent(name);
+    else link.href = 'lobby.html?code=' + encodeURIComponent(o.code);
+    label.textContent = 'Code ' + o.code + ' · ' + (o.gameName || o.game);
+    wrap.style.display = 'block';
+  }catch(e){}
+})();
+
+if('serviceWorker' in navigator){
+  window.addEventListener('load', ()=>{
+    navigator.serviceWorker.register('/sw.js').catch(()=>{});
+  });
+}
 
 // Auto-reveal non-card sections on scroll (cards already have card-in animation)
 document.querySelectorAll('.section-label, .panel').forEach(el=>{

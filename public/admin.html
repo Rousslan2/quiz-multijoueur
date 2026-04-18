@@ -72,6 +72,19 @@ input[type=password],input[type=text],input[type=number],select{width:100%;paddi
   <button type="button" class="btn btn-primary" id="btn-bots">Lancer les bots</button>
 </div>
 
+<div class="card">
+  <h2 style="font-family:Orbitron,monospace;font-size:.75rem;color:var(--muted);letter-spacing:.12em;margin-bottom:12px">SERVEUR</h2>
+  <p class="note" style="margin-bottom:10px">Salles actives, quiz, profils synchronisés.</p>
+  <pre id="admin-stats" style="font-size:.72rem;color:var(--text);white-space:pre-wrap;background:rgba(0,0,0,.25);padding:12px;border-radius:10px;border:1px solid var(--border);max-height:220px;overflow:auto">Chargement…</pre>
+  <button type="button" class="btn btn-ghost" id="btn-refresh-stats">Rafraîchir</button>
+</div>
+
+<div class="card">
+  <h2 style="font-family:Orbitron,monospace;font-size:.75rem;color:var(--muted);letter-spacing:.12em;margin-bottom:12px">PROFILS (APERÇU)</h2>
+  <p class="note" style="margin-bottom:10px">Derniers appareils ayant synchronisé l’historique.</p>
+  <div id="admin-profiles" style="font-size:.82rem;line-height:1.5"></div>
+</div>
+
 <div id="msg"></div>
 <p style="margin-top:24px"><a href="index.html" style="color:var(--teal)">← Accueil</a></p>
 
@@ -171,10 +184,39 @@ if(localStorage.getItem(LS)){
 
 selBots();
 
+function loadAdminStats(){
+  Promise.resolve().then(()=>api('/api/admin/stats'))
+    .then(d=>{
+      document.getElementById('admin-stats').textContent = JSON.stringify(d, null, 2);
+    })
+    .catch(e=>{ document.getElementById('admin-stats').textContent = e.message; });
+}
+
+function loadAdminProfiles(){
+  Promise.resolve().then(()=>api('/api/admin/profiles?limit=30'))
+    .then(d=>{
+      const box = document.getElementById('admin-profiles');
+      const rows = (d.profiles||[]).map(p=>{
+        const name = p.displayName || '—';
+        return '<div style="padding:8px 0;border-bottom:1px solid rgba(255,255,255,.06)"><b>'+name+'</b> · '+p.games+' p. · '+p.wins+' V · XP '+p.xp+'<br><span style="font-size:.68rem;color:var(--muted)">'+p.deviceId+'</span></div>';
+      }).join('');
+      box.innerHTML = rows || '<span style="color:var(--muted)">Aucun profil pour l’instant.</span>';
+    })
+    .catch(e=>{ document.getElementById('admin-profiles').textContent = e.message; });
+}
+
+document.getElementById('btn-refresh-stats').onclick = ()=>{
+  loadAdminStats();
+  loadAdminProfiles();
+};
+
 fetch('/api/public/config')
   .then(r => r.json())
   .then(cfg => buildChecks(cfg.hiddenGames))
   .catch(() => buildChecks([]));
+
+loadAdminStats();
+loadAdminProfiles();
 </script>
 </body>
 </html>

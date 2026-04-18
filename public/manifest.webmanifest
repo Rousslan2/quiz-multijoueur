@@ -1,0 +1,9 @@
+{
+  "name": "ZapPlay",
+  "short_name": "ZapPlay",
+  "description": "Arcade multijoueur en temps réel",
+  "start_url": "/index.html",
+  "display": "standalone",
+  "background_color": "#030312",
+  "theme_color": "#030312"
+}

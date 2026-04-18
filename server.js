@@ -6,6 +6,7 @@ const path      = require('path');
 const os        = require('os');
 const frenchWordsPkg = require('an-array-of-french-words');
 const adminLib = require('./lib/admin');
+const profileLib = require('./lib/profile');
 let QRCode; try { QRCode = require('qrcode'); } catch {}
 
 /** Mot de passe admin (défaut + surcharge par ADMIN_PASSWORD sur le serveur) */
@@ -162,6 +163,12 @@ const lobbyClients = new Set();
 wssLobby.on('connection', ws => {
   lobbyClients.add(ws);
   wsend(ws, { type: 'rooms', rooms: getRoomsSnapshot() });
+  ws.on('message', raw => {
+    try {
+      const d = JSON.parse(String(raw));
+      if (d.type === 'ping') wsend(ws, { type: 'pong', client: d.t, server: Date.now() });
+    } catch {}
+  });
   ws.on('close', () => lobbyClients.delete(ws));
 });
 
@@ -456,7 +463,72 @@ const ALL_Q = [
   {text:"Qui a peint 'Le Cri' ?",opts:["Klimt","Munch","Kandinsky","Schiele"],ans:1,cat:'culture',diff:2},
   {text:"Quelle est la capitale de l'Espagne ?",opts:["Barcelone","Valencia","Séville","Madrid"],ans:3,cat:'culture',diff:1},
   {text:"Quel est le symbole chimique du fer ?",opts:["Fe","Fi","Fr","Fa"],ans:0,cat:'culture',diff:2},
+  // ── Extension banque (questions supplémentaires) ──
+  {text:"Quelle est la capitale du Portugal ?",opts:["Lisbonne","Porto","Coimbra","Faro"],ans:0,cat:'geo',diff:1},
+  {text:"Quel gaz constitue environ 78 % de l'air ?",opts:["Oxygène","Azote","Dioxyde de carbone","Hélium"],ans:1,cat:'sciences',diff:2},
+  {text:"Combien de côtés a un hexagone régulier ?",opts:["5","6","7","8"],ans:1,cat:'culture',diff:1},
+  {text:"Quel réseau social a racheté Instagram en 2012 ?",opts:["Google","Meta (Facebook)","Twitter","Snap"],ans:1,cat:'tech',diff:2},
+  {text:"Quel est le plus petit pays d'Europe par superficie ?",opts:["Malte","Monaco","Vatican","Saint-Marin"],ans:2,cat:'geo',diff:3},
 ];
+
+function getServerStats() {
+  const rooms = getRoomsSnapshot();
+  const byGame = {};
+  let waiting = 0;
+  let playing = 0;
+  rooms.forEach(r => {
+    if (!byGame[r.game]) byGame[r.game] = { waiting: 0, playing: 0 };
+    if (r.status === 'waiting') {
+      byGame[r.game].waiting++;
+      waiting++;
+    } else {
+      byGame[r.game].playing++;
+      playing++;
+    }
+  });
+  return {
+    roomsTotal: rooms.length,
+    roomsWaiting: waiting,
+    roomsPlaying: playing,
+    byGame,
+    gamesCatalog: Object.keys(GAME_NAMES).length,
+    quizQuestions: ALL_Q.length,
+    profilesCount: profileLib.countProfiles(),
+  };
+}
+
+app.get('/api/public/stats', (_, res) => {
+  res.json(getServerStats());
+});
+
+app.get('/api/profile/:deviceId', (req, res) => {
+  const p = profileLib.getProfile(req.params.deviceId);
+  if (!p) return res.status(404).json({ error: 'Profil introuvable' });
+  res.json(p);
+});
+
+app.post('/api/profile/sync', (req, res) => {
+  try {
+    const body = req.body || {};
+    const out = profileLib.syncProfile({
+      deviceId: body.deviceId,
+      displayName: body.displayName,
+      history: body.history,
+    });
+    res.json(out);
+  } catch (e) {
+    res.status(400).json({ error: String(e.message || e) });
+  }
+});
+
+app.get('/api/admin/stats', adminAuth, (_, res) => {
+  res.json(getServerStats());
+});
+
+app.get('/api/admin/profiles', adminAuth, (req, res) => {
+  const lim = Math.min(200, Math.max(1, Number(req.query.limit) || 40));
+  res.json({ profiles: profileLib.listProfilesSummary(lim) });
+});
 
 const quizRooms = new Map();
 
