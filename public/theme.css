@@ -174,8 +174,10 @@ body::before {
     linear-gradient(165deg, #05051a 0%, #030312 45%, #08081f 100%);
 }
 
-/* Ensure all game content sits above the fixed space bg */
-body > *:not(.zp-space-bg) {
+/* Ensure all game content sits above the fixed space bg.
+   Exclure la barre globale et les overlays zp-shell : sinon leur z-index est écrasé
+   et la nav reste invisible derrière #app (spécificité body > * > .zp-nav-global). */
+body > *:not(.zp-space-bg):not(#zp-nav-global):not(#zp-rules-backdrop):not(#zp-rules-panel):not(#zp-end-backdrop) {
   position: relative;
   z-index: 1;
 }
