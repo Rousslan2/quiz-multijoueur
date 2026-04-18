@@ -107,12 +107,15 @@ function getRoomsSnapshot() {
   const maps = { quiz:quizRooms, draw:drawRooms, p4:p4Rooms, morpion:morpionRooms, taboo:tabooRooms, emoji:emojiRooms, loup:loupRooms, uno:unoRooms, bomb:bombRooms, sumo:sumoRooms, paint:paintRooms, naval:navalRooms, typer:typerRooms, anagramme:anagrammeRooms, justeprix:justeprixRooms, timeline:timelineRooms, memo:memoRooms, imposteur:imposteurRooms, debat:debatRooms };
   for (const [game, map] of Object.entries(maps)) {
     for (const [code, room] of map) {
+      const playerNames = game === 'quiz'
+        ? quizActivePlayers(room).map(p => p.name)
+        : room.players.map(p => p.name);
       all.push({
         code,
         game,
         gameName: GAME_NAMES[game],
         host: room.host,
-        players: room.players.map(p => p.name),
+        players: playerNames,
         maxPlayers: game==='loup'?10:game==='bomb'?6:game==='sumo'?4:game==='uno'?4:game==='paint'?4:game==='naval'?4:game==='imposteur'?8:game==='debat'?6:4,
         status: ['WAITING','SETUP','PLACING','COUNTDOWN'].includes(room.phase) ? 'waiting' : 'playing'
       });
@@ -194,11 +197,19 @@ function bcast(players, data) {
 function wsend(ws, data) { if(ws.readyState===WebSocket.OPEN) ws.send(JSON.stringify(data)); }
 function handleLoungeChat(room, ws, d){
   if(!room)return;
-  const sender=room.players.find(p=>p.ws===ws);
+  let sender=room.players.find(p=>p.ws===ws);
+  let slot=sender?sender.slot:-1;
+  if(!sender&&Array.isArray(room.spectators)){
+    const sp=room.spectators.find(x=>x.ws===ws);
+    if(sp){sender=sp;slot=-1;}
+  }
   if(!sender)return;
   const text=String(d.text||'').trim().slice(0,200);
   if(!text)return;
-  bcast(room.players,{type:'lounge_chat',name:sender.name,slot:sender.slot,text,time:Date.now(),code:room.code});
+  const payload={type:'lounge_chat',name:sender.name,slot,spectator:slot<0,text,time:Date.now(),code:room.code};
+  const m=JSON.stringify(payload);
+  room.players.forEach(p=>{if(p.ws&&p.ws.readyState===WebSocket.OPEN)p.ws.send(m);});
+  if(Array.isArray(room.spectators))room.spectators.forEach(s=>{if(s.ws&&s.ws.readyState===WebSocket.OPEN)s.ws.send(m);});
 }
 
 function genCode(existingMap) {
@@ -648,16 +659,27 @@ const quizRooms = new Map();
 function makeQuizRoom(code, host) {
   return {
     code, host, phase:'WAITING',
-    players:[], questions:[], qIndex:0,
+    players:[], spectators:[], questions:[], qIndex:0,
     buzzedSlot:-1, secondChanceSlot:-1, firstWrongAns:-1,
     streaks:[0,0,0,0], wins:[0,0,0,0], timer:null, questionStartTime:0,
   };
 }
 
+/** Joueurs seulement (pas spectateurs) pour stats lobby / capacité */
+function quizActivePlayers(room) {
+  return room.players.filter(p => !p.spectator);
+}
+
+function qBcast(room, payload) {
+  const m = JSON.stringify(payload);
+  room.players.forEach(p => { if (p.ws && p.ws.readyState === WebSocket.OPEN) p.ws.send(m); });
+  (room.spectators || []).forEach(s => { if (s.ws && s.ws.readyState === WebSocket.OPEN) s.ws.send(m); });
+}
+
 function qSnap(room, extra={}) {
   return {
     type:'state', phase:room.phase,
-    players:room.players.map(p=>({name:p.name,score:p.score,slot:p.slot,streak:room.streaks[p.slot]||0,jokers:p.jokers})),
+    players:quizActivePlayers(room).map(p=>({name:p.name,score:p.score,slot:p.slot,streak:room.streaks[p.slot]||0,jokers:p.jokers})),
     wins:[...room.wins], qIndex:room.qIndex, total:room.questions.length,
     question:room.questions[room.qIndex]?{text:room.questions[room.qIndex].text,opts:room.questions[room.qIndex].opts}:null,
     buzzedSlot:room.buzzedSlot, secondChanceSlot:room.secondChanceSlot, firstWrongAns:room.firstWrongAns,
@@ -670,7 +692,7 @@ function qStart(room) {
   if(room.qIndex>=room.questions.length){qEnd(room);return;}
   room.phase='QUESTION'; room.buzzedSlot=-1; room.secondChanceSlot=-1; room.firstWrongAns=-1;
   room.questionStartTime=Date.now();
-  bcast(room.players,{...qSnap(room),timerSeconds:15});
+  qBcast(room,{...qSnap(room),timerSeconds:15});
   clearTimeout(room.timer);
   room.timer=setTimeout(()=>{if(room.phase==='QUESTION')qReveal(room,-1,-1);},15000);
 }
@@ -686,21 +708,22 @@ function qReveal(room, answererSlot, selectedIndex, isSecondChance=false) {
     if(room.streaks[answererSlot]>0&&room.streaks[answererSlot]%3===0){pts++;streakBonus=true;}
     const elapsed=Date.now()-room.questionStartTime;
     if(!isSecondChance&&elapsed<5000){pts++;timeBonus=true;}
-    room.players[answererSlot].score+=pts;
+    const pl = room.players.find(x => x.slot === answererSlot && !x.spectator);
+    if (pl) pl.score += pts;
   }else if(answererSlot>=0&&!correct){room.streaks[answererSlot]=0;}
   room.phase='REVEAL';
-  bcast(room.players,{...qSnap(room),reveal:{correct:q.ans,selected:selectedIndex,isCorrect:correct,answererSlot,isSecondChance,pts,streakBonus,timeBonus,firstWrongAns:room.firstWrongAns}});
+  qBcast(room,{...qSnap(room),reveal:{correct:q.ans,selected:selectedIndex,isCorrect:correct,answererSlot,isSecondChance,pts,streakBonus,timeBonus,firstWrongAns:room.firstWrongAns}});
   room.qIndex++;
   room.timer=setTimeout(()=>qStart(room),3000);
 }
 
 function qWrong(room, wrongSlot, selectedIndex) {
   room.streaks[wrongSlot]=0; room.firstWrongAns=selectedIndex;
-  // Second chance only in 2-player games
-  if(room.players.length===2){
-    const other=wrongSlot===0?1:0;
+  const qp = quizActivePlayers(room);
+  if(qp.length===2){
+    const other=wrongSlot===qp[0].slot?qp[1].slot:qp[0].slot;
     room.phase='SECOND_CHANCE'; room.secondChanceSlot=other;
-    bcast(room.players,{...qSnap(room),timerSeconds:5});
+    qBcast(room,{...qSnap(room),timerSeconds:5});
     clearTimeout(room.timer);
     room.timer=setTimeout(()=>{if(room.phase==='SECOND_CHANCE')qReveal(room,-1,-1);},5000);
   }else qReveal(room,-1,-1);
@@ -710,38 +733,48 @@ function qEnd(room) {
   clearTimeout(room.timer); room.phase='GAME_OVER';
   let win=-1;
   let bestScore=-1;
-  room.players.forEach(p=>{if(p.score>bestScore){bestScore=p.score;win=p.slot;}else if(p.score===bestScore){win=-1;}});
+  quizActivePlayers(room).forEach(p=>{if(p.score>bestScore){bestScore=p.score;win=p.slot;}else if(p.score===bestScore){win=-1;}});
   if(win>=0)room.wins[win]++;
-  bcast(room.players,{...qSnap(room),winnerSlot:win,wins:[...room.wins]});
+  qBcast(room,{...qSnap(room),winnerSlot:win,wins:[...room.wins]});
   broadcastLobby();
 }
 
 wssQuiz.on('connection',ws=>{
   makeWS(wssQuiz).alive(ws);
   let myRoom = null;
+  let isSpectator = false;
   ws.on('close',()=>{
     makeWS(wssQuiz).clear(ws);
     if(!myRoom)return;
+    if(isSpectator){
+      const si=(myRoom.spectators||[]).findIndex(s=>s.ws===ws);
+      if(si>=0){
+        const name=myRoom.spectators[si].name;
+        myRoom.spectators.splice(si,1);
+        qBcast(myRoom,{type:'spectator_left',name});
+      }
+      return;
+    }
     const idx=myRoom.players.findIndex(p=>p.ws===ws);if(idx<0)return;
     const name=myRoom.players[idx].name;
     myRoom.players[idx].ws=null;
     myRoom.players[idx].disconnectedAt=Date.now();
     clearTimeout(myRoom.timer);
-    const connected=myRoom.players.filter(p=>p.ws);
+    const connected=myRoom.players.filter(p=>p.ws && !p.spectator);
     if(connected.length===0){
       quizRooms.delete(myRoom.code);
       broadcastLobby();
       return;
     }
-    bcast(myRoom.players,{type:'player_left',name});
+    qBcast(myRoom,{type:'player_left',name});
     if(connected.length>=2 && ['QUESTION','BUZZED','SECOND_CHANCE','REVEAL'].includes(myRoom.phase)){
       myRoom.streaks=[0,0,0,0];
       qStart(myRoom);
     } else {
       const wasInGame=['QUESTION','BUZZED','SECOND_CHANCE','REVEAL'].includes(myRoom.phase);
-      if(wasInGame) bcast(myRoom.players,{type:'game_abandoned'});
+      if(wasInGame) qBcast(myRoom,{type:'game_abandoned'});
       myRoom.phase='WAITING';myRoom.streaks=[0,0,0,0];
-      bcast(myRoom.players,qSnap(myRoom));
+      qBcast(myRoom,qSnap(myRoom));
     }
     broadcastLobby();
   });
@@ -760,7 +793,7 @@ wssQuiz.on('connection',ws=>{
         quizRooms.set(code,room);
         myRoom=room;
         const slot=0;
-        room.players.push({ws,name,score:0,slot,jokers:{fifty:true,pass:true}});
+        room.players.push({ws,name,score:0,slot,jokers:{fifty:true,pass:true},spectator:false});
         const rejoinTok = quizSessionLib.issue({ code, name, slot });
         wsend(ws,{type:'created_quiz',code,slot,name,rejoinToken:rejoinTok});
         wsend(ws,qSnap(room));
@@ -783,7 +816,7 @@ wssQuiz.on('connection',ws=>{
         myRoom=room;
         const rTokR = quizSessionLib.issue({ code, name, slot });
         wsend(ws,{type:'welcome_quiz',slot,name,code,rejoinToken:rTokR});
-        bcast(room.players,qSnap(room));
+        qBcast(room,qSnap(room));
         broadcastLobby();
         break;
       }
@@ -791,22 +824,37 @@ wssQuiz.on('connection',ws=>{
         const code=String(d.code||'').trim().toUpperCase();
         const room=quizRooms.get(code);
         if(!room){wsend(ws,{type:'error',msg:'Salle introuvable.'});return;}
-        const connected=room.players.filter(x=>x.ws);
+        const connected=quizActivePlayers(room).filter(x=>x.ws);
         if(connected.length>=4){wsend(ws,{type:'error',msg:'Partie pleine (4 joueurs max).'});return;}
         if(!['WAITING','SETUP'].includes(room.phase)){wsend(ws,{type:'error',msg:'La partie a déjà commencé.'});return;}
         const name=String(d.name||'').trim().slice(0,20)||'Joueur';
-        const slot=room.players.length;
-        room.players.push({ws,name,score:0,slot,jokers:{fifty:true,pass:true}});
+        const slot=quizActivePlayers(room).length;
+        room.players.push({ws,name,score:0,slot,jokers:{fifty:true,pass:true},spectator:false});
         myRoom=room;
         const rTok2 = quizSessionLib.issue({ code, name, slot });
         wsend(ws,{type:'welcome_quiz',slot,name,code,rejoinToken:rTok2});
-        bcast(room.players,qSnap(room));
+        qBcast(room,qSnap(room));
+        broadcastLobby();
+        break;
+      }
+      case 'join_quiz_spectate':{
+        const code=String(d.code||'').trim().toUpperCase();
+        const room=quizRooms.get(code);
+        if(!room){wsend(ws,{type:'error',msg:'Salle introuvable.'});return;}
+        if(!room.spectators)room.spectators=[];
+        if(room.spectators.length>=12){wsend(ws,{type:'error',msg:'Trop de spectateurs.'});return;}
+        const name=String(d.name||'').trim().slice(0,20)||'Spectateur';
+        room.spectators.push({ws,name});
+        myRoom=room;
+        isSpectator=true;
+        wsend(ws,{type:'welcome_quiz_spectate',name,code});
+        qBcast(room,qSnap(room));
         broadcastLobby();
         break;
       }
       case 'start_quiz':{
         if(!myRoom)return;
-        const p=myRoom.players.find(x=>x.ws===ws);if(!p||p.slot!==0)return;
+        const p=myRoom.players.find(x=>x.ws===ws&&!x.spectator);if(!p||p.slot!==0)return;
         if(!['SETUP','GAME_OVER'].includes(myRoom.phase))return;
         const cats=Array.isArray(d.categories)&&d.categories.length?new Set(d.categories):null;
         const diff=Number(d.difficulty)||0;
@@ -814,10 +862,10 @@ wssQuiz.on('connection',ws=>{
         let pool=ALL_Q.filter(q=>{if(cats&&!cats.has(q.cat))return false;if(diff>0&&q.diff>diff)return false;return true;});
         if(Array.isArray(d.custom)&&d.custom.length)d.custom.forEach(cq=>{if(cq.text&&Array.isArray(cq.opts)&&cq.opts.length===4&&cq.ans>=0&&cq.ans<=3)pool.push({...cq,cat:'custom',diff:2});});
         if(!pool.length){wsend(ws,{type:'error',msg:'Aucune question avec ces filtres.'});return;}
-        myRoom.players.forEach(x=>{x.score=0;x.jokers={fifty:true,pass:true};});
+        quizActivePlayers(myRoom).forEach(x=>{x.score=0;x.jokers={fifty:true,pass:true};});
         myRoom.streaks=[0,0,0,0];
         myRoom.questions=shuffle(pool).slice(0,Math.min(count,pool.length));myRoom.qIndex=0;
-        myRoom.phase='COUNTDOWN';bcast(myRoom.players,{type:'countdown',seconds:3});
+        myRoom.phase='COUNTDOWN';qBcast(myRoom,{type:'countdown',seconds:3});
         clearTimeout(myRoom.timer);myRoom.timer=setTimeout(()=>qStart(myRoom),3000);
         broadcastLobby();
         break;
@@ -825,15 +873,15 @@ wssQuiz.on('connection',ws=>{
       case 'buzz':{
         if(!myRoom||myRoom.phase!=='QUESTION')return;
         if(Date.now()-myRoom.questionStartTime<2500)return;
-        const p=myRoom.players.find(x=>x.ws===ws);if(!p)return;
+        const p=myRoom.players.find(x=>x.ws===ws&&!x.spectator);if(!p)return;
         clearTimeout(myRoom.timer);myRoom.phase='BUZZED';myRoom.buzzedSlot=p.slot;
-        bcast(myRoom.players,{...qSnap(myRoom),timerSeconds:10});
+        qBcast(myRoom,{...qSnap(myRoom),timerSeconds:10});
         myRoom.timer=setTimeout(()=>{if(myRoom.phase==='BUZZED')qWrong(myRoom,p.slot,-1);},10000);
         break;
       }
       case 'answer':{
         if(!myRoom)return;
-        const p=myRoom.players.find(x=>x.ws===ws);if(!p)return;
+        const p=myRoom.players.find(x=>x.ws===ws&&!x.spectator);if(!p)return;
         const idx=Number(d.index);if(idx<0||idx>3)return;
         if(myRoom.phase==='BUZZED'&&p.slot===myRoom.buzzedSlot){
           if(idx===myRoom.questions[myRoom.qIndex].ans)qReveal(myRoom,p.slot,idx,false);
@@ -845,17 +893,17 @@ wssQuiz.on('connection',ws=>{
       }
       case 'joker':{
         if(!myRoom)return;
-        const p=myRoom.players.find(x=>x.ws===ws);if(!p)return;
+        const p=myRoom.players.find(x=>x.ws===ws&&!x.spectator);if(!p)return;
         if(d.kind==='fifty'&&p.jokers.fifty&&myRoom.phase==='QUESTION'){
           p.jokers.fifty=false;
           const q=myRoom.questions[myRoom.qIndex];
           const wrongs=[];for(let i=0;i<4;i++)if(i!==q.ans)wrongs.push(i);
           const hide=shuffle(wrongs).slice(0,2);
-          bcast(myRoom.players,{...qSnap(myRoom),joker50:{hide}});
+          qBcast(myRoom,{...qSnap(myRoom),joker50:{hide}});
         }else if(d.kind==='pass'&&p.jokers.pass&&myRoom.phase==='QUESTION'){
           p.jokers.pass=false;
           clearTimeout(myRoom.timer);
-          bcast(myRoom.players,{...qSnap(myRoom),jokerPass:{by:p.name}});
+          qBcast(myRoom,{...qSnap(myRoom),jokerPass:{by:p.name}});
           myRoom.qIndex++;
           myRoom.timer=setTimeout(()=>qStart(myRoom),1500);
         }
@@ -863,8 +911,8 @@ wssQuiz.on('connection',ws=>{
       }
       case 'restart_quiz':{
         if(!myRoom)return;
-        const p=myRoom.players.find(x=>x.ws===ws);if(!p||myRoom.phase!=='GAME_OVER')return;
-        myRoom.phase='SETUP';bcast(myRoom.players,qSnap(myRoom));
+        const p=myRoom.players.find(x=>x.ws===ws&&!x.spectator);if(!p||myRoom.phase!=='GAME_OVER')return;
+        myRoom.phase='SETUP';qBcast(myRoom,qSnap(myRoom));
         broadcastLobby();
         break;
       }

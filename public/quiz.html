@@ -128,6 +128,7 @@ input[type=text]::placeholder{color:var(--muted)}
 #cdown small{font-size:.9rem;font-weight:600;color:var(--muted);margin-top:12px;letter-spacing:.25em;text-transform:uppercase}
 #dot{position:fixed;top:10px;right:12px;width:8px;height:8px;border-radius:50%;background:#ef4444;transition:background .3s}
 #dot.ok{background:#22c55e}
+#spectate-strip{display:none;padding:8px 12px;margin:8px 0;text-align:center;font-size:.78rem;font-weight:700;color:#c8fff8;background:rgba(91,159,255,.12);border:1px solid rgba(91,159,255,.28);border-radius:10px;letter-spacing:.06em}
 #sound-toggle{position:fixed;top:6px;right:28px;background:none;border:none;font-size:1.1rem;cursor:pointer;color:var(--muted);padding:4px}
 #back-btn{position:fixed;top:8px;left:10px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);color:var(--muted);font-size:.75rem;cursor:pointer;padding:5px 10px;border-radius:8px;transition:all .15s}
 #back-btn:hover{color:var(--text);background:rgba(255,255,255,.09);border-color:rgba(255,255,255,.15)}
@@ -153,6 +154,7 @@ input[type=text]::placeholder{color:var(--muted)}
 <div id="confetti-wrap"></div>
 
 <div id="wrap">
+<div id="spectate-strip">Mode spectateur — tu vois la partie, pas de buzz.</div>
 <!-- HOME -->
 <div id="s-home" class="screen active">
   <div style="flex:1"></div>
@@ -168,6 +170,7 @@ input[type=text]::placeholder{color:var(--muted)}
       <input id="inp-code" type="text" placeholder="Code (ex: ABCD)" maxlength="4" autocomplete="off"
         style="text-transform:uppercase;letter-spacing:.12em;font-size:1.1rem;font-weight:700;text-align:center">
       <button class="btn btn-secondary" onclick="doJoin()">Rejoindre</button>
+      <button class="btn btn-secondary" style="opacity:.92" onclick="doSpectate()">Regarder (spectateur)</button>
     </div>
   </div>
   <div id="err"></div>
@@ -280,7 +283,7 @@ input[type=text]::placeholder{color:var(--muted)}
   <div id="go-title">Fin de la partie !</div>
   <div id="go-winner"></div>
   <div class="final-scores" id="go-scores"></div>
-  <button class="btn btn-primary" onclick="doRestart()">Rejouer</button>
+  <button class="btn btn-primary" id="btn-restart-quiz" onclick="doRestart()">Rejouer</button>
   <button class="btn btn-secondary" onclick="location.href='index.html'">Accueil</button>
 </div>
 </div><!-- /wrap -->
@@ -322,6 +325,7 @@ function stopTimer(){clearTimeout(tickT);const b=document.getElementById('timer-
 // ── WebSocket ─────────────────────────────────────────────────────────────────
 const WS_URL = `${location.protocol==='https:'?'wss':'ws'}://${location.host}/ws/quiz`;
 let ws, mySlot=-1, myName='', myCode='', reconnectAction=null;
+let isSpectator=false;
 let lastRejoinToken='';
 function buildQuizRejoinUrl(tok){
   const u=new URL(location.href);
@@ -432,6 +436,18 @@ function doJoin(){
   if(!c){showErr('Entre le code de la salle !');return;}
   myName=n;if(window.ZapPlay)ZapPlay.savePseudo(n);send({type:'join_quiz',name:n,code:c});
 }
+function doSpectate(){
+  SND.init();
+  const n=document.getElementById('inp-name').value.trim();
+  if(!n){showErr('Entre ton prénom !');return;}
+  const c=document.getElementById('inp-code').value.trim().toUpperCase();
+  if(!c){showErr('Entre le code de la salle !');return;}
+  myName=n;if(window.ZapPlay)ZapPlay.savePseudo(n);
+  isSpectator=true;
+  mySlot=-1;
+  document.getElementById('spectate-strip').style.display='block';
+  send({type:'join_quiz_spectate',name:n,code:c});
+}
 function copyRoomCode(){
   if(!myCode)return;
   navigator.clipboard.writeText(myCode).then(()=>{
@@ -450,9 +466,9 @@ function copyCode(){
 document.getElementById('inp-name').addEventListener('keydown',e=>{if(e.key==='Enter')doCreate();});
 document.getElementById('inp-code').addEventListener('input',e=>{e.target.value=e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,'');});
 document.getElementById('inp-code').addEventListener('keydown',e=>{if(e.key==='Enter')doJoin();});
-function doBuzz(){send({type:'buzz'});}
-function doAnswer(i){send({type:'answer',index:i});}
-function doRestart(){send({type:'restart_quiz'});}
+function doBuzz(){if(isSpectator)return;send({type:'buzz'});}
+function doAnswer(i){if(isSpectator)return;send({type:'answer',index:i});}
+function doRestart(){if(isSpectator)return;send({type:'restart_quiz'});}
 function doStart(){
   const cats=[...document.querySelectorAll('.cat-btn.on')].map(b=>b.dataset.cat);
   const diff=Number(document.querySelector('.diff-btn.on').dataset.diff);
@@ -462,6 +478,7 @@ function showErr(msg){const el=document.getElementById('err');el.textContent=msg
 
 // ── Jokers ────────────────────────────────────────────────────────────────────
 function doJoker(kind) {
+  if(isSpectator)return;
   send({ type: 'joker', kind });
   const btn = document.getElementById('joker-' + kind);
   btn.classList.add('flash');
@@ -563,6 +580,7 @@ function handle(msg){
       mySlot=msg.slot;myCode=msg.code||'';
       showRejoinUi(msg.rejoinToken);
       break;
+    case 'welcome_quiz_spectate': break;
     case 'error': showErr(msg.msg); break;
     case 'countdown': showCountdown(msg.seconds); break;
     case 'player_left':
@@ -603,6 +621,10 @@ function renderScoreboard(st){
 
 // ── Render ────────────────────────────────────────────────────────────────────
 function render(st){
+  const jr=document.getElementById('joker-row');
+  const ba=document.getElementById('buzz-area');
+  if(isSpectator){if(jr)jr.style.display='none';if(ba)ba.style.display='none';}
+  else{if(jr)jr.style.display='flex';if(ba)ba.style.display='block';}
   const me=st.players.find(p=>p.slot===mySlot);
   if(st.phase==='WAITING'){
     if(window.ZapPlay)ZapPlay.showLounge({players:st.players,mySlot,roomCode:st.code||myCode,gameName:'Quiz Éclair'});
@@ -614,6 +636,12 @@ function render(st){
   if(st.phase==='SETUP'){
     if(window.ZapPlay)ZapPlay.showLounge({players:st.players,mySlot,roomCode:st.code||myCode,gameName:'Quiz Éclair'});
     show('s-setup');
+    if(isSpectator){
+      document.getElementById('setup-status').textContent='Tu regardes la partie (spectateur).';
+      document.querySelectorAll('.cat-btn,.diff-btn,.count-btn,.custom-toggle').forEach(el=>{el.disabled=true;el.style.pointerEvents='none';el.style.opacity='0.45';});
+      document.getElementById('btn-start').style.display='none';
+      return;
+    }
     const isP1=mySlot===0;
     const n=st.players.length;
     const canStart=isP1&&n>=2;
@@ -631,7 +659,7 @@ function render(st){
     document.getElementById('btn-start').disabled=!canStart;
     return;
   }
-  if(st.phase==='GAME_OVER'){if(window.ZapPlay)ZapPlay.hideLounge();renderGameOver(st);return;}
+  if(st.phase==='GAME_OVER'){if(window.ZapPlay)ZapPlay.hideLounge();document.getElementById('btn-restart-quiz').style.display=isSpectator?'none':'';renderGameOver(st);return;}
   if(st.phase==='COUNTDOWN'){if(window.ZapPlay)ZapPlay.hideLounge();return;}
   if(window.ZapPlay)ZapPlay.hideLounge();
   show('s-game');
@@ -726,7 +754,7 @@ function renderGameOver(st){
     d.append(rk,nm,pts,pl,wn);
     sc.appendChild(d);
   });
-  if(window.ZapPlay){
+  if(window.ZapPlay&&!isSpectator){
     const pNames=st.players.map(p=>p.name);
     const ws2=st.winnerSlot??-1;
     const wName=ws2>=0?(st.players[ws2]?.name||'?'):'Égalité';
