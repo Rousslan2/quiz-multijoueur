@@ -251,6 +251,8 @@
 
   function injectNav() {
     if (document.getElementById('zp-nav-global')) return;
+    /* Accueil : barre locale riche (Lobby, Jeux, compte) dans index.html — pas de doublon */
+    if (getGameKey() === 'home') return;
     const nav = document.createElement('header');
     nav.id = 'zp-nav-global';
     nav.className = 'zp-nav-global';

@@ -98,11 +98,6 @@ body.zp-has-shell {
   padding-top: calc(64px + env(safe-area-inset-top, 0px));
 }
 
-/* Accueil : barre locale remplacée par la barre globale (zp-shell.js) */
-body.home-page .zp-nav {
-  display: none !important;
-}
-
 /* Lobby : éviter double marge avec l’ancien header */
 body.zp-has-shell .header {
   padding-top: 12px;
