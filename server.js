@@ -969,11 +969,21 @@ const drawRooms = new Map();
 function makeDrawRoom(code, host) {
   return {
     code, host, phase:'WAITING',
-    players:[],drawerSlot:0,round:0,maxRounds:6,
+    players:[], spectators:[], drawerSlot:0,round:0,maxRounds:6,
     word:null,scores:[0,0,0,0],wins:[0,0,0,0],timer:null,guessedBy:-1,
     strokeBatches:[],revealedLetters:[],roundGuessers:new Set(),
     roundStartTime:0,
   };
+}
+
+function broadcastDrawState(room, extra = {}) {
+  room.players.forEach(p => wsend(p.ws, dSnap(room, extra, p.slot)));
+  (room.spectators || []).forEach(s => wsend(s.ws, dSnap(room, extra, -1)));
+}
+function drawBcast(room, data) {
+  const m = JSON.stringify(data);
+  room.players.forEach(p => { if (p.ws && p.ws.readyState === WebSocket.OPEN) p.ws.send(m); });
+  (room.spectators || []).forEach(s => { if (s.ws && s.ws.readyState === WebSocket.OPEN) s.ws.send(m); });
 }
 
 function dSnap(room, extra={}, forSlot=-1){
@@ -987,6 +997,7 @@ function dSnap(room, extra={}, forSlot=-1){
     guessedSlots:room.roundGuessers?[...room.roundGuessers]:[],
     roundStartTime:room.roundStartTime||0,
     wordCategory:room.wordCategory||null,
+    spectatorCount: Array.isArray(room.spectators) ? room.spectators.length : 0,
     code:room.code,...extra};
   // Envoyer le mot seulement au dessinateur
   if(forSlot>=0 && forSlot===room.drawerSlot && room.word) base.word=room.word;
@@ -1008,9 +1019,7 @@ function dStartRound(room){
   room.roundGuessers=new Set();
   room.roundStartTime=Date.now();
   clearTimeout(room.timer);
-  room.players.forEach(p=>{
-    wsend(p.ws,dSnap(room,{timerSeconds:60},p.slot));
-  });
+  broadcastDrawState(room, { timerSeconds: 60 });
   room.timer=setTimeout(()=>{if(room.phase==='DRAWING')dReveal(room);},60000);
 }
 
@@ -1018,9 +1027,12 @@ function dReveal(room){
   if(room.phase==='ROUND_OVER')return; // prevent double-call
   clearTimeout(room.timer);room.phase='ROUND_OVER';
   const gs=room.roundGuessers?[...room.roundGuessers]:[];
-  // Broadcast with revealWord to ALL players
+  const payloadBase={revealWord:room.word,guessedBy:room.guessedBy,guessedSlots:gs};
   room.players.forEach(p=>{
-    wsend(p.ws,{...dSnap(room,{revealWord:room.word},p.slot),revealWord:room.word,guessedBy:room.guessedBy,guessedSlots:gs});
+    wsend(p.ws,{...dSnap(room,{revealWord:room.word},p.slot),...payloadBase});
+  });
+  (room.spectators||[]).forEach(s=>{
+    wsend(s.ws,{...dSnap(room,{revealWord:room.word},-1),...payloadBase});
   });
   room.timer=setTimeout(()=>{
     if(room.phase==='ROUND_OVER'&&room.players.length>=2)dStartRound(room);
@@ -1033,16 +1045,23 @@ function dEnd(room){
   room.players.forEach(p=>{const s=room.scores[p.slot]??0;if(s>best){best=s;win=p.slot;}else if(s===best){win=-1;}});
   if(!room.wins)room.wins=[0,0,0,0];
   if(win>=0)room.wins[win]++;
-  room.players.forEach(p=>{wsend(p.ws,{...dSnap(room,{winnerSlot:win,wins:[...room.wins]},p.slot)});});
+  broadcastDrawState(room,{winnerSlot:win,wins:[...room.wins]});
   broadcastLobby();
 }
 
 wssDraw.on('connection',ws=>{
   makeWS(wssDraw).alive(ws);
   let myRoom = null;
+  let isSpectator = false;
   ws.on('close',()=>{
     makeWS(wssDraw).clear(ws);
     if(!myRoom)return;
+    if(isSpectator){
+      const si=(myRoom.spectators||[]).findIndex(s=>s.ws===ws);
+      if(si>=0)myRoom.spectators.splice(si,1);
+      broadcastLobby();
+      return;
+    }
     const idx=myRoom.players.findIndex(p=>p.ws===ws);if(idx<0)return;
     const name=myRoom.players[idx].name;
     const leavingSlot=myRoom.players[idx].slot;
@@ -1051,13 +1070,13 @@ wssDraw.on('connection',ws=>{
     myRoom.players.forEach((p,i)=>p.slot=i);
     clearTimeout(myRoom.timer);
     if(myRoom.players.length===0){drawRooms.delete(myRoom.code);broadcastLobby();return;}
-    bcast(myRoom.players,{type:'player_left',name});
+    drawBcast(myRoom,{type:'player_left',name});
     const inGame=['DRAWING','ROUND_OVER'].includes(myRoom.phase);
     if(myRoom.players.length<2){
       // Pas assez de joueurs pour continuer
-      if(inGame) bcast(myRoom.players,{type:'game_abandoned'});
+      if(inGame) drawBcast(myRoom,{type:'game_abandoned'});
       myRoom.phase='WAITING';myRoom.scores=[0,0,0,0];myRoom.round=0;myRoom.roundGuessers=new Set();
-      myRoom.players.forEach(p=>wsend(p.ws,dSnap(myRoom,{},p.slot)));
+      broadcastDrawState(myRoom);
     } else if(inGame){
       // Recalculer le dessinateur avec les nouveaux slots
       myRoom.drawerSlot=myRoom.players[(myRoom.round-1)%myRoom.players.length]?.slot??0;
@@ -1070,7 +1089,7 @@ wssDraw.on('connection',ws=>{
         } else {
           // Un devineur est parti : continuer avec les joueurs restants
           // Redémarrer le timer de 60s (approximatif)
-          myRoom.players.forEach(p=>wsend(p.ws,dSnap(myRoom,{timerSeconds:60},p.slot)));
+          broadcastDrawState(myRoom,{timerSeconds:60});
           myRoom.roundStartTime=Date.now();
           myRoom.timer=setTimeout(()=>{if(myRoom.phase==='DRAWING')dReveal(myRoom);},60000);
         }
@@ -1079,12 +1098,12 @@ wssDraw.on('connection',ws=>{
         myRoom.timer=setTimeout(()=>{
           if(myRoom.phase==='ROUND_OVER'&&myRoom.players.length>=2)dStartRound(myRoom);
         },3000);
-        myRoom.players.forEach(p=>wsend(p.ws,dSnap(myRoom,{},p.slot)));
+        broadcastDrawState(myRoom);
       }
     } else {
       // WAITING / READY / GAME_OVER : mise à jour state
       if(myRoom.phase==='GAME_OVER'){myRoom.phase='READY';}
-      myRoom.players.forEach(p=>wsend(p.ws,dSnap(myRoom,{},p.slot)));
+      broadcastDrawState(myRoom);
     }
     broadcastLobby();
   });
@@ -1102,6 +1121,7 @@ wssDraw.on('connection',ws=>{
         const room=makeDrawRoom(code,name);
         drawRooms.set(code,room);
         myRoom=room;
+        isSpectator=false;
         room.players.push({ws,name,slot:0});
         wsend(ws,{type:'created_draw',code,slot:0,name});
         wsend(ws,dSnap(room,{},0));
@@ -1118,8 +1138,28 @@ wssDraw.on('connection',ws=>{
         const slot=room.players.length;
         room.players.push({ws,name,slot});
         myRoom=room;
+        isSpectator=false;
         wsend(ws,{type:'welcome_draw',slot,name,code});
-        room.players.forEach(p=>wsend(p.ws,dSnap(room,{},p.slot)));
+        broadcastDrawState(room);
+        broadcastLobby();
+        break;
+      }
+      case 'join_draw_spectate':{
+        const code=String(d.code||'').trim().toUpperCase();
+        const room=drawRooms.get(code);
+        if(!room){wsend(ws,{type:'error',msg:'Salle introuvable.'});return;}
+        if(!['WAITING','READY','DRAWING','ROUND_OVER','GAME_OVER'].includes(room.phase)){
+          wsend(ws,{type:'error',msg:'Impossible de rejoindre cette salle.'});return;
+        }
+        if(!room.spectators)room.spectators=[];
+        if(room.spectators.length>=20){wsend(ws,{type:'error',msg:'Trop de spectateurs.'});return;}
+        const name=String(d.name||'').trim().slice(0,20)||'Spectateur';
+        room.spectators.push({ws,name});
+        myRoom=room;
+        isSpectator=true;
+        wsend(ws,{type:'welcome_draw_spectate',code,name});
+        wsend(ws,dSnap(room,{},-1));
+        broadcastDrawState(room);
         broadcastLobby();
         break;
       }
@@ -1131,7 +1171,7 @@ wssDraw.on('connection',ws=>{
         myRoom.scores=[0,0,0,0];myRoom.round=0;myRoom.roundGuessers=new Set();
         myRoom.strokeBatches=[];myRoom.revealedLetters=[];myRoom.guessedBy=-1;
         // Countdown avant le début
-        bcast(myRoom.players,{type:'draw_countdown',seconds:3});
+        drawBcast(myRoom,{type:'draw_countdown',seconds:3});
         clearTimeout(myRoom.timer);
         myRoom.timer=setTimeout(()=>dStartRound(myRoom),3000);
         broadcastLobby();
@@ -1140,20 +1180,20 @@ wssDraw.on('connection',ws=>{
       case 'draw_pts':{
         if(!player||!myRoom||player.slot!==myRoom.drawerSlot||myRoom.phase!=='DRAWING')return;
         myRoom.strokeBatches.push(d.pts);
-        // Broadcast to ALL players (including drawer for latency compensation on other devices)
         myRoom.players.forEach(p=>{if(p.slot!==myRoom.drawerSlot)wsend(p.ws,{type:'draw_pts',pts:d.pts});});
+        (myRoom.spectators||[]).forEach(s=>wsend(s.ws,{type:'draw_pts',pts:d.pts}));
         break;
       }
       case 'draw_undo':{
         if(!player||!myRoom||player.slot!==myRoom.drawerSlot)return;
         if(myRoom.strokeBatches.length>0)myRoom.strokeBatches.pop();
-        // Broadcast replay to all non-drawers
         myRoom.players.forEach(p=>{if(p.slot!==myRoom.drawerSlot)wsend(p.ws,{type:'draw_replay',batches:myRoom.strokeBatches});});
+        (myRoom.spectators||[]).forEach(s=>wsend(s.ws,{type:'draw_replay',batches:myRoom.strokeBatches}));
         break;
       }
       case 'draw_clear':{
         if(!player||!myRoom||player.slot!==myRoom.drawerSlot)return;
-        myRoom.strokeBatches=[];bcast(myRoom.players,{type:'draw_clear'});
+        myRoom.strokeBatches=[];drawBcast(myRoom,{type:'draw_clear'});
         break;
       }
       case 'draw_hint':{
@@ -1165,8 +1205,7 @@ wssDraw.on('connection',ws=>{
         const pos=unrevealed[Math.floor(Math.random()*unrevealed.length)];
         myRoom.revealedLetters.push(pos);
         myRoom.scores[myRoom.drawerSlot]=Math.max(0,myRoom.scores[myRoom.drawerSlot]-1);
-        // Broadcast updated state with new hint to everyone
-        myRoom.players.forEach(p=>{wsend(p.ws,dSnap(myRoom,{},p.slot));});
+        broadcastDrawState(myRoom);
         break;
       }
       case 'guess':{
@@ -1176,7 +1215,7 @@ wssDraw.on('connection',ws=>{
         const guess=String(d.word||'').trim().slice(0,60);if(!guess)return;
         const result=drawClose(guess,myRoom.word);
         // Always broadcast the guess result to everyone (so all see wrong guesses as chat)
-        bcast(myRoom.players,{type:'guess_result',name:player.name,slot:player.slot,word:guess,result});
+        drawBcast(myRoom,{type:'guess_result',name:player.name,slot:player.slot,word:guess,result});
         if(result==='correct'){
           myRoom.roundGuessers.add(player.slot);
           myRoom.scores[player.slot]+=2;myRoom.scores[myRoom.drawerSlot]+=1;
@@ -1185,8 +1224,7 @@ wssDraw.on('connection',ws=>{
           const numGuessers=myRoom.players.filter(p=>p.slot!==myRoom.drawerSlot).length;
           if(myRoom.roundGuessers.size>=numGuessers){dReveal(myRoom);}
           else{
-            // Send updated state to everyone with new scores + guessedSlots
-            myRoom.players.forEach(p=>{wsend(p.ws,dSnap(myRoom,{scores:[...myRoom.scores]},p.slot));});
+            broadcastDrawState(myRoom,{scores:[...myRoom.scores]});
           }
         }
         break;
@@ -1195,7 +1233,7 @@ wssDraw.on('connection',ws=>{
         if(!player||!myRoom||myRoom.phase!=='GAME_OVER')return;
         myRoom.phase='READY';myRoom.scores=[0,0,0,0];myRoom.round=0;
         myRoom.roundGuessers=new Set();myRoom.strokeBatches=[];myRoom.revealedLetters=[];myRoom.word=null;
-        myRoom.players.forEach(p=>wsend(p.ws,dSnap(myRoom,{},p.slot)));
+        broadcastDrawState(myRoom);
         broadcastLobby();
         break;
       }

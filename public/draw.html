@@ -9,6 +9,13 @@
 :root{--bg:#030312;--bg2:#12122a;--card:#12121f;--border:rgba(0,232,212,.10);--primary:#00E8D4;--primary2:#00b89f;--orange:#f97316;--correct:#22c55e;--wrong:#ef4444;--gold:#fbbf24;--text:#E8E8F0;--muted:#7A8098;--r:12px}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html,body{height:100%;color:var(--text);font-family:'Exo 2',sans-serif;overflow:hidden}
+
+.spectate-strip{
+  display:none;background:rgba(167,139,250,.12);border:1px solid rgba(167,139,250,.35);
+  color:#e9d5ff;font-size:.78rem;padding:10px 12px;border-radius:10px;text-align:center;font-weight:600;
+  margin-bottom:8px;
+}
+.spectate-strip.on{display:block}
 #app{height:100dvh;display:flex;flex-direction:column;max-width:520px;margin:0 auto;padding:0 10px}
 .screen{display:none;flex-direction:column;flex:1;min-height:0}
 .screen.active{display:flex}
@@ -255,8 +262,9 @@ canvas{width:100%;height:100%;display:block;touch-action:none}
 <div id="s-home" class="screen active">
   <div style="flex:1"></div>
   <div class="logo"><h1>Dessin &amp; Devine</h1><p>Dessine et fais deviner à ton partenaire !</p></div>
+  <div id="spectate-strip-home" class="spectate-strip"></div>
   <div class="form-card">
-    <label>Ton prénom</label>
+    <label>Ton prénom ou pseudo</label>
     <input id="inp-name" type="text" placeholder="Ex: Jean" maxlength="20" autocomplete="off">
     <div style="display:flex;gap:8px">
       <button class="btn btn-orange" style="flex:1" onclick="doCreate()">Créer une salle</button>
@@ -266,6 +274,7 @@ canvas{width:100%;height:100%;display:block;touch-action:none}
       <input id="inp-code" type="text" placeholder="Code (ex: ABCD)" maxlength="4" autocomplete="off"
         style="text-transform:uppercase;letter-spacing:.12em;font-size:1.1rem;font-weight:700;text-align:center">
       <button class="btn btn-sec" onclick="doJoin()">Rejoindre</button>
+      <button type="button" class="btn btn-sec" style="border-color:rgba(167,139,250,.4);color:#e9d5ff" onclick="doJoinSpectate()">Regarder en spectateur</button>
     </div>
   </div>
   <div id="err"></div>
@@ -289,6 +298,7 @@ canvas{width:100%;height:100%;display:block;touch-action:none}
 
 <!-- READY -->
 <div id="s-ready" class="screen">
+  <div id="spectate-strip-ready" class="spectate-strip"></div>
   <div style="font-size:3rem">&#127912;</div>
   <h2 id="ready-title">Joueurs prêts !</h2>
   <p id="ready-sub">En attente du lancement...</p>
@@ -415,6 +425,7 @@ canvas{width:100%;height:100%;display:block;touch-action:none}
 // ── WebSocket ─────────────────────────────────────────────────────────────────
 const WS_URL = `${location.protocol==='https:'?'wss':'ws'}://${location.host}/ws/draw`;
 let ws, mySlot = -1, myName = '', myCode = '', reconnectAction = null;
+let isSpectator = false;
 let lastState = null; // garde l'état pour reconnexion
 
 function connect() {
@@ -439,8 +450,14 @@ bindLoungeSender();
 // ── URL params ────────────────────────────────────────────────────────────────
 (function(){
   const p=new URLSearchParams(location.search);
-  if(p.get('name'))document.getElementById('inp-name').value=p.get('name');
+  if(p.get('name'))document.getElementById('inp-name').value=decodeURIComponent(p.get('name'));
   if(p.get('code')){document.getElementById('inp-code').value=p.get('code').toUpperCase();showJoinInput();}
+  if(p.get('spectate')==='1'){
+    showJoinInput();
+    if(p.get('code')&&p.get('name')){
+      setTimeout(()=>{doJoinSpectate();},400);
+    }
+  }
   if(p.get('create')==='1'&&p.get('name')){
     const name=p.get('name');document.getElementById('inp-name').value=name;
     const tryCreate=()=>{if(ws&&ws.readyState===WebSocket.OPEN){myName=name;send({type:'create_draw',name});}else reconnectAction=tryCreate;};
@@ -461,6 +478,7 @@ function showJoinInput(){
   a.style.display=a.style.display==='flex'?'none':'flex';a.style.flexDirection='column';a.style.gap='8px';
 }
 function doCreate(){
+  isSpectator=false;
   const n=document.getElementById('inp-name').value.trim();
   if(!n){showErr('Entre ton prénom !');return;}
   myName=n;
@@ -468,6 +486,7 @@ function doCreate(){
   send({type:'create_draw',name:n});
 }
 function doJoin() {
+  isSpectator=false;
   const n = document.getElementById('inp-name').value.trim();
   if (!n) { showErr('Entre ton prénom !'); return; }
   const c = document.getElementById('inp-code').value.trim().toUpperCase();
@@ -475,6 +494,24 @@ function doJoin() {
   myName = n;
   if(window.ZapPlay)ZapPlay.savePseudo(n);
   send({ type: 'join_draw', name: n, code: c });
+}
+function doJoinSpectate(){
+  isSpectator=true;
+  const n=document.getElementById('inp-name').value.trim();
+  if(!n){showErr('Entre un pseudo pour le chat !');return;}
+  const c=document.getElementById('inp-code').value.trim().toUpperCase();
+  if(!c.length||c.length<4){showErr('Entre le code (4 caractères) !');return;}
+  myName=n;
+  send({type:'join_draw_spectate',name:n,code:c});
+}
+function updateSpectateStrips(){
+  const t=isSpectator?'Mode spectateur · tu vois le dessin et le chat, sans jouer':'';
+  ['spectate-strip-home','spectate-strip-ready'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(!el)return;
+    el.textContent=t;
+    el.classList.toggle('on',!!isSpectator);
+  });
 }
 function copyRoomCode(){
   if(!myCode)return;
@@ -495,8 +532,8 @@ function copyReadyCode(){
 document.getElementById('inp-name').addEventListener('keydown', e => { if (e.key === 'Enter') doCreate(); });
 document.getElementById('inp-code').addEventListener('input',e=>{e.target.value=e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,'');});
 document.getElementById('inp-code').addEventListener('keydown',e=>{if(e.key==='Enter')doJoin();});
-function doStart()   { send({ type: 'start_draw', rounds: selectedRounds }); }
-function doRestart() { send({ type: 'restart_draw' }); }
+function doStart()   { if(isSpectator)return; send({ type: 'start_draw', rounds: selectedRounds }); }
+function doRestart() { if(isSpectator)return; send({ type: 'restart_draw' }); }
 function doClear()   { send({ type: 'draw_clear' }); clearCanvas(); }
 function doGuess() {
   const inp = document.getElementById('guess-input');
@@ -1061,12 +1098,22 @@ function launchConfetti() {
 function handle(msg) {
   switch (msg.type) {
     case 'created_draw':
+      isSpectator=false;
       mySlot=msg.slot;myCode=msg.code;
       document.getElementById('room-code-display').textContent=msg.code;
+      updateSpectateStrips();
       show('s-wait');loadQR();
       break;
     case 'welcome_draw':
+      isSpectator=false;
       mySlot = msg.slot; myCode = msg.code||'';
+      updateSpectateStrips();
+      break;
+    case 'welcome_draw_spectate':
+      isSpectator=true;
+      mySlot=-1;
+      myCode=msg.code||'';
+      updateSpectateStrips();
       break;
     case 'error': showErr(msg.msg); break;
 
@@ -1089,6 +1136,11 @@ function handle(msg) {
 
     case 'draw_state':
       lastState = msg;
+      if(msg.spectatorCount!==undefined&&isSpectator){
+        document.title='('+msg.spectatorCount+') ZapPlay — Dessin';
+      } else {
+        document.title='ZapPlay — Dessin';
+      }
       // Réinitialiser lastPhase si on entre en DRAWING depuis un autre état
       if (msg.phase === 'DRAWING' && lastPhase !== 'DRAWING') {
         lastPhase = '';
@@ -1176,7 +1228,7 @@ let lastPhase = '';
 function renderState(st) {
   const { phase, players, drawerSlot, round, maxRounds, word, letterCount, scores, wins,
           timerSeconds, winnerSlot, hint, guessedSlots, roundStartTime } = st;
-  isDrawer = (drawerSlot === mySlot);
+  isDrawer = !isSpectator && (drawerSlot === mySlot);
 
   renderDrawScoreboard(players, scores, wins, drawerSlot, guessedSlots, phase);
 
@@ -1187,40 +1239,53 @@ function renderState(st) {
   }
 
   if (phase === 'WAITING') {
-    if(window.ZapPlay)ZapPlay.showLounge({players,mySlot,roomCode:st.code||myCode,gameName:'Dessin & Devine'});
+    if(!isSpectator && window.ZapPlay)ZapPlay.showLounge({players,mySlot,roomCode:st.code||myCode,gameName:'Dessin & Devine'});
+    else if(isSpectator&&window.ZapPlay)ZapPlay.hideLounge();
     clearInterval(revealCountdownHandle);
     show('s-ready');
-    const isP1 = mySlot === 0;
+    updateSpectateStrips();
+    const isP1 = mySlot === 0 && !isSpectator;
     document.getElementById('btn-launch').style.display = isP1 && players.length >= 2 ? '' : 'none';
     document.getElementById('round-selector-wrap').style.display = isP1 ? 'flex' : 'none';
     const n = players.length;
-    document.getElementById('ready-title').textContent = n + ' joueur' + (n > 1 ? 's' : '') + ' connecté' + (n > 1 ? 's' : '') + ' !';
-    document.getElementById('ready-sub').textContent = isP1
-      ? (n >= 2 ? 'Lance quand tout le monde est là !' : 'En attente d\'autres joueurs...')
-      : 'En attente que l\'hôte lance...';
+    document.getElementById('ready-title').textContent = isSpectator
+      ? 'Salon ' + (st.code || myCode || '')
+      : n + ' joueur' + (n > 1 ? 's' : '') + ' connecté' + (n > 1 ? 's' : '') + ' !';
+    document.getElementById('ready-sub').textContent = isSpectator
+      ? 'Tu regardes la partie — le lancement est réservé aux joueurs.'
+      : (isP1
+        ? (n >= 2 ? 'Lance quand tout le monde est là !' : 'En attente d\'autres joueurs...')
+        : 'En attente que l\'hôte lance...');
     lastPhase = 'WAITING';
     return;
   }
 
   if (phase === 'READY') {
-    if(window.ZapPlay)ZapPlay.showLounge({players,mySlot,roomCode:st.code||myCode,gameName:'Dessin & Devine'});
+    if(!isSpectator && window.ZapPlay)ZapPlay.showLounge({players,mySlot,roomCode:st.code||myCode,gameName:'Dessin & Devine'});
+    else if(isSpectator&&window.ZapPlay)ZapPlay.hideLounge();
     clearInterval(revealCountdownHandle);
     show('s-ready');
-    const isP1 = mySlot === 0;
+    updateSpectateStrips();
+    const isP1 = mySlot === 0 && !isSpectator;
     document.getElementById('btn-launch').style.display = isP1 ? '' : 'none';
     const rsWrap = document.getElementById('round-selector-wrap');
     rsWrap.style.display = isP1 ? 'flex' : 'none';
     const n = players.length;
-    document.getElementById('ready-title').textContent = n + ' joueur' + (n > 1 ? 's' : '') + ' prêts !';
-    document.getElementById('ready-sub').textContent = isP1
-      ? 'Lance la partie quand tu es prêt !'
-      : 'En attente que ' + (players[0]?.name || 'le joueur 1') + ' lance...';
+    document.getElementById('ready-title').textContent = isSpectator
+      ? 'En attente du début…'
+      : n + ' joueur' + (n > 1 ? 's' : '') + ' prêts !';
+    document.getElementById('ready-sub').textContent = isSpectator
+      ? 'Tu verras le canevas dès le premier round.'
+      : (isP1
+        ? 'Lance la partie quand tu es prêt !'
+        : 'En attente que ' + (players[0]?.name || 'le joueur 1') + ' lance...');
     lastPhase = 'READY';
     return;
   }
 
   if (phase === 'DRAWING') {
     if(window.ZapPlay)ZapPlay.hideLounge();
+    updateSpectateStrips();
     clearInterval(revealCountdownHandle);
     show('s-game');
     const enteringNewRound = (lastPhase !== 'DRAWING');
@@ -1270,15 +1335,16 @@ function renderState(st) {
       document.getElementById('guess-log').style.display = 'none';
       document.getElementById('canvas-wrap').classList.remove('view-only');
     } else {
-      wl.textContent = 'Devinez :';
+      wl.textContent = isSpectator ? 'Spectateur · indice' : 'Devinez :';
       const displayHint = hint || ('_ '.repeat(letterCount || 0).trim());
       wh.textContent = displayHint;
       wv.style.display = 'none';
       wh.style.display = '';
       document.getElementById('toolbar').style.display = 'none';
-      const alreadyGuessed = (guessedSlots || []).includes(mySlot);
-      document.getElementById('guess-area').style.display = alreadyGuessed ? 'none' : 'flex';
-      document.getElementById('guess-area-done').style.display = alreadyGuessed ? 'flex' : 'none';
+      const alreadyGuessed = mySlot >= 0 && (guessedSlots || []).includes(mySlot);
+      const canGuess = !isSpectator && mySlot >= 0;
+      document.getElementById('guess-area').style.display = canGuess && !alreadyGuessed ? 'flex' : 'none';
+      document.getElementById('guess-area-done').style.display = canGuess && alreadyGuessed ? 'flex' : 'none';
       document.getElementById('guess-log').style.display = 'flex';
       document.getElementById('canvas-wrap').classList.add('view-only');
     }
@@ -1328,19 +1394,22 @@ function renderState(st) {
     show('s-gameover');
     stopTimer();
     clearInterval(revealCountdownHandle);
-    if (lastPhase !== 'GAME_OVER') {
+    if (lastPhase !== 'GAME_OVER' && !isSpectator) {
       launchConfetti();
       if(window.ZapPlay){
         const pNames=players.map(p=>p.name);
         const wName=winnerSlot>=0?(players.find(p=>p.slot===winnerSlot)?.name||'?'):'Égalité';
         ZapPlay.saveGameResult({game:'draw',gameName:'Dessin & Devine',players:pNames,winner:wName,myName,myScore:scores?.[mySlot]??0,isWinner:winnerSlot===mySlot});
       }
+    } else if (lastPhase !== 'GAME_OVER' && isSpectator) {
+      launchConfetti();
     }
     lastPhase = 'GAME_OVER';
 
     const winsArr = wins || [];
     if (winnerSlot < 0) document.getElementById('go-winner').textContent = 'Égalité !';
-    else if (winnerSlot === mySlot) { document.getElementById('go-winner').textContent = 'Tu as gagné ! 🏆'; if(window.ZapFX) ZapFX.confetti({count:200}); }
+    else if (!isSpectator && winnerSlot === mySlot) { document.getElementById('go-winner').textContent = 'Tu as gagné ! 🏆'; if(window.ZapFX) ZapFX.confetti({count:200}); }
+    else if (isSpectator) document.getElementById('go-winner').textContent = (players.find(p=>p.slot===winnerSlot)?.name || '?') + ' remporte la partie';
     else document.getElementById('go-winner').textContent = (players.find(p=>p.slot===winnerSlot)?.name || '?') + ' a gagné !';
 
     const sc = document.getElementById('go-scores');
@@ -1349,7 +1418,7 @@ function renderState(st) {
     sorted.forEach((p, rank) => {
       const d = document.createElement('div');
       d.className = 'fs-card';
-      if (p.slot === mySlot) d.style.borderColor = 'var(--orange)';
+      if (!isSpectator && p.slot === mySlot) d.style.borderColor = 'var(--orange)';
       const medals = ['🥇','🥈','🥉'];
       const w = winsArr[p.slot] || 0;
       d.innerHTML =
