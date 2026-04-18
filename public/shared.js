@@ -5,6 +5,7 @@ const STORAGE_KEY_NAME = 'zapplay_pseudo';
 const STORAGE_KEY_HISTORY = 'zapplay_history';
 const STORAGE_KEY_DEVICE = 'zapplay_device_v1';
 const STORAGE_KEY_ACCOUNT = 'zapplay_account_v1';
+const STORAGE_KEY_ADMIN = 'zapplay_admin_password';
 const STORAGE_KEY_SOCIAL = 'zapplay_social_v1';
 const STORAGE_KEY_PRESENCE = 'zapplay_presence_v1';
 const MAX_HISTORY = 50;
@@ -1390,6 +1391,7 @@ if(document.readyState==='loading'){
 function init(){
   const isIndex=location.pathname.endsWith('index.html')||location.pathname.endsWith('/');
   if(!isIndex){injectLoader();loaderShownAt=Date.now();}
+  initAdminNavVisibility();
   autoFillPseudo();
   hookPseudoInputs();
   getOrCreateDeviceId();
@@ -1414,6 +1416,34 @@ function init(){
   if(!isIndex)setTimeout(hideLoader,8000);
 }
 
+/**
+ * Affiche les liens « Admin » seulement si un mot de passe admin est mémorisé et accepté par le serveur.
+ */
+function initAdminNavVisibility(){
+  const pwd = (typeof localStorage !== 'undefined' && localStorage.getItem(STORAGE_KEY_ADMIN)) || '';
+  const links = document.querySelectorAll('a.zp-admin-nav');
+  const lobbyLines = document.querySelectorAll('.lobby-admin-line');
+  if(!pwd || !links.length){
+    links.forEach(a => { a.setAttribute('aria-hidden', 'true'); });
+    return;
+  }
+  fetch('/api/admin/ping', { headers: { Authorization: 'Bearer ' + pwd, 'X-Admin-Password': pwd } })
+    .then(r => {
+      if(r.status !== 200) throw new Error('bad');
+      return r.json();
+    })
+    .then(() => {
+      links.forEach(a => {
+        a.classList.add('zp-admin-visible');
+        a.removeAttribute('aria-hidden');
+      });
+      lobbyLines.forEach(el => el.classList.add('zp-admin-unlocked'));
+    })
+    .catch(() => {
+      links.forEach(a => { a.setAttribute('aria-hidden', 'true'); });
+    });
+}
+
 window.ZapPlay={
   getSavedPseudo,savePseudo,
   getOrCreateDeviceId,syncProfileWithServer,pullProfileFromServer,
@@ -1423,7 +1453,8 @@ window.ZapPlay={
   saveGameResult,getHistory,getStats,renderHistoryWidget,clearHistory,exportHistory,
   renderSocialWidget,
   showLounge,hideLounge,setLoungeSender,addLoungeMessage,
-  showWelcomeScreen
+  showWelcomeScreen,
+  initAdminNavVisibility
 };
 
 })();

@@ -94,6 +94,7 @@ input[type=password],input[type=text],input[type=number],select{width:100%;paddi
 <div id="msg"></div>
 <p style="margin-top:24px"><a href="index.html" style="color:var(--teal)">← Accueil</a></p>
 
+<script src="shared.js"></script>
 <script>
 const GAMES = [
   ['quiz','Quiz Éclair'],['draw','Dessin & Devine'],['p4','Puissance 4'],['morpion','Morpion'],
@@ -157,6 +158,7 @@ document.getElementById('btn-save-token').onclick = () => {
   if(t) localStorage.setItem(LS, t);
   else localStorage.removeItem(LS);
   setMsg(t ? 'Mot de passe mémorisé dans ce navigateur.' : 'Mémoire effacée.', true);
+  if(window.ZapPlay && ZapPlay.initAdminNavVisibility) ZapPlay.initAdminNavVisibility();
 };
 
 document.getElementById('btn-save-games').onclick = () => {

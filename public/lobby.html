@@ -72,6 +72,10 @@ body{
 }
 .ping-badge b{color:var(--teal);font-weight:700}
 
+/* Lien Admin : masqué tant que le mot de passe n’est pas validé (voir shared.js) */
+.lobby-admin-line:not(.zp-admin-unlocked) .lobby-admin-sep,
+.lobby-admin-line:not(.zp-admin-unlocked) .zp-admin-nav{ display:none !important; }
+
 .lobby-filters{
   display:grid;
   grid-template-columns:1fr 1fr 1fr;
@@ -330,7 +334,7 @@ select option{background:#0a0a1a;color:var(--text)}
       Temps réel
       <span class="ping-badge" id="lobby-ping" title="Latence WebSocket">Ping <b>—</b> ms</span>
     </div>
-    <div style="margin-top:8px;font-size:.68rem"><a href="account.html" style="color:var(--teal);opacity:.7">Compte</a> · <a href="admin.html" style="color:var(--teal);opacity:.7">Admin</a></div>
+    <div class="lobby-admin-line" style="margin-top:8px;font-size:.68rem"><a href="account.html" style="color:var(--teal);opacity:.7">Compte</a><span class="lobby-admin-sep"> · </span><a href="admin.html" class="zp-admin-nav" style="color:var(--teal);opacity:.7">Admin</a></div>
   </div>
 </div>
 

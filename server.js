@@ -651,6 +651,11 @@ app.post('/api/quiz/rejoin-token', (req, res) => {
   res.json({ code: d.code, name: d.name, slot: d.slot });
 });
 
+/** Utilisé par le client pour savoir si le mot de passe local est encore valide (afficher lien Admin). */
+app.get('/api/admin/ping', adminAuth, (_, res) => {
+  res.json({ ok: true });
+});
+
 app.get('/api/admin/stats', adminAuth, (_, res) => {
   res.json(getServerStats());
 });

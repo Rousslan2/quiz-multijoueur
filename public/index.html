@@ -1595,6 +1595,14 @@ body.home-page .footer .zp-footer-account:hover {
   color: #fff;
   border-bottom-color: rgba(0,232,212,.65);
 }
+body.home-page .footer .zp-admin-nav {
+  color: inherit;
+  opacity: .55;
+  display: none;
+}
+body.home-page .footer .zp-admin-nav.zp-admin-visible {
+  display: inline;
+}
 
 @media (prefers-reduced-motion: reduce) {
   body.home-page .game-card:hover { transform: none; }
@@ -1975,7 +1983,7 @@ body.home-page .footer .zp-footer-account:hover {
   </div>
 </div>
 
-<div class="footer">ZapPlay <span>·</span> Arcade multijoueur <span>·</span> <a href="account.html" class="zp-footer-account">Compte &amp; profil</a> <span>·</span> <a href="admin.html" style="color:inherit;opacity:.55">Admin</a></div>
+<div class="footer">ZapPlay <span>·</span> Arcade multijoueur <span>·</span> <a href="account.html" class="zp-footer-account">Compte &amp; profil</a> <span>·</span> <a href="admin.html" class="zp-admin-nav">Admin</a></div>
 
   </div>
 </div>
