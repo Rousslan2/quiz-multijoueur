@@ -278,6 +278,7 @@ function getAccountToken(){
 function setAccountSession(data){
   if(!data||!data.token){
     localStorage.removeItem(STORAGE_KEY_ACCOUNT);
+    updateNavAccountUI();
     return;
   }
   localStorage.setItem(STORAGE_KEY_ACCOUNT,JSON.stringify({
@@ -287,11 +288,71 @@ function setAccountSession(data){
     displayName:data.displayName
   }));
   if(data.displayName) savePseudo(data.displayName);
+  updateNavAccountUI();
 }
 
 function logoutAccount(){
   localStorage.removeItem(STORAGE_KEY_ACCOUNT);
+  updateNavAccountUI();
 }
+
+/** Met à jour les libellés nav (accueil + barre globale) selon la session compte */
+function updateNavAccountUI(){
+  const tok = getAccountToken();
+  let email = '';
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY_ACCOUNT);
+    if(raw){
+      const j = JSON.parse(raw);
+      if(j && j.email) email = String(j.email);
+    }
+  }catch(_){}
+
+  const loginLink = document.getElementById('zp-nav-login-link');
+  const ctaMain = document.getElementById('zp-nav-cta-main');
+  const ctaSub = document.getElementById('zp-nav-cta-sub');
+  const ctaWrap = document.getElementById('zp-nav-account-cta');
+  const globalAcc = document.getElementById('zp-nav-global-account-link');
+
+  if(tok){
+    if(loginLink){
+      loginLink.style.display = 'none';
+      loginLink.setAttribute('aria-hidden', 'true');
+    }
+    if(ctaMain) ctaMain.textContent = 'Mon compte';
+    if(ctaSub) ctaSub.textContent = email ? email : 'Profil & historique';
+    if(ctaWrap){
+      ctaWrap.setAttribute('title', email ? ('Compte : ' + email) : 'Mon compte ZapPlay');
+      ctaWrap.classList.add('zp-nav-account--logged');
+    }
+    if(globalAcc){
+      globalAcc.textContent = 'Mon compte';
+      if(email) globalAcc.setAttribute('title', email);
+    }
+  }else{
+    if(loginLink){
+      loginLink.style.display = '';
+      loginLink.removeAttribute('aria-hidden');
+      loginLink.textContent = 'Connexion';
+    }
+    if(ctaMain) ctaMain.textContent = 'Créer un compte';
+    if(ctaSub) ctaSub.textContent = 'Historique partout';
+    if(ctaWrap){
+      ctaWrap.removeAttribute('title');
+      ctaWrap.classList.remove('zp-nav-account--logged');
+    }
+    if(globalAcc){
+      globalAcc.textContent = 'Compte';
+      globalAcc.removeAttribute('title');
+    }
+  }
+}
+
+try{
+  window.addEventListener('storage', function(e){
+    if(e.key === STORAGE_KEY_ACCOUNT) updateNavAccountUI();
+  });
+}catch(_){}
 
 function syncProfileWithServer(){
   const deviceId=getOrCreateDeviceId();
@@ -1508,6 +1569,7 @@ function init(){
       renderHistoryWidget('history-widget');
     });
   }
+  updateNavAccountUI();
   // Auto-hide loader after 5s max
   if(!isIndex)setTimeout(hideLoader,8000);
 }
@@ -1543,7 +1605,7 @@ function initAdminNavVisibility(){
 window.ZapPlay={
   getSavedPseudo,savePseudo,
   getOrCreateDeviceId,syncProfileWithServer,pullProfileFromServer,
-  getAccountToken,setAccountSession,logoutAccount,
+  getAccountToken,setAccountSession,logoutAccount,updateNavAccountUI,
   computeBadges,
   hideLoader,showLoader,
   saveGameResult,getHistory,getStats,renderHistoryWidget,clearHistory,exportHistory,

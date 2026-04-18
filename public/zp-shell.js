@@ -263,7 +263,7 @@
       '<nav class="zp-nav-global-links" aria-label="Liens">' +
       '<a href="/index.html">Accueil</a>' +
       '<a href="/lobby.html">Lobby</a>' +
-      '<a href="/account.html">Compte</a>' +
+      '<a href="/account.html" id="zp-nav-global-account-link">Compte</a>' +
       '</nav>' +
       '<div class="zp-nav-global-actions">' +
       '<button type="button" class="zp-nav-global-icon" id="zp-nav-rules" title="Règles du jeu" aria-label="Règles">📖</button>' +
@@ -385,6 +385,9 @@
 
     injectNav();
     initAccountChip();
+    if (window.ZapPlay && typeof window.ZapPlay.updateNavAccountUI === 'function') {
+      window.ZapPlay.updateNavAccountUI();
+    }
 
     document.addEventListener('keydown', function (e) {
       if (e.key === 'Escape') closeRules();
@@ -400,24 +403,7 @@
   }
 
   function initAccountChip() {
-    if (!window.ZapPlay || !window.ZapPlay.getAccountToken) return;
-    try {
-      const t = window.ZapPlay.getAccountToken();
-      const wrap = document.querySelector('.zp-nav-global-actions');
-      if (!wrap || document.getElementById('zp-nav-account')) return;
-      if (t) {
-        const a = document.createElement('a');
-        a.id = 'zp-nav-account';
-        a.href = '/account.html';
-        a.className = 'zp-nav-global-icon';
-        a.style.textDecoration = 'none';
-        a.style.fontSize = '0.72rem';
-        a.style.fontWeight = '800';
-        a.title = 'Mon compte';
-        a.textContent = '👤';
-        wrap.insertBefore(a, wrap.firstChild);
-      }
-    } catch (_) {}
+    /* Libellés « Compte / Mon compte » gérés par ZapPlay.updateNavAccountUI() */
   }
 
   if (document.readyState === 'loading') {
