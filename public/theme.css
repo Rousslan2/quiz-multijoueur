@@ -184,12 +184,18 @@ body > *:not(.zp-space-bg) {
   background: radial-gradient(circle, rgba(167,139,250,.16), rgba(91,159,255,.06) 45%, transparent 68%);
   top: -200px; right: -100px; filter: blur(68px);
   animation: zp-nebdrift 20s ease-in-out infinite alternate;
+  will-change: transform;
 }
 .zp-space-bg .zp-neb2 {
   position: absolute; width: 520px; height: 520px; border-radius: 50%;
   background: radial-gradient(circle, rgba(0,232,212,.10), rgba(255,77,109,.08) 48%, transparent 68%);
   bottom: -100px; left: -80px; filter: blur(56px);
   animation: zp-nebdrift 26s ease-in-out infinite alternate-reverse;
+  will-change: transform;
+}
+@media (max-width: 640px) {
+  .zp-space-bg .zp-neb1,
+  .zp-space-bg .zp-neb2 { animation: none; }
 }
 .zp-space-bg .zp-stars { position: absolute; inset: 0; }
 .zp-star {

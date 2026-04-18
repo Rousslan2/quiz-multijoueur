@@ -1132,11 +1132,13 @@ body.home-page .hero-right { animation-delay: -6s; }
 </div><!-- .wrap -->
 
 <script>
-// Stars
+// Stars (moins d’étoiles sur mobile = meilleur FPS)
 (function(){
   const sc = document.getElementById('bg-stars');
   if(!sc) return;
-  for(let i=0;i<70;i++){
+  const n = (typeof innerWidth!=='undefined' && innerWidth<700) ? 36 : 70;
+  if(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  for(let i=0;i<n;i++){
     const s=document.createElement('div');
     s.className='zp-star';
     const sz=(.4+Math.random()*1.6).toFixed(1);
@@ -1145,12 +1147,14 @@ body.home-page .hero-right { animation-delay: -6s; }
   }
 })();
 
-// Particles
+// Particles (réduit sur petit écran)
 (function(){
   const c = document.getElementById('bg-particles');
   if(!c) return;
+  if(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
   const colors=['#00E8D4','#FF4D6D','#5B9FFF','#A78BFA','#F5D547'];
-  for(let i = 0; i < 30; i++){
+  const maxP = (typeof innerWidth!=='undefined' && innerWidth<700) ? 14 : 30;
+  for(let i = 0; i < maxP; i++){
     const p = document.createElement('div');
     p.className = 'particle';
     const sz = (.5 + Math.random() * 1.5).toFixed(1);
