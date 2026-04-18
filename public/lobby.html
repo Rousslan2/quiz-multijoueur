@@ -281,6 +281,7 @@ select option{background:#0a0a1a;color:var(--text)}
       <span class="live-dot"></span>
       Temps réel
     </div>
+    <div style="margin-top:8px;font-size:.68rem"><a href="admin.html" style="color:var(--teal);opacity:.7">Admin</a></div>
   </div>
 </div>
 
@@ -383,6 +384,16 @@ const urlParams = new URLSearchParams(location.search);
 if(urlParams.get('code')){
   document.getElementById('inp-join-code').value = urlParams.get('code').toUpperCase();
 }
+
+// Masquer jeux selon config serveur
+fetch('/api/public/config').then(r=>r.json()).then(cfg=>{
+  const hidden = new Set((cfg.hiddenGames||[]).map(g=>String(g).toLowerCase()));
+  const sel = document.getElementById('sel-game');
+  if(!sel) return;
+  Array.from(sel.options).forEach(opt=>{
+    if(hidden.has(opt.value)) opt.remove();
+  });
+}).catch(()=>{});
 
 // WebSocket lobby
 function connectLobby(){
