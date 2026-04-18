@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" fill="none" aria-hidden="true">
+  <defs>
+    <linearGradient id="card1" x1="20" y1="30" x2="90" y2="100" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FF4D6D"/><stop offset="1" stop-color="#C9184A"/>
+    </linearGradient>
+    <linearGradient id="card2" x1="30" y1="24" x2="100" y2="94" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F5D547"/><stop offset="1" stop-color="#E6A800"/>
+    </linearGradient>
+    <linearGradient id="card3" x1="40" y1="18" x2="110" y2="88" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#5B9FFF"/><stop offset="1" stop-color="#2E5FA8"/>
+    </linearGradient>
+  </defs>
+  <rect x="30" y="28" width="58" height="82" rx="12" fill="url(#card1)" transform="rotate(-12 64 64)" opacity=".92"/>
+  <rect x="38" y="22" width="58" height="82" rx="12" fill="url(#card2)" transform="rotate(2 64 64)" opacity=".95"/>
+  <rect x="46" y="16" width="58" height="82" rx="12" fill="url(#card3)" transform="rotate(14 64 64)"/>
+  <circle cx="72" cy="58" r="16" fill="rgba(0,0,0,.2)"/>
+  <path fill="#F5D547" d="M72 44c10 0 16 8 16 18s-8 18-18 18h-8v-12h8c4 0 6-3 6-6s-2-6-6-6-6 2-6 6H54c0-12 8-18 18-18z"/>
+</svg>

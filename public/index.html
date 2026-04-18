@@ -414,6 +414,14 @@ body.home-page .hero-right { animation-delay: -6s; }
   background: rgba(0,0,0,.18);
 }
 .chip b{color:rgba(232,232,240,.9);font-weight:700}
+.chip-dot{
+  width:8px;height:8px;border-radius:50%;
+  flex-shrink:0;
+  box-shadow:0 0 12px currentColor;
+}
+.chip-dot--live{ background:#34D399; color:#34D399; }
+.chip-dot--fast{ background:#F5D547; color:#F5D547; }
+.chip-dot--chat{ background:#5B9FFF; color:#5B9FFF; }
 
 .hero-right{padding:18px;}
 .scene{
@@ -845,6 +853,123 @@ body.home-page .hero-right { animation-delay: -6s; }
   width: 100%;
 }
 
+/* ── INTRO « Apple » (avant la grille des jeux) ── */
+.zp-intro {
+  max-width: 1040px;
+  margin: 0 auto;
+  padding: 8px 16px 28px;
+}
+.zp-intro-inner {
+  border-radius: 28px;
+  border: 1px solid rgba(255,255,255,.10);
+  background:
+    radial-gradient(900px 320px at 12% 0%, rgba(0,232,212,.10), transparent 55%),
+    radial-gradient(700px 280px at 92% 10%, rgba(167,139,250,.10), transparent 52%),
+    linear-gradient(165deg, rgba(255,255,255,.07), rgba(255,255,255,.02));
+  box-shadow:
+    0 0 0 1px rgba(0,232,212,.06),
+    0 28px 80px rgba(0,0,0,.45);
+  padding: clamp(28px, 5vw, 48px);
+  position: relative;
+  overflow: hidden;
+}
+.zp-intro-inner::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(115deg, transparent 40%, rgba(255,255,255,.04) 50%, transparent 58%);
+  mix-blend-mode: overlay;
+}
+.zp-intro-kicker {
+  font-family: 'Orbitron', monospace;
+  font-size: .58rem;
+  letter-spacing: .42em;
+  text-transform: uppercase;
+  color: rgba(0,232,212,.62);
+  margin-bottom: 10px;
+}
+.zp-intro-title {
+  font-family: 'Orbitron', monospace;
+  font-weight: 900;
+  letter-spacing: .02em;
+  font-size: clamp(1.45rem, 3.2vw, 2rem);
+  line-height: 1.15;
+  max-width: 20ch;
+  text-shadow: 0 0 40px rgba(0,232,212,.12);
+}
+.zp-intro-lead {
+  margin-top: 14px;
+  font-size: clamp(.92rem, 1.35vw, 1.02rem);
+  line-height: 1.65;
+  color: rgba(232,232,240,.88);
+  max-width: 62ch;
+}
+.zp-intro-grid {
+  margin-top: 28px;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+}
+@media (min-width: 720px) {
+  .zp-intro-grid { grid-template-columns: repeat(3, 1fr); gap: 16px; }
+}
+.zp-intro-block {
+  border-radius: 18px;
+  padding: 18px 18px 20px;
+  border: 1px solid rgba(255,255,255,.09);
+  background: rgba(0,0,0,.22);
+  backdrop-filter: blur(12px);
+  transition: transform .35s cubic-bezier(.2,0,.2,1), border-color .35s, box-shadow .35s;
+}
+.zp-intro-block:hover {
+  transform: translateY(-4px);
+  border-color: rgba(0,232,212,.20);
+  box-shadow: 0 18px 50px rgba(0,0,0,.4);
+}
+.zp-intro-num {
+  font-family: 'Orbitron', monospace;
+  font-size: .52rem;
+  letter-spacing: .28em;
+  color: rgba(167,139,250,.75);
+  margin-bottom: 8px;
+}
+.zp-intro-block h3 {
+  font-family: 'Orbitron', monospace;
+  font-size: .72rem;
+  letter-spacing: .08em;
+  margin-bottom: 8px;
+  color: rgba(232,232,240,.96);
+}
+.zp-intro-block p {
+  font-size: .84rem;
+  line-height: 1.55;
+  color: var(--muted);
+}
+.zp-intro-cta {
+  margin-top: 26px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+.zp-intro-cta .btn-cta { min-height: 44px; }
+
+.game-card .card-icon img,
+.game-card .card-icon .zp-game-ico {
+  width: 56px;
+  height: 56px;
+  display: block;
+  object-fit: contain;
+  margin-bottom: 0;
+  filter: drop-shadow(0 2px 12px rgba(0,0,0,.35));
+  transition: transform .22s cubic-bezier(.2,0,.2,1);
+}
+.game-card:hover .card-icon img,
+.game-card:hover .card-icon .zp-game-ico {
+  transform: scale(1.06) translateY(-2px);
+}
+
 /* ── PANELS ── */
 .panel {
   max-width: 808px;
@@ -919,13 +1044,13 @@ body.home-page .hero-right { animation-delay: -6s; }
         Expérience gaming premium, chat intégré, et parties ultra rapides.
       </p>
       <div class="hero-cta">
-        <a class="btn-cta primary" href="lobby.html">🏠 SALONS EN LIGNE</a>
-        <a class="btn-cta ghost" href="#games">🎮 VOIR LES JEUX</a>
+        <a class="btn-cta primary" href="lobby.html">SALONS EN LIGNE</a>
+        <a class="btn-cta ghost" href="#zp-intro">DÉCOUVRIR</a>
       </div>
       <div class="hero-metrics">
-        <span class="chip">🟢 <b id="online-count">Salles en ligne</b></span>
-        <span class="chip">⚡ <b>Rapide</b> · manches courtes</span>
-        <span class="chip">💬 <b>Chat</b> · dans les salons</span>
+        <span class="chip"><span class="chip-dot chip-dot--live" aria-hidden="true"></span><b id="online-count">Salles en ligne</b></span>
+        <span class="chip"><span class="chip-dot chip-dot--fast" aria-hidden="true"></span><b>Rapide</b> · manches courtes</span>
+        <span class="chip"><span class="chip-dot chip-dot--chat" aria-hidden="true"></span><b>Chat</b> · dans les salons</span>
       </div>
     </div>
 
@@ -940,6 +1065,39 @@ body.home-page .hero-right { animation-delay: -6s; }
         <div class="mini"><div class="t">Tip</div><div class="d">Sur mobile : appuie sur les cartes, elles "tilt".</div></div>
         <div class="mini"><div class="t">Lien</div><div class="d">Depuis le lobby, copie un lien d'invitation avec code + jeu pour tes amis.</div></div>
       </div>
+    </div>
+  </div>
+</section>
+
+<section id="zp-intro" class="zp-intro" aria-labelledby="zp-intro-heading" data-reveal="fade">
+  <div class="zp-intro-inner">
+    <p class="zp-intro-kicker">ZapPlay</p>
+    <h2 id="zp-intro-heading" class="zp-intro-title">Une salle. Un code. Dix‑huit jeux.</h2>
+    <p class="zp-intro-lead">
+      ZapPlay regroupe des mini‑jeux multijoueur qui tournent dans le navigateur : quiz, dessin, cartes, bluff, stratégie…
+      Tu crées ou rejoins une salle avec un code court, tu choisis le jeu dans le salon, et c’est parti — synchro en temps réel, chat intégré, parties courtes pour enchaîler les manches entre amis.
+      Crée un <a href="account.html" style="color:var(--teal);text-decoration:underline;text-underline-offset:3px">compte</a> pour retrouver ton historique sur plusieurs appareils.
+    </p>
+    <div class="zp-intro-grid">
+      <article class="zp-intro-block" data-reveal="zoom">
+        <div class="zp-intro-num">01</div>
+        <h3>Créer ou rejoindre</h3>
+        <p>Ouvre le lobby, lance une salle ou entre un code. Tu peux copier un lien d’invitation avec le jeu présélectionné.</p>
+      </article>
+      <article class="zp-intro-block" data-reveal="zoom">
+        <div class="zp-intro-num">02</div>
+        <h3>Choisir un mini‑jeu</h3>
+        <p>Chaque titre a ses règles et son rythme : réflexes, mots, stratégie ou ambience soirée — à toi de varier.</p>
+      </article>
+      <article class="zp-intro-block" data-reveal="zoom">
+        <div class="zp-intro-num">03</div>
+        <h3>Jouer en ligne</h3>
+        <p>La partie se déroule en direct : buzz, votes, tours et scores mis à jour pour tout le monde, sans installation.</p>
+      </article>
+    </div>
+    <div class="zp-intro-cta">
+      <a class="btn-cta primary" href="lobby.html">Ouvrir le lobby</a>
+      <a class="btn-cta ghost" href="#games">Voir les jeux</a>
     </div>
   </div>
 </section>
@@ -959,7 +1117,7 @@ body.home-page .hero-right { animation-delay: -6s; }
 
   <a class="game-card neon-card c-teal" data-game-id="quiz" href="quiz.html">
     <div class="zp-shine"></div>
-    <span class="card-icon zp-glitch-icon">&#9889;</span>
+    <span class="card-icon zp-glitch-icon"><img src="/icons/games/quiz.svg" width="56" height="56" alt="" loading="lazy" decoding="async"></span>
     <div class="card-name">Quiz Éclair</div>
     <div class="card-desc">Buzzez le premier et répondez ! 15 questions, 9 catégories.</div>
     <span class="card-badge">Buzz · 2–4 joueurs</span>
@@ -967,7 +1125,7 @@ body.home-page .hero-right { animation-delay: -6s; }
 
   <a class="game-card neon-card c-orange" data-game-id="draw" href="draw.html">
     <div class="zp-shine"></div>
-    <span class="card-icon zp-glitch-icon">&#9999;&#65039;</span>
+    <span class="card-icon zp-glitch-icon"><img src="/icons/games/draw.svg" width="56" height="56" alt="" loading="lazy" decoding="async"></span>
     <div class="card-name">Dessin &amp; Devine</div>
     <div class="card-desc">Dessinez et faites deviner votre partenaire !</div>
     <span class="card-badge">6 manches · Chill</span>
@@ -975,7 +1133,7 @@ body.home-page .hero-right { animation-delay: -6s; }
 
   <a class="game-card neon-card c-blue" data-game-id="p4" href="p4.html">
     <div class="zp-shine"></div>
-    <span class="card-icon zp-glitch-icon">&#128993;</span>
+    <span class="card-icon zp-glitch-icon"><img src="/icons/games/p4.svg" width="56" height="56" alt="" loading="lazy" decoding="async"></span>
     <div class="card-name">Puissance 4</div>
     <div class="card-desc">Alignez 4 pions avant votre adversaire !</div>
     <span class="card-badge">Stratégie · Tour/tour</span>
@@ -983,7 +1141,7 @@ body.home-page .hero-right { animation-delay: -6s; }
 
   <a class="game-card neon-card c-teal" data-game-id="morpion" href="morpion.html">
     <div class="zp-shine"></div>
-    <span class="card-icon zp-glitch-icon">&#10799;&#65038;</span>
+    <span class="card-icon zp-glitch-icon"><img src="/icons/games/morpion.svg" width="56" height="56" alt="" loading="lazy" decoding="async"></span>
     <div class="card-name">Morpion</div>
     <div class="card-desc">Tic-tac-toe en ligne, best of 5 !</div>
     <span class="card-badge">Best of 5</span>
@@ -991,7 +1149,7 @@ body.home-page .hero-right { animation-delay: -6s; }
 
   <a class="game-card neon-card c-pink" data-game-id="taboo" href="taboo.html">
     <div class="zp-shine"></div>
-    <span class="card-icon zp-glitch-icon">&#128683;</span>
+    <span class="card-icon zp-glitch-icon"><img src="/icons/games/taboo.svg" width="56" height="56" alt="" loading="lazy" decoding="async"></span>
     <div class="card-name">Mots Interdits</div>
     <div class="card-desc">Faites deviner sans prononcer les mots tabous !</div>
     <span class="card-badge">8 manches</span>
@@ -999,7 +1157,7 @@ body.home-page .hero-right { animation-delay: -6s; }
 
   <a class="game-card neon-card c-teal" data-game-id="emoji" href="emoji.html">
     <div class="zp-shine"></div>
-    <span class="card-icon zp-glitch-icon">&#127775;</span>
+    <span class="card-icon zp-glitch-icon"><img src="/icons/games/emoji.svg" width="56" height="56" alt="" loading="lazy" decoding="async"></span>
     <div class="card-name">Devinette Emoji</div>
     <div class="card-desc">Devinez le film ou la chanson en emojis !</div>
     <span class="card-badge">15 devinettes</span>
@@ -1007,7 +1165,7 @@ body.home-page .hero-right { animation-delay: -6s; }
 
   <a class="game-card neon-card c-purple" data-game-id="loup" href="loup.html">
     <div class="zp-shine"></div>
-    <span class="card-icon zp-glitch-icon">&#x1F43A;</span>
+    <span class="card-icon zp-glitch-icon"><img src="/icons/games/loup.svg" width="56" height="56" alt="" loading="lazy" decoding="async"></span>
     <div class="card-name">Loup-Garou</div>
     <div class="card-desc">Loups contre villageois, rôles secrets chaque nuit !</div>
     <span class="card-badge">4–10 joueurs · Rôles</span>
@@ -1015,7 +1173,7 @@ body.home-page .hero-right { animation-delay: -6s; }
 
   <a class="game-card neon-card c-pink" data-game-id="uno" href="uno.html">
     <div class="zp-shine"></div>
-    <span class="card-icon zp-glitch-icon">&#x1F0CF;</span>
+    <span class="card-icon zp-glitch-icon"><img src="/icons/games/uno.svg" width="56" height="56" alt="" loading="lazy" decoding="async"></span>
     <div class="card-name">Uno</div>
     <div class="card-desc">Le classique des cartes ! Videz votre main en premier.</div>
     <span class="card-badge">2–4 joueurs · Cartes</span>
@@ -1023,7 +1181,7 @@ body.home-page .hero-right { animation-delay: -6s; }
 
   <a class="game-card neon-card c-gold" data-game-id="bomb" href="wordbomb.html">
     <div class="zp-shine"></div>
-    <span class="card-icon zp-glitch-icon">&#x1F4A3;</span>
+    <span class="card-icon zp-glitch-icon"><img src="/icons/games/bomb.svg" width="56" height="56" alt="" loading="lazy" decoding="async"></span>
     <div class="card-name">Word Bomb</div>
     <div class="card-desc">Trouve un mot avec la syllabe avant l'explosion.</div>
     <span class="card-badge">2–6 joueurs · Vitesse</span>
@@ -1031,7 +1189,7 @@ body.home-page .hero-right { animation-delay: -6s; }
 
   <a class="game-card neon-card c-gold" data-game-id="sumo" href="sumo.html">
     <div class="zp-shine"></div>
-    <span class="card-icon zp-glitch-icon">&#x1F94B;</span>
+    <span class="card-icon zp-glitch-icon"><img src="/icons/games/sumo.svg" width="56" height="56" alt="" loading="lazy" decoding="async"></span>
     <div class="card-name">Sumo Arena</div>
     <div class="card-desc">Pousse tes adversaires hors du ring !</div>
     <span class="card-badge">2–4 joueurs · Combat</span>
@@ -1041,7 +1199,7 @@ body.home-page .hero-right { animation-delay: -6s; }
 
   <a class="game-card neon-card c-orange" data-game-id="paint" href="paint.html">
     <div class="zp-shine"></div>
-    <span class="card-icon zp-glitch-icon">&#x1F3A8;</span>
+    <span class="card-icon zp-glitch-icon"><img src="/icons/games/paint.svg" width="56" height="56" alt="" loading="lazy" decoding="async"></span>
     <div class="card-name">Paint.io</div>
     <div class="card-desc">Capture le plus de territoire sans te faire couper !</div>
     <span class="card-badge">2–4 joueurs · Survie</span>
@@ -1049,7 +1207,7 @@ body.home-page .hero-right { animation-delay: -6s; }
 
   <a class="game-card neon-card c-blue" data-game-id="naval" href="naval.html">
     <div class="zp-shine"></div>
-    <span class="card-icon zp-glitch-icon">&#9875;</span>
+    <span class="card-icon zp-glitch-icon"><img src="/icons/games/naval.svg" width="56" height="56" alt="" loading="lazy" decoding="async"></span>
     <div class="card-name">Bataille navale</div>
     <div class="card-desc">Place ta flotte puis coule tous les navires adverses !</div>
     <span class="card-badge">2–4 joueurs · Stratégie</span>
@@ -1057,7 +1215,7 @@ body.home-page .hero-right { animation-delay: -6s; }
 
   <a class="game-card neon-card c-gold" data-game-id="typer" href="typer.html">
     <div class="zp-shine"></div>
-    <span class="card-icon zp-glitch-icon">⌨️</span>
+    <span class="card-icon zp-glitch-icon"><img src="/icons/games/typer.svg" width="56" height="56" alt="" loading="lazy" decoding="async"></span>
     <div class="card-name">Typer Race</div>
     <div class="card-desc">Tape le texte le plus vite ! Qui finira 1er sur 5 manches ?</div>
     <span class="card-badge">2–4 joueurs · Vitesse</span>
@@ -1065,7 +1223,7 @@ body.home-page .hero-right { animation-delay: -6s; }
 
   <a class="game-card neon-card c-pink" data-game-id="anagramme" href="anagramme.html">
     <div class="zp-shine"></div>
-    <span class="card-icon zp-glitch-icon">🔤</span>
+    <span class="card-icon zp-glitch-icon"><img src="/icons/games/anagramme.svg" width="56" height="56" alt="" loading="lazy" decoding="async"></span>
     <div class="card-name">Anagramme</div>
     <div class="card-desc">Déchiffre les lettres mélangées avant les autres ! 8 manches.</div>
     <span class="card-badge">2–4 joueurs · Mots</span>
@@ -1073,7 +1231,7 @@ body.home-page .hero-right { animation-delay: -6s; }
 
   <a class="game-card neon-card c-teal" data-game-id="justeprix" href="justeprix.html">
     <div class="zp-shine"></div>
-    <span class="card-icon zp-glitch-icon">💰</span>
+    <span class="card-icon zp-glitch-icon"><img src="/icons/games/justeprix.svg" width="56" height="56" alt="" loading="lazy" decoding="async"></span>
     <div class="card-name">Juste Prix</div>
     <div class="card-desc">Estimez le prix ou la valeur — le plus proche gagne !</div>
     <span class="card-badge">8 manches · Estimation</span>
@@ -1081,7 +1239,7 @@ body.home-page .hero-right { animation-delay: -6s; }
 
   <a class="game-card neon-card c-blue" data-game-id="timeline" href="timeline.html">
     <div class="zp-shine"></div>
-    <span class="card-icon zp-glitch-icon">📅</span>
+    <span class="card-icon zp-glitch-icon"><img src="/icons/games/timeline.svg" width="56" height="56" alt="" loading="lazy" decoding="async"></span>
     <div class="card-name">Timeline</div>
     <div class="card-desc">Quel événement s'est produit en premier ? Histoire & culture.</div>
     <span class="card-badge">10 manches · Histoire</span>
@@ -1089,7 +1247,7 @@ body.home-page .hero-right { animation-delay: -6s; }
 
   <a class="game-card neon-card c-purple" data-game-id="memo" href="memoire.html">
     <div class="zp-shine"></div>
-    <span class="card-icon zp-glitch-icon">🃏</span>
+    <span class="card-icon zp-glitch-icon"><img src="/icons/games/memoire.svg" width="56" height="56" alt="" loading="lazy" decoding="async"></span>
     <div class="card-name">Mémoire</div>
     <div class="card-desc">Retourne les cartes et retrouve les paires ! Tour par tour.</div>
     <span class="card-badge">2–4 joueurs · Mémoire</span>
@@ -1097,7 +1255,7 @@ body.home-page .hero-right { animation-delay: -6s; }
 
   <a class="game-card neon-card c-pink" data-game-id="imposteur" href="imposteur.html">
     <div class="zp-shine"></div>
-    <span class="card-icon zp-glitch-icon">&#x1F575;&#xFE0F;</span>
+    <span class="card-icon zp-glitch-icon"><img src="/icons/games/imposteur.svg" width="56" height="56" alt="" loading="lazy" decoding="async"></span>
     <div class="card-name">Imposteur</div>
     <div class="card-desc">Un mot secret, un tra&#238;tre parmi vous. D&#233;crivez, bluffez, d&#233;masquez !</div>
     <span class="card-badge">3&#8211;8 joueurs &middot; Bluff</span>
@@ -1105,15 +1263,15 @@ body.home-page .hero-right { animation-delay: -6s; }
 
   <a class="game-card neon-card c-pink" data-game-id="debat" href="debat.html">
     <div class="zp-shine"></div>
-    <span class="card-icon zp-glitch-icon">&#9878;&#65039;</span>
+    <span class="card-icon zp-glitch-icon"><img src="/icons/games/debat.svg" width="56" height="56" alt="" loading="lazy" decoding="async"></span>
     <div class="card-name">D&#233;bat express</div>
     <div class="card-desc">2 débatteurs (Pour / Contre) + juges qui votent. Les rôles tournent à chaque manche.</div>
     <span class="card-badge">3&ndash;6 joueurs &middot; Oral</span>
   </a>
 
-  <a class="game-card neon-card c-green lobby-full" href="lobby.html">
+  <a class="game-card neon-card c-lobby lobby-full" href="lobby.html">
     <div class="zp-shine"></div>
-    <span class="card-icon zp-glitch-icon">&#127968;</span>
+    <span class="card-icon zp-glitch-icon"><img src="/icons/games/lobby.svg" width="56" height="56" alt="" loading="lazy" decoding="async"></span>
     <div class="card-name">Salles en ligne</div>
     <div class="card-desc">Créez ou rejoignez une salle, voyez les parties en cours en temps réel !</div>
     <span class="card-badge">Lobby · Temps réel</span>
