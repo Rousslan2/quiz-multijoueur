@@ -8,7 +8,7 @@
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Exo+2:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Orbitron:wght@700;900&family=Exo+2:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="theme.css">
 <style>
 :root {
@@ -49,13 +49,16 @@ html.home-page body.home-page {
 body.home-page {
   min-height: 100%;
   color: var(--text);
-  font-family: 'Exo 2', sans-serif;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Exo 2', sans-serif;
+  font-feature-settings: 'kern' 1, 'liga' 1;
   padding-bottom: 80px;
   overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-/* Scanlines un peu plus discrètes sur l’accueil */
-body.home-page::before { opacity: .32; }
+/* Scanlines très légères — look plus « produit » */
+body.home-page::before { opacity: .14; }
 
 /* Couche Deep Space renforcée (au-dessus du dégradé html) */
 body.home-page .zp-space-bg {
@@ -1007,6 +1010,351 @@ body.home-page .hero-right { animation-delay: -6s; }
   font-family: 'Orbitron', monospace;
 }
 .footer span { color: var(--teal); opacity: .5; }
+
+/* ═══ HOME · Navigation type Apple ═══ */
+.zp-nav {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 12px 16px 0;
+}
+.zp-nav-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 10px 16px 10px 18px;
+  border-radius: 100px;
+  border: 1px solid rgba(255,255,255,.10);
+  background: rgba(12, 12, 22, .55);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  box-shadow: 0 4px 40px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.06);
+}
+.zp-nav-brand {
+  font-family: 'Orbitron', monospace;
+  font-weight: 900;
+  font-size: .95rem;
+  letter-spacing: .12em;
+  color: rgba(248,250,252,.96);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.zp-nav-links {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.zp-nav-link {
+  font-size: .82rem;
+  font-weight: 500;
+  color: rgba(232,232,240,.72);
+  text-decoration: none;
+  padding: 8px 12px;
+  border-radius: 999px;
+  transition: color .2s, background .2s;
+}
+.zp-nav-link:hover { color: #fff; background: rgba(255,255,255,.06); }
+.zp-nav-link--muted { opacity: .85; font-size: .78rem; }
+.zp-nav-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border-radius: 999px;
+  font-size: .8rem;
+  font-weight: 600;
+  letter-spacing: .02em;
+  text-decoration: none;
+  color: #041018;
+  background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 50%, #cbd5e1 100%);
+  box-shadow: 0 0 0 1px rgba(255,255,255,.25), 0 8px 28px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.6);
+  transition: transform .2s cubic-bezier(.2,0,.2,1), box-shadow .2s;
+}
+.zp-nav-cta:hover {
+  transform: translateY(-1px) scale(1.02);
+  box-shadow: 0 0 0 1px rgba(255,255,255,.35), 0 12px 36px rgba(0,232,212,.12);
+}
+.zp-nav-cta-sub { font-size: .65rem; font-weight: 600; opacity: .75; letter-spacing: .04em; }
+@media (max-width: 520px) {
+  .zp-nav-inner { padding: 10px 12px; border-radius: 20px; flex-wrap: wrap; }
+  .zp-nav-link--muted { display: none; }
+}
+
+/* ═══ HOME · Section compte (mise en avant) ═══ */
+.zp-account-strip {
+  max-width: 1040px;
+  margin: 12px auto 0;
+  padding: 0 16px;
+}
+.zp-account-inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px 20px;
+  padding: 20px 22px;
+  border-radius: 22px;
+  border: 1px solid rgba(255,255,255,.10);
+  background:
+    linear-gradient(135deg, rgba(0,232,212,.08) 0%, rgba(91,159,255,.06) 45%, rgba(167,139,250,.06) 100%),
+    rgba(8,10,20,.65);
+  backdrop-filter: blur(16px);
+  box-shadow: 0 16px 48px rgba(0,0,0,.38), inset 0 1px 0 rgba(255,255,255,.07);
+}
+.zp-account-inner h2 {
+  font-family: 'Inter', sans-serif;
+  font-size: clamp(1.05rem, 2vw, 1.2rem);
+  font-weight: 600;
+  letter-spacing: -.02em;
+  color: rgba(248,250,252,.98);
+  margin: 0 0 4px 0;
+  line-height: 1.25;
+}
+.zp-account-inner p {
+  margin: 0;
+  font-size: .88rem;
+  line-height: 1.5;
+  color: rgba(203,213,225,.88);
+  max-width: 46ch;
+}
+.zp-account-actions {
+  margin-left: auto;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.zp-btn-light {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 11px 18px;
+  border-radius: 12px;
+  font-size: .82rem;
+  font-weight: 600;
+  text-decoration: none;
+  color: #0f172a;
+  background: linear-gradient(180deg, #f8fafc 0%, #e2e8f0 100%);
+  border: 1px solid rgba(255,255,255,.35);
+  box-shadow: 0 4px 20px rgba(0,0,0,.2);
+  transition: transform .18s, box-shadow .18s;
+}
+.zp-btn-light:hover { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(0,232,212,.15); }
+.zp-btn-outline {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 11px 18px;
+  border-radius: 12px;
+  font-size: .82rem;
+  font-weight: 500;
+  text-decoration: none;
+  color: rgba(248,250,252,.92);
+  border: 1px solid rgba(255,255,255,.16);
+  background: rgba(255,255,255,.04);
+  transition: border-color .18s, background .18s;
+}
+.zp-btn-outline:hover { border-color: rgba(0,232,212,.35); background: rgba(0,232,212,.06); }
+
+/* ═══ HOME · Hero typographie « keynote » ═══ */
+body.home-page .hero-title {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-weight: 700;
+  letter-spacing: -.035em;
+  line-height: 1.08;
+}
+body.home-page .hero-eyebrow {
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  letter-spacing: .28em;
+  font-size: .58rem;
+}
+body.home-page .hero-sub {
+  font-size: clamp(.92rem, 1.2vw, 1.05rem);
+  line-height: 1.62;
+  color: rgba(226,232,240,.88);
+  font-weight: 400;
+}
+body.home-page .btn-cta {
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  letter-spacing: .06em;
+  border-radius: 980px;
+}
+body.home-page .btn-cta.primary {
+  background: linear-gradient(180deg, rgba(255,255,255,.12) 0%, rgba(255,255,255,0) 40%), linear-gradient(135deg, #00dcc8 0%, #5B9FFF 100%);
+  color: #041018;
+  box-shadow: 0 0 0 1px rgba(0,232,212,.25), 0 14px 40px rgba(0,232,212,.2);
+}
+body.home-page .hero-card {
+  border-radius: 24px;
+}
+
+/* ═══ HOME · Cartes jeu premium (grille) ═══ */
+body.home-page .grid {
+  gap: 14px;
+  max-width: 980px;
+}
+@media (min-width: 900px) {
+  body.home-page .grid { gap: 18px; }
+}
+body.home-page .game-card {
+  border-radius: 22px;
+  border: 1px solid rgba(255,255,255,.10);
+  border-top: none;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  background:
+    linear-gradient(165deg, rgba(255,255,255,.07) 0%, rgba(255,255,255,.015) 42%, rgba(0,0,0,.2) 100%);
+  box-shadow: 0 2px 0 rgba(255,255,255,.04) inset, 0 24px 56px rgba(0,0,0,.45);
+  overflow: hidden;
+  transition: transform .35s cubic-bezier(.2,0,.2,1), box-shadow .35s, border-color .35s;
+}
+body.home-page .game-card::before {
+  opacity: .55;
+  background: linear-gradient(135deg, rgba(255,255,255,.10) 0%, transparent 52%);
+}
+body.home-page .game-card::after {
+  bottom: auto; top: 0; left: 0; right: 0;
+  width: 100%; height: 3px;
+  border-radius: 0;
+  opacity: 0.95;
+}
+body.home-page .card-icon {
+  width: 100%;
+  margin: 0;
+  padding: 22px 18px 18px;
+  min-height: 108px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    radial-gradient(120% 90% at 50% 0%, rgba(255,255,255,.09) 0%, transparent 58%),
+    linear-gradient(180deg, rgba(255,255,255,.04) 0%, rgba(0,0,0,.12) 100%);
+  border-bottom: 1px solid rgba(255,255,255,.06);
+}
+body.home-page .card-icon img {
+  width: 64px !important;
+  height: 64px !important;
+  filter: drop-shadow(0 8px 20px rgba(0,0,0,.4));
+}
+body.home-page .game-card:hover .card-icon img {
+  transform: scale(1.05) translateY(-3px);
+}
+body.home-page .card-name {
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  letter-spacing: -.01em;
+  font-size: .95rem;
+  padding: 16px 18px 6px;
+  margin: 0;
+}
+body.home-page .card-desc {
+  font-size: .8rem;
+  line-height: 1.55;
+  padding: 0 18px;
+  margin-bottom: 14px;
+  flex: 1;
+  color: rgba(186,194,210,.88);
+}
+body.home-page .card-badge {
+  align-self: flex-start;
+  margin: 0 18px 18px;
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: .58rem;
+  font-weight: 600;
+  letter-spacing: .1em;
+  background: rgba(0,0,0,.28);
+  border: 1px solid rgba(255,255,255,.08);
+}
+body.home-page .game-card:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 2px 0 rgba(255,255,255,.06) inset, 0 36px 72px rgba(0,0,0,.55);
+}
+body.home-page .game-card.c-teal::after   { background: linear-gradient(90deg, var(--teal), rgba(0,232,212,.65)); }
+body.home-page .game-card.c-orange::after { background: linear-gradient(90deg, var(--orange), rgba(255,112,51,.65)); }
+body.home-page .game-card.c-blue::after  { background: linear-gradient(90deg, var(--blue), rgba(91,159,255,.65)); }
+body.home-page .game-card.c-pink::after  { background: linear-gradient(90deg, var(--pink), rgba(255,77,109,.65)); }
+body.home-page .game-card.c-purple::after { background: linear-gradient(90deg, #A78BFA, rgba(167,139,250,.65)); }
+body.home-page .game-card.c-gold::after  { background: linear-gradient(90deg, var(--gold), rgba(245,213,71,.65)); }
+body.home-page .game-card.c-lobby::after { background: linear-gradient(90deg, var(--green), rgba(52,211,153,.65)); }
+body.home-page .lobby-full {
+  max-width: 520px;
+}
+body.home-page .section-label {
+  max-width: 980px;
+  margin-top: 40px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  font-family: 'Inter', sans-serif;
+  font-size: .68rem;
+  font-weight: 600;
+  letter-spacing: .2em;
+}
+body.home-page .section-label::after { display: none; }
+body.home-page .section-label-main { letter-spacing: .22em; }
+body.home-page .section-label-sub {
+  font-size: .92rem;
+  font-weight: 400;
+  letter-spacing: normal;
+  color: rgba(148,163,184,.95);
+  text-transform: none;
+  max-width: 52ch;
+  line-height: 1.5;
+}
+
+/* ═══ HOME · Panneaux profil / stats ═══ */
+body.home-page .panel-inner {
+  border-radius: 20px;
+  border: 1px solid rgba(255,255,255,.08);
+  background: linear-gradient(165deg, rgba(255,255,255,.05), rgba(255,255,255,.015));
+  backdrop-filter: blur(12px);
+  box-shadow: 0 20px 50px rgba(0,0,0,.35);
+  padding: 24px;
+}
+body.home-page .panel-title {
+  font-family: 'Inter', sans-serif;
+  font-size: .72rem;
+  font-weight: 600;
+  letter-spacing: .1em;
+}
+
+body.home-page .zp-intro-title {
+  font-family: 'Inter', sans-serif;
+  font-weight: 700;
+  letter-spacing: -.03em;
+  max-width: 22ch;
+}
+body.home-page .zp-intro-lead a {
+  color: rgba(56,189,248,.95);
+  text-decoration: none;
+  font-weight: 500;
+  border-bottom: 1px solid rgba(56,189,248,.4);
+}
+body.home-page .zp-intro-lead a:hover { color: #7dd3fc; border-bottom-color: #7dd3fc; }
+
+body.home-page .footer .zp-footer-account {
+  color: rgba(226,232,240,.88);
+  text-decoration: none;
+  border-bottom: 1px solid rgba(0,232,212,.35);
+  padding-bottom: 1px;
+  transition: color .2s, border-color .2s;
+}
+body.home-page .footer .zp-footer-account:hover {
+  color: #fff;
+  border-bottom-color: rgba(0,232,212,.65);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body.home-page .game-card:hover { transform: none; }
+  body.home-page .zp-nav-cta:hover, body.home-page .zp-btn-light:hover { transform: none; }
+}
 </style>
 </head>
 <body class="home-page">
@@ -1033,6 +1381,18 @@ body.home-page .hero-right { animation-delay: -6s; }
 </div>
 
 <div class="wrap">
+
+<header class="zp-nav" role="navigation" aria-label="Navigation principale">
+  <div class="zp-nav-inner">
+    <a class="zp-nav-brand" href="index.html">ZapPlay</a>
+    <div class="zp-nav-links">
+      <a class="zp-nav-link" href="lobby.html">Lobby</a>
+      <a class="zp-nav-link" href="#games">Jeux</a>
+      <a class="zp-nav-link zp-nav-link--muted" href="account.html">Connexion</a>
+      <a class="zp-nav-cta" href="account.html"><span>Créer un compte</span><span class="zp-nav-cta-sub">Historique partout</span></a>
+    </div>
+  </div>
+</header>
 
 <section class="hero" aria-label="Accueil">
   <div class="hero-grid">
@@ -1069,6 +1429,19 @@ body.home-page .hero-right { animation-delay: -6s; }
   </div>
 </section>
 
+<section class="zp-account-strip" aria-labelledby="zp-account-title" data-reveal="fade">
+  <div class="zp-account-inner">
+    <div>
+      <h2 id="zp-account-title">Compte joueur</h2>
+      <p>Enregistre-toi pour garder ton pseudo, ton historique et tes stats sur tous tes appareils.</p>
+    </div>
+    <div class="zp-account-actions">
+      <a class="zp-btn-light" href="account.html">Créer un compte</a>
+      <a class="zp-btn-outline" href="account.html">J’ai déjà un compte</a>
+    </div>
+  </div>
+</section>
+
 <section id="zp-intro" class="zp-intro" aria-labelledby="zp-intro-heading" data-reveal="fade">
   <div class="zp-intro-inner">
     <p class="zp-intro-kicker">ZapPlay</p>
@@ -1076,7 +1449,7 @@ body.home-page .hero-right { animation-delay: -6s; }
     <p class="zp-intro-lead">
       ZapPlay regroupe des mini‑jeux multijoueur qui tournent dans le navigateur : quiz, dessin, cartes, bluff, stratégie…
       Tu crées ou rejoins une salle avec un code court, tu choisis le jeu dans le salon, et c’est parti — synchro en temps réel, chat intégré, parties courtes pour enchaîler les manches entre amis.
-      Crée un <a href="account.html" style="color:var(--teal);text-decoration:underline;text-underline-offset:3px">compte</a> pour retrouver ton historique sur plusieurs appareils.
+      Passe par la section <strong>Compte joueur</strong> ci‑dessus ou ouvre la page compte pour retrouver ton historique partout.
     </p>
     <div class="zp-intro-grid">
       <article class="zp-intro-block" data-reveal="zoom">
@@ -1110,7 +1483,10 @@ body.home-page .hero-right { animation-delay: -6s; }
   </div>
 </section>
 
-<div class="section-label" id="games">Jeux disponibles</div>
+<div class="section-label" id="games">
+  <span class="section-label-main">Catalogue</span>
+  <span class="section-label-sub">Des mini‑jeux pensés pour jouer vite, entre amis, sans installation.</span>
+</div>
 
 <div class="grid-wrap">
 <div class="grid">
@@ -1293,7 +1669,7 @@ body.home-page .hero-right { animation-delay: -6s; }
   </div>
 </div>
 
-<div class="footer">ZapPlay <span>·</span> Arcade multijoueur · <a href="account.html" style="color:inherit;opacity:.55">Compte</a> · <a href="admin.html" style="color:inherit;opacity:.55">Admin</a></div>
+<div class="footer">ZapPlay <span>·</span> Arcade multijoueur <span>·</span> <a href="account.html" class="zp-footer-account">Compte &amp; profil</a> <span>·</span> <a href="admin.html" style="color:inherit;opacity:.55">Admin</a></div>
 
   </div>
 </div>
