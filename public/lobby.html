@@ -286,6 +286,36 @@ select option{background:#0a0a1a;color:var(--text)}
   text-transform:uppercase!important;letter-spacing:.22em!important;
   font-size:1.3rem!important;font-weight:700!important;text-align:center!important;
 }
+
+.invite-bar{
+  max-width:860px;margin:0 auto 18px;padding:0 16px;
+}
+.invite-inner{
+  display:flex;flex-wrap:wrap;align-items:center;gap:10px;
+  padding:14px 16px;border-radius:14px;
+  border:1px solid rgba(0,232,212,.14);
+  background:rgba(0,232,212,.04);
+}
+.invite-inner .t{
+  font-family:'Orbitron',monospace;font-size:.58rem;letter-spacing:.12em;
+  color:var(--teal);text-transform:uppercase;flex:1 0 100%;
+}
+.invite-inner input{
+  flex:1;min-width:180px;font-size:.72rem;padding:9px 11px;
+  background:rgba(0,0,0,.25);border:1px solid rgba(255,255,255,.1);border-radius:8px;color:var(--muted);
+}
+.invite-inner .btn-link{
+  border:1px solid rgba(0,232,212,.35);background:rgba(0,232,212,.12);
+  color:var(--teal);border-radius:8px;padding:9px 14px;font-size:.72rem;
+  font-family:'Orbitron',monospace;font-weight:700;cursor:pointer;white-space:nowrap;
+}
+.invite-inner .btn-link:hover{background:rgba(0,232,212,.2)}
+.room-link-btn{
+  margin-top:6px;width:100%;padding:6px 8px;border-radius:6px;border:1px solid rgba(255,255,255,.1);
+  background:rgba(255,255,255,.04);color:var(--muted);font-size:.62rem;cursor:pointer;
+  font-family:'Orbitron',monospace;
+}
+.room-link-btn:hover{border-color:rgba(0,232,212,.25);color:var(--teal)}
 </style>
 </head>
 <body>
@@ -363,6 +393,14 @@ select option{background:#0a0a1a;color:var(--text)}
 
   </div>
 
+  <div class="invite-bar">
+    <div class="invite-inner">
+      <span class="t">Lien d'invitation</span>
+      <input type="text" id="invite-url" readonly placeholder="Renseigne un code ou copie depuis une salle" aria-label="URL d'invitation">
+      <button type="button" class="btn-link" id="btn-copy-invite">Copier</button>
+    </div>
+  </div>
+
   <!-- Rooms list -->
   <div class="rooms-panel">
     <div class="rooms-panel-header">
@@ -422,15 +460,66 @@ let pingTimer = null;
 
 // URL param auto-fill
 const urlParams = new URLSearchParams(location.search);
-if(urlParams.get('code')){
-  document.getElementById('inp-join-code').value = urlParams.get('code').toUpperCase();
+
+function buildLobbyInviteUrl(code, game){
+  const u = new URL(location.href);
+  u.search = '';
+  if(code) u.searchParams.set('code', String(code).toUpperCase().slice(0,8));
+  if(game) u.searchParams.set('game', String(game).toLowerCase());
+  return u.toString();
 }
+
+function copyInviteLink(code, game){
+  const url = buildLobbyInviteUrl(code, game);
+  const inp = document.getElementById('invite-url');
+  if(inp) inp.value = url;
+  navigator.clipboard.writeText(url).then(()=>{
+    showStatus(document.getElementById('join-status'),'Lien copié !','ok');
+  }).catch(()=>{});
+}
+
+function updateInviteBarFromInputs(){
+  const code = document.getElementById('inp-join-code').value.trim().toUpperCase();
+  const game = document.getElementById('sel-game').value;
+  const inp = document.getElementById('invite-url');
+  if(!inp) return;
+  if(code.length >= 2){
+    inp.value = buildLobbyInviteUrl(code, game);
+  }else if(game){
+    inp.value = buildLobbyInviteUrl('', game);
+  }else{
+    inp.value = '';
+  }
+}
+
+document.getElementById('btn-copy-invite').addEventListener('click', ()=>{
+  const inp = document.getElementById('invite-url');
+  const v = (inp && inp.value) ? inp.value : buildLobbyInviteUrl(
+    document.getElementById('inp-join-code').value.trim().toUpperCase(),
+    document.getElementById('sel-game').value
+  );
+  if(!v){ showStatus(document.getElementById('join-status'),'Entre un code ou choisis un jeu.','err'); return; }
+  navigator.clipboard.writeText(v).then(()=>{
+    showStatus(document.getElementById('join-status'),'Lien copié !','ok');
+  }).catch(()=>{});
+});
+
+['inp-join-code','sel-game'].forEach(id=>{
+  const el = document.getElementById(id);
+  if(el){
+    el.addEventListener('input', updateInviteBarFromInputs);
+    el.addEventListener('change', updateInviteBarFromInputs);
+  }
+});
 
 // Masquer jeux selon config serveur
 fetch('/api/public/config').then(r=>r.json()).then(cfg=>{
   const hidden = new Set((cfg.hiddenGames||[]).map(g=>String(g).toLowerCase()));
   const sel = document.getElementById('sel-game');
   if(!sel) return;
+  if(urlParams.get('code')){
+    document.getElementById('inp-join-code').value = urlParams.get('code').toUpperCase();
+  }
   Array.from(sel.options).forEach(opt=>{
     if(hidden.has(opt.value)) opt.remove();
   });
@@ -444,7 +533,23 @@ fetch('/api/public/config').then(r=>r.json()).then(cfg=>{
       fg.appendChild(o);
     });
   }
-}).catch(()=>{});
+  const gParam = urlParams.get('game');
+  if(gParam){
+    const selGame = document.getElementById('sel-game');
+    if(selGame && Array.from(selGame.options).some(o=>o.value===gParam.toLowerCase())){
+      selGame.value = gParam.toLowerCase();
+    }
+    if(fg && Array.from(fg.options).some(o=>o.value===gParam.toLowerCase())){
+      fg.value = gParam.toLowerCase();
+    }
+  }
+  const fParam = urlParams.get('filter');
+  if(fParam === 'waiting' || fParam === 'playing'){
+    const fs = document.getElementById('filter-status');
+    if(fs) fs.value = fParam;
+  }
+  updateInviteBarFromInputs();
+}).catch(()=>{ updateInviteBarFromInputs(); });
 
 function sendLobbyPing(){
   if(!lobbyWs || lobbyWs.readyState !== WebSocket.OPEN) return;
@@ -576,6 +681,13 @@ function renderRooms(rooms){
     plEl.className = 'room-players';
     plEl.textContent = '👥 ' + r.players.length + '/' + r.maxPlayers + ' joueur' + (r.players.length !== 1 ? 's' : '') + ' · ' + r.code;
     [gameEl, hostEl, plEl].forEach(el => info.appendChild(el));
+
+    const linkBtn = document.createElement('button');
+    linkBtn.type = 'button';
+    linkBtn.className = 'room-link-btn';
+    linkBtn.textContent = 'Copier le lien';
+    linkBtn.onclick = () => copyInviteLink(r.code, r.game);
+    info.appendChild(linkBtn);
 
     const meta = document.createElement('div');
     meta.className = 'room-meta';

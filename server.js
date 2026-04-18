@@ -469,6 +469,22 @@ const ALL_Q = [
   {text:"Combien de côtés a un hexagone régulier ?",opts:["5","6","7","8"],ans:1,cat:'culture',diff:1},
   {text:"Quel réseau social a racheté Instagram en 2012 ?",opts:["Google","Meta (Facebook)","Twitter","Snap"],ans:1,cat:'tech',diff:2},
   {text:"Quel est le plus petit pays d'Europe par superficie ?",opts:["Malte","Monaco","Vatican","Saint-Marin"],ans:2,cat:'geo',diff:3},
+  // ── Lot phase 2 ──
+  {text:"Quelle planète est surnommée la planète bleue ?",opts:["Mars","Vénus","Terre","Neptune"],ans:2,cat:'sciences',diff:1},
+  {text:"Qui a peint 'Les Tournesols' ?",opts:["Monet","Van Gogh","Picasso","Renoir"],ans:1,cat:'culture',diff:2},
+  {text:"Quelle est la distance officielle d'un marathon ?",opts:["40,195 km","41 km","42,195 km","43 km"],ans:2,cat:'sport',diff:2},
+  {text:"Quel est le plus grand océan de la Terre ?",opts:["Atlantique","Indien","Arctique","Pacifique"],ans:3,cat:'geo',diff:1},
+  {text:"En quelle année est sorti le premier iPhone ?",opts:["2005","2006","2007","2008"],ans:2,cat:'tech',diff:2},
+  {text:"Quel fromage est utilisé dans une raclette ?",opts:["Comté","Emmental","Roquefort","Camembert"],ans:1,cat:'cuisine',diff:1},
+  {text:"De quel pays est originaire le plat 'paella' ?",opts:["Italie","Portugal","Espagne","Mexique"],ans:2,cat:'cuisine',diff:1},
+  {text:"Quelle est la capitale de la Grèce ?",opts:["Thessalonique","Patras","Athènes","Crète"],ans:2,cat:'geo',diff:1},
+  {text:"Quelle est la plus grande planète du système solaire ?",opts:["Saturne","Jupiter","Neptune","Uranus"],ans:1,cat:'sciences',diff:1},
+  {text:"Quel est le symbole chimique du sodium ?",opts:["So","Na","S","N"],ans:1,cat:'sciences',diff:1},
+  {text:"Quel est le plus grand mammifère du monde ?",opts:["Éléphant","Éléphant de mer","Baleine bleue","Girafe"],ans:2,cat:'culture',diff:1},
+  {text:"Quel réseau social utilise un oiseau bleu comme logo historique ?",opts:["Facebook","Instagram","Twitter","LinkedIn"],ans:2,cat:'tech',diff:1},
+  {text:"Quel pays a remporté la Coupe du monde de football 2022 ?",opts:["France","Brésil","Argentine","Portugal"],ans:2,cat:'sport',diff:1},
+  {text:"Quel est le nom du personnage principal de 'One Piece' ?",opts:["Zoro","Naruto","Luffy","Goku"],ans:2,cat:'cinema',diff:1},
+  {text:"Dans quel film entend-on 'May the Force be with you' ?",opts:["Star Trek","Star Wars","Stargate","Guardians of the Galaxy"],ans:1,cat:'cinema',diff:1},
 ];
 
 function getServerStats() {

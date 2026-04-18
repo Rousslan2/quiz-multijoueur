@@ -654,6 +654,30 @@ function getProfileData(){
   return{pseudo,recent,best,stats};
 }
 
+function computeBadges(stats, history){
+  const h=history||[];
+  const games=stats.games||0;
+  const wins=stats.wins||0;
+  let streak=0;
+  for(let i=0;i<h.length;i++){
+    if(h[i].isWinner)streak++;
+    else break;
+  }
+  const uniq=new Set(h.map(g=>g.game).filter(Boolean));
+  const wr=games?Math.round(wins/games*100):0;
+  const out=[];
+  if(games>=1)out.push({id:'first',label:'Première partie',icon:'🎮'});
+  if(games>=10)out.push({id:'regular',label:'Joueur régulier',icon:'⭐'});
+  if(games>=50)out.push({id:'vet',label:'Vétéran',icon:'🏆'});
+  if(wins>=5)out.push({id:'w5',label:'Premiers succès',icon:'✅'});
+  if(wins>=25)out.push({id:'w25',label:'Serial winner',icon:'👑'});
+  if(streak>=3)out.push({id:'st3',label:'En feu',icon:'🔥'});
+  if(streak>=5)out.push({id:'st5',label:'Série invincible',icon:'💥'});
+  if(uniq.size>=5)out.push({id:'poly',label:'Polyvalent',icon:'🎯'});
+  if(games>=10&&wr>=50)out.push({id:'prec',label:'Précis',icon:'🎲'});
+  return out;
+}
+
 function initials(name){
   const n=String(name||'').trim();
   if(!n)return'JP';
@@ -704,6 +728,7 @@ function renderHistoryWidget(containerId){
   });
   const weeklyTop = Object.values(weekByGame).sort((a,b)=>b.points-a.points||b.wins-a.wins).slice(0,3);
   const weekTier = weekPoints>=45?'Diamant':weekPoints>=30?'Or':weekPoints>=18?'Argent':'Bronze';
+  const badges=computeBadges(stats,history);
 
   let html=`
     <div style="display:flex;align-items:center;gap:12px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:12px;margin-bottom:12px">
@@ -718,7 +743,15 @@ function renderHistoryWidget(containerId){
         <div style="font-size:.68rem;color:#64748b;text-transform:uppercase;letter-spacing:.04em">Meilleur jeu</div>
         <div style="font-size:.78rem;font-weight:700">${bestGame}</div>
       </div>
-    </div>
+    </div>`;
+  if(badges.length){
+    html+=`<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px" title="Badges débloqués selon ton activité">`;
+    badges.forEach(b=>{
+      html+=`<span style="display:inline-flex;align-items:center;gap:4px;padding:5px 9px;border-radius:999px;font-size:.68rem;font-weight:700;background:rgba(0,232,212,.08);border:1px solid rgba(0,232,212,.22);color:#c8fff8">${b.icon} ${escapeHtml(b.label)}</span>`;
+    });
+    html+=`</div>`;
+  }
+  html+=`
     <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap">
       <div style="flex:1;min-width:80px;background:rgba(167,139,250,.1);border:1px solid rgba(167,139,250,.25);border-radius:12px;padding:12px;text-align:center">
         <div style="font-size:1.6rem;font-weight:800;color:#a78bfa">${stats.games}</div>
@@ -1352,6 +1385,7 @@ function init(){
 window.ZapPlay={
   getSavedPseudo,savePseudo,
   getOrCreateDeviceId,syncProfileWithServer,pullProfileFromServer,
+  computeBadges,
   hideLoader,showLoader,
   saveGameResult,getHistory,getStats,renderHistoryWidget,clearHistory,exportHistory,
   renderSocialWidget,
