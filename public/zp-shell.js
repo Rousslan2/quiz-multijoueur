@@ -1,0 +1,475 @@
+/**
+ * ZapPlay — barre unifiée, règles, titre d’onglet, overlay fin, préférences son.
+ * Requiert : theme.css (variables), zp-shell.css, shared.js (ZapPlay), data-zp-game sur <html>
+ */
+(function () {
+  'use strict';
+
+  const GAME_META = {
+    home: {
+      title: 'Accueil',
+      rules: [
+        'Choisis un jeu sur la grille puis crée une salle ou rejoins avec un code.',
+        'Le lobby affiche les parties en cours ; invite tes amis avec le lien.',
+        'Crée un compte pour l’historique et les badges sur tous tes appareils.'
+      ]
+    },
+    quiz: {
+      title: 'Quiz',
+      rules: [
+        'Réponds le plus vite possible quand tu peux buzzer.',
+        'Bonnes réponses = points ; manche après manche jusqu’à la fin.',
+        'L’hôte lance la partie ; spectateurs possibles (pas de buzz).'
+      ]
+    },
+    draw: {
+      title: 'Dessin',
+      rules: [
+        'Un joueur dessine, les autres devinent le mot dans le chat.',
+        'Chaque manche change de dessinateur selon les règles de la salle.',
+        'Reste fair-play : pas de mots triche dans le dessin.'
+      ]
+    },
+    debat: {
+      title: 'Débat express',
+      rules: [
+        'Deux camps s’affrontent, les autres votent pour le meilleur argument.',
+        'Les rôles tournent : tout le monde passe par Pour / Contre / juge.',
+        'Respecte le temps de parole affiché à l’écran.'
+      ]
+    },
+    imposteur: {
+      title: 'Imposteur',
+      rules: [
+        'Chacun reçoit un mot secret — sauf l’imposteur, qui a un mot proche.',
+        'Décris sans donner le mot ; votez pour éliminer le suspect.',
+        'L’imposteur peut tenter de deviner le mot à la fin si besoin.'
+      ]
+    },
+    wordbomb: {
+      title: 'Word Bomb',
+      rules: [
+        'À ton tour, propose un mot français qui contient la syllabe affichée.',
+        'Mot invalide ou trop tard = une vie en moins.',
+        'Dernier joueur avec des vies gagne la manche.'
+      ]
+    },
+    typer: {
+      title: 'Typer Race',
+      rules: [
+        'Retape le texte affiché le plus vite possible.',
+        'Classement à la fin de chaque manche selon l’ordre d’arrivée.',
+        'Reste sur le même clavier : pas de copier-coller.'
+      ]
+    },
+    anagramme: {
+      title: 'Anagramme',
+      rules: [
+        'Retrouve le mot caché à partir des lettres mélangées.',
+        'Le premier qui trouve marque des points pour la manche.',
+        'Réponds en un seul mot valide.'
+      ]
+    },
+    justeprix: {
+      title: 'Juste Prix',
+      rules: [
+        'Chaque joueur propose un nombre pour approcher la vraie réponse.',
+        'Plus tu es proche, plus tu marques de points.',
+        'Une seule réponse par question : valide avant la fin du chrono.'
+      ]
+    },
+    timeline: {
+      title: 'Timeline',
+      rules: [
+        'Choisis l’événement qui s’est produit le plus tôt parmi les 4.',
+        'Bonne réponse = points ; à la fin le plus haut score gagne.',
+        'Réfléchis vite : le temps est limité.'
+      ]
+    },
+    memoire: {
+      title: 'Mémoire',
+      rules: [
+        'Retourne deux cartes pour former des paires identiques.',
+        'À chaque paire trouvée, tu marques un point ; sinon c’est au suivant.',
+        'Le joueur avec le plus de paires à la fin gagne.'
+      ]
+    },
+    taboo: {
+      title: 'Mots interdits',
+      rules: [
+        'Le descripteur fait deviner un mot sans dire les mots interdits.',
+        'Les autres proposent des réponses ; « Grille » si le descripteur triche.',
+        'Les scores s’affichent en haut à chaque manche.'
+      ]
+    },
+    p4: {
+      title: 'Puissance 4',
+      rules: [
+        'Aligne 4 jetons de ta couleur verticalement, horizontalement ou en diagonale.',
+        'Chaque joueur joue à tour de rôle en choisissant une colonne.',
+        'La partie peut se terminer par une manche ou un match au choix de l’hôte.'
+      ]
+    },
+    morpion: {
+      title: 'Morpion',
+      rules: [
+        'Aligne 3 symboles sur la grille pour gagner la manche.',
+        'Match en plusieurs manches : le score s’affiche en haut.',
+        'Joue quand c’est ton tour.'
+      ]
+    },
+    emoji: {
+      title: 'Devinette emoji',
+      rules: [
+        'Devine le mot ou la phrase à partir des émojis affichés.',
+        'Réponds dans le temps imparti pour marquer des points.',
+        'Le plus rapide et le plus juste l’emporte.'
+      ]
+    },
+    loup: {
+      title: 'Loup-Garou',
+      rules: [
+        'Chaque rôle a un objectif : village ou loups.',
+        'Suis les phases jour/nuit et vote avec ta faction.',
+        'Ne révèle pas ton rôle si les règles de la table l’interdisent.'
+      ]
+    },
+    uno: {
+      title: 'Uno',
+      rules: [
+        'Joue une carte de la même couleur ou du même numéro que la pile.',
+        'Cartes spéciales : changement de sens, +2, etc.',
+        'Crie « Uno » quand il te reste une carte.'
+      ]
+    },
+    sumo: {
+      title: 'Sumo Arena',
+      rules: [
+        'Pousse tes adversaires hors du ring pour les éliminer.',
+        'Dernier sur l’arène remporte la manche.',
+        'Utilise les boosts avec parcimonie.'
+      ]
+    },
+    paint: {
+      title: 'Paint.io',
+      rules: [
+        'Occupe le terrain avec ta couleur en fermant des zones.',
+        'Évite les collisions avec les autres joueurs selon les règles du mode.',
+        'Le plus grand territoire gagne.'
+      ]
+    },
+    naval: {
+      title: 'Bataille navale',
+      rules: [
+        'Place tes bateaux puis tire sur la grille adverse.',
+        'Coule tous les navires ennemis pour gagner.',
+        'Un tir par tour : viser juste.'
+      ]
+    },
+    lobby: {
+      title: 'Lobby',
+      rules: [
+        'Crée une salle ou rejoins avec un code à 4 caractères.',
+        'Filtre par jeu ou par statut pour trouver une partie.',
+        'Le ping affiché est indicatif de la latence vers le serveur.'
+      ]
+    },
+    account: {
+      title: 'Compte',
+      rules: [
+        'Crée un compte pour sauvegarder ton pseudo et ton historique.',
+        'Tu peux te connecter sur un autre appareil avec les mêmes identifiants.',
+        'Les badges reflètent ton activité sur ZapPlay.'
+      ]
+    },
+    admin: {
+      title: 'Admin',
+      rules: [
+        'Réservé aux opérateurs : mot de passe requis.',
+        'Tu peux consulter les stats et options de configuration.',
+        'Ne partage jamais le mot de passe admin.'
+      ]
+    },
+    default: {
+      title: 'ZapPlay',
+      rules: [
+        'Crée ou rejoins une salle avec un code.',
+        'Respecte les autres joueurs dans le chat.',
+        'Amuse-toi et relance une partie quand tu veux.'
+      ]
+    }
+  };
+
+  let baseTitle = '';
+  let ambientCtx = null;
+  let ambientOsc = null;
+  let ambientGain = null;
+
+  function getGameKey() {
+    return (document.documentElement.getAttribute('data-zp-game') || 'default').trim() || 'default';
+  }
+
+  function getMeta() {
+    const k = getGameKey();
+    return GAME_META[k] || GAME_META.default;
+  }
+
+  function isSoundMuted() {
+    try {
+      return localStorage.getItem('zapplay_sound_muted') === '1';
+    } catch {
+      return false;
+    }
+  }
+
+  function setSoundMuted(v) {
+    try {
+      if (v) localStorage.setItem('zapplay_sound_muted', '1');
+      else localStorage.removeItem('zapplay_sound_muted');
+    } catch (_) {}
+    updateMuteButton();
+    if (v) stopAmbient();
+    else startAmbientIfAllowed();
+  }
+
+  function updateMuteButton() {
+    const btn = document.getElementById('zp-nav-sound');
+    if (!btn) return;
+    const muted = isSoundMuted();
+    btn.classList.toggle('muted', muted);
+    btn.setAttribute('aria-pressed', muted ? 'true' : 'false');
+    btn.title = muted ? 'Son désactivé (cliquer pour activer)' : 'Son activé (cliquer pour couper)';
+    btn.textContent = muted ? '🔇' : '🔊';
+  }
+
+  function startAmbientIfAllowed() {
+    if (isSoundMuted()) return;
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    try {
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      if (!Ctx) return;
+      if (ambientOsc) return;
+      ambientCtx = new Ctx();
+      ambientOsc = ambientCtx.createOscillator();
+      ambientGain = ambientCtx.createGain();
+      ambientOsc.type = 'sine';
+      ambientOsc.frequency.value = 110;
+      ambientGain.gain.value = 0.018;
+      ambientOsc.connect(ambientGain);
+      ambientGain.connect(ambientCtx.destination);
+      ambientOsc.start();
+    } catch (_) {}
+  }
+
+  function stopAmbient() {
+    try {
+      if (ambientOsc) {
+        ambientOsc.stop();
+        ambientOsc.disconnect();
+      }
+    } catch (_) {}
+    ambientOsc = null;
+    try {
+      if (ambientCtx && ambientCtx.state !== 'closed') ambientCtx.close();
+    } catch (_) {}
+    ambientCtx = null;
+    ambientGain = null;
+  }
+
+  function setDocumentTitle(extra) {
+    const meta = getMeta();
+    const game = meta.title || 'ZapPlay';
+    if (!extra) {
+      document.title = 'ZapPlay — ' + game;
+      return;
+    }
+    document.title = 'ZapPlay · ' + game + ' — ' + extra;
+  }
+
+  function injectNav() {
+    if (document.getElementById('zp-nav-global')) return;
+    if (document.querySelector('header.zp-nav')) return;
+    const nav = document.createElement('header');
+    nav.id = 'zp-nav-global';
+    nav.className = 'zp-nav-global';
+    nav.setAttribute('role', 'navigation');
+    nav.innerHTML =
+      '<div class="zp-nav-global-inner">' +
+      '<a class="zp-nav-global-brand" href="/index.html">ZapPlay</a>' +
+      '<nav class="zp-nav-global-links" aria-label="Liens">' +
+      '<a href="/index.html">Accueil</a>' +
+      '<a href="/lobby.html">Lobby</a>' +
+      '<a href="/account.html">Compte</a>' +
+      '</nav>' +
+      '<div class="zp-nav-global-actions">' +
+      '<button type="button" class="zp-nav-global-icon" id="zp-nav-rules" title="Règles du jeu" aria-label="Règles">📖</button>' +
+      '<button type="button" class="zp-nav-global-icon" id="zp-nav-sound" title="Son" aria-label="Son">🔊</button>' +
+      '</div>' +
+      '</div>';
+    document.body.appendChild(nav);
+    document.body.classList.add('zp-has-shell');
+
+    document.getElementById('zp-nav-rules').addEventListener('click', openRules);
+    document.getElementById('zp-nav-sound').addEventListener('click', function () {
+      setSoundMuted(!isSoundMuted());
+    });
+    updateMuteButton();
+  }
+
+  function injectRulesPanel() {
+    if (document.getElementById('zp-rules-panel')) return;
+    const back = document.createElement('div');
+    back.id = 'zp-rules-backdrop';
+    back.addEventListener('click', closeRules);
+    const panel = document.createElement('div');
+    panel.id = 'zp-rules-panel';
+    panel.setAttribute('role', 'dialog');
+    panel.setAttribute('aria-modal', 'true');
+    panel.setAttribute('aria-labelledby', 'zp-rules-title');
+    panel.innerHTML =
+      '<h2 id="zp-rules-title">Règles</h2>' +
+      '<ul id="zp-rules-list"></ul>' +
+      '<button type="button" id="zp-rules-close">OK</button>';
+    document.body.appendChild(back);
+    document.body.appendChild(panel);
+    document.getElementById('zp-rules-close').addEventListener('click', closeRules);
+  }
+
+  function openRules() {
+    injectRulesPanel();
+    const meta = getMeta();
+    document.getElementById('zp-rules-title').textContent = 'Règles — ' + meta.title;
+    const ul = document.getElementById('zp-rules-list');
+    ul.innerHTML = '';
+    (meta.rules || []).forEach(function (line) {
+      const li = document.createElement('li');
+      li.textContent = line;
+      ul.appendChild(li);
+    });
+    document.getElementById('zp-rules-backdrop').classList.add('on');
+    document.getElementById('zp-rules-panel').classList.add('on');
+  }
+
+  function closeRules() {
+    const b = document.getElementById('zp-rules-backdrop');
+    const p = document.getElementById('zp-rules-panel');
+    if (b) b.classList.remove('on');
+    if (p) p.classList.remove('on');
+  }
+
+  function injectEndOverlay() {
+    if (document.getElementById('zp-end-backdrop')) return;
+    const el = document.createElement('div');
+    el.id = 'zp-end-backdrop';
+    el.innerHTML =
+      '<div id="zp-end-card">' +
+      '<h2 id="zp-end-title">Partie terminée</h2>' +
+      '<p id="zp-end-msg"></p>' +
+      '<div class="zp-end-actions">' +
+      '<button type="button" id="zp-end-primary">Rejouer</button>' +
+      '<button type="button" id="zp-end-secondary">Accueil</button>' +
+      '</div>' +
+      '</div>';
+    document.body.appendChild(el);
+    document.getElementById('zp-end-secondary').addEventListener('click', function () {
+      location.href = '/index.html';
+    });
+  }
+
+  /**
+   * @param {{ title?: string, message?: string, onReplay?: function, replayLabel?: string }} opts
+   */
+  function showGameOver(opts) {
+    opts = opts || {};
+    injectEndOverlay();
+    const title = opts.title || 'Partie terminée';
+    const msg = opts.message || '';
+    document.getElementById('zp-end-title').textContent = title;
+    document.getElementById('zp-end-msg').textContent = msg;
+    const primary = document.getElementById('zp-end-primary');
+    primary.textContent = opts.replayLabel || 'Rejouer';
+    primary.onclick = function () {
+      document.getElementById('zp-end-backdrop').classList.remove('on');
+      if (typeof opts.onReplay === 'function') opts.onReplay();
+    };
+    document.getElementById('zp-end-backdrop').classList.add('on');
+  }
+
+  function hideGameOver() {
+    const el = document.getElementById('zp-end-backdrop');
+    if (el) el.classList.remove('on');
+  }
+
+  function init() {
+    if (document.body.getAttribute('data-zp-no-shell') === '1') return;
+
+    if (!document.querySelector('link[href*="Orbitron"]')) {
+      const lf = document.createElement('link');
+      lf.rel = 'stylesheet';
+      lf.href =
+        'https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&display=swap';
+      document.head.appendChild(lf);
+    }
+
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = '/zp-shell.css';
+    if (!document.querySelector('link[href="/zp-shell.css"]')) document.head.appendChild(link);
+
+    baseTitle = document.title;
+    setDocumentTitle();
+
+    injectNav();
+    initAccountChip();
+
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') closeRules();
+    });
+
+    if (!isSoundMuted()) {
+      document.addEventListener(
+        'click',
+        function once() {
+          startAmbientIfAllowed();
+          document.removeEventListener('click', once);
+        },
+        { once: true }
+      );
+    }
+
+    if (window.ZapPlay) {
+      window.ZapPlay.isSoundMuted = isSoundMuted;
+      window.ZapPlay.setSoundMuted = setSoundMuted;
+      window.ZapPlay.setDocumentTitle = setDocumentTitle;
+      window.ZapPlay.showGameOver = showGameOver;
+      window.ZapPlay.hideGameOver = hideGameOver;
+    }
+  }
+
+  function initAccountChip() {
+    if (!window.ZapPlay || !window.ZapPlay.getAccountToken) return;
+    try {
+      const t = window.ZapPlay.getAccountToken();
+      const wrap = document.querySelector('.zp-nav-global-actions');
+      if (!wrap || document.getElementById('zp-nav-account')) return;
+      if (t) {
+        const a = document.createElement('a');
+        a.id = 'zp-nav-account';
+        a.href = '/account.html';
+        a.className = 'zp-nav-global-icon';
+        a.style.textDecoration = 'none';
+        a.style.fontSize = '0.72rem';
+        a.style.fontWeight = '800';
+        a.title = 'Mon compte';
+        a.textContent = '👤';
+        wrap.insertBefore(a, wrap.firstChild);
+      }
+    } catch (_) {}
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+})();
