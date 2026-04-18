@@ -31,12 +31,12 @@ input[type=password],input[type=text],input[type=number],select{width:100%;paddi
 <div class="zp-space-bg" style="opacity:.5"><div class="zp-neb1"></div><div class="zp-neb2"></div></div>
 
 <h1>Admin ZapPlay</h1>
-<p class="note">Protégé par <code>ADMIN_TOKEN</code> côté serveur. Saisis le token une fois : il est mémorisé dans ce navigateur (localStorage).</p>
+<p class="note">Accès protégé par mot de passe. Tu peux le mémoriser dans ce navigateur pour ne pas le retaper.</p>
 
 <div class="card">
-  <label for="token">Token administrateur</label>
-  <input type="password" id="token" placeholder="Même valeur que la variable ADMIN_TOKEN" autocomplete="off">
-  <button type="button" class="btn btn-ghost" id="btn-save-token">Enregistrer le token</button>
+  <label for="token">Mot de passe administrateur</label>
+  <input type="password" id="token" placeholder="Saisir le mot de passe" autocomplete="current-password">
+  <button type="button" class="btn btn-ghost" id="btn-save-token">Mémoriser dans ce navigateur</button>
 </div>
 
 <div class="card">
@@ -84,9 +84,9 @@ const GAMES = [
   ['memo','Mémoire'],['imposteur','Imposteur'],['debat','Débat express']
 ];
 
-const LS = 'zapplay_admin_token';
+const LS = 'zapplay_admin_password';
 
-function getTok(){ return localStorage.getItem(LS) || document.getElementById('token').value.trim(); }
+function getPassword(){ return localStorage.getItem(LS) || document.getElementById('token').value.trim(); }
 
 function setMsg(t, ok){
   const el = document.getElementById('msg');
@@ -95,17 +95,18 @@ function setMsg(t, ok){
 }
 
 function api(path, opts){
-  const tok = getTok();
+  const pwd = getPassword();
+  if(!pwd) throw new Error('Saisis le mot de passe administrateur.');
   return fetch(path, {
     ...opts,
     headers: {
       'Content-Type': 'application/json',
-      Authorization: 'Bearer ' + tok,
+      Authorization: 'Bearer ' + pwd,
+      'X-Admin-Password': pwd,
       ...(opts && opts.headers)
     }
   }).then(r => {
-    if(r.status === 503) throw new Error('Admin désactivé sur ce serveur (ADMIN_TOKEN non défini).');
-    if(r.status === 401) throw new Error('Token invalide.');
+    if(r.status === 401) throw new Error('Mot de passe incorrect.');
     return r.json().then(j => { if(!r.ok) throw new Error(j.error || r.status); return j; });
   });
 }
@@ -135,7 +136,8 @@ function selBots(){
 document.getElementById('btn-save-token').onclick = () => {
   const t = document.getElementById('token').value.trim();
   if(t) localStorage.setItem(LS, t);
-  setMsg(t ? 'Token enregistré dans ce navigateur.' : 'Token effacé.', true);
+  else localStorage.removeItem(LS);
+  setMsg(t ? 'Mot de passe mémorisé dans ce navigateur.' : 'Mémoire effacée.', true);
 };
 
 document.getElementById('btn-save-games').onclick = () => {
@@ -143,7 +145,7 @@ document.getElementById('btn-save-games').onclick = () => {
   document.querySelectorAll('#game-checks input[type=checkbox]').forEach(ch => {
     if(!ch.checked) hiddenGames.push(ch.getAttribute('data-id'));
   });
-  api('/api/admin/config', { method: 'PUT', body: JSON.stringify({ hiddenGames }) })
+  Promise.resolve().then(()=>api('/api/admin/config', { method: 'PUT', body: JSON.stringify({ hiddenGames }) }))
     .then(() => setMsg('Visibilité enregistrée.', true))
     .catch(e => setMsg(e.message, false));
 };
@@ -154,15 +156,18 @@ document.getElementById('btn-bots').onclick = () => {
   const count = +document.getElementById('bot-count').value || 1;
   const prefix = document.getElementById('bot-prefix').value.trim() || 'Bot';
   if(code.length !== 4){ setMsg('Code à 4 lettres requis.', false); return; }
-  api('/api/admin/bots', {
+  Promise.resolve().then(()=>api('/api/admin/bots', {
     method: 'POST',
     body: JSON.stringify({ game, code, count, prefix, host: location.hostname })
-  })
+  }))
     .then(d => setMsg('Bots lancés : ' + d.requested + ' connexion(s) vers ' + d.game + ' / ' + d.code + '.', true))
     .catch(e => setMsg(e.message, false));
 };
 
-if(localStorage.getItem(LS)) document.getElementById('token').placeholder = '•••••• (mémorisé)';
+if(localStorage.getItem(LS)){
+  document.getElementById('token').placeholder = '•••••• (mémorisé)';
+  document.getElementById('token').value = localStorage.getItem(LS);
+}
 
 selBots();
 

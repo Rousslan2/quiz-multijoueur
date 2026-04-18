@@ -8,17 +8,23 @@ const frenchWordsPkg = require('an-array-of-french-words');
 const adminLib = require('./lib/admin');
 let QRCode; try { QRCode = require('qrcode'); } catch {}
 
-const ADMIN_TOKEN = process.env.ADMIN_TOKEN || '';
+/** Mot de passe admin (défaut + surcharge par ADMIN_PASSWORD sur le serveur) */
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'Rousslan2001';
 let adminConfig = adminLib.loadAdminConfig();
 
-function adminAuth(req, res, next) {
-  if (!ADMIN_TOKEN) {
-    return res.status(503).json({ error: 'Admin désactivé: définissez ADMIN_TOKEN sur le serveur.' });
-  }
+function getAdminPassword(req) {
   const h = req.headers.authorization || '';
-  const tok = h.startsWith('Bearer ') ? h.slice(7) : (req.query.token || req.body?.token || '');
-  if (tok !== ADMIN_TOKEN) {
-    return res.status(401).json({ error: 'Non autorisé' });
+  if (h.startsWith('Bearer ')) return String(h.slice(7)).trim();
+  const x = req.headers['x-admin-password'];
+  if (x) return String(x).trim();
+  if (req.body && typeof req.body.password === 'string') return req.body.password.trim();
+  if (req.query && typeof req.query.password === 'string') return String(req.query.password).trim();
+  return '';
+}
+
+function adminAuth(req, res, next) {
+  if (getAdminPassword(req) !== ADMIN_PASSWORD) {
+    return res.status(401).json({ error: 'Mot de passe incorrect' });
   }
   next();
 }
