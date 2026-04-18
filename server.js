@@ -7,6 +7,8 @@ const os        = require('os');
 const frenchWordsPkg = require('an-array-of-french-words');
 const adminLib = require('./lib/admin');
 const profileLib = require('./lib/profile');
+const accountLib = require('./lib/account');
+const quizSessionLib = require('./lib/quizSession');
 let QRCode; try { QRCode = require('qrcode'); } catch {}
 
 /** Mot de passe admin (défaut + surcharge par ADMIN_PASSWORD sur le serveur) */
@@ -187,7 +189,7 @@ function makeWS(wss) {
 
 function bcast(players, data) {
   const m = JSON.stringify(data);
-  players.forEach(p => { if(p.ws.readyState===WebSocket.OPEN) p.ws.send(m); });
+  players.forEach(p => { if (p.ws && p.ws.readyState === WebSocket.OPEN) p.ws.send(m); });
 }
 function wsend(ws, data) { if(ws.readyState===WebSocket.OPEN) ws.send(JSON.stringify(data)); }
 function handleLoungeChat(room, ws, d){
@@ -485,6 +487,42 @@ const ALL_Q = [
   {text:"Quel pays a remporté la Coupe du monde de football 2022 ?",opts:["France","Brésil","Argentine","Portugal"],ans:2,cat:'sport',diff:1},
   {text:"Quel est le nom du personnage principal de 'One Piece' ?",opts:["Zoro","Naruto","Luffy","Goku"],ans:2,cat:'cinema',diff:1},
   {text:"Dans quel film entend-on 'May the Force be with you' ?",opts:["Star Trek","Star Wars","Stargate","Guardians of the Galaxy"],ans:1,cat:'cinema',diff:1},
+  // ── Lot méga-banque ──
+  {text:"Quelle est la capitale de la Norvège ?",opts:["Stockholm","Oslo","Copenhague","Helsinki"],ans:1,cat:'geo',diff:1},
+  {text:"Quel pays a pour capitale Bangkok ?",opts:["Vietnam","Thaïlande","Cambodge","Laos"],ans:1,cat:'geo',diff:1},
+  {text:"Quel désert traverse le nord du Chili ?",opts:["Sahara","Atacama","Gobi","Kalahari"],ans:1,cat:'geo',diff:2},
+  {text:"Quelle rivière traverse Paris ?",opts:["Loire","Seine","Rhin","Garonne"],ans:1,cat:'geo',diff:1},
+  {text:"Quel est le plus grand lac d'Afrique ?",opts:["Tanganika","Victoria","Malawi","Tchad"],ans:1,cat:'geo',diff:3},
+  {text:"Qui a écrit '1984' ?",opts:["Huxley","Orwell","Bradbury","Asimov"],ans:1,cat:'culture',diff:1},
+  {text:"Quel est le plus long fleuve d'Amérique du Sud ?",opts:["Paraná","Orénoque","Amazone","Uruguay"],ans:2,cat:'geo',diff:2},
+  {text:"Combien de cordes a une guitare classique ?",opts:["4","5","6","7"],ans:2,cat:'musique',diff:1},
+  {text:"Quel compositeur a écrit les 'Quatre Saisons' ?",opts:["Mozart","Vivaldi","Bach","Haendel"],ans:1,cat:'musique',diff:2},
+  {text:"Quel est le gaz le plus abondant dans l'atmosphère terrestre ?",opts:["Oxygène","Azote","CO2","Argon"],ans:1,cat:'sciences',diff:2},
+  {text:"Quelle est la vitesse du son dans l'air (ordre de grandeur) ?",opts:["120 m/s","340 m/s","900 m/s","1500 m/s"],ans:1,cat:'sciences',diff:2},
+  {text:"Quel organe filtre le sang pour former l'urine ?",opts:["Foie","Rein","Rate","Pancréas"],ans:1,cat:'sciences',diff:1},
+  {text:"Quelle est la formule chimique du dioxyde de carbone ?",opts:["CO","CO2","H2O","O2"],ans:1,cat:'sciences',diff:1},
+  {text:"Qui a proposé la théorie de la relativité restreinte ?",opts:["Newton","Einstein","Bohr","Planck"],ans:1,cat:'sciences',diff:1},
+  {text:"En quelle année a eu lieu la bataille de Verdun ?",opts:["1914","1916","1918","1920"],ans:1,cat:'histoire',diff:3},
+  {text:"Qui était le premier empereur de France (titre) ?",opts:["Louis XIV","Napoléon Ier","Charles X","Louis-Philippe"],ans:1,cat:'histoire',diff:2},
+  {text:"Quelle est la plus grande pyramide du site de Teotihuacan ?",opts:["Pyramide du Soleil","Pyramide de la Lune","Pyramide du Serpent","Pyramide du Jaguar"],ans:0,cat:'histoire',diff:2},
+  {text:"Quel traité a mis fin à la guerre de Trente Ans ?",opts:["Westphalie","Utrecht","Vienne","Paris"],ans:0,cat:'histoire',diff:3},
+  {text:"Quel réalisateur a dirigé 'Interstellar' ?",opts:["Nolan","Spielberg","Villeneuve","Scott"],ans:0,cat:'cinema',diff:1},
+  {text:"Dans quelle ville se déroule 'La La Land' ?",opts:["New York","Los Angeles","Chicago","Miami"],ans:1,cat:'cinema',diff:2},
+  {text:"Quel studio a produit 'Le Roi Lion' (1994) ?",opts:["DreamWorks","Disney","Pixar","Universal"],ans:1,cat:'cinema',diff:1},
+  {text:"Qui a créé Facebook ?",opts:["Bill Gates","Mark Zuckerberg","Steve Jobs","Larry Page"],ans:1,cat:'tech',diff:1},
+  {text:"Que signifie API en informatique ?",opts:["Application Program Interface","Advanced Program Integration","Automated Protocol Internet","Abstract Processing Input"],ans:0,cat:'tech',diff:2},
+  {text:"Quel protocole est utilisé pour le courrier électronique sortant ?",opts:["HTTP","FTP","SMTP","SSH"],ans:2,cat:'tech',diff:2},
+  {text:"Combien de bits dans un octet ?",opts:["4","8","16","32"],ans:1,cat:'tech',diff:1},
+  {text:"Quel sport se joue au Wimbledon ?",opts:["Football","Tennis","Cricket","Rugby"],ans:1,cat:'sport',diff:1},
+  {text:"Combien de joueurs sur le terrain en football (par équipe) ?",opts:["10","11","12","9"],ans:1,cat:'sport',diff:1},
+  {text:"Quel pays a inventé le judo ?",opts:["Chine","Corée","Japon","Thaïlande"],ans:2,cat:'sport',diff:2},
+  {text:"Quelle sauce accompagne les pâtes carbonara à l'origine romaine ?",opts:["Crème","Œuf et pecorino","Tomate","Pesto"],ans:1,cat:'cuisine',diff:2},
+  {text:"Quel fromage est utilisé dans une fondue savoyarde ?",opts:["Roquefort","Mélange de fromages à pâte dure","Mozzarella","Feta"],ans:1,cat:'cuisine',diff:2},
+  {text:"Quel pays est le premier producteur mondial de café ?",opts:["Colombie","Vietnam","Brésil","Éthiopie"],ans:2,cat:'cuisine',diff:2},
+  {text:"Combien de côtés a un dodécagone ?",opts:["10","11","12","13"],ans:2,cat:'culture',diff:2},
+  {text:"Quelle est la racine carrée de 144 ?",opts:["10","11","12","13"],ans:2,cat:'culture',diff:1},
+  {text:"Quel est le plus petit nombre premier ?",opts:["0","1","2","3"],ans:2,cat:'culture',diff:2},
+  {text:"Qui a peint 'Guernica' ?",opts:["Dalí","Picasso","Miró","Goya"],ans:1,cat:'culture',diff:2},
 ];
 
 function getServerStats() {
@@ -510,6 +548,7 @@ function getServerStats() {
     gamesCatalog: Object.keys(GAME_NAMES).length,
     quizQuestions: ALL_Q.length,
     profilesCount: profileLib.countProfiles(),
+    accountsCount: accountLib.countAccounts(),
   };
 }
 
@@ -523,18 +562,72 @@ app.get('/api/profile/:deviceId', (req, res) => {
   res.json(p);
 });
 
+function getAccountToken(req) {
+  const h = req.headers.authorization || '';
+  if (h.startsWith('Bearer ')) return String(h.slice(7)).trim();
+  return '';
+}
+
 app.post('/api/profile/sync', (req, res) => {
   try {
     const body = req.body || {};
+    let accountId = body.accountId || null;
+    const tok = body.accountToken || getAccountToken(req);
+    if (tok) {
+      const s = accountLib.getSession(tok);
+      if (s) accountId = s.accountId;
+    }
     const out = profileLib.syncProfile({
       deviceId: body.deviceId,
       displayName: body.displayName,
       history: body.history,
+      accountId,
     });
     res.json(out);
   } catch (e) {
     res.status(400).json({ error: String(e.message || e) });
   }
+});
+
+app.post('/api/auth/register', (req, res) => {
+  try {
+    const { email, password, displayName } = req.body || {};
+    const out = accountLib.registerAccount({ email, password, displayName });
+    res.json(out);
+  } catch (e) {
+    res.status(400).json({ error: String(e.message || e) });
+  }
+});
+
+app.post('/api/auth/login', (req, res) => {
+  try {
+    const { email, password } = req.body || {};
+    const out = accountLib.loginAccount({ email, password });
+    res.json(out);
+  } catch (e) {
+    res.status(401).json({ error: String(e.message || e) });
+  }
+});
+
+app.get('/api/auth/me', (req, res) => {
+  const tok = getAccountToken(req);
+  const s = accountLib.getSession(tok);
+  if (!s) return res.status(401).json({ error: 'Non connecté' });
+  const acc = accountLib.getAccountById(s.accountId);
+  if (!acc) return res.status(401).json({ error: 'Compte introuvable' });
+  res.json({
+    accountId: acc.id,
+    email: acc.email,
+    displayName: acc.displayName,
+    devices: acc.deviceIds || [],
+  });
+});
+
+app.post('/api/quiz/rejoin-token', (req, res) => {
+  const token = String(req.body?.token || '').trim();
+  const d = quizSessionLib.consume(token);
+  if (!d) return res.status(400).json({ error: 'Lien invalide ou expiré' });
+  res.json({ code: d.code, name: d.name, slot: d.slot });
 });
 
 app.get('/api/admin/stats', adminAuth, (_, res) => {
@@ -544,6 +637,10 @@ app.get('/api/admin/stats', adminAuth, (_, res) => {
 app.get('/api/admin/profiles', adminAuth, (req, res) => {
   const lim = Math.min(200, Math.max(1, Number(req.query.limit) || 40));
   res.json({ profiles: profileLib.listProfilesSummary(lim) });
+});
+
+app.get('/api/admin/accounts', adminAuth, (_, res) => {
+  res.json({ accounts: accountLib.listAccountsSummary() });
 });
 
 const quizRooms = new Map();
@@ -627,12 +724,17 @@ wssQuiz.on('connection',ws=>{
     if(!myRoom)return;
     const idx=myRoom.players.findIndex(p=>p.ws===ws);if(idx<0)return;
     const name=myRoom.players[idx].name;
-    myRoom.players.splice(idx,1);myRoom.players.forEach((p,i)=>p.slot=i);
+    myRoom.players[idx].ws=null;
+    myRoom.players[idx].disconnectedAt=Date.now();
     clearTimeout(myRoom.timer);
-    if(myRoom.players.length===0){quizRooms.delete(myRoom.code);broadcastLobby();return;}
+    const connected=myRoom.players.filter(p=>p.ws);
+    if(connected.length===0){
+      quizRooms.delete(myRoom.code);
+      broadcastLobby();
+      return;
+    }
     bcast(myRoom.players,{type:'player_left',name});
-    if(myRoom.players.length>=2 && ['QUESTION','BUZZED','SECOND_CHANCE','REVEAL'].includes(myRoom.phase)){
-      // Continuer la partie avec les joueurs restants
+    if(connected.length>=2 && ['QUESTION','BUZZED','SECOND_CHANCE','REVEAL'].includes(myRoom.phase)){
       myRoom.streaks=[0,0,0,0];
       qStart(myRoom);
     } else {
@@ -659,8 +761,29 @@ wssQuiz.on('connection',ws=>{
         myRoom=room;
         const slot=0;
         room.players.push({ws,name,score:0,slot,jokers:{fifty:true,pass:true}});
-        wsend(ws,{type:'created_quiz',code,slot,name});
+        const rejoinTok = quizSessionLib.issue({ code, name, slot });
+        wsend(ws,{type:'created_quiz',code,slot,name,rejoinToken:rejoinTok});
         wsend(ws,qSnap(room));
+        broadcastLobby();
+        break;
+      }
+      case 'rejoin_quiz':{
+        const code=String(d.code||'').trim().toUpperCase();
+        const room=quizRooms.get(code);
+        if(!room){wsend(ws,{type:'error',msg:'Salle introuvable.'});return;}
+        const name=String(d.name||'').trim().slice(0,20)||'Joueur';
+        const slot=Number(d.slot);
+        const p=room.players.find(x=>x.slot===slot&&x.name===name&&x.ws===null);
+        if(!p){wsend(ws,{type:'error',msg:'Reprise impossible (salle ou joueur).'});return;}
+        if(!['WAITING','SETUP','QUESTION','BUZZED','SECOND_CHANCE','REVEAL','COUNTDOWN','GAME_OVER'].includes(room.phase)){
+          wsend(ws,{type:'error',msg:'Partie terminée.'});return;
+        }
+        p.ws=ws;
+        p.disconnectedAt=0;
+        myRoom=room;
+        const rTokR = quizSessionLib.issue({ code, name, slot });
+        wsend(ws,{type:'welcome_quiz',slot,name,code,rejoinToken:rTokR});
+        bcast(room.players,qSnap(room));
         broadcastLobby();
         break;
       }
@@ -668,13 +791,15 @@ wssQuiz.on('connection',ws=>{
         const code=String(d.code||'').trim().toUpperCase();
         const room=quizRooms.get(code);
         if(!room){wsend(ws,{type:'error',msg:'Salle introuvable.'});return;}
-        if(room.players.length>=4){wsend(ws,{type:'error',msg:'Partie pleine (4 joueurs max).'});return;}
+        const connected=room.players.filter(x=>x.ws);
+        if(connected.length>=4){wsend(ws,{type:'error',msg:'Partie pleine (4 joueurs max).'});return;}
         if(!['WAITING','SETUP'].includes(room.phase)){wsend(ws,{type:'error',msg:'La partie a déjà commencé.'});return;}
         const name=String(d.name||'').trim().slice(0,20)||'Joueur';
         const slot=room.players.length;
         room.players.push({ws,name,score:0,slot,jokers:{fifty:true,pass:true}});
         myRoom=room;
-        wsend(ws,{type:'welcome_quiz',slot,name,code});
+        const rTok2 = quizSessionLib.issue({ code, name, slot });
+        wsend(ws,{type:'welcome_quiz',slot,name,code,rejoinToken:rTok2});
         bcast(room.players,qSnap(room));
         broadcastLobby();
         break;

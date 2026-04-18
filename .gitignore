@@ -3,3 +3,4 @@ node_modules/
 *.log
 data/admin-config.json
 data/profiles.json
+data/accounts.json

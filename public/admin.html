@@ -85,6 +85,12 @@ input[type=password],input[type=text],input[type=number],select{width:100%;paddi
   <div id="admin-profiles" style="font-size:.82rem;line-height:1.5"></div>
 </div>
 
+<div class="card">
+  <h2 style="font-family:Orbitron,monospace;font-size:.75rem;color:var(--muted);letter-spacing:.12em;margin-bottom:12px">COMPTES</h2>
+  <p class="note" style="margin-bottom:10px">Inscriptions email (sans mot de passe affiché).</p>
+  <div id="admin-accounts" style="font-size:.82rem;line-height:1.5"></div>
+</div>
+
 <div id="msg"></div>
 <p style="margin-top:24px"><a href="index.html" style="color:var(--teal)">← Accueil</a></p>
 
@@ -205,9 +211,22 @@ function loadAdminProfiles(){
     .catch(e=>{ document.getElementById('admin-profiles').textContent = e.message; });
 }
 
+function loadAdminAccounts(){
+  Promise.resolve().then(()=>api('/api/admin/accounts'))
+    .then(d=>{
+      const box = document.getElementById('admin-accounts');
+      const rows = (d.accounts||[]).map(a=>{
+        return '<div style="padding:8px 0;border-bottom:1px solid rgba(255,255,255,.06)"><b>'+a.email+'</b> · '+a.displayName+' · '+a.devices+' app.<br><span style="font-size:.68rem;color:var(--muted)">'+a.id+'</span></div>';
+      }).join('');
+      box.innerHTML = rows || '<span style="color:var(--muted)">Aucun compte.</span>';
+    })
+    .catch(e=>{ document.getElementById('admin-accounts').textContent = e.message; });
+}
+
 document.getElementById('btn-refresh-stats').onclick = ()=>{
   loadAdminStats();
   loadAdminProfiles();
+  loadAdminAccounts();
 };
 
 fetch('/api/public/config')
@@ -217,6 +236,7 @@ fetch('/api/public/config')
 
 loadAdminStats();
 loadAdminProfiles();
+loadAdminAccounts();
 </script>
 </body>
 </html>

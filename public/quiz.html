@@ -185,6 +185,10 @@ input[type=text]::placeholder{color:var(--muted)}
       ----
     </div>
     <div id="copy-hint-quiz" style="font-size:.72rem;color:var(--muted);margin-top:6px">Cliquer pour copier</div>
+    <div id="quiz-rejoin-row" style="display:none;margin-top:14px">
+      <button type="button" class="btn btn-secondary btn-sm" onclick="copyQuizRejoinLink()">Copier lien de reprise</button>
+      <p id="rejoin-hint-quiz" style="margin-top:8px;font-size:.72rem;color:var(--muted)">Si tu fermes l’onglet, ce lien te reconnecte à ta place.</p>
+    </div>
   </div>
   <div id="wait-msg"><h2 id="wait-title">En attente...</h2><p id="wait-count" style="color:var(--muted);font-size:.9rem">1 joueur connecté</p></div>
 </div>
@@ -239,6 +243,9 @@ input[type=text]::placeholder{color:var(--muted)}
   </div>
   <div id="setup-actions" style="margin-top:auto;padding-top:10px;display:flex;flex-direction:column;gap:8px">
     <div id="setup-status" style="text-align:center;color:var(--muted);font-size:.85rem"></div>
+    <div id="quiz-rejoin-setup" style="display:none;text-align:center">
+      <button type="button" class="btn btn-secondary btn-sm" onclick="copyQuizRejoinLink()">Lien de reprise (fermer l’onglet)</button>
+    </div>
     <button id="btn-start" class="btn btn-success" onclick="doStart()" style="display:none">Lancer la partie !</button>
   </div>
   <div style="height:6px"></div>
@@ -315,6 +322,27 @@ function stopTimer(){clearTimeout(tickT);const b=document.getElementById('timer-
 // ── WebSocket ─────────────────────────────────────────────────────────────────
 const WS_URL = `${location.protocol==='https:'?'wss':'ws'}://${location.host}/ws/quiz`;
 let ws, mySlot=-1, myName='', myCode='', reconnectAction=null;
+let lastRejoinToken='';
+function buildQuizRejoinUrl(tok){
+  const u=new URL(location.href);
+  u.search='';
+  u.searchParams.set('rejoin',tok);
+  return u.toString();
+}
+function copyQuizRejoinLink(){
+  if(!lastRejoinToken)return;
+  navigator.clipboard.writeText(buildQuizRejoinUrl(lastRejoinToken)).then(()=>{
+    const h=document.getElementById('rejoin-hint-quiz');
+    if(h) h.textContent='Lien copié ! Garde-le pour reprendre après une coupure.';
+  }).catch(()=>{});
+}
+function showRejoinUi(tok){
+  lastRejoinToken=tok||'';
+  const row=document.getElementById('quiz-rejoin-row');
+  const rs=document.getElementById('quiz-rejoin-setup');
+  if(row) row.style.display=lastRejoinToken?'block':'none';
+  if(rs) rs.style.display=lastRejoinToken?'block':'none';
+}
 function connect(){
   ws=new WebSocket(WS_URL);
   ws.onopen=()=>{
@@ -352,6 +380,25 @@ bindLoungeSender();
       else reconnectAction=tryCreate;
     };
     setTimeout(tryCreate,300);
+  }
+  const rj=p.get('rejoin');
+  if(rj){
+    fetch('/api/quiz/rejoin-token',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:rj})})
+      .then(r=>r.json().then(j=>({ok:r.ok,j})))
+      .then(({ok,j})=>{
+        if(!ok){ showErr(j.error||'Lien invalide'); return; }
+        document.getElementById('inp-name').value=j.name;
+        document.getElementById('inp-code').value=j.code;
+        myName=j.name;
+        if(window.ZapPlay)ZapPlay.savePseudo(j.name);
+        const tryRejoin=()=>{
+          if(ws&&ws.readyState===WebSocket.OPEN){
+            SND.init();
+            send({type:'rejoin_quiz',code:j.code,name:j.name,slot:j.slot});
+          }else reconnectAction=tryRejoin;
+        };
+        setTimeout(tryRejoin,320);
+      }).catch(()=>showErr('Erreur reprise'));
   }
 })();
 
@@ -509,9 +556,13 @@ function handle(msg){
     case 'created_quiz':
       mySlot=msg.slot;myCode=msg.code;
       document.getElementById('room-code-display').textContent=msg.code;
+      showRejoinUi(msg.rejoinToken);
       show('s-wait');
       break;
-    case 'welcome_quiz': mySlot=msg.slot;myCode=msg.code||''; break;
+    case 'welcome_quiz':
+      mySlot=msg.slot;myCode=msg.code||'';
+      showRejoinUi(msg.rejoinToken);
+      break;
     case 'error': showErr(msg.msg); break;
     case 'countdown': showCountdown(msg.seconds); break;
     case 'player_left':

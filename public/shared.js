@@ -4,6 +4,7 @@
 const STORAGE_KEY_NAME = 'zapplay_pseudo';
 const STORAGE_KEY_HISTORY = 'zapplay_history';
 const STORAGE_KEY_DEVICE = 'zapplay_device_v1';
+const STORAGE_KEY_ACCOUNT = 'zapplay_account_v1';
 const STORAGE_KEY_SOCIAL = 'zapplay_social_v1';
 const STORAGE_KEY_PRESENCE = 'zapplay_presence_v1';
 const MAX_HISTORY = 50;
@@ -264,16 +265,47 @@ function scheduleProfileSync(){
   },1200);
 }
 
+function getAccountToken(){
+  try{
+    const raw=localStorage.getItem(STORAGE_KEY_ACCOUNT);
+    if(!raw)return null;
+    const j=JSON.parse(raw);
+    return j&&j.token?String(j.token):null;
+  }catch{return null;}
+}
+
+function setAccountSession(data){
+  if(!data||!data.token){
+    localStorage.removeItem(STORAGE_KEY_ACCOUNT);
+    return;
+  }
+  localStorage.setItem(STORAGE_KEY_ACCOUNT,JSON.stringify({
+    token:data.token,
+    accountId:data.accountId,
+    email:data.email,
+    displayName:data.displayName
+  }));
+  if(data.displayName) savePseudo(data.displayName);
+}
+
+function logoutAccount(){
+  localStorage.removeItem(STORAGE_KEY_ACCOUNT);
+}
+
 function syncProfileWithServer(){
   const deviceId=getOrCreateDeviceId();
+  const accTok=getAccountToken();
   const body=JSON.stringify({
     deviceId,
     displayName:getSavedPseudo(),
-    history:getHistory()
+    history:getHistory(),
+    accountToken:accTok||undefined
   });
+  const headers={'Content-Type':'application/json'};
+  if(accTok) headers.Authorization='Bearer '+accTok;
   return fetch('/api/profile/sync',{
     method:'POST',
-    headers:{'Content-Type':'application/json'},
+    headers,
     body
   }).then(r=>{
     if(!r.ok)return null;
@@ -1385,6 +1417,7 @@ function init(){
 window.ZapPlay={
   getSavedPseudo,savePseudo,
   getOrCreateDeviceId,syncProfileWithServer,pullProfileFromServer,
+  getAccountToken,setAccountSession,logoutAccount,
   computeBadges,
   hideLoader,showLoader,
   saveGameResult,getHistory,getStats,renderHistoryWidget,clearHistory,exportHistory,

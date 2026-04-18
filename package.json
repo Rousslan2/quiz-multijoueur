@@ -6,7 +6,7 @@
   "scripts": {
     "build": "echo 'No build step'",
     "start": "node server.js",
-    "test": "node --check server.js && node --check lib/admin.js && node --check lib/profile.js"
+    "test": "node --check server.js && node --check lib/admin.js && node --check lib/profile.js && node --check lib/account.js && node --check lib/quizSession.js"
   },
   "dependencies": {
     "an-array-of-french-words": "^2.0.0",

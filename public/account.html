@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ZapPlay — Compte</title>
+<link rel="stylesheet" href="theme.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;600;700&family=Orbitron:wght@700&display=swap" rel="stylesheet">
+<style>
+body{min-height:100vh;color:var(--text);font-family:'Exo 2',sans-serif;padding:24px 16px 48px;max-width:480px;margin:0 auto}
+h1{font-family:'Orbitron',monospace;font-size:1.2rem;color:var(--teal);margin-bottom:6px}
+p.note{font-size:.85rem;color:var(--muted);margin-bottom:18px;line-height:1.5}
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius,14px);padding:18px;margin-bottom:14px}
+label{display:block;font-size:.78rem;color:var(--muted);margin-bottom:6px}
+input[type=email],input[type=password],input[type=text]{width:100%;padding:12px;border-radius:10px;border:1px solid var(--border);background:rgba(255,255,255,.06);color:var(--text);font-size:1rem}
+.btn{margin-top:12px;padding:12px 18px;border:none;border-radius:10px;font-weight:700;cursor:pointer;font-family:'Orbitron',monospace;font-size:.72rem;letter-spacing:.06em;width:100%}
+.btn-primary{background:linear-gradient(135deg,var(--teal),var(--blue));color:#041018}
+.btn-ghost{background:rgba(255,255,255,.08);color:var(--text);border:1px solid var(--border)}
+#msg{min-height:22px;font-size:.85rem;margin-top:10px}
+#msg.err{color:#fca5a5}
+#msg.ok{color:#86efac}
+#who{font-size:.88rem;margin-bottom:12px}
+a.back{color:var(--teal);text-decoration:none;font-size:.85rem}
+</style>
+</head>
+<body>
+<div class="zp-space-bg" style="opacity:.45"><div class="zp-neb1"></div><div class="zp-neb2"></div></div>
+
+<p><a class="back" href="index.html">← Accueil</a></p>
+<h1>Compte ZapPlay</h1>
+<p class="note">Un seul historique fusionné sur tous tes appareils connectés avec le même compte.</p>
+
+<div class="card" id="box-logged" style="display:none">
+  <div id="who"></div>
+  <button type="button" class="btn btn-ghost" id="btn-logout">Se déconnecter</button>
+</div>
+
+<div class="card" id="box-form">
+  <label for="email">Email</label>
+  <input type="email" id="email" autocomplete="email" placeholder="toi@exemple.com">
+  <label for="pwd" style="margin-top:12px">Mot de passe (min. 6 caractères)</label>
+  <input type="password" id="pwd" autocomplete="current-password">
+  <label for="disp" style="margin-top:12px">Pseudo affiché (optionnel)</label>
+  <input type="text" id="disp" maxlength="20" placeholder="Comme dans les jeux">
+  <button type="button" class="btn btn-primary" id="btn-login" style="margin-top:16px">Connexion</button>
+  <button type="button" class="btn btn-ghost" id="btn-reg">Créer un compte</button>
+</div>
+
+<div id="msg"></div>
+
+<script src="shared.js"></script>
+<script>
+function setMsg(t, ok){
+  const el = document.getElementById('msg');
+  el.textContent = t || '';
+  el.className = ok ? 'ok' : 'err';
+}
+
+function refreshUI(){
+  const raw = localStorage.getItem('zapplay_account_v1');
+  let j = null;
+  try { j = raw ? JSON.parse(raw) : null; } catch {}
+  const box = document.getElementById('box-logged');
+  const form = document.getElementById('box-form');
+  if (j && j.token) {
+    box.style.display = 'block';
+    form.style.display = 'none';
+    document.getElementById('who').innerHTML = '<b>' + (j.email || '') + '</b><br><span style="font-size:.8rem;color:var(--muted)">Pseudo : ' + (j.displayName || '—') + '</span>';
+  } else {
+    box.style.display = 'none';
+    form.style.display = 'block';
+  }
+}
+
+document.getElementById('btn-logout').onclick = () => {
+  if (window.ZapPlay) ZapPlay.logoutAccount();
+  setMsg('Déconnecté.', true);
+  refreshUI();
+};
+
+function api(path, opts) {
+  const tok = window.ZapPlay && ZapPlay.getAccountToken ? ZapPlay.getAccountToken() : null;
+  const headers = { 'Content-Type': 'application/json', ...(opts && opts.headers) };
+  if (tok) headers.Authorization = 'Bearer ' + tok;
+  return fetch(path, { ...opts, headers }).then(r => r.json().then(j => ({ ok: r.ok, j })));
+}
+
+document.getElementById('btn-login').onclick = () => {
+  const email = document.getElementById('email').value.trim();
+  const password = document.getElementById('pwd').value;
+  api('/api/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) })
+    .then(({ ok, j }) => {
+      if (!ok) throw new Error(j.error || 'Erreur');
+      ZapPlay.setAccountSession(j);
+      setMsg('Connecté. Synchronisation…', true);
+      return ZapPlay.syncProfileWithServer();
+    })
+    .then(() => {
+      setMsg('Compte lié — historique fusionné.', true);
+      refreshUI();
+    })
+    .catch(e => setMsg(e.message, false));
+};
+
+document.getElementById('btn-reg').onclick = () => {
+  const email = document.getElementById('email').value.trim();
+  const password = document.getElementById('pwd').value;
+  const displayName = document.getElementById('disp').value.trim();
+  api('/api/auth/register', { method: 'POST', body: JSON.stringify({ email, password, displayName }) })
+    .then(({ ok, j }) => {
+      if (!ok) throw new Error(j.error || 'Erreur');
+      ZapPlay.setAccountSession(j);
+      setMsg('Compte créé.', true);
+      return ZapPlay.syncProfileWithServer();
+    })
+    .then(() => {
+      refreshUI();
+    })
+    .catch(e => setMsg(e.message, false));
+};
+
+refreshUI();
+</script>
+</body>
+</html>
