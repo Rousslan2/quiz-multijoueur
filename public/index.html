@@ -427,65 +427,310 @@ body.home-page .hero-right { animation-delay: -6s; }
 .chip-dot--chat{ background:#5B9FFF; color:#5B9FFF; }
 
 .hero-right{padding:18px;}
+/* Aperçu lobby (remplace l’ancienne scène 3D + cartes flottantes) */
 .scene{
   position:relative;
-  height: 260px;
-  border-radius:16px;
+  min-height: 300px;
+  border-radius:20px;
   overflow:hidden;
-  border:1px solid rgba(255,255,255,.10);
+  border:1px solid rgba(255,255,255,.12);
   background:
-    radial-gradient(700px 240px at 20% 10%, rgba(0,232,212,.12), transparent 60%),
-    radial-gradient(560px 260px at 90% 60%, rgba(255,77,109,.10), transparent 60%),
-    linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02));
+    radial-gradient(ellipse 90% 70% at 50% 0%, rgba(0,232,212,.10), transparent 55%),
+    linear-gradient(180deg, rgba(15,17,28,.95) 0%, rgba(6,8,14,.98) 100%);
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,.04) inset,
+    0 32px 80px rgba(0,0,0,.55);
 }
 .scene::before{
   content:'';
-  position:absolute;inset:-40%;
+  position:absolute;inset:0;
   background:
-    linear-gradient(rgba(0,232,212,.07) 1px,transparent 1px),
-    linear-gradient(90deg,rgba(0,232,212,.07) 1px,transparent 1px);
-  background-size: 44px 44px;
-  transform: perspective(700px) rotateX(64deg) translateY(20px);
-  transform-origin: 50% 40%;
-  opacity:.35;
-  animation: grid-float 7.5s ease-in-out infinite;
-  filter: drop-shadow(0 0 22px rgba(0,232,212,.15));
-}
-@keyframes grid-float{
-  0%,100%{transform:perspective(700px) rotateX(64deg) translateY(24px) translateX(0)}
-  50%{transform:perspective(700px) rotateX(64deg) translateY(12px) translateX(10px)}
-}
-.float-card{
-  position:absolute;
-  z-index:2;
-  width: 168px; height: 106px;
-  border-radius:16px;
-  border:1px solid rgba(255,255,255,.16);
-  background: linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.03));
-  box-shadow: 0 20px 60px rgba(0,0,0,.55);
-  transform-style:preserve-3d;
-  padding:14px 14px 12px;
-  backdrop-filter: blur(10px);
-}
-.fx-hero-canvas{ z-index:0; opacity:.95; }
-.scene > *:not(.fx-hero-canvas){ position:absolute; z-index:2; }
-.float-card::after{
-  content:'';
-  position:absolute;inset:-2px;
-  border-radius:18px;
-  background: radial-gradient(420px 160px at 20% 20%, rgba(0,232,212,.22), transparent 55%);
-  opacity:.9;
+    linear-gradient(rgba(255,255,255,.03) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(255,255,255,.02) 1px,transparent 1px);
+  background-size: 20px 20px;
+  opacity:.45;
   pointer-events:none;
-  transform: translateZ(-1px);
+  mask-image: linear-gradient(180deg, #000 0%, transparent 85%);
 }
-.float-card .k{font-family:'Orbitron',monospace;font-size:.58rem;letter-spacing:.22em;text-transform:uppercase;color:rgba(232,232,240,.62)}
-.float-card .v{margin-top:8px;font-size:1.25rem;font-weight:900;color:rgba(232,232,240,.94);text-shadow:0 0 16px rgba(0,232,212,.18)}
-.float-card.a{left:16px;top:18px;animation: floatA 6.5s ease-in-out infinite;}
-.float-card.b{right:14px;top:36px;width:182px;animation: floatB 7.2s ease-in-out infinite;}
-.float-card.c{left:54px;bottom:18px;width:210px;animation: floatC 8.2s ease-in-out infinite;}
-@keyframes floatA{0%,100%{transform:translateY(0) rotateX(10deg) rotateY(-10deg)}50%{transform:translateY(-10px) rotateX(14deg) rotateY(-6deg)}}
-@keyframes floatB{0%,100%{transform:translateY(0) rotateX(-8deg) rotateY(10deg)}50%{transform:translateY(-12px) rotateX(-12deg) rotateY(14deg)}}
-@keyframes floatC{0%,100%{transform:translateY(0) rotateX(6deg) rotateY(6deg)}50%{transform:translateY(-14px) rotateX(10deg) rotateY(10deg)}}
+.zp-hero-lobby{
+  position:relative;
+  z-index:1;
+  padding:14px 14px 16px;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  font-size:.72rem;
+}
+.zp-hero-lobby-chrome{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  padding-bottom:8px;
+  border-bottom:1px solid rgba(255,255,255,.08);
+}
+.zp-hero-dot{
+  width:7px;height:7px;border-radius:50%;
+  background:var(--green);
+  box-shadow:0 0 10px var(--green);
+  animation: zp-hero-blink 2.2s ease-in-out infinite;
+}
+.zp-hero-lobby-title{
+  flex:1;
+  font-family:'Orbitron',monospace;
+  font-weight:900;
+  font-size:.68rem;
+  letter-spacing:.1em;
+  color:var(--teal);
+  text-shadow:0 0 18px rgba(0,232,212,.35);
+}
+.zp-hero-ping{
+  font-family:'Orbitron',monospace;
+  font-size:.52rem;
+  letter-spacing:.06em;
+  color:var(--muted);
+  padding:4px 8px;
+  border-radius:999px;
+  border:1px solid rgba(255,255,255,.08);
+  background:rgba(0,0,0,.25);
+}
+.zp-hero-ping b{
+  color:var(--teal);
+  font-weight:700;
+  animation: zp-hero-pingpulse 2.5s ease-in-out infinite;
+}
+@keyframes zp-hero-blink{0%,100%{opacity:1}50%{opacity:.2}}
+@keyframes zp-hero-pingpulse{0%,100%{opacity:1}50%{opacity:.55}}
+
+.zp-hero-invite{
+  padding:8px 10px;
+  border-radius:10px;
+  border:1px solid rgba(0,232,212,.18);
+  background:rgba(0,232,212,.06);
+  position:relative;
+  overflow:hidden;
+}
+.zp-hero-invite::after{
+  content:'';
+  position:absolute;inset:0;
+  background:linear-gradient(100deg,transparent 40%,rgba(255,255,255,.06) 50%,transparent 60%);
+  animation: zp-hero-shimmer 4s ease-in-out infinite;
+  pointer-events:none;
+}
+@keyframes zp-hero-shimmer{
+  0%,100%{transform:translateX(-100%)}
+  50%{transform:translateX(100%)}
+}
+.zp-hero-invite-label{
+  font-family:'Orbitron',monospace;
+  font-size:.48rem;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+  color:rgba(0,232,212,.75);
+  display:block;
+  margin-bottom:6px;
+}
+.zp-hero-invite-row{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  font-size:.58rem;
+  color:rgba(203,213,225,.75);
+}
+.zp-hero-fake-url{
+  flex:1;
+  min-width:0;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  font-family:ui-monospace,monospace;
+  opacity:.85;
+}
+.zp-hero-chip{
+  flex-shrink:0;
+  padding:3px 8px;
+  border-radius:6px;
+  font-size:.52rem;
+  font-family:'Orbitron',monospace;
+  font-weight:700;
+  color:var(--teal);
+  border:1px solid rgba(0,232,212,.35);
+  background:rgba(0,232,212,.12);
+}
+
+.zp-hero-actions{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+}
+@media(max-width:380px){.zp-hero-actions{grid-template-columns:1fr}}
+.zp-hero-ac{
+  border-radius:10px;
+  border:1px solid rgba(255,255,255,.08);
+  background:rgba(18,18,31,.85);
+  padding:8px 8px 10px;
+  position:relative;
+  overflow:hidden;
+}
+.zp-hero-ac::before{
+  content:'';
+  position:absolute;top:0;left:0;right:0;height:2px;
+  border-radius:10px 10px 0 0;
+}
+.zp-hero-ac--create::before{background:linear-gradient(90deg,var(--teal),transparent 90%);}
+.zp-hero-ac--join::before{background:linear-gradient(90deg,var(--orange),transparent 90%);}
+.zp-hero-ac-t{
+  font-family:'Orbitron',monospace;
+  font-size:.52rem;
+  font-weight:700;
+  letter-spacing:.06em;
+  margin-bottom:6px;
+}
+.zp-hero-ac--create .zp-hero-ac-t{color:var(--teal);}
+.zp-hero-ac--join .zp-hero-ac-t{color:var(--orange);}
+.zp-hero-ac-fake{
+  font-size:.58rem;
+  color:var(--muted);
+  padding:4px 6px;
+  border-radius:6px;
+  border:1px solid rgba(255,255,255,.06);
+  background:rgba(0,0,0,.2);
+  margin-bottom:6px;
+}
+.zp-hero-ac-code{
+  font-family:'Orbitron',monospace;
+  font-size:.62rem;
+  font-weight:700;
+  letter-spacing:.18em;
+  text-align:center;
+  padding:5px 4px;
+  border-radius:6px;
+  border:1px solid rgba(255,107,53,.2);
+  background:rgba(255,107,53,.06);
+  color:rgba(254,215,170,.92);
+  margin-bottom:6px;
+}
+.zp-hero-btn{
+  width:100%;
+  text-align:center;
+  padding:6px 8px;
+  border-radius:6px;
+  font-family:'Orbitron',monospace;
+  font-size:.56rem;
+  font-weight:700;
+  letter-spacing:.08em;
+}
+.zp-hero-btn--teal{
+  background:var(--teal);
+  color:#030312;
+  box-shadow:0 0 16px rgba(0,232,212,.25);
+}
+.zp-hero-btn--orange{
+  background:linear-gradient(180deg,#ff8a4d,var(--orange));
+  color:#fff;
+  box-shadow:0 0 16px rgba(255,112,51,.2);
+}
+
+.zp-hero-rooms{
+  border-radius:10px;
+  border:1px solid rgba(255,255,255,.08);
+  background:rgba(0,0,0,.22);
+  overflow:hidden;
+}
+.zp-hero-rooms-head{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:7px 10px;
+  border-bottom:1px solid rgba(255,255,255,.07);
+  font-family:'Orbitron',monospace;
+  font-size:.48rem;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+  color:var(--muted);
+}
+.zp-hero-count{
+  font-size:.52rem;
+  color:var(--teal);
+  letter-spacing:.06em;
+}
+.zp-hero-room{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  padding:8px 10px;
+  border-bottom:1px solid rgba(255,255,255,.05);
+  animation: zp-hero-roomin .6s cubic-bezier(.2,.8,.2,1) both;
+}
+.zp-hero-room:nth-child(2){animation-delay:.08s}
+.zp-hero-room:nth-child(3){animation-delay:.16s}
+.zp-hero-room:nth-child(4){animation-delay:.24s}
+.zp-hero-room:last-child{border-bottom:none}
+@keyframes zp-hero-roomin{
+  from{opacity:0;transform:translateX(-10px)}
+  to{opacity:1;transform:translateX(0)}
+}
+.zp-hero-room-ico{
+  width:32px;height:32px;
+  flex-shrink:0;
+  object-fit:contain;
+  filter:drop-shadow(0 2px 8px rgba(0,0,0,.4));
+}
+.zp-hero-room-txt{flex:1;min-width:0}
+.zp-hero-room-game{
+  font-family:'Orbitron',monospace;
+  font-size:.48rem;
+  font-weight:700;
+  color:var(--teal);
+  letter-spacing:.1em;
+  text-transform:uppercase;
+  margin-bottom:2px;
+}
+.zp-hero-room-host{
+  font-size:.68rem;
+  font-weight:600;
+  color:rgba(248,250,252,.94);
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.zp-hero-room-pl{font-size:.58rem;color:var(--muted);margin-top:1px}
+.zp-hero-badge{
+  font-size:.48rem;
+  font-family:'Orbitron',monospace;
+  font-weight:700;
+  letter-spacing:.05em;
+  padding:3px 8px;
+  border-radius:999px;
+  text-transform:uppercase;
+  white-space:nowrap;
+}
+.zp-hero-badge--wait{
+  color:var(--green);
+  border:1px solid rgba(52,211,153,.28);
+  background:rgba(34,197,94,.1);
+}
+.zp-hero-badge--play{
+  color:var(--pink);
+  border:1px solid rgba(255,77,109,.28);
+  background:rgba(255,77,109,.1);
+}
+
+.hero-lobby-caption{
+  margin:10px 2px 0;
+  font-size:.76rem;
+  text-align:center;
+}
+.hero-lobby-caption a{
+  color:rgba(148,163,184,.95);
+  text-decoration:none;
+  font-weight:500;
+  border-bottom:1px solid rgba(148,163,184,.35);
+  transition:color .2s,border-color .2s;
+}
+.hero-lobby-caption a:hover{
+  color:var(--teal);
+  border-bottom-color:rgba(0,232,212,.45);
+}
 
 .hero-mini{
   margin-top:12px;
@@ -1354,6 +1599,10 @@ body.home-page .footer .zp-footer-account:hover {
 @media (prefers-reduced-motion: reduce) {
   body.home-page .game-card:hover { transform: none; }
   body.home-page .zp-nav-cta:hover, body.home-page .zp-btn-light:hover { transform: none; }
+  .zp-hero-invite::after { animation: none !important; opacity: 0; }
+  .zp-hero-room { animation: none !important; opacity: 1; transform: none; }
+  .zp-hero-dot { animation: none !important; }
+  .zp-hero-ping b { animation: none !important; }
 }
 </style>
 </head>
@@ -1415,11 +1664,68 @@ body.home-page .footer .zp-footer-account:hover {
     </div>
 
     <div class="hero-card hero-right">
-      <div class="scene" aria-hidden="true" data-hero-3d>
-        <div class="float-card a fx-float"><div class="k">MATCH</div><div class="v">QUIZ</div></div>
-        <div class="float-card b fx-float" style="animation-delay:-2s"><div class="k">MODE</div><div class="v">ARCADE</div></div>
-        <div class="float-card c fx-float" style="animation-delay:-4s"><div class="k">RANG</div><div class="v">#1</div></div>
+      <div class="scene" aria-hidden="true">
+        <div class="zp-hero-lobby">
+          <div class="zp-hero-lobby-chrome">
+            <span class="zp-hero-dot"></span>
+            <span class="zp-hero-lobby-title">Salles en ligne</span>
+            <span class="zp-hero-ping" id="hero-lobby-ping">Ping <b id="hero-lobby-ping-num">24</b> ms</span>
+          </div>
+          <div class="zp-hero-invite">
+            <span class="zp-hero-invite-label">Lien d’invitation</span>
+            <div class="zp-hero-invite-row">
+              <span class="zp-hero-fake-url">…/lobby.html?code=DEMO&amp;game=quiz</span>
+              <span class="zp-hero-chip">Copier</span>
+            </div>
+          </div>
+          <div class="zp-hero-actions">
+            <div class="zp-hero-ac zp-hero-ac--create">
+              <div class="zp-hero-ac-t">Créer une salle</div>
+              <div class="zp-hero-ac-fake">Quiz Éclair ▾</div>
+              <div class="zp-hero-btn zp-hero-btn--teal">LANCER</div>
+            </div>
+            <div class="zp-hero-ac zp-hero-ac--join">
+              <div class="zp-hero-ac-t">Rejoindre</div>
+              <div class="zp-hero-ac-code">D E M O</div>
+              <div class="zp-hero-btn zp-hero-btn--orange">REJOINDRE</div>
+            </div>
+          </div>
+          <div class="zp-hero-rooms">
+            <div class="zp-hero-rooms-head">
+              <span>Salles</span>
+              <span class="zp-hero-count"><span id="hero-lobby-rooms-count">0</span> en ligne</span>
+            </div>
+            <div class="zp-hero-room">
+              <img class="zp-hero-room-ico" src="/icons/games/quiz.svg" width="32" height="32" alt="">
+              <div class="zp-hero-room-txt">
+                <div class="zp-hero-room-game">Quiz éclair</div>
+                <div class="zp-hero-room-host">Salle Nova</div>
+                <div class="zp-hero-room-pl">Aura · Kai · …</div>
+              </div>
+              <span class="zp-hero-badge zp-hero-badge--play">En jeu</span>
+            </div>
+            <div class="zp-hero-room">
+              <img class="zp-hero-room-ico" src="/icons/games/draw.svg" width="32" height="32" alt="">
+              <div class="zp-hero-room-txt">
+                <div class="zp-hero-room-game">Dessin</div>
+                <div class="zp-hero-room-host">Sketch party</div>
+                <div class="zp-hero-room-pl">2 / 4 joueurs</div>
+              </div>
+              <span class="zp-hero-badge zp-hero-badge--wait">Attente</span>
+            </div>
+            <div class="zp-hero-room">
+              <img class="zp-hero-room-ico" src="/icons/games/p4.svg" width="32" height="32" alt="">
+              <div class="zp-hero-room-txt">
+                <div class="zp-hero-room-game">Puissance 4</div>
+                <div class="zp-hero-room-host">Clash P4</div>
+                <div class="zp-hero-room-pl">1 / 2</div>
+              </div>
+              <span class="zp-hero-badge zp-hero-badge--wait">Attente</span>
+            </div>
+          </div>
+        </div>
       </div>
+      <p class="hero-lobby-caption"><a href="lobby.html">Ouvrir le vrai lobby →</a></p>
       <div class="hero-mini">
         <div class="mini"><div class="t">Conseil</div><div class="d">Ouvre un salon, partage le code, et lance.</div></div>
         <div class="mini"><div class="t">Tip</div><div class="d">Sur mobile : appuie sur les cartes, elles "tilt".</div></div>
@@ -1754,7 +2060,17 @@ body.home-page .footer .zp-footer-account:hover {
   }).catch(()=>{});
 })();
 
-// Stats + compteur salles
+// Stats + compteur salles (+ aperçu lobby hero)
+function zpSyncHeroRoomCount(n) {
+  const heroCount = document.getElementById('hero-lobby-rooms-count');
+  if (!heroCount) return;
+  if (window.ZapFX && heroCount.textContent !== String(n)) {
+    heroCount.textContent = '0';
+    ZapFX.countUp(heroCount, n, 1200);
+  } else {
+    heroCount.textContent = n;
+  }
+}
 fetch('/api/public/stats').then(r=>r.json()).then(s=>{
   const el = document.getElementById('online-count');
   if(!el) return;
@@ -1766,6 +2082,7 @@ fetch('/api/public/stats').then(r=>r.json()).then(s=>{
   el.insertAdjacentText('beforeend', ' salle' + plural + ' en ligne');
   if(window.ZapFX) ZapFX.countUp(span, n, 1200);
   else span.textContent = n;
+  zpSyncHeroRoomCount(n);
 }).catch(()=>{
   fetch('/api/rooms').then(r=>r.json()).then(rooms=>{
     const el = document.getElementById('online-count');
@@ -1778,8 +2095,27 @@ fetch('/api/public/stats').then(r=>r.json()).then(s=>{
     el.insertAdjacentText('beforeend', ' salle' + plural + ' en ligne');
     if(window.ZapFX) ZapFX.countUp(span, n, 1200);
     else span.textContent = n;
+    zpSyncHeroRoomCount(n);
   }).catch(()=>{});
 });
+
+// Ping factice sur l’aperçu lobby (réaliste, léger)
+(function(){
+  const el = document.getElementById('hero-lobby-ping-num');
+  if(!el) return;
+  if(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches){
+    el.textContent = '—';
+    return;
+  }
+  let cur = 18 + Math.random() * 20;
+  function tick(){
+    const t = cur + (Math.random() - 0.5) * 8;
+    cur = Math.max(12, Math.min(85, t));
+    el.textContent = String(Math.round(cur));
+  }
+  tick();
+  setInterval(tick, 2200 + Math.random() * 800);
+})();
 
 // Dernière salle (mémorisée depuis le lobby)
 (function(){
