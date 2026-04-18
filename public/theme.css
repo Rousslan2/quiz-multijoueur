@@ -663,3 +663,78 @@ body > *:not(.zp-space-bg) {
   text-transform: uppercase; letter-spacing: .1em;
   text-align: center; margin-bottom: 6px;
 }
+
+/* ════════════════════════════════════════════════════════════
+   JEUX & LOBBY — polish « verre » (hors page d’accueil .home-page)
+   Ne modifie pas la structure HTML : uniquement surfaces communes.
+   ════════════════════════════════════════════════════════════ */
+body:not(.home-page) {
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Cartes / panneaux fréquents dans les mini-jeux */
+body:not(.home-page) .card,
+body:not(.home-page) .panel-inner,
+body:not(.home-page) .action-card {
+  background:
+    linear-gradient(165deg, rgba(255,255,255,.07) 0%, rgba(255,255,255,.025) 48%, rgba(0,0,0,.14) 100%);
+  border-color: var(--border);
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,.04),
+    0 12px 40px rgba(0,0,0,.35);
+  backdrop-filter: blur(12px) saturate(130%);
+  -webkit-backdrop-filter: blur(12px) saturate(130%);
+}
+
+/* Champs texte */
+body:not(.home-page) input[type="text"],
+body:not(.home-page) input[type="number"],
+body:not(.home-page) input[type="search"],
+body:not(.home-page) textarea {
+  background: rgba(255,255,255,.06) !important;
+  border-color: var(--border) !important;
+  transition: border-color .18s, box-shadow .18s;
+}
+body:not(.home-page) input[type="text"]:focus,
+body:not(.home-page) input[type="number"]:focus,
+body:not(.home-page) input[type="search"]:focus,
+body:not(.home-page) textarea:focus {
+  box-shadow: 0 0 0 3px rgba(0,232,212,.12);
+}
+
+/* Boutons génériques (.btn très répandu) */
+body:not(.home-page) .btn,
+body:not(.home-page) button.btn {
+  border-radius: max(12px, var(--r, 12px));
+  transition: transform .14s cubic-bezier(.2,0,.2,1), box-shadow .18s, opacity .14s;
+}
+body:not(.home-page) .btn-secondary,
+body:not(.home-page) button.btn-secondary {
+  background: rgba(255,255,255,.07);
+  border-color: var(--border);
+}
+body:not(.home-page) .btn-primary,
+body:not(.home-page) button.btn-primary {
+  box-shadow: 0 4px 20px rgba(0,0,0,.35);
+}
+body:not(.home-page) .btn:active,
+body:not(.home-page) button.btn:active {
+  transform: scale(.98);
+}
+
+/* Focus visible cohérent */
+body:not(.home-page) button:focus-visible,
+body:not(.home-page) a:focus-visible,
+body:not(.home-page) input:focus-visible,
+body:not(.home-page) select:focus-visible,
+body:not(.home-page) textarea:focus-visible {
+  outline: 2px solid rgba(0,232,212,.45);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body:not(.home-page) .btn,
+  body:not(.home-page) button.btn { transition: none; }
+}
