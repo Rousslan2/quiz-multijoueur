@@ -1,15 +1,17 @@
-/* ZapPlay — barre unifiée, panneau règles, overlay fin, fonds par jeu */
+/* ZapPlay — barre unifiée, panneau règles, overlay fin */
 
-/* ── Barre globale (jeux + lobby + compte) ── */
+/* ── Barre globale (jeux + lobby + compte) — bien visible sur tous les fonds ── */
 .zp-nav-global {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
-  z-index: 10000;
-  padding: 10px max(14px, env(safe-area-inset-right)) 10px max(14px, env(safe-area-inset-left));
-  padding-top: max(10px, env(safe-area-inset-top));
+  z-index: 10050;
+  padding: 12px max(14px, env(safe-area-inset-right)) 12px max(14px, env(safe-area-inset-left));
+  padding-top: max(12px, env(safe-area-inset-top));
   pointer-events: none;
+  /* léger dégradé pour détacher la barre du décor */
+  background: linear-gradient(180deg, rgba(3, 3, 18, 0.92) 0%, rgba(3, 3, 18, 0.55) 70%, transparent 100%);
 }
 .zp-nav-global-inner {
   pointer-events: auto;
@@ -18,18 +20,21 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 8px 14px;
+  padding: 10px 16px;
   border-radius: 999px;
-  background: rgba(12, 12, 28, 0.72);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(18px) saturate(160%);
-  -webkit-backdrop-filter: blur(18px) saturate(160%);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  background: rgba(8, 10, 24, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  backdrop-filter: blur(22px) saturate(180%);
+  -webkit-backdrop-filter: blur(22px) saturate(180%);
+  box-shadow:
+    0 4px 0 rgba(0, 232, 212, 0.12),
+    0 12px 40px rgba(0, 0, 0, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 .zp-nav-global-brand {
   font-family: 'Orbitron', system-ui, sans-serif;
   font-weight: 800;
-  font-size: 0.95rem;
+  font-size: 1rem;
   letter-spacing: 0.06em;
   color: #fff;
   text-decoration: none;
@@ -90,7 +95,7 @@
 
 /* Espace sous la barre */
 body.zp-has-shell {
-  padding-top: calc(56px + env(safe-area-inset-top, 0px));
+  padding-top: calc(64px + env(safe-area-inset-top, 0px));
 }
 
 /* Accueil : barre locale remplacée par la barre globale (zp-shell.js) */
@@ -104,8 +109,21 @@ body.zp-has-shell .header {
 }
 
 @media (max-width: 520px) {
+  .zp-nav-global-inner {
+    flex-wrap: wrap;
+    justify-content: center;
+    row-gap: 6px;
+    padding: 8px 12px;
+  }
   .zp-nav-global-links {
-    display: none;
+    order: 3;
+    width: 100%;
+    justify-content: center;
+    gap: 2px;
+  }
+  .zp-nav-global-links a {
+    font-size: 0.72rem;
+    padding: 5px 8px;
   }
 }
 
@@ -236,141 +254,3 @@ body.zp-has-shell .header {
   border: 1px solid rgba(255, 255, 255, 0.12);
 }
 
-/* ── Fonds distincts par jeu (couche .zp-space-bg) ── */
-html[data-zp-game] .zp-space-bg {
-  transition: background 0.6s ease;
-}
-
-html[data-zp-game='quiz'] .zp-space-bg {
-  background: radial-gradient(ellipse 90% 70% at 50% -10%, rgba(0, 232, 212, 0.18), transparent 55%),
-    radial-gradient(ellipse 60% 50% at 100% 40%, rgba(255, 112, 51, 0.1), transparent 50%),
-    linear-gradient(165deg, #04081c 0%, #030312 50%, #06051a 100%);
-}
-html[data-zp-game='quiz'] .zp-space-bg .zp-neb1 {
-  background: radial-gradient(circle, rgba(0, 232, 212, 0.22), rgba(91, 159, 255, 0.08) 45%, transparent 68%);
-}
-
-html[data-zp-game='draw'] .zp-space-bg {
-  background: radial-gradient(ellipse 85% 65% at 20% 20%, rgba(249, 115, 22, 0.16), transparent 55%),
-    radial-gradient(ellipse 70% 55% at 90% 70%, rgba(251, 191, 36, 0.1), transparent 52%),
-    linear-gradient(165deg, #120a08 0%, #030312 45%, #0a0818 100%);
-}
-html[data-zp-game='draw'] .zp-space-bg .zp-neb1 {
-  background: radial-gradient(circle, rgba(249, 115, 22, 0.2), rgba(245, 158, 11, 0.08) 48%, transparent 68%);
-}
-
-html[data-zp-game='debat'] .zp-space-bg {
-  background: radial-gradient(ellipse 80% 60% at 50% 0%, rgba(236, 72, 153, 0.16), transparent 52%),
-    linear-gradient(165deg, #100818 0%, #030312 55%, #12081a 100%);
-}
-html[data-zp-game='debat'] .zp-space-bg .zp-neb2 {
-  background: radial-gradient(circle, rgba(236, 72, 153, 0.14), rgba(167, 139, 250, 0.1) 50%, transparent 68%);
-}
-
-html[data-zp-game='imposteur'] .zp-space-bg {
-  background: radial-gradient(ellipse 90% 70% at 80% 10%, rgba(255, 77, 109, 0.18), transparent 55%),
-    linear-gradient(165deg, #0c0408 0%, #030312 50%, #08040c 100%);
-}
-html[data-zp-game='imposteur'] .zp-space-bg .zp-neb1 {
-  background: radial-gradient(circle, rgba(255, 77, 109, 0.2), transparent 65%);
-}
-
-html[data-zp-game='wordbomb'] .zp-space-bg {
-  background: radial-gradient(ellipse 75% 55% at 50% 15%, rgba(0, 232, 212, 0.2), transparent 52%),
-    radial-gradient(ellipse 50% 40% at 90% 80%, rgba(251, 191, 36, 0.12), transparent 50%),
-    linear-gradient(165deg, #031a18 0%, #030312 50%, #051010 100%);
-}
-
-html[data-zp-game='typer'] .zp-space-bg {
-  background: radial-gradient(ellipse 80% 60% at 30% 0%, rgba(0, 232, 212, 0.15), transparent 52%),
-    linear-gradient(165deg, #040c14 0%, #030312 100%);
-}
-
-html[data-zp-game='anagramme'] .zp-space-bg {
-  background: radial-gradient(ellipse 85% 65% at 70% 15%, rgba(255, 77, 109, 0.16), transparent 55%),
-    linear-gradient(165deg, #10040c 0%, #030312 100%);
-}
-
-html[data-zp-game='justeprix'] .zp-space-bg {
-  background: radial-gradient(ellipse 80% 55% at 50% 0%, rgba(251, 191, 36, 0.14), transparent 52%),
-    linear-gradient(165deg, #141004 0%, #030312 100%);
-}
-
-html[data-zp-game='timeline'] .zp-space-bg {
-  background: radial-gradient(ellipse 85% 60% at 20% 20%, rgba(91, 159, 255, 0.18), transparent 55%),
-    linear-gradient(165deg, #060c1a 0%, #030312 100%);
-}
-
-html[data-zp-game='memoire'] .zp-space-bg {
-  background: radial-gradient(ellipse 80% 60% at 50% 10%, rgba(167, 139, 250, 0.18), transparent 55%),
-    linear-gradient(165deg, #0c0818 0%, #030312 100%);
-}
-
-html[data-zp-game='taboo'] .zp-space-bg {
-  background: radial-gradient(ellipse 75% 55% at 50% 0%, rgba(0, 232, 212, 0.12), transparent 50%),
-    radial-gradient(ellipse 60% 50% at 100% 60%, rgba(167, 139, 250, 0.12), transparent 52%),
-    linear-gradient(165deg, #040c12 0%, #030312 100%);
-}
-
-html[data-zp-game='p4'] .zp-space-bg {
-  background: radial-gradient(ellipse 80% 55% at 50% 0%, rgba(59, 130, 246, 0.16), transparent 52%),
-    linear-gradient(165deg, #040818 0%, #030312 100%);
-}
-
-html[data-zp-game='morpion'] .zp-space-bg {
-  background: radial-gradient(ellipse 80% 55% at 50% 0%, rgba(52, 211, 153, 0.14), transparent 52%),
-    linear-gradient(165deg, #040c10 0%, #030312 100%);
-}
-
-html[data-zp-game='emoji'] .zp-space-bg {
-  background: radial-gradient(ellipse 85% 60% at 30% 15%, rgba(245, 213, 71, 0.14), transparent 55%),
-    linear-gradient(165deg, #101008 0%, #030312 100%);
-}
-
-html[data-zp-game='loup'] .zp-space-bg {
-  background: radial-gradient(ellipse 80% 55% at 80% 10%, rgba(127, 29, 29, 0.2), transparent 55%),
-    linear-gradient(165deg, #0a0408 0%, #030312 100%);
-}
-
-html[data-zp-game='uno'] .zp-space-bg {
-  background: radial-gradient(ellipse 80% 60% at 50% 0%, rgba(220, 38, 38, 0.12), transparent 52%),
-    radial-gradient(ellipse 50% 45% at 10% 80%, rgba(234, 179, 8, 0.1), transparent 50%),
-    linear-gradient(165deg, #100808 0%, #030312 100%);
-}
-
-html[data-zp-game='sumo'] .zp-space-bg {
-  background: radial-gradient(ellipse 75% 55% at 50% 20%, rgba(236, 72, 153, 0.12), transparent 52%),
-    linear-gradient(165deg, #100818 0%, #030312 100%);
-}
-
-html[data-zp-game='paint'] .zp-space-bg {
-  background: radial-gradient(ellipse 80% 60% at 70% 0%, rgba(34, 197, 94, 0.12), transparent 52%),
-    linear-gradient(165deg, #04100c 0%, #030312 100%);
-}
-
-html[data-zp-game='naval'] .zp-space-bg {
-  background: radial-gradient(ellipse 85% 60% at 40% 15%, rgba(59, 130, 246, 0.18), transparent 55%),
-    linear-gradient(165deg, #040a18 0%, #030312 100%);
-}
-
-html[data-zp-game='lobby'] .zp-space-bg {
-  background: radial-gradient(ellipse 90% 70% at 50% -5%, rgba(0, 232, 212, 0.12), transparent 52%),
-    radial-gradient(ellipse 70% 50% at 95% 40%, rgba(91, 159, 255, 0.1), transparent 50%),
-    linear-gradient(165deg, #05051a 0%, #030312 45%, #08061c 100%);
-}
-
-html[data-zp-game='account'] .zp-space-bg {
-  background: radial-gradient(ellipse 80% 60% at 50% 0%, rgba(167, 139, 250, 0.14), transparent 52%),
-    linear-gradient(165deg, #0a0818 0%, #030312 100%);
-}
-
-html[data-zp-game='admin'] .zp-space-bg {
-  background: radial-gradient(ellipse 75% 55% at 100% 0%, rgba(245, 158, 11, 0.1), transparent 50%),
-    linear-gradient(165deg, #100c04 0%, #030312 100%);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  html[data-zp-game] .zp-space-bg {
-    transition: none;
-  }
-}

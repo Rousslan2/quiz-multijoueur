@@ -134,7 +134,7 @@ function getRoomsSnapshot() {
   return all;
 }
 
-app.get('/api/rooms', (_, res) => res.json(getRoomsSnapshot()));
+app.get('/api/rooms', (_, res) => res.json({ rooms: getRoomsSnapshot(), ts: Date.now() }));
 
 /** Liste des jeux masqués (menu / lobby) — lecture seule, sans secret */
 app.get('/api/public/config', (_, res) => {
@@ -177,7 +177,7 @@ app.post('/api/admin/bots', adminAuth, (req, res) => {
 const lobbyClients = new Set();
 wssLobby.on('connection', ws => {
   lobbyClients.add(ws);
-  wsend(ws, { type: 'rooms', rooms: getRoomsSnapshot() });
+  wsend(ws, { type: 'rooms', rooms: getRoomsSnapshot(), ts: Date.now() });
   ws.on('message', raw => {
     try {
       const d = JSON.parse(String(raw));
@@ -188,7 +188,7 @@ wssLobby.on('connection', ws => {
 });
 
 function broadcastLobby() {
-  const msg = JSON.stringify({ type: 'rooms', rooms: getRoomsSnapshot() });
+  const msg = JSON.stringify({ type: 'rooms', rooms: getRoomsSnapshot(), ts: Date.now() });
   lobbyClients.forEach(c => { if (c.readyState === WebSocket.OPEN) c.send(msg); });
 }
 

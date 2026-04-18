@@ -2094,7 +2094,8 @@ fetch('/api/public/stats').then(r=>r.json()).then(s=>{
   else span.textContent = n;
   zpSyncHeroRoomCount(n);
 }).catch(()=>{
-  fetch('/api/rooms').then(r=>r.json()).then(rooms=>{
+  fetch('/api/rooms').then(r=>r.json()).then(data=>{
+    const rooms = Array.isArray(data) ? data : (data.rooms || []);
     const el = document.getElementById('online-count');
     if(!el) return;
     const n = rooms.length;

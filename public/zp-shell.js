@@ -1,5 +1,5 @@
 /**
- * ZapPlay — barre unifiée, règles, titre d’onglet, overlay fin, préférences son.
+ * ZapPlay — barre unifiée, règles, titre d’onglet, overlay fin, préférences son (effets de jeu uniquement).
  * Requiert : theme.css (variables), zp-shell.css, shared.js (ZapPlay), data-zp-game sur <html>
  */
 (function () {
@@ -201,9 +201,6 @@
   };
 
   let baseTitle = '';
-  let ambientCtx = null;
-  let ambientOsc = null;
-  let ambientGain = null;
 
   function getGameKey() {
     return (document.documentElement.getAttribute('data-zp-game') || 'default').trim() || 'default';
@@ -228,8 +225,6 @@
       else localStorage.removeItem('zapplay_sound_muted');
     } catch (_) {}
     updateMuteButton();
-    if (v) stopAmbient();
-    else startAmbientIfAllowed();
   }
 
   function updateMuteButton() {
@@ -238,42 +233,10 @@
     const muted = isSoundMuted();
     btn.classList.toggle('muted', muted);
     btn.setAttribute('aria-pressed', muted ? 'true' : 'false');
-    btn.title = muted ? 'Son désactivé (cliquer pour activer)' : 'Son activé (cliquer pour couper)';
+    btn.title = muted
+      ? 'Effets sonores désactivés (cliquer pour activer)'
+      : 'Effets sonores activés (cliquer pour couper)';
     btn.textContent = muted ? '🔇' : '🔊';
-  }
-
-  function startAmbientIfAllowed() {
-    if (isSoundMuted()) return;
-    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    try {
-      const Ctx = window.AudioContext || window.webkitAudioContext;
-      if (!Ctx) return;
-      if (ambientOsc) return;
-      ambientCtx = new Ctx();
-      ambientOsc = ambientCtx.createOscillator();
-      ambientGain = ambientCtx.createGain();
-      ambientOsc.type = 'sine';
-      ambientOsc.frequency.value = 110;
-      ambientGain.gain.value = 0.018;
-      ambientOsc.connect(ambientGain);
-      ambientGain.connect(ambientCtx.destination);
-      ambientOsc.start();
-    } catch (_) {}
-  }
-
-  function stopAmbient() {
-    try {
-      if (ambientOsc) {
-        ambientOsc.stop();
-        ambientOsc.disconnect();
-      }
-    } catch (_) {}
-    ambientOsc = null;
-    try {
-      if (ambientCtx && ambientCtx.state !== 'closed') ambientCtx.close();
-    } catch (_) {}
-    ambientCtx = null;
-    ambientGain = null;
   }
 
   function setDocumentTitle(extra) {
@@ -288,7 +251,6 @@
 
   function injectNav() {
     if (document.getElementById('zp-nav-global')) return;
-    if (document.querySelector('header.zp-nav')) return;
     const nav = document.createElement('header');
     nav.id = 'zp-nav-global';
     nav.className = 'zp-nav-global';
@@ -303,7 +265,7 @@
       '</nav>' +
       '<div class="zp-nav-global-actions">' +
       '<button type="button" class="zp-nav-global-icon" id="zp-nav-rules" title="Règles du jeu" aria-label="Règles">📖</button>' +
-      '<button type="button" class="zp-nav-global-icon" id="zp-nav-sound" title="Son" aria-label="Son">🔊</button>' +
+      '<button type="button" class="zp-nav-global-icon" id="zp-nav-sound" title="Effets sonores" aria-label="Effets sonores">🔊</button>' +
       '</div>' +
       '</div>';
     document.body.appendChild(nav);
@@ -425,17 +387,6 @@
     document.addEventListener('keydown', function (e) {
       if (e.key === 'Escape') closeRules();
     });
-
-    if (!isSoundMuted()) {
-      document.addEventListener(
-        'click',
-        function once() {
-          startAmbientIfAllowed();
-          document.removeEventListener('click', once);
-        },
-        { once: true }
-      );
-    }
 
     if (window.ZapPlay) {
       window.ZapPlay.isSoundMuted = isSoundMuted;
