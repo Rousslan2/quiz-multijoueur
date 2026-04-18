@@ -1,9 +1,8 @@
-/* ZapPlay — cache léger pour mode PWA hors ligne (shell uniquement)
- * Les pages HTML passent en *réseau d'abord* pour éviter d'afficher une
- * ancienne version en navigation classique (où le cache SW persiste).
- * La navigation privée recharge souvent sans ce cache, d'où l'écart.
+/* ZapPlay — shell PWA (CSS/JS) sans mettre en cache les pages HTML :
+ * le cache HTTP + d’anciennes réponses dans le SW faisaient voir une vieille
+ * accueil aux profils normaux, pas en navigation privée.
  */
-const CACHE = 'zapplay-shell-v2';
+const CACHE = 'zapplay-shell-v3';
 const PRECACHE = ['/theme.css', '/shared.js', '/manifest.webmanifest'];
 
 self.addEventListener('install', e => {
@@ -31,19 +30,12 @@ self.addEventListener('fetch', event => {
   if (url.origin !== location.origin) return;
   if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/ws/')) return;
 
+  // Pages HTML : toujours le réseau, jamais de mise en cache SW (évite version figée).
   if (isHtmlDocumentRequest(req)) {
     event.respondWith(
-      fetch(req)
-        .then(res => {
-          if (res.ok) {
-            const copy = res.clone();
-            caches.open(CACHE).then(c => c.put(req, copy)).catch(() => {});
-          }
-          return res;
-        })
-        .catch(() =>
-          caches.match(req).then(cached => cached || caches.match('/index.html'))
-        )
+      fetch(req).catch(() =>
+        caches.match('/index.html')
+      )
     );
     return;
   }
@@ -51,13 +43,7 @@ self.addEventListener('fetch', event => {
   event.respondWith(
     caches.match(req).then(cached => {
       if (cached) return cached;
-      return fetch(req).then(res => {
-        if (res.ok && req.destination === 'document') {
-          const copy = res.clone();
-          caches.open(CACHE).then(c => c.put(req, copy)).catch(() => {});
-        }
-        return res;
-      }).catch(() => caches.match('/index.html'));
+      return fetch(req).catch(() => caches.match('/index.html'));
     })
   );
 });
