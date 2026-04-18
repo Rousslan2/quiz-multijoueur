@@ -118,12 +118,141 @@ body.home-page .zp-space-bg .zp-sgrid {
   mask-image: radial-gradient(ellipse 110% 80% at 50% 5%, rgba(0,0,0,.75), transparent 72%);
 }
 
+/* ── Style « Apple » : bloom + scène 3D (accueil uniquement) ── */
+html.home-page {
+  --apple-px: 0;
+  --apple-py: 0;
+}
+body.home-page .zp-apple-bloom {
+  position: absolute; inset: 0; pointer-events: none;
+  background:
+    radial-gradient(ellipse 85% 55% at 50% -5%, rgba(255,255,255,.09), transparent 52%),
+    radial-gradient(ellipse 70% 50% at 85% 25%, rgba(90,160,255,.07), transparent 58%),
+    radial-gradient(ellipse 65% 45% at 10% 40%, rgba(180,140,255,.06), transparent 55%);
+  mix-blend-mode: soft-light;
+  opacity: .95;
+}
+body.home-page .zp-apple-stage {
+  position: absolute; inset: -8% -4%;
+  pointer-events: none;
+  perspective: 1400px;
+  perspective-origin: 50% 38%;
+  transform-style: preserve-3d;
+  will-change: transform;
+  transition: transform 0.75s cubic-bezier(0.22, 1, 0.36, 1);
+  transform:
+    translate3d(calc(var(--apple-px) * 18px), calc(var(--apple-py) * 14px), 0)
+    rotateX(calc(-4deg + var(--apple-py) * -5deg))
+    rotateY(calc(var(--apple-px) * 6deg));
+}
+body.home-page .zp-orb {
+  position: absolute;
+  border-radius: 50%;
+  transform-style: preserve-3d;
+  filter: blur(1px);
+  box-shadow:
+    inset 0 -20px 50px rgba(0,0,0,.35),
+    inset 0 12px 40px rgba(255,255,255,.12),
+    0 40px 100px rgba(0,0,0,.45);
+}
+/* Orbes « verre » : reflets type produit Apple */
+body.home-page .zp-orb-1 {
+  width: min(42vw, 380px); height: min(42vw, 380px);
+  left: 8%; top: 12%;
+  background:
+    radial-gradient(ellipse 80% 70% at 35% 28%, rgba(255,255,255,.45), transparent 52%),
+    radial-gradient(circle at 65% 70%, rgba(0,180,200,.25), transparent 55%),
+    radial-gradient(circle at 50% 50%, rgba(40,50,90,.5), rgba(8,10,22,.85));
+  opacity: .42;
+  animation: apple-orb-a 28s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+body.home-page .zp-orb-2 {
+  width: min(28vw, 240px); height: min(28vw, 240px);
+  right: 6%; top: 22%;
+  background:
+    radial-gradient(ellipse 75% 65% at 40% 30%, rgba(255,255,255,.38), transparent 50%),
+    radial-gradient(circle at 55% 65%, rgba(120,90,255,.22), transparent 58%),
+    radial-gradient(circle at 50% 50%, rgba(30,35,70,.55), rgba(10,8,24,.9));
+  opacity: .38;
+  animation: apple-orb-b 34s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+body.home-page .zp-orb-3 {
+  width: min(52vw, 480px); height: min(52vw, 480px);
+  left: 50%; bottom: -18%;
+  margin-left: min(-26vw, -240px);
+  background:
+    radial-gradient(ellipse 70% 60% at 45% 35%, rgba(255,255,255,.22), transparent 55%),
+    radial-gradient(circle at 50% 50%, rgba(0,245,212,.08), transparent 62%),
+    radial-gradient(circle at 50% 55%, rgba(15,18,40,.7), rgba(5,6,14,.95));
+  opacity: .28;
+  animation: apple-orb-c 40s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+@keyframes apple-orb-a {
+  0%, 100% { transform: translate3d(0, 0, 0) rotateX(8deg) rotateY(-12deg) scale(1); }
+  50% { transform: translate3d(12px, -18px, 40px) rotateX(12deg) rotateY(8deg) scale(1.03); }
+}
+@keyframes apple-orb-b {
+  0%, 100% { transform: translate3d(0, 0, 20px) rotateX(-6deg) rotateY(18deg) scale(1); }
+  50% { transform: translate3d(-16px, 14px, 60px) rotateX(2deg) rotateY(-8deg) scale(1.04); }
+}
+@keyframes apple-orb-c {
+  0%, 100% { transform: translate3d(0, 0, -20px) rotateX(55deg) rotateZ(0deg); }
+  50% { transform: translate3d(-8px, -12px, 10px) rotateX(52deg) rotateZ(3deg); }
+}
+body.home-page .zp-apple-shine {
+  position: absolute; inset: -20%;
+  pointer-events: none;
+  background: linear-gradient(
+    115deg,
+    transparent 38%,
+    rgba(255,255,255,.045) 48%,
+    rgba(255,255,255,.09) 50%,
+    rgba(255,255,255,.045) 52%,
+    transparent 62%
+  );
+  transform: translateX(-30%) rotate(12deg);
+  animation: apple-shine 14s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  mix-blend-mode: overlay;
+  opacity: .55;
+}
+@keyframes apple-shine {
+  0%, 100% { transform: translateX(-35%) rotate(10deg); opacity: .35; }
+  50% { transform: translateX(45%) rotate(14deg); opacity: .65; }
+}
+
+/* Hero : carte type vitrine (léger flottement 3D) */
+body.home-page .hero-card {
+  transform-style: preserve-3d;
+  backface-visibility: hidden;
+  border-radius: 22px;
+  border: 1px solid rgba(255,255,255,.10);
+  background:
+    linear-gradient(165deg, rgba(255,255,255,.09) 0%, rgba(255,255,255,.03) 48%, rgba(0,0,0,.12) 100%);
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,.06),
+    0 24px 80px rgba(0,0,0,.5),
+    inset 0 1px 0 rgba(255,255,255,.12);
+  animation: home-hero-drift 18s cubic-bezier(0.37, 0, 0.63, 1) infinite;
+}
+body.home-page .hero-left { animation-delay: 0s; }
+body.home-page .hero-right { animation-delay: -6s; }
+@keyframes home-hero-drift {
+  0%, 100% { transform: translate3d(0, 0, 0) rotateX(0.4deg); }
+  50% { transform: translate3d(0, -6px, 0) rotateX(-0.35deg); }
+}
+
 /* ── ACCESSIBILITÉ / PERF ── */
 @media (prefers-reduced-motion: reduce){
   *,*::before,*::after{animation-duration:0.001ms!important;animation-iteration-count:1!important;transition-duration:0.001ms!important;scroll-behavior:auto!important}
   body.home-page .zp-aurora-a,
   body.home-page .zp-aurora-b,
   body.home-page .zp-depth { animation: none !important; }
+  body.home-page .zp-orb-1,
+  body.home-page .zp-orb-2,
+  body.home-page .zp-orb-3,
+  body.home-page .zp-apple-shine { animation: none !important; }
+  body.home-page .hero-card { animation: none !important; }
+  body.home-page .zp-apple-stage { transform: none !important; transition: none !important; }
 }
 
 /* ── PARTICLES ── */
@@ -757,6 +886,13 @@ body.home-page .zp-space-bg .zp-sgrid {
 
 <!-- Deep Space Background -->
 <div class="zp-space-bg">
+  <div class="zp-apple-bloom" aria-hidden="true"></div>
+  <div class="zp-apple-stage" id="apple-stage" aria-hidden="true">
+    <div class="zp-orb zp-orb-1"></div>
+    <div class="zp-orb zp-orb-2"></div>
+    <div class="zp-orb zp-orb-3"></div>
+    <div class="zp-apple-shine"></div>
+  </div>
   <div class="zp-aurora zp-aurora-a" aria-hidden="true"></div>
   <div class="zp-aurora zp-aurora-b" aria-hidden="true"></div>
   <div class="zp-neb1"></div>
@@ -1030,6 +1166,32 @@ body.home-page .zp-space-bg .zp-sgrid {
     ].join(';');
     c.appendChild(p);
   }
+})();
+
+// Parallax 3D type « Apple » (léger, inertie) — désactivé si reduced motion
+(function(){
+  const root = document.documentElement;
+  if(!root.classList.contains('home-page')) return;
+  if(window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  let tx = 0, ty = 0, txT = 0, tyT = 0, raf = 0;
+  function step(){
+    raf = 0;
+    tx += (txT - tx) * 0.055;
+    ty += (tyT - ty) * 0.055;
+    root.style.setProperty('--apple-px', tx.toFixed(4));
+    root.style.setProperty('--apple-py', ty.toFixed(4));
+    if(Math.abs(txT - tx) > 0.002 || Math.abs(tyT - ty) > 0.002) raf = requestAnimationFrame(step);
+  }
+  function onMove(e){
+    const w = Math.max(1, window.innerWidth), h = Math.max(1, window.innerHeight);
+    txT = (e.clientX / w - 0.5) * 2;
+    tyT = (e.clientY / h - 0.5) * 2;
+    if(!raf) raf = requestAnimationFrame(step);
+  }
+  function reset(){ txT = 0; tyT = 0; if(!raf) raf = requestAnimationFrame(step); }
+  window.addEventListener('mousemove', onMove, { passive: true });
+  window.addEventListener('mouseleave', reset);
+  document.addEventListener('visibilitychange', ()=>{ if(document.hidden) reset(); });
 })();
 
 // Live rooms count (animated count-up via fx.js)
