@@ -177,14 +177,18 @@ function injectLoader(){
 }
 
 const MIN_LOADER_MS=1500;
+/** Si le WS ne répond jamais, on débloque l’UI (sinon overlay bloque clavier / clic). */
+const LOADER_SAFETY_MS=9000;
 let loaderShownAt=0;
 let loaderHideScheduled=false;
+let loaderSafetyTimer=null;
 
 function hideLoader(){
   const el=document.getElementById('zp-loader');
   if(!el)return;
   if(loaderHideScheduled)return;
   loaderHideScheduled=true;
+  if(loaderSafetyTimer){ clearTimeout(loaderSafetyTimer); loaderSafetyTimer=null; }
   if(el._cycleId)clearInterval(el._cycleId);
   const elapsed=Date.now()-loaderShownAt;
   const remaining=Math.max(0,MIN_LOADER_MS-elapsed);
@@ -200,6 +204,11 @@ function showLoader(){
   loaderHideScheduled=false;
   const el=document.getElementById('zp-loader');
   if(el)el.classList.remove('hide');
+  if(loaderSafetyTimer) clearTimeout(loaderSafetyTimer);
+  loaderSafetyTimer=setTimeout(()=>{
+    loaderSafetyTimer=null;
+    if(document.getElementById('zp-loader') && !loaderHideScheduled) hideLoader();
+  }, LOADER_SAFETY_MS);
 }
 
 // ═══════════════════════════════════════════════════════

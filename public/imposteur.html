@@ -355,7 +355,10 @@ function connect(){
     // Reconnect so lobby deep-links still work after refresh
     setTimeout(connect, 2000);
   };
-  ws.onerror = function(){ try{ ws.close(); }catch{} };
+  ws.onerror = function(){
+    if(window.ZapPlay && ZapPlay.hideLoader) ZapPlay.hideLoader();
+    try{ ws.close(); }catch{}
+  };
   ws.onmessage = function(e){ try{ handle(JSON.parse(e.data)); }catch(ex){ console.error(ex); } };
 }
 function send(obj){ if(ws && ws.readyState===1) ws.send(JSON.stringify(obj)); }
