@@ -48,6 +48,8 @@ h2{font-size:1.5rem;font-weight:800;background:linear-gradient(135deg,var(--prim
 .rank-row{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;border-radius:8px;background:rgba(255,255,255,.05);font-size:.9rem;gap:8px}
 .rank-row.me{background:rgba(0,232,212,.1);border:1px solid rgba(0,232,212,.2)}
 .big-num{font-size:5rem;font-weight:900;text-align:center;color:var(--primary)}
+.spectate-strip{display:none;margin:0 0 12px;padding:8px 12px;text-align:center;font-size:.76rem;font-weight:700;color:#99f6e4;background:rgba(0,232,212,.1);border:1px solid rgba(0,232,212,.28);border-radius:10px;letter-spacing:.04em}
+.spectate-strip.on{display:block}
 
 <!-- templates -->
 </style>
@@ -55,6 +57,7 @@ h2{font-size:1.5rem;font-weight:800;background:linear-gradient(135deg,var(--prim
 <body>
 <div class="zp-space-bg"><div class="zp-neb1"></div><div class="zp-neb2"></div><div class="zp-stars" id="zp-stars-typer"></div><div class="zp-sgrid"></div><div class="zp-comet"></div></div>
 <div id="app">
+<div id="spectate-strip" class="spectate-strip"></div>
 <button id="back" onclick="history.back()">← Retour</button>
 <div id="dot"></div>
 
@@ -85,6 +88,7 @@ h2{font-size:1.5rem;font-weight:800;background:linear-gradient(135deg,var(--prim
     <div id="join-area" style="display:none;flex-direction:column;gap:8px">
       <input id="code-in" type="text" maxlength="4" placeholder="Code ABCD" autocomplete="off" style="text-transform:uppercase;text-align:center;font-size:1.2rem;letter-spacing:.15em">
       <button class="btn btn-p btn-full" onclick="joinGame()">Rejoindre →</button>
+      <button type="button" class="btn btn-s btn-full" onclick="joinSpectate()">Regarder en spectateur</button>
     </div>
     <p id="err" style="color:var(--bad);text-align:center;font-size:.85rem;min-height:18px"></p>
   </div>
@@ -153,10 +157,25 @@ h2{font-size:1.5rem;font-weight:800;background:linear-gradient(135deg,var(--prim
 const WS_URL = `${location.protocol==='https:'?'wss':'ws'}://${location.host}/ws/typer`;
 let ws, mySlot=-1, myCode='', currentText='', done=false, timerIv=null, timeLeft=60;
 let pendingAction=null;
+let isSpectator=false;
 const $ = id => document.getElementById(id);
 const show = id => $(id).classList.remove('hidden');
 const hide = id => $(id).classList.add('hidden');
 const send = d => ws && ws.readyState===1 && ws.send(JSON.stringify(d));
+
+function syncSpectateStrip(){
+  const el=$('spectate-strip'); if(!el)return;
+  el.classList.toggle('on',!!isSpectator);
+  el.textContent=isSpectator?'Mode spectateur — tu vois le texte et les barres, sans taper.':'';
+}
+function joinSpectate(){
+  const n=$('name-input').value.trim()||'Joueur';
+  const c=$('code-in').value.trim().toUpperCase();
+  if(!c){$('err').textContent='Code requis';return;}
+  if(window.ZapPlay)ZapPlay.savePseudo(n);
+  isSpectator=true; mySlot=-1; syncSpectateStrip();
+  send({type:'join_typer_spectate',name:n,code:c});
+}
 
 function connect(){
   ws = new WebSocket(WS_URL);
@@ -170,11 +189,11 @@ function toggleJoin(){
   const a = $('join-area');
   a.style.display = a.style.display === 'flex' ? 'none' : 'flex';
 }
-function createGame(){ send({type:'create_typer',name:$('name-input').value.trim()||'Joueur'}); }
-function joinGame(){ send({type:'join_typer',name:$('name-input').value.trim()||'Joueur',code:$('code-in').value.trim().toUpperCase()}); }
+function createGame(){ isSpectator=false; syncSpectateStrip(); send({type:'create_typer',name:$('name-input').value.trim()||'Joueur'}); }
+function joinGame(){ isSpectator=false; syncSpectateStrip(); send({type:'join_typer',name:$('name-input').value.trim()||'Joueur',code:$('code-in').value.trim().toUpperCase()}); }
 function copyCode(){ try{ navigator.clipboard.writeText(myCode); }catch{} }
-function startGame(){ send({type:'start_typer'}); }
-function restart(){ send({type:'restart_typer'}); }
+function startGame(){ if(isSpectator)return; send({type:'start_typer'}); }
+function restart(){ if(isSpectator)return; send({type:'restart_typer'}); }
 
 function renderScores(players, cid){
   const c = $(cid); c.textContent='';
@@ -182,7 +201,7 @@ function renderScores(players, cid){
   players.forEach(p=>{
     const node = tpl.content.cloneNode(true);
     const chip = node.querySelector('.sc-chip');
-    if(p.slot===mySlot) chip.classList.add('me');
+    if(!isSpectator && p.slot===mySlot) chip.classList.add('me');
     node.querySelector('.sc-name').textContent = p.name;
     node.querySelector('.sc-pts').textContent = p.score||0;
     c.appendChild(node);
@@ -205,7 +224,7 @@ function renderRanks(rows, cid){
   rows.forEach(r=>{
     const node = tpl.content.cloneNode(true);
     const row = node.querySelector('.rank-row');
-    if(r.me) row.classList.add('me');
+    if(r.me&&!isSpectator) row.classList.add('me');
     node.querySelector('.rk-medal').textContent = r.medal;
     node.querySelector('.rk-name').textContent = r.name;
     const pts = node.querySelector('.rk-pts');
@@ -245,12 +264,19 @@ const pts = [4,3,2,1];
 
 function handleMsg(d){
   switch(d.type){
+    case 'welcome_typer_spectate':
+      isSpectator=true; mySlot=-1; myCode=d.code; syncSpectateStrip();
+      hide('scr-name'); show('scr-wait'); $('w-code').textContent=d.code;
+      $('w-hint').textContent='Mode spectateur — la partie se lance côté joueurs.';
+      break;
     case 'created_typer':
+      isSpectator=false; syncSpectateStrip();
       mySlot=d.slot; myCode=d.code;
       hide('scr-name'); show('scr-wait');
       $('w-code').textContent = d.code;
       break;
     case 'welcome_typer':
+      isSpectator=false; syncSpectateStrip();
       mySlot=d.slot; myCode=d.code;
       hide('scr-name'); show('scr-wait');
       $('w-code').textContent = d.code;
@@ -270,7 +296,8 @@ function handleMsg(d){
       currentText=d.text; done=false;
       ['scr-cd','scr-rnd'].forEach(hide); show('scr-play');
       $('rnd-info').textContent = 'MANCHE '+d.round+'/'+d.totalRounds;
-      $('type-in').value=''; $('type-in').disabled=false; $('type-in').focus();
+      $('type-in').value=''; $('type-in').disabled=!!isSpectator;
+      if(!isSpectator) $('type-in').focus();
       hide('done-msg'); colorizeText(''); startTimer();
       break;
     case 'typer_positions':
@@ -283,10 +310,10 @@ function handleMsg(d){
       hide('scr-play'); show('scr-rnd');
       const rows = d.finishers.map((slot,i)=>{
         const p = d.players.find(p=>p.slot===slot)||{name:'?',slot,score:0};
-        return {me:slot===mySlot,medal:medals[i]||'🏅',name:p.name,pts:'+'+(pts[i]||1)+' pts'};
+        return {me:!isSpectator&&slot===mySlot,medal:medals[i]||'🏅',name:p.name,pts:'+'+(pts[i]||1)+' pts'};
       });
       d.players.filter(p=>!d.finishers.includes(p.slot)).forEach(p=>{
-        rows.push({me:p.slot===mySlot,medal:'⏱',name:p.name,pts:'+0',ptsColor:'var(--muted)'});
+        rows.push({me:!isSpectator&&p.slot===mySlot,medal:'⏱',name:p.name,pts:'+0',ptsColor:'var(--muted)'});
       });
       renderRanks(rows,'rnd-ranks');
       const sorted=[...d.players].sort((a,b)=>b.score-a.score);
@@ -311,8 +338,9 @@ function updateState(d){
       ch.textContent=(p.slot===0?'👑 ':'')+p.name;
       pw.appendChild(ch);
     });
-    if(mySlot===0) show('start-btn'); else $('w-hint').textContent='En attente du joueur 1…';
-    if(window.ZapPlay)ZapPlay.showLounge({players:d.players,mySlot,roomCode:d.code,gameName:'Typer Race'});
+    if(!isSpectator && mySlot===0){ show('start-btn'); $('w-hint').textContent=''; }
+    else $('w-hint').textContent=isSpectator?'Tu observes la salle.':'En attente du joueur 1…';
+    if(window.ZapPlay)ZapPlay.showLounge({players:d.players,mySlot:isSpectator?-1:mySlot,roomCode:d.code,gameName:'Typer Race'});
   }
   if(d.phase==='PLAYING'){
     if(window.ZapPlay)ZapPlay.hideLounge();
@@ -324,13 +352,13 @@ function updateState(d){
     ['scr-play','scr-rnd'].forEach(hide); show('scr-over');
     const sorted=[...d.players].sort((a,b)=>b.score-a.score);
     $('winner-txt').textContent = (sorted[0]?sorted[0].name+' gagne !':'');
-    renderRanks(sorted.map((p,i)=>({me:p.slot===mySlot,medal:medals[i]||'🏅',name:p.name,pts:p.score+' pts'})),'final-ranks');
-    if(sorted[0] && sorted[0].slot===mySlot && window.ZapFX) ZapFX.confetti({count:180});
+    renderRanks(sorted.map((p,i)=>({me:!isSpectator&&p.slot===mySlot,medal:medals[i]||'🏅',name:p.name,pts:p.score+' pts'})),'final-ranks');
+    if(!isSpectator && sorted[0] && sorted[0].slot===mySlot && window.ZapFX) ZapFX.confetti({count:180});
   }
 }
 
 $('type-in').addEventListener('input',()=>{
-  if(done) return;
+  if(isSpectator||done) return;
   const typed = $('type-in').value;
   colorizeText(typed);
   let correct=0;
@@ -354,7 +382,12 @@ $('type-in').addEventListener('keydown',e=>{ if(e.key==='Enter') e.preventDefaul
     const saved = window.ZapPlay.getSavedPseudo && window.ZapPlay.getSavedPseudo();
     if(saved) $('name-input').value = saved;
   }
-  if(p.get('code')){
+  if(p.get('spectate')==='1' && p.get('code')){
+    $('code-in').value = p.get('code').toUpperCase();
+    toggleJoin();
+    pendingAction = () => joinSpectate();
+  }
+  else if(p.get('code')){
     $('code-in').value = p.get('code').toUpperCase();
     toggleJoin();
     const nm = ($('name-input').value||'').trim();

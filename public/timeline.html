@@ -43,11 +43,14 @@ h2{font-size:1.5rem;font-weight:800;background:linear-gradient(135deg,var(--prim
 .rank-row{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;border-radius:8px;background:rgba(255,255,255,.05);font-size:.88rem;gap:8px}
 .rank-row.me{background:rgba(91,159,255,.1);border:1px solid rgba(91,159,255,.2)}
 .big-num{font-size:5rem;font-weight:900;text-align:center;color:var(--primary)}
+.spectate-strip{display:none;margin:0 0 12px;padding:8px 12px;text-align:center;font-size:.76rem;font-weight:700;color:#bfdbfe;background:rgba(91,159,255,.12);border:1px solid rgba(91,159,255,.3);border-radius:10px}
+.spectate-strip.on{display:block}
 </style>
 </head>
 <body>
 <div class="zp-space-bg"><div class="zp-neb1"></div><div class="zp-neb2"></div><div class="zp-stars" id="zp-stars-timeline"></div><div class="zp-sgrid"></div><div class="zp-comet"></div></div>
 <div id="app">
+<div id="spectate-strip" class="spectate-strip"></div>
 <button id="back" onclick="history.back()">← Retour</button>
 <div id="dot"></div>
 
@@ -71,6 +74,7 @@ h2{font-size:1.5rem;font-weight:800;background:linear-gradient(135deg,var(--prim
     <div id="join-area" style="display:none;flex-direction:column;gap:8px">
       <input id="code-in" type="text" maxlength="4" placeholder="Code ABCD" autocomplete="off" style="text-transform:uppercase;text-align:center;font-size:1.2rem;letter-spacing:.15em">
       <button class="btn btn-p btn-full" onclick="joinGame()">Rejoindre →</button>
+      <button type="button" class="btn btn-s btn-full" onclick="joinSpectate()">Regarder en spectateur</button>
     </div>
     <p id="err" style="color:var(--bad);text-align:center;font-size:.85rem;min-height:18px"></p>
   </div>
@@ -142,10 +146,25 @@ h2{font-size:1.5rem;font-weight:800;background:linear-gradient(135deg,var(--prim
 const WS_URL = `${location.protocol==='https:'?'wss':'ws'}://${location.host}/ws/timeline`;
 let ws, mySlot=-1, myCode='', timerIv=null, answered=false;
 let pendingAction=null;
+let isSpectator=false;
 const $ = id => document.getElementById(id);
 const show = id => $(id).classList.remove('hidden');
 const hide = id => $(id).classList.add('hidden');
 const send = d => ws && ws.readyState===1 && ws.send(JSON.stringify(d));
+
+function syncSpectateStrip(){
+  const el=document.getElementById('spectate-strip'); if(!el)return;
+  el.classList.toggle('on',!!isSpectator);
+  el.textContent=isSpectator?'Mode spectateur — tu vois les options et les résultats, sans répondre.':'';
+}
+function joinSpectate(){
+  const n=$('name-input').value.trim()||'Joueur';
+  const c=$('code-in').value.trim().toUpperCase();
+  if(!c){$('err').textContent='Code requis';return;}
+  if(window.ZapPlay)ZapPlay.savePseudo(n);
+  isSpectator=true; mySlot=-1; syncSpectateStrip();
+  send({type:'join_timeline_spectate',name:n,code:c});
+}
 
 function connect(){
   ws = new WebSocket(WS_URL);
@@ -156,14 +175,14 @@ function connect(){
 connect();
 
 function toggleJoin(){ const a=$('join-area'); a.style.display=a.style.display==='flex'?'none':'flex'; }
-function createGame(){ send({type:'create_timeline',name:$('name-input').value.trim()||'Joueur'}); }
-function joinGame(){ send({type:'join_timeline',name:$('name-input').value.trim()||'Joueur',code:$('code-in').value.trim().toUpperCase()}); }
+function createGame(){ isSpectator=false; syncSpectateStrip(); send({type:'create_timeline',name:$('name-input').value.trim()||'Joueur'}); }
+function joinGame(){ isSpectator=false; syncSpectateStrip(); send({type:'join_timeline',name:$('name-input').value.trim()||'Joueur',code:$('code-in').value.trim().toUpperCase()}); }
 function copyCode(){ try{ navigator.clipboard.writeText(myCode); }catch{} }
-function startGame(){ send({type:'start_timeline'}); }
-function restart(){ send({type:'restart_timeline'}); }
+function startGame(){ if(isSpectator)return; send({type:'start_timeline'}); }
+function restart(){ if(isSpectator)return; send({type:'restart_timeline'}); }
 
 function answer(idx){
-  if(answered) return;
+  if(isSpectator||answered) return;
   answered=true;
   for(let i=0;i<4;i++) $('opt'+i).classList.add('locked');
   send({type:'timeline_answer',index:idx});
@@ -175,7 +194,7 @@ function renderScores(players, cid){
   players.forEach(p=>{
     const node=tpl.content.cloneNode(true);
     const chip=node.querySelector('.sc-chip');
-    if(p.slot===mySlot) chip.classList.add('me');
+    if(!isSpectator && p.slot===mySlot) chip.classList.add('me');
     node.querySelector('.sc-name').textContent=p.name;
     node.querySelector('.sc-pts').textContent=p.score||0;
     c.appendChild(node);
@@ -197,11 +216,18 @@ const medals=['🥇','🥈','🥉','4️⃣'];
 
 function handleMsg(d){
   switch(d.type){
+    case 'welcome_timeline_spectate':
+      isSpectator=true; mySlot=-1; myCode=d.code; syncSpectateStrip();
+      hide('scr-name'); show('scr-wait'); $('w-code').textContent=d.code;
+      $('w-hint').textContent='Spectateur — en attente du lancement.';
+      break;
     case 'created_timeline':
+      isSpectator=false; syncSpectateStrip();
       mySlot=d.slot; myCode=d.code;
       hide('scr-name'); show('scr-wait');
       $('w-code').textContent=d.code; break;
     case 'welcome_timeline':
+      isSpectator=false; syncSpectateStrip();
       mySlot=d.slot; myCode=d.code;
       hide('scr-name'); show('scr-wait');
       $('w-code').textContent=d.code;
@@ -223,7 +249,7 @@ function handleMsg(d){
         const b=$('opt'+i);
         b.textContent=d.options[i]||'';
         b.className='opt-btn';
-        b.disabled=false;
+        b.disabled=!!isSpectator;
       }
       $('feed').textContent=''; startTimer(12); break;
     case 'timeline_wrong':
@@ -253,7 +279,7 @@ function handleMsg(d){
       const winEl=$('rev-winner');
       if(d.winnerSlot>=0){
         const wp=d.players?d.players.find(p=>p.slot===d.winnerSlot):null;
-        winEl.textContent=(wp?wp.name:(d.winnerSlot===mySlot?'Toi':'?'))+' a trouvé ! +3 pts';
+        winEl.textContent=(wp?wp.name:(!isSpectator&&d.winnerSlot===mySlot?'Toi':'?'))+' a trouvé ! +3 pts';
       } else {
         winEl.textContent='Personne n\'a trouvé…'; winEl.style.color='var(--muted)';
       }
@@ -277,8 +303,13 @@ function handleMsg(d){
     const saved = ZapPlay.getSavedPseudo();
     if(saved) $('name-input').value = saved;
   }
+  if(p.get('spectate')==='1' && p.get('code')){
+    $('code-in').value=p.get('code').toUpperCase(); toggleJoin();
+    pendingAction=()=>joinSpectate();
+    setTimeout(()=>{ if(ws&&ws.readyState===1) joinSpectate(); },120);
+  }
   // Auto-join when arriving from lobby with ?code=....
-  if(p.get('code') && ($('name-input').value||'').trim()){
+  else if(p.get('code') && ($('name-input').value||'').trim()){
     const tryJoin = () => {
       if(ws && ws.readyState===1) joinGame();
       else pendingAction = () => joinGame();
@@ -293,8 +324,8 @@ function updateState(d){
     $('w-code').textContent=d.code;
     const pw=$('w-players'); pw.textContent='';
     d.players.forEach(p=>{ const c=document.createElement('span'); c.className='p-chip'; c.textContent=(p.slot===0?'👑 ':'')+p.name; pw.appendChild(c); });
-    if(mySlot===0) show('start-btn'); else $('w-hint').textContent='En attente du joueur 1…';
-    if(window.ZapPlay)ZapPlay.showLounge({players:d.players,mySlot,roomCode:d.code,gameName:'Timeline'});
+    if(!isSpectator && mySlot===0) show('start-btn'); else $('w-hint').textContent=isSpectator?'Spectateur — en attente du lancement.':'En attente du joueur 1…';
+    if(window.ZapPlay)ZapPlay.showLounge({players:d.players,mySlot:isSpectator?-1:mySlot,roomCode:d.code,gameName:'Timeline'});
   }
   if(d.phase==='PLAYING'){if(window.ZapPlay)ZapPlay.hideLounge(); renderScores(d.players,'score-bar');}
   if(d.phase==='GAME_OVER'){
@@ -302,12 +333,12 @@ function updateState(d){
     ['scr-play','scr-rev'].forEach(hide); show('scr-over');
     const sorted=[...d.players].sort((a,b)=>b.score-a.score);
     $('winner-txt').textContent=sorted[0]?sorted[0].name+' gagne !':'';
-    if(sorted[0] && sorted[0].slot===mySlot && window.ZapFX) ZapFX.confetti({count:180});
+    if(!isSpectator && sorted[0] && sorted[0].slot===mySlot && window.ZapFX) ZapFX.confetti({count:180});
     const tpl=$('tpl-rank'); const c=$('final-ranks'); c.textContent='';
     sorted.forEach((p,i)=>{
       const node=tpl.content.cloneNode(true);
       const row=node.querySelector('.rank-row');
-      if(p.slot===mySlot) row.classList.add('me');
+      if(!isSpectator && p.slot===mySlot) row.classList.add('me');
       node.querySelector('.rk-medal').textContent=medals[i]||'🏅';
       node.querySelector('.rk-name').textContent=p.name;
       const ptsEl=node.querySelector('.rk-pts');

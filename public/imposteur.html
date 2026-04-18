@@ -74,6 +74,8 @@ input[type=text]::placeholder{color:var(--muted)}
 .card{background:var(--imp-card);border:1px solid var(--imp-border);border-radius:var(--r);padding:18px;display:flex;flex-direction:column;gap:12px}
 .card-label{font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;font-weight:600}
 #err{color:#fca5a5;font-size:.85rem;text-align:center;min-height:18px}
+#spectate-strip{display:none;margin:0 0 10px;padding:8px 12px;text-align:center;font-size:.74rem;font-weight:700;letter-spacing:.04em;color:#fecdd3;background:rgba(255,77,109,.1);border:1px solid rgba(255,77,109,.28);border-radius:12px}
+#spectate-strip.on{display:block}
 
 /* HOME */
 #s-home{justify-content:flex-start;padding-top:clamp(4px,2vh,20px)}
@@ -259,6 +261,7 @@ input[type=text]::placeholder{color:var(--muted)}
 <canvas id="confetti-canvas"></canvas>
 
 <div id="wrap">
+<div id="spectate-strip"></div>
 
 <!-- HOME -->
 <div id="s-home" class="screen active">
@@ -274,6 +277,7 @@ input[type=text]::placeholder{color:var(--muted)}
     <div id="join-area" style="display:none;flex-direction:column;gap:8px">
       <input id="inp-code" type="text" placeholder="Code (ex: ABCD)" maxlength="4" autocomplete="off" style="text-transform:uppercase;letter-spacing:.1em;text-align:center;font-size:1.1rem;font-weight:700">
       <button class="btn btn-success" onclick="doJoin()">Rejoindre</button>
+      <button type="button" class="btn btn-secondary" onclick="doJoinSpectate()">Regarder en spectateur</button>
     </div>
     <div id="err"></div>
   </div>
@@ -403,6 +407,7 @@ let myCode = null;
 let timerInt = null;
 let cfg = {rounds:5, imp:1};
 let reconnectAction = null;
+let isSpectator = false;
 
 // ── ZapPlay loader (comme les autres jeux) ─────────────────────
 if (window.ZapPlay && ZapPlay.showLoader) {
@@ -508,7 +513,7 @@ connect();
     }
   }
   // Auto-join when code + name are provided (from lobby.html join flow)
-  if(p.get('code') && p.get('name') && p.get('create')!=='1'){
+  if(p.get('code') && p.get('name') && p.get('create')!=='1' && p.get('spectate')!=='1'){
     var nm=String(p.get('name')||'').trim();
     var code=String(p.get('code')||'').trim().toUpperCase();
     if(nm && code){
@@ -520,6 +525,11 @@ connect();
       };
       setTimeout(tryJoin, 300);
     }
+  }
+  if(p.get('spectate')==='1' && p.get('code')){
+    if(p.get('name')) el('inp-name').value = p.get('name');
+    var ja=el('join-area'); ja.style.display='flex'; ja.style.flexDirection='column';
+    setTimeout(doJoinSpectate, 400);
   }
 })();
 
@@ -545,11 +555,18 @@ function showJoin(){
   doJoin();
 }
 
+function syncSpectateStrip(){
+  var strip=el('spectate-strip'); if(!strip) return;
+  strip.classList.toggle('on', !!isSpectator);
+  strip.textContent = isSpectator ? 'Mode spectateur — tu suis la partie et le chat, sans jouer ni voter.' : '';
+}
+
 function doCreate(){
   var name=el('inp-name').value.trim();
   if(window.ZapPlay) ZapPlay.savePseudo(name);
   if(!name){ setErr('Entre ton pr&eacute;nom !'); return; }
   myName=name; setErr('');
+  isSpectator=false; syncSpectateStrip();
   if(ws && ws.readyState===1) send({type:'create', name:name});
   else reconnectAction=function(){ send({type:'create', name:name}); };
 }
@@ -565,13 +582,29 @@ function doJoin(){
   if(!name){ setErr('Entre ton pr&eacute;nom !'); return; }
   if(!code){ setErr('Entre le code de la salle !'); return; }
   myName=name; setErr('');
+  isSpectator=false; syncSpectateStrip();
   if(ws && ws.readyState===1) send({type:'join', name:name, code:code});
   else reconnectAction=function(){ send({type:'join', name:name, code:code}); };
 }
 
+function doJoinSpectate(){
+  var name=el('inp-name').value.trim();
+  if(!name && window.ZapPlay && ZapPlay.getSavedPseudo){
+    name = (ZapPlay.getSavedPseudo()||'').trim();
+    if(name) el('inp-name').value = name;
+  }
+  var code=el('inp-code').value.trim().toUpperCase();
+  if(window.ZapPlay) ZapPlay.savePseudo(name);
+  if(!name||!code){ setErr('Pr&eacute;nom et code requis pour le spectateur.'); return; }
+  myName=name; mySlot=-1; setErr('');
+  isSpectator=true; syncSpectateStrip();
+  if(ws && ws.readyState===1) send({type:'join_imposteur_spectate', name:name, code:code});
+  else reconnectAction=function(){ send({type:'join_imposteur_spectate', name:name, code:code}); };
+}
+
 // ── Setup ──────────────────────────────────────────────────────
-function doSetup(){ send({type:'start_setup'}); }
-function doLaunch(){ send({type:'configure', totalRounds:cfg.rounds, nbImposteurs:cfg.imp}); }
+function doSetup(){ if(isSpectator)return; send({type:'start_setup'}); }
+function doLaunch(){ if(isSpectator)return; send({type:'configure', totalRounds:cfg.rounds, nbImposteurs:cfg.imp}); }
 
 function selOpt(key, val, btn){
   cfg[key]=val;
@@ -604,6 +637,7 @@ function copyCode(){
 // ── Main handler ───────────────────────────────────────────────
 function handle(m){
   if(m.type==='error'){ el('wait-err').textContent=m.msg; setErr(m.msg); return; }
+  if(m.type==='welcome_imposteur_spectate'){ isSpectator=true; syncSpectateStrip(); return; }
   if(m.type==='lounge_chat'){ if(window.ZapPlay) ZapPlay.addLoungeMessage(m); return; }
   if(m.type!=='imposteur_state') return;
   var s=m;
@@ -620,11 +654,11 @@ function handle(m){
     window.__imp_lastPhase = s.phase;
   }
   // resolve mySlot
-  if(mySlot<0){
+  if(!isSpectator && mySlot<0){
     var me=s.players.find(function(p){ return p.name===myName; });
     if(me) mySlot=me.slot;
   }
-  isHost = (s.host===myName);
+  isHost = !isSpectator && (s.host===myName);
   myCode = s.code;
 
   if(s.phase==='WAITING')   { renderWait(s);     show('s-wait'); }
@@ -636,7 +670,7 @@ function handle(m){
   else if(s.phase==='SCORES')    { renderScores(s);   show('s-scores'); }
   else if(s.phase==='GAME_OVER') { renderGameOver(s); show('s-gameover'); }
 
-  if(s.phase!=='WAITING'){ if(window.ZapPlay) ZapPlay.hideLounge(); }
+  if(s.phase!=='WAITING' && window.ZapPlay) ZapPlay.hideLounge();
 }
 
 // ── WAIT ───────────────────────────────────────────────────────
@@ -649,9 +683,9 @@ function renderWait(s){
     chip.textContent=(p.name===s.host?'\u2605 ':'')+p.name;
     pg.appendChild(chip);
   });
-  el('start-btn').style.display = isHost ? 'block' : 'none';
+  el('start-btn').style.display = (isHost && !isSpectator) ? 'block' : 'none';
   el('wait-err').textContent='';
-  if(window.ZapPlay) ZapPlay.showLounge({players:s.players,mySlot:mySlot,roomCode:s.code||myCode,gameName:'Imposteur'});
+  if(window.ZapPlay) ZapPlay.showLounge({players:s.players,mySlot:isSpectator?-1:mySlot,roomCode:s.code||myCode,gameName:'Imposteur'});
 }
 
 // ── SETUP ──────────────────────────────────────────────────────
@@ -667,7 +701,8 @@ function renderSetup(s){
 function renderDescribe(s){
   var roleEl = el('d-role');
   if(roleEl){
-    if(s.myRole==='imposteur') { roleEl.textContent = '🕵️ Tu es l’imposteur'; roleEl.style.color = '#f59e0b'; }
+    if(isSpectator){ roleEl.textContent = '👀 Spectateur'; roleEl.style.color = 'var(--muted)'; }
+    else if(s.myRole==='imposteur') { roleEl.textContent = '🕵️ Tu es l’imposteur'; roleEl.style.color = '#f59e0b'; }
     else if(s.myRole==='civil') { roleEl.textContent = '👤 Tu es civil'; roleEl.style.color = 'var(--muted)'; }
     else { roleEl.textContent = 'Ton rôle'; roleEl.style.color = 'var(--muted)'; }
   }
@@ -692,13 +727,18 @@ function renderDescribe(s){
     div.appendChild(dn); div.appendChild(dt); dl.appendChild(div);
   });
 
-  var isMine=(activeSlot===mySlot);
+  var isMine=!isSpectator && (activeSlot===mySlot);
   el('d-input-row').style.display=isMine?'flex':'none';
   el('d-waiting').style.display=isMine?'none':'block';
+  if(isSpectator){
+    el('d-waiting').style.display='block';
+    el('d-waiting').textContent='Les joueurs décrivent le mot — tu observes.';
+  }
   if(isMine) setTimeout(function(){ var inp=el('d-inp'); if(inp) inp.focus(); }, 50);
 }
 
 function doDescribe(){
+  if(isSpectator)return;
   var txt=el('d-inp').value.trim(); if(!txt) return;
   send({type:'describe', text:txt}); el('d-inp').value='';
 }
@@ -706,6 +746,11 @@ function doDescribe(){
 // ── VOTE ───────────────────────────────────────────────────────
 function renderVote(s){
   startTimer('v-timer', 30);
+  if(isSpectator){
+    el('v-count').textContent='Spectateur';
+    el('v-btns').innerHTML='<p style="text-align:center;color:var(--muted);font-size:.9rem;padding:12px">Tu observes le vote.</p>';
+    return;
+  }
 
   var vd=el('v-descs'); vd.textContent='';
   if(s.descriptions) s.descriptions.forEach(function(d){
@@ -783,6 +828,13 @@ function renderReveal(s){
 function renderGuess(s){
   startTimer('g-timer', 20);
   var gc=el('g-content'); gc.textContent='';
+  if(isSpectator){
+    var w=document.createElement('div');
+    w.style.cssText='color:var(--muted);font-size:.9rem;text-align:center;padding:16px';
+    w.textContent='L’imposteur peut tenter de deviner le mot — tu observes.';
+    gc.appendChild(w);
+    return;
+  }
   var me=s.players.find(function(p){ return p.slot===mySlot; });
   var amImp=me&&me.isImposteur;
 
@@ -813,6 +865,7 @@ function renderGuess(s){
 }
 
 function doGuess(){
+  if(isSpectator)return;
   var gi=el('g-inp'); if(!gi) return;
   var w=gi.value.trim(); if(!w) return;
   send({type:'guess', word:w}); gi.disabled=true;
@@ -870,6 +923,7 @@ function renderGameOver(s){
 }
 
 function doReplay(){
+  if(isSpectator)return;
   if(ws && ws.readyState===1) send({type:'restart_imposteur'});
 }
 

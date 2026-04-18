@@ -38,11 +38,14 @@ h2{font-size:1.5rem;font-weight:800;background:linear-gradient(135deg,var(--prim
 .rank-row.me{background:rgba(0,232,212,.08);border:1px solid rgba(0,232,212,.2)}
 .rank-row.winner-row{background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.3)}
 .big-num{font-size:5rem;font-weight:900;text-align:center;color:var(--primary)}
+.spectate-strip{display:none;margin:0 0 12px;padding:8px 12px;text-align:center;font-size:.76rem;font-weight:700;color:#fef3c7;background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.28);border-radius:10px}
+.spectate-strip.on{display:block}
 </style>
 </head>
 <body>
 <div class="zp-space-bg"><div class="zp-neb1"></div><div class="zp-neb2"></div><div class="zp-stars" id="zp-stars-justeprix"></div><div class="zp-sgrid"></div><div class="zp-comet"></div></div>
 <div id="app">
+<div id="spectate-strip" class="spectate-strip"></div>
 <button id="back" onclick="history.back()">← Retour</button>
 <div id="dot"></div>
 
@@ -71,6 +74,7 @@ h2{font-size:1.5rem;font-weight:800;background:linear-gradient(135deg,var(--prim
     <div id="join-area" style="display:none;flex-direction:column;gap:8px">
       <input id="code-in" type="text" maxlength="4" placeholder="Code ABCD" autocomplete="off" style="text-transform:uppercase;text-align:center;font-size:1.2rem;letter-spacing:.15em">
       <button class="btn btn-p btn-full" onclick="joinGame()">Rejoindre →</button>
+      <button type="button" class="btn btn-s btn-full" onclick="joinSpectate()">Regarder en spectateur</button>
     </div>
     <p id="err" style="color:var(--bad);text-align:center;font-size:.85rem;min-height:18px"></p>
   </div>
@@ -141,10 +145,25 @@ h2{font-size:1.5rem;font-weight:800;background:linear-gradient(135deg,var(--prim
 const WS_URL = `${location.protocol==='https:'?'wss':'ws'}://${location.host}/ws/justeprix`;
 let ws, mySlot=-1, myCode='', timerIv=null, guessed=false;
 let pendingAction=null;
+let isSpectator=false;
 const $ = id => document.getElementById(id);
 const show = id => $(id).classList.remove('hidden');
 const hide = id => $(id).classList.add('hidden');
 const send = d => ws && ws.readyState===1 && ws.send(JSON.stringify(d));
+
+function syncSpectateStrip(){
+  const el=$('spectate-strip'); if(!el)return;
+  el.classList.toggle('on',!!isSpectator);
+  el.textContent=isSpectator?'Mode spectateur — tu vois les questions et scores, sans proposer de prix.':'';
+}
+function joinSpectate(){
+  const n=$('name-input').value.trim()||'Joueur';
+  const c=$('code-in').value.trim().toUpperCase();
+  if(!c){$('err').textContent='Code requis';return;}
+  if(window.ZapPlay)ZapPlay.savePseudo(n);
+  isSpectator=true; mySlot=-1; syncSpectateStrip();
+  send({type:'join_justeprix_spectate',name:n,code:c});
+}
 
 function connect(){
   ws = new WebSocket(WS_URL);
@@ -155,14 +174,14 @@ function connect(){
 connect();
 
 function toggleJoin(){ const a=$('join-area'); a.style.display=a.style.display==='flex'?'none':'flex'; }
-function createGame(){ send({type:'create_justeprix',name:$('name-input').value.trim()||'Joueur'}); }
-function joinGame(){ send({type:'join_justeprix',name:$('name-input').value.trim()||'Joueur',code:$('code-in').value.trim().toUpperCase()}); }
+function createGame(){ isSpectator=false; syncSpectateStrip(); send({type:'create_justeprix',name:$('name-input').value.trim()||'Joueur'}); }
+function joinGame(){ isSpectator=false; syncSpectateStrip(); send({type:'join_justeprix',name:$('name-input').value.trim()||'Joueur',code:$('code-in').value.trim().toUpperCase()}); }
 function copyCode(){ try{ navigator.clipboard.writeText(myCode); }catch{} }
-function startGame(){ send({type:'start_justeprix'}); }
-function restart(){ send({type:'restart_justeprix'}); }
+function startGame(){ if(isSpectator)return; send({type:'start_justeprix'}); }
+function restart(){ if(isSpectator)return; send({type:'restart_justeprix'}); }
 
 function submitGuess(){
-  if(guessed) return;
+  if(isSpectator||guessed) return;
   const v = parseFloat($('val-in').value);
   if(isNaN(v)) return;
   send({type:'justeprix_guess',value:v});
@@ -174,7 +193,7 @@ function renderScores(players, cid){
   players.forEach(p=>{
     const node=tpl.content.cloneNode(true);
     const chip=node.querySelector('.sc-chip');
-    if(p.slot===mySlot) chip.classList.add('me');
+    if(!isSpectator && p.slot===mySlot) chip.classList.add('me');
     node.querySelector('.sc-name').textContent=p.name;
     node.querySelector('.sc-pts').textContent=p.score||0;
     c.appendChild(node);
@@ -188,7 +207,7 @@ function renderReveal(guesses, cid){
   guesses.forEach((g,i)=>{
     const node=tpl.content.cloneNode(true);
     const row=node.querySelector('.rank-row');
-    if(g.slot===mySlot) row.classList.add('me');
+    if(!isSpectator && g.slot===mySlot) row.classList.add('me');
     if(i===0&&g.guess!==null) row.classList.add('winner-row');
     node.querySelector('.rk-medal').textContent=medals[i]||'🏅';
     node.querySelector('.rk-name').textContent=g.name;
@@ -216,11 +235,18 @@ const medals=['🥇','🥈','🥉','4️⃣'];
 
 function handleMsg(d){
   switch(d.type){
+    case 'welcome_justeprix_spectate':
+      isSpectator=true; mySlot=-1; myCode=d.code; syncSpectateStrip();
+      hide('scr-name'); show('scr-wait'); $('w-code').textContent=d.code;
+      $('w-hint').textContent='Spectateur — en attente du lancement.';
+      break;
     case 'created_justeprix':
+      isSpectator=false; syncSpectateStrip();
       mySlot=d.slot; myCode=d.code;
       hide('scr-name'); show('scr-wait');
       $('w-code').textContent=d.code; break;
     case 'welcome_justeprix':
+      isSpectator=false; syncSpectateStrip();
       mySlot=d.slot; myCode=d.code;
       hide('scr-name'); show('scr-wait');
       $('w-code').textContent=d.code;
@@ -239,10 +265,11 @@ function handleMsg(d){
       ['scr-cd','scr-rev'].forEach(hide); show('scr-play');
       $('rnd-info').textContent='MANCHE '+d.round+'/'+d.totalRounds;
       $('question-txt').textContent=d.question;
-      $('val-in').value=''; $('val-in').disabled=false;
-      $('submit-btn').disabled=false; $('feed').textContent='';
-      $('val-in').focus(); startTimer(15); break;
+      $('val-in').value=''; $('val-in').disabled=!!isSpectator;
+      $('submit-btn').disabled=!!isSpectator; $('feed').textContent='';
+      if(!isSpectator) $('val-in').focus(); startTimer(15); break;
     case 'justeprix_guess_ack':
+      if(isSpectator)return;
       guessed=true; $('val-in').disabled=true; $('submit-btn').disabled=true;
       $('feed').textContent='✓ Réponse enregistrée !'; $('feed').style.color='var(--ok)'; break;
     case 'justeprix_reveal':{
@@ -265,8 +292,8 @@ function updateState(d){
     $('w-code').textContent=d.code;
     const pw=$('w-players'); pw.textContent='';
     d.players.forEach(p=>{ const c=document.createElement('span'); c.className='p-chip'; c.textContent=(p.slot===0?'👑 ':'')+p.name; pw.appendChild(c); });
-    if(mySlot===0) show('start-btn'); else $('w-hint').textContent='En attente du joueur 1…';
-    if(window.ZapPlay)ZapPlay.showLounge({players:d.players,mySlot,roomCode:d.code,gameName:'Juste Prix'});
+    if(!isSpectator && mySlot===0) show('start-btn'); else $('w-hint').textContent=isSpectator?'Spectateur — en attente du lancement.':'En attente du joueur 1…';
+    if(window.ZapPlay)ZapPlay.showLounge({players:d.players,mySlot:isSpectator?-1:mySlot,roomCode:d.code,gameName:'Juste Prix'});
   }
   if(d.phase==='PLAYING'){if(window.ZapPlay)ZapPlay.hideLounge(); renderScores(d.players,'score-bar');}
   if(d.phase==='GAME_OVER'){
@@ -274,12 +301,12 @@ function updateState(d){
     ['scr-play','scr-rev'].forEach(hide); show('scr-over');
     const sorted=[...d.players].sort((a,b)=>b.score-a.score);
     $('winner-txt').textContent=sorted[0]?sorted[0].name+' gagne !':'';
-    if(sorted[0] && sorted[0].slot===mySlot && window.ZapFX) ZapFX.confetti({count:180});
+    if(!isSpectator && sorted[0] && sorted[0].slot===mySlot && window.ZapFX) ZapFX.confetti({count:180});
     const tpl=$('tpl-rank'); const c=$('final-ranks'); c.textContent='';
     sorted.forEach((p,i)=>{
       const node=tpl.content.cloneNode(true);
       const row=node.querySelector('.rank-row');
-      if(p.slot===mySlot) row.classList.add('me');
+      if(!isSpectator && p.slot===mySlot) row.classList.add('me');
       node.querySelector('.rk-medal').textContent=medals[i]||'🏅';
       node.querySelector('.rk-name').textContent=p.name;
       node.querySelector('.rk-guess').textContent='';
@@ -304,7 +331,11 @@ $('val-in').addEventListener('keydown',e=>{ if(e.key==='Enter') submitGuess(); }
     if(saved) $('name-input').value = saved;
   }
   // Auto-join when arriving from lobby with ?code=....
-  if(p.get('code') && ($('name-input').value||'').trim()){
+  if(p.get('spectate')==='1' && p.get('code')){
+    pendingAction=()=>joinSpectate();
+    setTimeout(()=>{ if(ws&&ws.readyState===1) joinSpectate(); },120);
+  }
+  else if(p.get('code') && ($('name-input').value||'').trim()){
     const tryJoin = () => {
       if(ws && ws.readyState===1) joinGame();
       else pendingAction = () => joinGame();

@@ -91,6 +91,8 @@ input[type=text]{width:100%;padding:12px;border-radius:10px;border:1px solid var
 .podium-row .pscore{font-weight:800;font-size:1.1rem;color:var(--gold)}
 
 #deb-wait{text-align:center;color:var(--muted);font-size:.92rem;line-height:1.5}
+.spectate-strip{display:none;padding:8px 12px;margin:0 0 10px;text-align:center;font-size:.76rem;font-weight:700;letter-spacing:.06em;color:#c4b5fd;background:rgba(167,139,250,.12);border:1px solid rgba(167,139,250,.35);border-radius:10px}
+.spectate-strip.on{display:block}
 </style>
 </head>
 <body>
@@ -98,6 +100,7 @@ input[type=text]{width:100%;padding:12px;border-radius:10px;border:1px solid var
 <div id="dot"></div>
 <button id="back" onclick="location.href='index.html'">← Accueil</button>
 <div id="wrap">
+  <div id="spectate-strip" class="spectate-strip"></div>
 
   <!-- HOME -->
   <div id="s-home" class="screen active">
@@ -114,6 +117,7 @@ input[type=text]{width:100%;padding:12px;border-radius:10px;border:1px solid var
       <div id="join-area" style="display:none;flex-direction:column;gap:8px;margin-top:8px">
         <input id="inp-code" type="text" maxlength="4" placeholder="Code" style="text-transform:uppercase;letter-spacing:.2em;text-align:center;font-weight:700" autocomplete="off">
         <button class="btn btn-primary" onclick="joinR()">Rejoindre</button>
+        <button type="button" class="btn btn-secondary" onclick="joinSpectate()">Regarder en spectateur</button>
       </div>
       <div id="err" style="margin-top:8px"></div>
     </div>
@@ -179,11 +183,35 @@ input[type=text]{width:100%;padding:12px;border-radius:10px;border:1px solid var
 <script>
 const WS = (location.protocol === 'https:' ? 'wss' : 'ws') + '://' + location.host + '/ws/debat';
 let ws = null, mySlot = -1, myName = '', pending = null;
+let isSpectator = false;
 let timerId = null, timerEndAt = 0, timerTotal = 0, lastServerSkew = 0, lastPhase = '';
 
 function el(id) { return document.getElementById(id); }
 function esc(s) { return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;'); }
 function send(o) { if (ws && ws.readyState === 1) ws.send(JSON.stringify(o)); }
+
+function updateSpectateStrip() {
+  const el = document.getElementById('spectate-strip');
+  if (!el) return;
+  const on = !!isSpectator;
+  el.classList.toggle('on', on);
+  el.textContent = on ? 'Mode spectateur — tu vois la partie et le chat du salon, sans jouer ni voter.' : '';
+}
+
+function joinSpectate() {
+  let n = el('inp-name').value.trim();
+  if (!n && window.ZapPlay && ZapPlay.getSavedPseudo) n = ZapPlay.getSavedPseudo().trim();
+  el('inp-name').value = n;
+  const c = el('inp-code').value.trim().toUpperCase();
+  if (!n || !c) { el('err').textContent = 'Prénom + code pour le mode spectateur'; return; }
+  el('err').textContent = '';
+  if (window.ZapPlay) ZapPlay.savePseudo(n);
+  myName = n;
+  isSpectator = true;
+  updateSpectateStrip();
+  const go = () => send({ type: 'join_debat_spectate', name: n, code: c });
+  if (ws && ws.readyState === 1) go(); else pending = go;
+}
 
 function connect() {
   ws = new WebSocket(WS);
@@ -241,6 +269,8 @@ function createR() {
   el('err').textContent = '';
   if (window.ZapPlay) ZapPlay.savePseudo(n);
   myName = n;
+  isSpectator = false;
+  updateSpectateStrip();
   const go = () => send({ type: 'create_debat', name: n });
   if (ws && ws.readyState === 1) go(); else pending = go;
 }
@@ -254,6 +284,8 @@ function joinR() {
   el('err').textContent = '';
   if (window.ZapPlay) ZapPlay.savePseudo(n);
   myName = n;
+  isSpectator = false;
+  updateSpectateStrip();
   const go = () => send({ type: 'join_debat', name: n, code: c });
   if (ws && ws.readyState === 1) go(); else pending = go;
 }
@@ -266,6 +298,7 @@ function toggleJoin() {
 }
 
 function vote(side) {
+  if (isSpectator) return;
   send({ type: 'debat_vote', side });
   el('vote-area').style.display = 'none';
   el('deb-wait').textContent = 'Vote envoyé — en attente des autres juges…';
@@ -292,18 +325,19 @@ function roleHint(r) {
 function handle(m) {
   if (m.type === 'error') { el('err').textContent = m.msg; return; }
   if (m.type === 'lounge_chat' && window.ZapPlay) { ZapPlay.addLoungeMessage(m); return; }
-  if (m.type === 'created_debat') { mySlot = m.slot; myName = m.name; }
-  if (m.type === 'welcome_debat') { mySlot = m.slot; myName = m.name; }
+  if (m.type === 'created_debat') { mySlot = m.slot; myName = m.name; isSpectator = false; updateSpectateStrip(); }
+  if (m.type === 'welcome_debat') { mySlot = m.slot; myName = m.name; isSpectator = false; updateSpectateStrip(); }
+  if (m.type === 'welcome_debat_spectate') { mySlot = -1; myName = m.name; isSpectator = true; updateSpectateStrip(); }
   if (m.type !== 'debat_state') return;
 
   const s = m;
   if (typeof s.serverNow === 'number') lastServerSkew = s.serverNow - Date.now();
-  if (mySlot < 0 && myName) {
+  if (!isSpectator && mySlot < 0 && myName) {
     const me = s.players.find(p => p.name === myName);
     if (me) mySlot = me.slot;
   }
 
-  const isHost = mySlot === 0;
+  const isHost = !isSpectator && mySlot === 0;
 
   if (s.phase !== lastPhase) { lastPhase = s.phase; clearTimer(); }
 
@@ -327,12 +361,19 @@ function handle(m) {
       el('wait-hint').textContent = n < need ? `En attente (${n}/3 min, 6 max)…` : `${n} joueurs — l'hôte peut lancer.`;
     }
     el('btn-start').style.display = isHost && n >= need ? 'block' : 'none';
-    if (window.ZapPlay) ZapPlay.showLounge({ players: s.players, mySlot, roomCode: s.code, gameName: 'Débat express' });
+    if (window.ZapPlay) {
+      if (isSpectator) ZapPlay.showLounge({ players: s.players, mySlot: -1, roomCode: s.code, gameName: 'Débat express' });
+      else ZapPlay.showLounge({ players: s.players, mySlot, roomCode: s.code, gameName: 'Débat express' });
+    }
     show('s-wait');
     return;
   }
 
-  if (window.ZapPlay) ZapPlay.hideLounge();
+  if (isSpectator) {
+    if (window.ZapPlay) ZapPlay.hideLounge();
+  } else if (window.ZapPlay) {
+    ZapPlay.hideLounge();
+  }
   el('round-lbl').textContent = s.round ? `Manche ${s.round} / ${s.totalRounds}` : '';
 
   // ── GAME OVER ─────────────────────────────────────────────
@@ -357,7 +398,7 @@ function handle(m) {
 
   show('s-game');
 
-  const myRole = roleClass(mySlot, s.forSlot, s.againstSlot);
+  const myRole = isSpectator ? 'spectator' : roleClass(mySlot, s.forSlot, s.againstSlot);
   const forP = s.players.find(p => p.slot === s.forSlot);
   const againstP = s.players.find(p => p.slot === s.againstSlot);
   const judges = s.players.filter(p => p.slot !== s.forSlot && p.slot !== s.againstSlot);
@@ -367,11 +408,13 @@ function handle(m) {
 
   // my role card
   const mrc = el('my-role-card');
-  mrc.style.display = 'block';
-  mrc.className = `role-${myRole}`;
-  el('my-role-label').textContent = 'Ton rôle';
-  el('my-role-name').textContent = roleName(myRole);
-  el('my-role-hint').textContent = roleHint(myRole);
+  mrc.style.display = isSpectator ? 'none' : 'block';
+  if (!isSpectator) {
+    mrc.className = `role-${myRole}`;
+    el('my-role-label').textContent = 'Ton rôle';
+    el('my-role-name').textContent = roleName(myRole);
+    el('my-role-hint').textContent = roleHint(myRole);
+  }
 
   // roles list
   let rolesHtml = '';
@@ -392,7 +435,8 @@ function handle(m) {
   if (s.phase === 'DEBATE') {
     el('phase-chip').textContent = '🎙️ Débat';
     if (s.debateEndsAt) startCountdownTo(s.debateEndsAt, 40000);
-    if (myRole === 'for') el('deb-wait').textContent = '🎙️ Expose tes arguments Pour — convaincs le(s) juge(s) !';
+    if (isSpectator) el('deb-wait').textContent = '👀 Tu observes le débat en direct.';
+    else if (myRole === 'for') el('deb-wait').textContent = '🎙️ Expose tes arguments Pour — convaincs le(s) juge(s) !';
     else if (myRole === 'against') el('deb-wait').textContent = '🎙️ Démonte les arguments adverses — convaincs le(s) juge(s) !';
     else el('deb-wait').textContent = '⚖️ Écoute attentivement les deux camps…';
   }
@@ -401,7 +445,10 @@ function handle(m) {
   else if (s.phase === 'VOTE') {
     el('phase-chip').textContent = '🗳️ Vote';
     if (s.voteEndsAt) startCountdownTo(s.voteEndsAt, 25000);
-    const isJudge = myRole === 'judge';
+    if (isSpectator) {
+      el('deb-wait').textContent = '👀 Les juges votent — tu observes les résultats.';
+    }
+    const isJudge = !isSpectator && myRole === 'judge';
     if (isJudge) {
       const myVoted = s.votes && s.votes[mySlot] !== undefined;
       if (!myVoted) {
@@ -467,6 +514,11 @@ function handle(m) {
   if (p.get('code')) { el('inp-code').value = p.get('code').toUpperCase(); toggleJoin(); }
   if (p.get('create') === '1' && p.get('name')) { el('inp-name').value = p.get('name'); setTimeout(createR, 400); }
   if (p.get('code') && p.get('name') && p.get('create') !== '1') { el('inp-name').value = p.get('name'); setTimeout(joinR, 500); }
+  if (p.get('spectate') === '1' && p.get('code')) {
+    toggleJoin();
+    if (p.get('name')) el('inp-name').value = p.get('name');
+    setTimeout(joinSpectate, 500);
+  }
 })();
 
 el('inp-code') && el('inp-code').addEventListener('input', e => {

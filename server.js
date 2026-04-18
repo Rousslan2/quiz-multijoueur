@@ -200,9 +200,35 @@ function makeWS(wss) {
   return { alive: aliveFn, clear: clearFn };
 }
 
-function bcast(players, data) {
+function bcast(players, data, spectators) {
   const m = JSON.stringify(data);
   players.forEach(p => { if (p.ws && p.ws.readyState === WebSocket.OPEN) p.ws.send(m); });
+  if (Array.isArray(spectators)) spectators.forEach(s => { if (s.ws && s.ws.readyState === WebSocket.OPEN) s.ws.send(m); });
+}
+/** Broadcast à joueurs + spectateurs d’une salle (spectators optionnel sur room) */
+function bcastRoom(room, data) {
+  bcast(room.players, data, room.spectators);
+}
+
+const MAX_SPECTATORS_DEFAULT = 20;
+function ensureSpectators(room) {
+  if (!room.spectators) room.spectators = [];
+  return room.spectators;
+}
+function tryJoinSpectator(room, ws, name, max = MAX_SPECTATORS_DEFAULT) {
+  if (!room) return { error: 'Salle introuvable.' };
+  const n = String(name || '').trim().slice(0, 20) || 'Spectateur';
+  const sp = ensureSpectators(room);
+  if (sp.length >= max) return { error: 'Trop de spectateurs.' };
+  sp.push({ ws, name: n });
+  return { ok: true, name: n };
+}
+function disconnectSpectator(room, ws) {
+  if (!room || !Array.isArray(room.spectators)) return false;
+  const i = room.spectators.findIndex(s => s.ws === ws);
+  if (i < 0) return false;
+  room.spectators.splice(i, 1);
+  return true;
 }
 function wsend(ws, data) { if(ws.readyState===WebSocket.OPEN) ws.send(JSON.stringify(data)); }
 function handleLoungeChat(room, ws, d){
@@ -1248,7 +1274,7 @@ wssDraw.on('connection',ws=>{
 const p4Rooms = new Map();
 
 function makeP4Room(code, host) {
-  return { code, host, players:[], phase:'WAITING', board:null, turn:0, wins:[0,0], timer:null };
+  return { code, host, players:[], spectators:[], phase:'WAITING', board:null, turn:0, wins:[0,0], timer:null };
 }
 function p4Board(){return Array(6).fill(null).map(()=>Array(7).fill(0));}
 function p4Snap(room,extra={}){return{type:'p4_state',phase:room.phase,players:room.players.map(p=>({name:p.name,slot:p.slot})),board:room.board,turn:room.turn,wins:[...room.wins],code:room.code,...extra};}
@@ -1264,19 +1290,25 @@ function p4CheckWin(board,v){
 wssP4.on('connection',ws=>{
   makeWS(wssP4).alive(ws);
   let myRoom = null;
+  let isSpectator = false;
   ws.on('close',()=>{
     makeWS(wssP4).clear(ws);
     if(!myRoom)return;
+    if(isSpectator){
+      disconnectSpectator(myRoom, ws);
+      broadcastLobby();
+      return;
+    }
     const idx=myRoom.players.findIndex(p=>p.ws===ws);if(idx<0)return;
     const name=myRoom.players[idx].name;
     myRoom.players.splice(idx,1);myRoom.players.forEach((p,i)=>p.slot=i);
     clearTimeout(myRoom.timer);
     if(myRoom.players.length===0){p4Rooms.delete(myRoom.code);broadcastLobby();return;}
     const p4WasInGame=['PLAYING','ROUNDOVER','GAME_OVER'].includes(myRoom.phase);
-    bcast(myRoom.players,{type:'player_left',name});
-    if(p4WasInGame) bcast(myRoom.players,{type:'game_abandoned'});
+    bcastRoom(myRoom,{type:'player_left',name});
+    if(p4WasInGame) bcastRoom(myRoom,{type:'game_abandoned'});
     myRoom.phase='WAITING';
-    bcast(myRoom.players,p4Snap(myRoom));
+    bcastRoom(myRoom,p4Snap(myRoom));
     broadcastLobby();
   });
   ws.on('message',raw=>{
@@ -1308,8 +1340,22 @@ wssP4.on('connection',ws=>{
         const name=String(d.name||'').trim().slice(0,20)||'Joueur';
         const slot=room.players.length;room.players.push({ws,name,slot});
         myRoom=room;
+        isSpectator=false;
         wsend(ws,{type:'welcome_p4',slot,name,code});
-        bcast(room.players,p4Snap(room));
+        bcastRoom(room,p4Snap(room));
+        broadcastLobby();
+        break;
+      }
+      case 'join_p4_spectate':{
+        const code=String(d.code||'').trim().toUpperCase();
+        const room=p4Rooms.get(code);
+        const r=tryJoinSpectator(room,ws,d.name);
+        if(r.error){wsend(ws,{type:'error',msg:r.error});return;}
+        myRoom=room;
+        isSpectator=true;
+        wsend(ws,{type:'welcome_p4_spectate',code,name:r.name});
+        wsend(ws,p4Snap(room));
+        bcastRoom(room,{type:'spectator_joined',name:r.name});
         broadcastLobby();
         break;
       }
@@ -1317,8 +1363,8 @@ wssP4.on('connection',ws=>{
         if(!player||!myRoom||player.slot!==0||!['WAITING','READY','GAME_OVER'].includes(myRoom.phase))return;
         if(myRoom.players.length<2){wsend(ws,{type:'error',msg:'Il faut 2 joueurs.'});return;}
         myRoom.board=p4Board();myRoom.turn=0;
-        myRoom.phase='COUNTDOWN';bcast(myRoom.players,{type:'countdown',seconds:3});
-        clearTimeout(myRoom.timer);myRoom.timer=setTimeout(()=>{myRoom.phase='PLAYING';bcast(myRoom.players,p4Snap(myRoom));broadcastLobby();},3000);
+        myRoom.phase='COUNTDOWN';bcastRoom(myRoom,{type:'countdown',seconds:3});
+        clearTimeout(myRoom.timer);myRoom.timer=setTimeout(()=>{myRoom.phase='PLAYING';bcastRoom(myRoom,p4Snap(myRoom));broadcastLobby();},3000);
         broadcastLobby();
         break;
       }
@@ -1332,19 +1378,19 @@ wssP4.on('connection',ws=>{
         const isDraw=!winLine&&myRoom.board[0].every(c=>c!==0);
         if(winLine){
           myRoom.wins[player.slot]++;myRoom.phase='GAME_OVER';
-          bcast(myRoom.players,{...p4Snap(myRoom),winLine,winnerSlot:player.slot});
+          bcastRoom(myRoom,{...p4Snap(myRoom),winLine,winnerSlot:player.slot});
           broadcastLobby();
         }else if(isDraw){
-          myRoom.phase='GAME_OVER';bcast(myRoom.players,{...p4Snap(myRoom),isDraw:true,winnerSlot:-1});
+          myRoom.phase='GAME_OVER';bcastRoom(myRoom,{...p4Snap(myRoom),isDraw:true,winnerSlot:-1});
           broadcastLobby();
         }else{
-          myRoom.turn=myRoom.turn===0?1:0;bcast(myRoom.players,p4Snap(myRoom));
+          myRoom.turn=myRoom.turn===0?1:0;bcastRoom(myRoom,p4Snap(myRoom));
         }
         break;
       }
       case 'restart_p4':{
         if(!player||!myRoom||myRoom.phase!=='GAME_OVER')return;
-        myRoom.board=p4Board();myRoom.turn=0;myRoom.phase='PLAYING';bcast(myRoom.players,p4Snap(myRoom));
+        myRoom.board=p4Board();myRoom.turn=0;myRoom.phase='PLAYING';bcastRoom(myRoom,p4Snap(myRoom));
         broadcastLobby();
         break;
       }
@@ -1360,26 +1406,28 @@ const morpionRooms = new Map();
 const MORPION_LINES=[[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
 
 function makeMorpionRoom(code, host) {
-  return { code, host, players:[], phase:'WAITING', board:Array(9).fill(0), turn:0, wins:[0,0], draws:0, gameWins:5, timer:null };
+  return { code, host, players:[], spectators:[], phase:'WAITING', board:Array(9).fill(0), turn:0, wins:[0,0], draws:0, gameWins:5, timer:null };
 }
 function mSnap(room,extra={}){return{type:'morpion_state',phase:room.phase,players:room.players.map(p=>({name:p.name,slot:p.slot})),board:[...room.board],turn:room.turn,wins:[...room.wins],draws:room.draws,gameWins:room.gameWins,code:room.code,...extra};}
 
 wssMorpion.on('connection',ws=>{
   makeWS(wssMorpion).alive(ws);
   let myRoom = null;
+  let isSpectator = false;
   ws.on('close',()=>{
     makeWS(wssMorpion).clear(ws);
     if(!myRoom)return;
+    if(isSpectator){ disconnectSpectator(myRoom, ws); broadcastLobby(); return; }
     const idx=myRoom.players.findIndex(p=>p.ws===ws);if(idx<0)return;
     const name=myRoom.players[idx].name;
     myRoom.players.splice(idx,1);myRoom.players.forEach((p,i)=>p.slot=i);
     clearTimeout(myRoom.timer);
     if(myRoom.players.length===0){morpionRooms.delete(myRoom.code);broadcastLobby();return;}
     const mWasInGame=['PLAYING','ROUNDOVER','GAME_OVER'].includes(myRoom.phase);
-    bcast(myRoom.players,{type:'player_left',name});
-    if(mWasInGame) bcast(myRoom.players,{type:'game_abandoned'});
+    bcastRoom(myRoom,{type:'player_left',name});
+    if(mWasInGame) bcastRoom(myRoom,{type:'game_abandoned'});
     myRoom.phase='WAITING';
-    bcast(myRoom.players,mSnap(myRoom));
+    bcastRoom(myRoom,mSnap(myRoom));
     broadcastLobby();
   });
   ws.on('message',raw=>{
@@ -1412,7 +1460,19 @@ wssMorpion.on('connection',ws=>{
         const slot=room.players.length;morpionRooms.get(code).players.push({ws,name,slot});
         myRoom=room;
         wsend(ws,{type:'welcome_morpion',slot,name,code});
-        bcast(room.players,mSnap(room));
+        isSpectator=false;
+        bcastRoom(room,mSnap(room));
+        broadcastLobby();
+        break;
+      }
+      case 'join_morpion_spectate':{
+        const code=String(d.code||'').trim().toUpperCase();
+        const room=morpionRooms.get(code);
+        const r=tryJoinSpectator(room,ws,d.name);
+        if(r.error){wsend(ws,{type:'error',msg:r.error});return;}
+        myRoom=room; isSpectator=true;
+        wsend(ws,{type:'welcome_morpion_spectate',code,name:r.name});
+        wsend(ws,mSnap(room));
         broadcastLobby();
         break;
       }
@@ -1422,8 +1482,8 @@ wssMorpion.on('connection',ws=>{
         myRoom.board=Array(9).fill(0);
         const roundNum=myRoom.wins[0]+myRoom.wins[1]+myRoom.draws;
         myRoom.turn=roundNum%2;
-        myRoom.phase='COUNTDOWN';bcast(myRoom.players,{type:'countdown',seconds:3});
-        clearTimeout(myRoom.timer);myRoom.timer=setTimeout(()=>{myRoom.phase='PLAYING';bcast(myRoom.players,mSnap(myRoom));},3000);
+        myRoom.phase='COUNTDOWN';bcastRoom(myRoom,{type:'countdown',seconds:3});
+        clearTimeout(myRoom.timer);myRoom.timer=setTimeout(()=>{myRoom.phase='PLAYING';bcastRoom(myRoom,mSnap(myRoom));},3000);
         break;
       }
       case 'play':{
@@ -1435,13 +1495,13 @@ wssMorpion.on('connection',ws=>{
         if(winLine){
           myRoom.wins[player.slot]++;
           myRoom.phase=myRoom.wins[player.slot]>=myRoom.gameWins?'GAME_OVER':'ROUNDOVER';
-          bcast(myRoom.players,{...mSnap(myRoom),winLine,winnerSlot:player.slot});
+          bcastRoom(myRoom,{...mSnap(myRoom),winLine,winnerSlot:player.slot});
           if(myRoom.phase==='GAME_OVER')broadcastLobby();
         }else if(isDraw){
           myRoom.draws++;myRoom.phase='ROUNDOVER';
-          bcast(myRoom.players,{...mSnap(myRoom),isDraw:true});
+          bcastRoom(myRoom,{...mSnap(myRoom),isDraw:true});
         }else{
-          myRoom.turn=myRoom.turn===0?1:0;bcast(myRoom.players,mSnap(myRoom));
+          myRoom.turn=myRoom.turn===0?1:0;bcastRoom(myRoom,mSnap(myRoom));
         }
         break;
       }
@@ -1449,13 +1509,13 @@ wssMorpion.on('connection',ws=>{
         if(!player||!myRoom||myRoom.phase!=='ROUNDOVER')return;
         myRoom.board=Array(9).fill(0);myRoom.phase='PLAYING';
         myRoom.turn=(myRoom.wins[0]+myRoom.wins[1]+myRoom.draws)%2;
-        bcast(myRoom.players,mSnap(myRoom));
+        bcastRoom(myRoom,mSnap(myRoom));
         break;
       }
       case 'restart_morpion':{
         if(!player||!myRoom||myRoom.phase!=='GAME_OVER')return;
         myRoom.board=Array(9).fill(0);myRoom.wins=[0,0];myRoom.draws=0;
-        myRoom.phase='PLAYING';myRoom.turn=0;bcast(myRoom.players,mSnap(myRoom));
+        myRoom.phase='PLAYING';myRoom.turn=0;bcastRoom(myRoom,mSnap(myRoom));
         broadcastLobby();
         break;
       }
@@ -1576,7 +1636,7 @@ const TABOO_CARDS=[
 const tabooRooms = new Map();
 
 function makeTabooRoom(code, host) {
-  return { code, host, players:[], phase:'WAITING', describerSlot:0, round:0, maxRounds:8, card:null, scores:[0,0,0,0], timer:null, usedCards:[] };
+  return { code, host, players:[], spectators:[], phase:'WAITING', describerSlot:0, round:0, maxRounds:8, card:null, scores:[0,0,0,0], timer:null, usedCards:[] };
 }
 function tSnap(room,extra={}){return{type:'taboo_state',phase:room.phase,players:room.players.map(p=>({name:p.name,slot:p.slot})),scores:[...room.scores],describerSlot:room.describerSlot,round:room.round,maxRounds:room.maxRounds,code:room.code,...extra};}
 
@@ -1598,6 +1658,7 @@ function tStartRound(room){
     if(p.slot===room.describerSlot){wsend(p.ws,{...base,card:{word:room.card.word,forbidden:room.card.forbidden}});}
     else{wsend(p.ws,{...base,wordLen:room.card.word.length});}
   });
+  (room.spectators||[]).forEach(s=>{wsend(s.ws,{...base,wordLen:room.card.word.length,spectator:true});});
   clearTimeout(room.timer);
   room.timer=setTimeout(()=>{if(room.phase==='PLAYING')tReveal(room,false);},60000);
 }
@@ -1605,7 +1666,7 @@ function tStartRound(room){
 function tReveal(room,guessed){
   if(room.phase==='REVEAL')return; // prevent double-call
   clearTimeout(room.timer);room.phase='REVEAL';
-  bcast(room.players,{...tSnap(room),revealWord:room.card.word,guessed});
+  bcastRoom(room,{...tSnap(room),revealWord:room.card.word,guessed});
   room.timer=setTimeout(()=>{
     if(room.phase==='REVEAL'&&room.players.length>=2)tStartRound(room);
   },3500);
@@ -1614,25 +1675,27 @@ function tEnd(room){
   clearTimeout(room.timer);room.phase='GAME_OVER';
   let win=-1,best=-1;
   room.players.forEach(p=>{const s=room.scores[p.slot]??0;if(s>best){best=s;win=p.slot;}else if(s===best){win=-1;}});
-  bcast(room.players,{...tSnap(room),winnerSlot:win});
+  bcastRoom(room,{...tSnap(room),winnerSlot:win});
   broadcastLobby();
 }
 
 wssTaboo.on('connection',ws=>{
   makeWS(wssTaboo).alive(ws);
   let myRoom = null;
+  let isSpectator = false;
   ws.on('close',()=>{
     makeWS(wssTaboo).clear(ws);
     if(!myRoom)return;
+    if(isSpectator){ disconnectSpectator(myRoom, ws); broadcastLobby(); return; }
     const idx=myRoom.players.findIndex(p=>p.ws===ws);if(idx<0)return;
     const name=myRoom.players[idx].name;
     myRoom.players.splice(idx,1);myRoom.players.forEach((p,i)=>p.slot=i);
     clearTimeout(myRoom.timer);
     if(myRoom.players.length===0){tabooRooms.delete(myRoom.code);broadcastLobby();return;}
-    bcast(myRoom.players,{type:'player_left',name});
+    bcastRoom(myRoom,{type:'player_left',name});
     if(myRoom.players.length<2){
       const tWasInGame=['PLAYING','REVEAL'].includes(myRoom.phase);
-      if(tWasInGame) bcast(myRoom.players,{type:'game_abandoned'});
+      if(tWasInGame) bcastRoom(myRoom,{type:'game_abandoned'});
       myRoom.phase='WAITING';myRoom.scores=[0,0,0,0];myRoom.round=0;
     } else if(['PLAYING','REVEAL'].includes(myRoom.phase)){
       // Recalculer le descripteur et continuer
@@ -1645,7 +1708,7 @@ wssTaboo.on('connection',ws=>{
     } else {
       if(myRoom.phase==='GAME_OVER')myRoom.phase='WAITING';
     }
-    bcast(myRoom.players,tSnap(myRoom));
+    bcastRoom(myRoom,tSnap(myRoom));
     broadcastLobby();
   });
   ws.on('message',raw=>{
@@ -1678,7 +1741,19 @@ wssTaboo.on('connection',ws=>{
         const slot=room.players.length;room.players.push({ws,name,slot});
         myRoom=room;
         wsend(ws,{type:'welcome_taboo',slot,name,code});
-        bcast(room.players,tSnap(room));
+        isSpectator=false;
+        bcastRoom(room,tSnap(room));
+        broadcastLobby();
+        break;
+      }
+      case 'join_taboo_spectate':{
+        const code=String(d.code||'').trim().toUpperCase();
+        const room=tabooRooms.get(code);
+        const r=tryJoinSpectator(room,ws,d.name);
+        if(r.error){wsend(ws,{type:'error',msg:r.error});return;}
+        myRoom=room; isSpectator=true;
+        wsend(ws,{type:'welcome_taboo_spectate',code,name:r.name});
+        wsend(ws,tSnap(room));
         broadcastLobby();
         break;
       }
@@ -1686,7 +1761,7 @@ wssTaboo.on('connection',ws=>{
         if(!player||!myRoom||player.slot!==0||!['WAITING','READY','GAME_OVER'].includes(myRoom.phase))return;
         if(myRoom.players.length<2){wsend(ws,{type:'error',msg:'Il faut au moins 2 joueurs.'});return;}
         myRoom.scores=[0,0,0,0];myRoom.round=0;myRoom.usedCards=[];
-        myRoom.phase='COUNTDOWN';bcast(myRoom.players,{type:'countdown',seconds:3});
+        myRoom.phase='COUNTDOWN';bcastRoom(myRoom,{type:'countdown',seconds:3});
         clearTimeout(myRoom.timer);myRoom.timer=setTimeout(()=>tStartRound(myRoom),3000);
         broadcastLobby();
         break;
@@ -1698,23 +1773,23 @@ wssTaboo.on('connection',ws=>{
         if(norm(guess)===norm(myRoom.card.word)){
           myRoom.scores[player.slot]=(myRoom.scores[player.slot]||0)+2;
           myRoom.scores[myRoom.describerSlot]=(myRoom.scores[myRoom.describerSlot]||0)+1;
-          bcast(myRoom.players,{type:'taboo_correct',guesser:player.name,word:myRoom.card.word});
+          bcastRoom(myRoom,{type:'taboo_correct',guesser:player.name,word:myRoom.card.word});
           tReveal(myRoom,true);
         }else{
-          bcast(myRoom.players,{type:'taboo_guess',name:player.name,word:guess});
+          bcastRoom(myRoom,{type:'taboo_guess',name:player.name,word:guess});
         }
         break;
       }
       case 'grille':{
         if(!player||!myRoom||player.slot===myRoom.describerSlot||myRoom.phase!=='PLAYING')return;
         myRoom.scores[myRoom.describerSlot]=Math.max(0,(myRoom.scores[myRoom.describerSlot]||0)-1);
-        bcast(myRoom.players,{type:'taboo_grille',name:player.name,scores:[...myRoom.scores]});
+        bcastRoom(myRoom,{type:'taboo_grille',name:player.name,scores:[...myRoom.scores]});
         tReveal(myRoom,false);
         break;
       }
       case 'restart_taboo':{
         if(!player||!myRoom||myRoom.phase!=='GAME_OVER')return;
-        myRoom.scores=[0,0,0,0];myRoom.round=0;myRoom.usedCards=[];myRoom.phase='READY';bcast(myRoom.players,tSnap(myRoom));
+        myRoom.scores=[0,0,0,0];myRoom.round=0;myRoom.usedCards=[];myRoom.phase='READY';bcastRoom(myRoom,tSnap(myRoom));
         broadcastLobby();
         break;
       }
@@ -1891,14 +1966,14 @@ function emojiIsCorrect(guess, answer){
 const emojiRooms = new Map();
 
 function makeEmojiRoom(code, host) {
-  return { code, host, players:[], phase:'WAITING', puzzles:[], qIndex:0, scores:[0,0,0,0], wins:[0,0,0,0], timer:null, firstAnswerTime:null, answeredSlots:new Set() };
+  return { code, host, players:[], spectators:[], phase:'WAITING', puzzles:[], qIndex:0, scores:[0,0,0,0], wins:[0,0,0,0], timer:null, firstAnswerTime:null, answeredSlots:new Set() };
 }
 function eSnap(room,extra={}){return{type:'emoji_state',phase:room.phase,players:room.players.map(p=>({name:p.name,slot:p.slot})),scores:[...room.scores],wins:[...room.wins],answeredSlots:[...( room.answeredSlots||new Set())],qIndex:room.qIndex,total:room.puzzles.length,puzzle:room.puzzles[room.qIndex]?{emojis:room.puzzles[room.qIndex].emojis,cat:room.puzzles[room.qIndex].cat}:null,code:room.code,...extra};}
 
 function eStartQ(room){
   if(room.qIndex>=room.puzzles.length){eEnd(room);return;}
   room.phase='QUESTION';room.firstAnswerTime=null;room.answeredSlots=new Set();
-  bcast(room.players,{...eSnap(room),timerSeconds:20});
+  bcastRoom(room,{...eSnap(room),timerSeconds:20});
   clearTimeout(room.timer);
   room.timer=setTimeout(()=>{if(room.phase==='QUESTION')eReveal(room,[]);},20000);
 }
@@ -1906,7 +1981,7 @@ function eReveal(room,correctSlots){
   clearTimeout(room.timer);
   const p=room.puzzles[room.qIndex];
   room.phase='REVEAL';
-  bcast(room.players,{...eSnap(room),reveal:{answer:p.answer,correctSlots}});
+  bcastRoom(room,{...eSnap(room),reveal:{answer:p.answer,correctSlots}});
   room.qIndex++;room.timer=setTimeout(()=>eStartQ(room),3500);
 }
 function eEnd(room){
@@ -1914,7 +1989,7 @@ function eEnd(room){
   let win=-1,best=-1;
   room.players.forEach(p=>{const s=room.scores[p.slot]??0;if(s>best){best=s;win=p.slot;}else if(s===best){win=-1;}});
   if(win>=0)room.wins[win]++;
-  bcast(room.players,{...eSnap(room),winnerSlot:win});
+  bcastRoom(room,{...eSnap(room),winnerSlot:win});
   broadcastLobby();
 }
 
@@ -1929,16 +2004,16 @@ wssEmoji.on('connection',ws=>{
     myRoom.players.splice(idx,1);myRoom.players.forEach((p,i)=>p.slot=i);
     clearTimeout(myRoom.timer);
     if(myRoom.players.length===0){emojiRooms.delete(myRoom.code);broadcastLobby();return;}
-    bcast(myRoom.players,{type:'player_left',name});
+    bcastRoom(myRoom,{type:'player_left',name});
     if(myRoom.players.length<2){
       const eWasInGame=['QUESTION','REVEAL'].includes(myRoom.phase);
-      if(eWasInGame) bcast(myRoom.players,{type:'game_abandoned'});
+      if(eWasInGame) bcastRoom(myRoom,{type:'game_abandoned'});
       myRoom.phase='WAITING';myRoom.scores=[0,0,0,0];myRoom.qIndex=0;
     } else if(['QUESTION','REVEAL'].includes(myRoom.phase)){
       // Continuer la partie si assez de joueurs
       if(myRoom.phase==='QUESTION'){
         myRoom.answeredSlots=new Set();
-        bcast(myRoom.players,{...eSnap(myRoom),timerSeconds:20});
+        bcastRoom(myRoom,{...eSnap(myRoom),timerSeconds:20});
         myRoom.timer=setTimeout(()=>{if(myRoom.phase==='QUESTION')eReveal(myRoom,[]);},20000);
       } else {
         myRoom.timer=setTimeout(()=>eStartQ(myRoom),2000);
@@ -1946,7 +2021,7 @@ wssEmoji.on('connection',ws=>{
     } else {
       if(myRoom.phase==='GAME_OVER')myRoom.phase='WAITING';
     }
-    bcast(myRoom.players,eSnap(myRoom));
+    bcastRoom(myRoom,eSnap(myRoom));
     broadcastLobby();
   });
   ws.on('message',raw=>{
@@ -1979,7 +2054,7 @@ wssEmoji.on('connection',ws=>{
         const slot=room.players.length;room.players.push({ws,name,slot});
         myRoom=room;
         wsend(ws,{type:'welcome_emoji',slot,name,code});
-        bcast(room.players,eSnap(room));
+        bcastRoom(room,eSnap(room));
         broadcastLobby();
         break;
       }
@@ -1988,7 +2063,7 @@ wssEmoji.on('connection',ws=>{
         if(myRoom.players.length<2){wsend(ws,{type:'error',msg:'Il faut au moins 2 joueurs.'});return;}
         myRoom.scores=[0,0,0,0];myRoom.qIndex=0;
         myRoom.puzzles=shuffle(EMOJI_PUZZLES).slice(0,Math.min(15,EMOJI_PUZZLES.length));
-        myRoom.phase='COUNTDOWN';bcast(myRoom.players,{type:'countdown',seconds:3});
+        myRoom.phase='COUNTDOWN';bcastRoom(myRoom,{type:'countdown',seconds:3});
         clearTimeout(myRoom.timer);myRoom.timer=setTimeout(()=>eStartQ(myRoom),3000);
         broadcastLobby();
         break;
@@ -2007,13 +2082,13 @@ wssEmoji.on('connection',ws=>{
             // First correct: 3pts, start 5s window
             myRoom.firstAnswerTime=now;
             myRoom.scores[player.slot]+=3;
-            bcast(myRoom.players,{type:'emoji_correct',name:player.name,slot:player.slot,pts:3,answeredSlots:[...myRoom.answeredSlots]});
+            bcastRoom(myRoom,{type:'emoji_correct',name:player.name,slot:player.slot,pts:3,answeredSlots:[...myRoom.answeredSlots]});
             clearTimeout(myRoom.timer);
             myRoom.timer=setTimeout(()=>{eReveal(myRoom,[...myRoom.answeredSlots]);},5000);
           } else if(now-myRoom.firstAnswerTime<=5000){
             // Within 5s: 1pt
             myRoom.scores[player.slot]+=1;
-            bcast(myRoom.players,{type:'emoji_correct',name:player.name,slot:player.slot,pts:1,answeredSlots:[...myRoom.answeredSlots]});
+            bcastRoom(myRoom,{type:'emoji_correct',name:player.name,slot:player.slot,pts:1,answeredSlots:[...myRoom.answeredSlots]});
             // Check if all players answered
             if(myRoom.answeredSlots.size>=myRoom.players.length){
               clearTimeout(myRoom.timer);eReveal(myRoom,[...myRoom.answeredSlots]);
@@ -2027,7 +2102,7 @@ wssEmoji.on('connection',ws=>{
       }
       case 'restart_emoji':{
         if(!player||!myRoom||myRoom.phase!=='GAME_OVER')return;
-        myRoom.scores=[0,0,0,0];myRoom.phase='READY';bcast(myRoom.players,eSnap(myRoom));
+        myRoom.scores=[0,0,0,0];myRoom.phase='READY';bcastRoom(myRoom,eSnap(myRoom));
         broadcastLobby();
         break;
       }
@@ -2135,7 +2210,7 @@ function loupDayReveal(room) {
   room.phase = 'DAY_REVEAL';
   room.nightPhase = null;
   loupBcastAll(room);
-  bcast(room.players, { type:'night_result', killed });
+  bcastRoom(room, { type:'night_result', killed });
 
   const win = loupCountWin(room);
   if (win) { return loupGameOver(room, win); }
@@ -2166,7 +2241,7 @@ function loupResolveDayVote(room) {
     if (p) p.alive = false;
   }
   const elimName = eliminated !== null ? room.players[eliminated]?.name : null;
-  bcast(room.players, { type:'day_vote_result', eliminated: elimName, votes: room.votes });
+  bcastRoom(room, { type:'day_vote_result', eliminated: elimName, votes: room.votes });
 
   const win = loupCountWin(room);
   if (win) return loupGameOver(room, win);
@@ -2178,7 +2253,7 @@ function loupResolveDayVote(room) {
 function loupGameOver(room, winner) {
   room.phase = 'GAME_OVER';
   const reason = winner === 'loups' ? 'Les loups ont mangé le village !' : 'Tous les loups sont éliminés !';
-  bcast(room.players, { type:'loup_over', winner, reason });
+  bcastRoom(room, { type:'loup_over', winner, reason });
   loupBcastAll(room);
   broadcastLobby();
 }
@@ -2194,7 +2269,7 @@ wssLoup.on('connection', ws => {
     myRoom.players.splice(idx, 1);
     myRoom.players.forEach((p, i) => p.slot = i);
     if (myRoom.players.length === 0) { clearTimeout(myRoom.timer); loupRooms.delete(myRoom.code); }
-    else { myRoom.phase = 'WAITING'; bcast(myRoom.players, { type:'player_left', name }); loupBcastAll(myRoom); }
+    else { myRoom.phase = 'WAITING'; bcastRoom(myRoom, { type:'player_left', name }); loupBcastAll(myRoom); }
     broadcastLobby();
   });
   ws.on('message', raw => {
@@ -2235,7 +2310,7 @@ wssLoup.on('connection', ws => {
       case 'start_loup': {
         if (!player || !myRoom || player.slot !== 0 || myRoom.phase !== 'WAITING') return;
         if (myRoom.players.length < 4) { wsend(ws, { type:'error', msg:'Il faut au moins 4 joueurs.' }); return; }
-        bcast(myRoom.players, { type:'countdown', seconds:3 });
+        bcastRoom(myRoom, { type:'countdown', seconds:3 });
         clearTimeout(myRoom.timer);
         myRoom.timer = setTimeout(() => {
           // Assign roles
@@ -2418,7 +2493,7 @@ wssUno.on('connection', ws => {
     myRoom.players.splice(idx, 1);
     myRoom.players.forEach((p, i) => p.slot = i);
     if (myRoom.players.length === 0) { clearTimeout(myRoom.timer); unoRooms.delete(myRoom.code); }
-    else { myRoom.phase = 'WAITING'; bcast(myRoom.players, { type:'player_left', name }); unoBcastAll(myRoom); }
+    else { myRoom.phase = 'WAITING'; bcastRoom(myRoom, { type:'player_left', name }); unoBcastAll(myRoom); }
     broadcastLobby();
   });
   ws.on('message', raw => {
@@ -2470,7 +2545,7 @@ wssUno.on('connection', ws => {
         myRoom.currentColor = first.color;
         myRoom.turn = 0; myRoom.direction = 1; myRoom.drawStack = 0; myRoom.unoAlert = {}; myRoom.unoCatchWindow = {};
         myRoom.phase = 'COUNTDOWN';
-        bcast(myRoom.players, { type:'countdown', seconds:3 });
+        bcastRoom(myRoom, { type:'countdown', seconds:3 });
         clearTimeout(myRoom.timer);
         myRoom.timer = setTimeout(() => { myRoom.phase = 'PLAYING'; unoBcastAll(myRoom); broadcastLobby(); }, 3000);
         broadcastLobby();
@@ -2515,13 +2590,13 @@ wssUno.on('connection', ws => {
         }
 
         // Broadcast play event
-        bcast(myRoom.players, { type:'uno_played', slot:player.slot, name:player.name,
+        bcastRoom(myRoom, { type:'uno_played', slot:player.slot, name:player.name,
           card: { ...card, color:playedColor }, nextTurn:myRoom.turn });
 
         // Check win
         if (hand.length === 0) {
           myRoom.phase = 'GAME_OVER';
-          bcast(myRoom.players, { type:'uno_over', winnerSlot:player.slot, winnerName:player.name });
+          bcastRoom(myRoom, { type:'uno_over', winnerSlot:player.slot, winnerName:player.name });
           unoBcastAll(myRoom);
           broadcastLobby();
           return;
@@ -2554,7 +2629,7 @@ wssUno.on('connection', ws => {
         const drawCount = myRoom.drawStack > 0 ? myRoom.drawStack : 1;
         unoDrawCards(myRoom, player.slot, drawCount);
         myRoom.drawStack = 0;
-        bcast(myRoom.players, { type:'uno_drew', slot:player.slot, name:player.name, count:drawCount });
+        bcastRoom(myRoom, { type:'uno_drew', slot:player.slot, name:player.name, count:drawCount });
         unoNextTurn(myRoom);
         unoBcastAll(myRoom);
         break;
@@ -2569,7 +2644,7 @@ wssUno.on('connection', ws => {
             clearTimeout(myRoom.unoCatchWindow[player.slot]);
             delete myRoom.unoCatchWindow[player.slot];
           }
-          bcast(myRoom.players, { type:'uno_said', slot:player.slot, name:player.name });
+          bcastRoom(myRoom, { type:'uno_said', slot:player.slot, name:player.name });
           unoBcastAll(myRoom);
         }
         break;
@@ -2585,7 +2660,7 @@ wssUno.on('connection', ws => {
           clearTimeout(myRoom.unoCatchWindow[targetSlot]);
           delete myRoom.unoCatchWindow[targetSlot];
           unoDrawCards(myRoom, targetSlot, 2);
-          bcast(myRoom.players, { type:'uno_caught', catcher:player.name, target:target.name, targetSlot });
+          bcastRoom(myRoom, { type:'uno_caught', catcher:player.name, target:target.name, targetSlot });
           unoBcastAll(myRoom);
         }
         break;
@@ -2626,7 +2701,7 @@ function bombIsRealWord(word){
 }
 function makeBombRoom(code, host){
   return {
-    code, host, players:[], phase:'WAITING',
+    code, host, players:[], spectators:[], phase:'WAITING',
     turn:0, syllable:'', used:new Set(), recentWords:[],
     timer:null, turnEndsAt:0, turnMs:12000, successfulWords:0
   };
@@ -2654,7 +2729,7 @@ function bombSnap(room){
   };
 }
 function bombBcast(room, extra={}){
-  bcast(room.players, {...bombSnap(room), ...extra});
+  bcastRoom(room, {...bombSnap(room), ...extra});
 }
 function bombCurrentTurnMs(room){
   const solved = Number(room?.successfulWords||0);
@@ -2710,9 +2785,16 @@ function bombTimeout(room){
 wssBomb.on('connection', ws => {
   makeWS(wssBomb).alive(ws);
   let myRoom = null;
+  let isSpectator = false;
   ws.on('close', () => {
     makeWS(wssBomb).clear(ws);
     if(!myRoom)return;
+    if(isSpectator){
+      disconnectSpectator(myRoom, ws);
+      if(myRoom.phase==='PLAYING')bombBcast(myRoom);
+      broadcastLobby();
+      return;
+    }
     const idx=myRoom.players.findIndex(p=>p.ws===ws); if(idx<0)return;
     const left=myRoom.players[idx];
     myRoom.players.splice(idx,1);
@@ -2726,7 +2808,7 @@ wssBomb.on('connection', ws => {
       myRoom.turn = bombNextAliveSlot(myRoom, myRoom.turn);
       if(myRoom.phase==='PLAYING') bombStartTurn(myRoom);
     }
-    bcast(myRoom.players,{type:'player_left',name:left.name});
+    bcastRoom(myRoom,{type:'player_left',name:left.name});
     if(myRoom.phase!=='PLAYING') bombBcast(myRoom);
     if(myRoom.phase==='GAME_OVER') bombCheckGameOver(myRoom);
     if(myRoom.phase==='WAITING' && myRoom.players[0]) myRoom.host=myRoom.players[0].name;
@@ -2747,6 +2829,7 @@ wssBomb.on('connection', ws => {
         room.players.push({ws,name,slot:0,alive:true,lives:3,score:0});
         bombRooms.set(code,room);
         myRoom=room;
+        isSpectator=false;
         wsend(ws,{type:'created_bomb',code,slot:0,name});
         bombBcast(room);
         broadcastLobby();
@@ -2762,7 +2845,20 @@ wssBomb.on('connection', ws => {
         const slot=room.players.length;
         room.players.push({ws,name,slot,alive:true,lives:3,score:0});
         myRoom=room;
+        isSpectator=false;
         wsend(ws,{type:'welcome_bomb',code,slot,name});
+        bombBcast(room);
+        broadcastLobby();
+        break;
+      }
+      case 'join_bomb_spectate':{
+        const code=String(d.code||'').trim().toUpperCase();
+        const room=bombRooms.get(code);
+        const r=tryJoinSpectator(room,ws,d.name);
+        if(r.error){wsend(ws,{type:'error',msg:r.error});return;}
+        myRoom=room;
+        isSpectator=true;
+        wsend(ws,{type:'welcome_bomb_spectate',code,name:r.name});
         bombBcast(room);
         broadcastLobby();
         break;
@@ -2773,7 +2869,7 @@ wssBomb.on('connection', ws => {
         myRoom.players.forEach(p=>{p.lives=3;p.score=0;p.alive=true;});
         myRoom.used.clear(); myRoom.recentWords=[]; myRoom.turn=0; myRoom.successfulWords=0; myRoom.turnMs=12000;
         myRoom.phase='COUNTDOWN';
-        bcast(myRoom.players,{type:'countdown',seconds:3});
+        bcastRoom(myRoom,{type:'countdown',seconds:3});
         clearTimeout(myRoom.timer);
         myRoom.timer=setTimeout(()=>{
           myRoom.phase='PLAYING';
@@ -2881,7 +2977,7 @@ function sumoSnap(room){
   };
 }
 function sumoBcast(room, extra={}){
-  bcast(room.players, { ...sumoSnap(room), ...extra });
+  bcastRoom(room, { ...sumoSnap(room), ...extra });
 }
 function sumoStop(room){
   if(room.tick){ clearInterval(room.tick); room.tick=null; }
@@ -3105,7 +3201,7 @@ wssSumo.on('connection', ws => {
       case 'start_sumo': {
         if(!myRoom||!player||player.slot!==0||myRoom.phase!=='WAITING')return;
         if(myRoom.players.length<2){wsend(ws,{type:'error',msg:'Il faut au moins 2 joueurs.'});return;}
-        bcast(myRoom.players,{type:'countdown',seconds:3});
+        bcastRoom(myRoom,{type:'countdown',seconds:3});
         myRoom.phase='COUNTDOWN';
         broadcastLobby();
         setTimeout(()=>{
@@ -3300,7 +3396,7 @@ function paintSnap(room, extra={}){
     ...extra,
   };
 }
-function paintBcast(room, extra={}){ bcast(room.players, paintSnap(room, extra)); }
+function paintBcast(room, extra={}){ bcastRoom(room, paintSnap(room, extra)); }
 function paintStop(room){ if(room.tick){ clearInterval(room.tick); room.tick=null; } }
 
 function paintTick(room){
@@ -3443,7 +3539,7 @@ wssPaint.on('connection', ws => {
       case 'start_paint':{
         if(!myRoom || !player || player.slot!==0 || myRoom.phase!=='WAITING') return;
         if(myRoom.players.length<2){ wsend(ws,{type:'error',msg:'Il faut au moins 2 joueurs.'}); return; }
-        bcast(myRoom.players, {type:'countdown',seconds:3});
+        bcastRoom(myRoom, {type:'countdown',seconds:3});
         myRoom.phase='COUNTDOWN';
         broadcastLobby();
         setTimeout(() => {
@@ -3695,8 +3791,8 @@ wssNaval.on('connection', ws => {
       return;
     }
     const wasGame = ['PLACING', 'COUNTDOWN', 'PLAYING', 'GAME_OVER'].includes(myRoom.phase);
-    bcast(myRoom.players, { type:'player_left', name });
-    if(wasGame) bcast(myRoom.players, { type:'game_abandoned' });
+    bcastRoom(myRoom, { type:'player_left', name });
+    if(wasGame) bcastRoom(myRoom, { type:'game_abandoned' });
     myRoom.phase = 'WAITING';
     navalEnsureArrays(myRoom);
     myRoom.boards = myRoom.players.map(() => null);
@@ -3775,7 +3871,7 @@ wssNaval.on('connection', ws => {
         myRoom.placementReady[slot] = true;
         const n = myRoom.players.length;
         if(n && myRoom.placementReady.length === n && myRoom.placementReady.every(Boolean)){
-          bcast(myRoom.players, { type:'countdown', seconds:3 });
+          bcastRoom(myRoom, { type:'countdown', seconds:3 });
           myRoom.phase = 'COUNTDOWN';
           clearTimeout(myRoom.timer);
           myRoom.timer = setTimeout(() => {
@@ -3875,7 +3971,7 @@ const TYPER_TEXTS = [
 ];
 
 const typerRooms = new Map();
-function makeTyperRoom(c,h){return{code:c,host:h,players:[],phase:'WAITING',round:0,totalRounds:5,currentText:null,scores:{},finishers:[],timer:null,usedTexts:[]};}
+function makeTyperRoom(c,h){return{code:c,host:h,players:[],spectators:[],phase:'WAITING',round:0,totalRounds:5,currentText:null,scores:{},finishers:[],timer:null,usedTexts:[]};}
 function typerSnap(room,extra={}){return{type:'typer_state',phase:room.phase,code:room.code,players:room.players.map(p=>({name:p.name,slot:p.slot,score:room.scores[p.slot]||0,progress:p.progress||0})),round:room.round,totalRounds:room.totalRounds,finishers:[...room.finishers],...extra};}
 
 function typerStartRound(room){
@@ -3887,7 +3983,7 @@ function typerStartRound(room){
   room.usedTexts.push(idx);
   room.currentText=TYPER_TEXTS[idx];
   room.phase='PLAYING';
-  bcast(room.players,{type:'typer_round',round:room.round,totalRounds:room.totalRounds,text:room.currentText});
+  bcastRoom(room,{type:'typer_round',round:room.round,totalRounds:room.totalRounds,text:room.currentText});
   clearTimeout(room.timer);
   room.timer=setTimeout(()=>typerEndRound(room),60000);
   broadcastLobby();
@@ -3897,27 +3993,33 @@ function typerEndRound(room){
   const pts=[4,3,2,1];
   room.finishers.forEach((slot,i)=>{room.scores[slot]=(room.scores[slot]||0)+(pts[i]||1);});
   room.phase='ROUNDOVER';
-  bcast(room.players,{...typerSnap(room),type:'typer_roundover'});
+  bcastRoom(room,{...typerSnap(room),type:'typer_roundover'});
   clearTimeout(room.timer);
   room.timer=setTimeout(()=>{
-    if(room.round>=room.totalRounds){room.phase='GAME_OVER';bcast(room.players,typerSnap(room));broadcastLobby();}
+    if(room.round>=room.totalRounds){room.phase='GAME_OVER';bcastRoom(room,typerSnap(room));broadcastLobby();}
     else{room.round++;typerStartRound(room);}
   },3500);
 }
 wssTyper.on('connection',ws=>{
   makeWS(wssTyper).alive(ws);
   let myRoom=null;
+  let isSpectator=false;
   ws.on('close',()=>{
     makeWS(wssTyper).clear(ws);
     if(!myRoom)return;
+    if(isSpectator){
+      disconnectSpectator(myRoom,ws);
+      broadcastLobby();
+      return;
+    }
     const idx=myRoom.players.findIndex(p=>p.ws===ws);if(idx<0)return;
     const name=myRoom.players[idx].name;
     myRoom.players.splice(idx,1);myRoom.players.forEach((p,i)=>p.slot=i);
     clearTimeout(myRoom.timer);
     if(!myRoom.players.length){typerRooms.delete(myRoom.code);broadcastLobby();return;}
-    bcast(myRoom.players,{type:'player_left',name});
-    if(['PLAYING','ROUNDOVER'].includes(myRoom.phase))bcast(myRoom.players,{type:'game_abandoned'});
-    myRoom.phase='WAITING';bcast(myRoom.players,typerSnap(myRoom));broadcastLobby();
+    bcastRoom(myRoom,{type:'player_left',name});
+    if(['PLAYING','ROUNDOVER'].includes(myRoom.phase))bcastRoom(myRoom,{type:'game_abandoned'});
+    myRoom.phase='WAITING';bcastRoom(myRoom,typerSnap(myRoom));broadcastLobby();
   });
   ws.on('message',raw=>{
     let d;try{d=JSON.parse(raw);}catch{return;}
@@ -3928,6 +4030,7 @@ wssTyper.on('connection',ws=>{
         const name=String(d.name||'').trim().slice(0,20)||'Joueur';
         const code=genCode(typerRooms);const room=makeTyperRoom(code,name);
         typerRooms.set(code,room);myRoom=room;
+        isSpectator=false;
         room.players.push({ws,name,slot:0,progress:0});room.scores[0]=0;
         wsend(ws,{type:'created_typer',code,slot:0,name});wsend(ws,typerSnap(room));broadcastLobby();break;
       }
@@ -3938,34 +4041,42 @@ wssTyper.on('connection',ws=>{
         if(room.phase!=='WAITING'){wsend(ws,{type:'error',msg:'Partie déjà en cours.'});return;}
         const name=String(d.name||'').trim().slice(0,20)||'Joueur';
         const slot=room.players.length;room.players.push({ws,name,slot,progress:0});room.scores[slot]=0;
-        myRoom=room;wsend(ws,{type:'welcome_typer',slot,name,code});bcast(room.players,typerSnap(room));broadcastLobby();break;
+        myRoom=room;isSpectator=false;wsend(ws,{type:'welcome_typer',slot,name,code});bcastRoom(room,typerSnap(room));broadcastLobby();break;
+      }
+      case 'join_typer_spectate':{
+        const code=String(d.code||'').trim().toUpperCase();const room=typerRooms.get(code);
+        const r=tryJoinSpectator(room,ws,d.name);
+        if(r.error){wsend(ws,{type:'error',msg:r.error});return;}
+        myRoom=room;isSpectator=true;
+        wsend(ws,{type:'welcome_typer_spectate',code,name:r.name});
+        wsend(ws,typerSnap(room));broadcastLobby();break;
       }
       case 'start_typer':{
         if(!player||!myRoom||player.slot!==0||myRoom.phase!=='WAITING')return;
         if(myRoom.players.length<2){wsend(ws,{type:'error',msg:'Il faut au moins 2 joueurs.'});return;}
         myRoom.round=1;myRoom.scores={};myRoom.usedTexts=[];
         myRoom.players.forEach(p=>{myRoom.scores[p.slot]=0;p.progress=0;});
-        bcast(myRoom.players,{type:'countdown',seconds:3});
+        bcastRoom(myRoom,{type:'countdown',seconds:3});
         clearTimeout(myRoom.timer);myRoom.timer=setTimeout(()=>typerStartRound(myRoom),3000);broadcastLobby();break;
       }
       case 'typer_progress':{
         if(!player||!myRoom||myRoom.phase!=='PLAYING')return;
         player.progress=Math.min(100,Math.max(0,Number(d.progress)||0));
-        bcast(myRoom.players,{type:'typer_positions',players:myRoom.players.map(p=>({slot:p.slot,progress:p.progress||0}))});break;
+        bcastRoom(myRoom,{type:'typer_positions',players:myRoom.players.map(p=>({slot:p.slot,progress:p.progress||0}))});break;
       }
       case 'typer_done':{
         if(!player||!myRoom||myRoom.phase!=='PLAYING')return;
         if(myRoom.finishers.includes(player.slot))return;
         myRoom.finishers.push(player.slot);player.progress=100;
-        bcast(myRoom.players,{type:'typer_finish',slot:player.slot,name:player.name,rank:myRoom.finishers.length});
-        bcast(myRoom.players,{type:'typer_positions',players:myRoom.players.map(p=>({slot:p.slot,progress:p.progress||0}))});
+        bcastRoom(myRoom,{type:'typer_finish',slot:player.slot,name:player.name,rank:myRoom.finishers.length});
+        bcastRoom(myRoom,{type:'typer_positions',players:myRoom.players.map(p=>({slot:p.slot,progress:p.progress||0}))});
         if(myRoom.finishers.length>=myRoom.players.length)typerEndRound(myRoom);break;
       }
       case 'restart_typer':{
         if(!player||!myRoom||myRoom.phase!=='GAME_OVER')return;
         myRoom.phase='WAITING';myRoom.round=0;myRoom.scores={};myRoom.usedTexts=[];
         myRoom.players.forEach(p=>{myRoom.scores[p.slot]=0;p.progress=0;});
-        bcast(myRoom.players,typerSnap(myRoom));broadcastLobby();break;
+        bcastRoom(myRoom,typerSnap(myRoom));broadcastLobby();break;
       }
     }
   });
@@ -3985,7 +4096,7 @@ const ANAGRAMME_WORDS=[
 function scrambleWord(w){let a=w.split('');let t=0;do{a.sort(()=>Math.random()-.5);t++;}while(a.join('')===w&&t<30);return a.join('');}
 
 const anagrammeRooms=new Map();
-function makeAnagrammeRoom(c,h){return{code:c,host:h,players:[],phase:'WAITING',round:0,totalRounds:8,currentWord:null,scrambled:null,scores:{},roundOver:false,timer:null,usedIdx:[]};}
+function makeAnagrammeRoom(c,h){return{code:c,host:h,players:[],spectators:[],phase:'WAITING',round:0,totalRounds:8,currentWord:null,scrambled:null,scores:{},roundOver:false,timer:null,usedIdx:[]};}
 function anagrammeSnap(room,extra={}){return{type:'anagramme_state',phase:room.phase,code:room.code,players:room.players.map(p=>({name:p.name,slot:p.slot,score:room.scores[p.slot]||0})),round:room.round,totalRounds:room.totalRounds,scrambled:room.scrambled,wordLen:room.currentWord?room.currentWord.length:0,...extra};}
 
 function anagrammeStartRound(room){
@@ -3996,11 +4107,11 @@ function anagrammeStartRound(room){
   room.usedIdx.push(ANAGRAMME_WORDS.indexOf(pick));
   room.currentWord=pick;room.scrambled=scrambleWord(pick);
   room.phase='PLAYING';
-  bcast(room.players,{type:'anagramme_round',round:room.round,totalRounds:room.totalRounds,scrambled:room.scrambled,wordLen:pick.length});
+  bcastRoom(room,{type:'anagramme_round',round:room.round,totalRounds:room.totalRounds,scrambled:room.scrambled,wordLen:pick.length});
   clearTimeout(room.timer);
   room.timer=setTimeout(()=>{
     if(room.roundOver)return;room.roundOver=true;
-    bcast(room.players,{type:'anagramme_timeout',word:room.currentWord,round:room.round});
+    bcastRoom(room,{type:'anagramme_timeout',word:room.currentWord,round:room.round});
     anagrammeNextRound(room);
   },20000);
   broadcastLobby();
@@ -4008,24 +4119,30 @@ function anagrammeStartRound(room){
 function anagrammeNextRound(room){
   clearTimeout(room.timer);
   room.timer=setTimeout(()=>{
-    if(room.round>=room.totalRounds){room.phase='GAME_OVER';bcast(room.players,anagrammeSnap(room));broadcastLobby();}
+    if(room.round>=room.totalRounds){room.phase='GAME_OVER';bcastRoom(room,anagrammeSnap(room));broadcastLobby();}
     else{room.round++;anagrammeStartRound(room);}
   },3000);
 }
 wssAnagramme.on('connection',ws=>{
   makeWS(wssAnagramme).alive(ws);
   let myRoom=null;
+  let isSpectator=false;
   ws.on('close',()=>{
     makeWS(wssAnagramme).clear(ws);
     if(!myRoom)return;
+    if(isSpectator){
+      disconnectSpectator(myRoom,ws);
+      broadcastLobby();
+      return;
+    }
     const idx=myRoom.players.findIndex(p=>p.ws===ws);if(idx<0)return;
     const name=myRoom.players[idx].name;
     myRoom.players.splice(idx,1);myRoom.players.forEach((p,i)=>p.slot=i);
     clearTimeout(myRoom.timer);
     if(!myRoom.players.length){anagrammeRooms.delete(myRoom.code);broadcastLobby();return;}
-    bcast(myRoom.players,{type:'player_left',name});
-    if(myRoom.phase==='PLAYING')bcast(myRoom.players,{type:'game_abandoned'});
-    myRoom.phase='WAITING';bcast(myRoom.players,anagrammeSnap(myRoom));broadcastLobby();
+    bcastRoom(myRoom,{type:'player_left',name});
+    if(myRoom.phase==='PLAYING')bcastRoom(myRoom,{type:'game_abandoned'});
+    myRoom.phase='WAITING';bcastRoom(myRoom,anagrammeSnap(myRoom));broadcastLobby();
   });
   ws.on('message',raw=>{
     let d;try{d=JSON.parse(raw);}catch{return;}
@@ -4036,6 +4153,7 @@ wssAnagramme.on('connection',ws=>{
         const name=String(d.name||'').trim().slice(0,20)||'Joueur';
         const code=genCode(anagrammeRooms);const room=makeAnagrammeRoom(code,name);
         anagrammeRooms.set(code,room);myRoom=room;
+        isSpectator=false;
         room.players.push({ws,name,slot:0});room.scores[0]=0;
         wsend(ws,{type:'created_anagramme',code,slot:0,name});wsend(ws,anagrammeSnap(room));broadcastLobby();break;
       }
@@ -4046,14 +4164,22 @@ wssAnagramme.on('connection',ws=>{
         if(room.phase!=='WAITING'){wsend(ws,{type:'error',msg:'Partie déjà en cours.'});return;}
         const name=String(d.name||'').trim().slice(0,20)||'Joueur';
         const slot=room.players.length;room.players.push({ws,name,slot});room.scores[slot]=0;
-        myRoom=room;wsend(ws,{type:'welcome_anagramme',slot,name,code});bcast(room.players,anagrammeSnap(room));broadcastLobby();break;
+        myRoom=room;isSpectator=false;wsend(ws,{type:'welcome_anagramme',slot,name,code});bcastRoom(room,anagrammeSnap(room));broadcastLobby();break;
+      }
+      case 'join_anagramme_spectate':{
+        const code=String(d.code||'').trim().toUpperCase();const room=anagrammeRooms.get(code);
+        const r=tryJoinSpectator(room,ws,d.name);
+        if(r.error){wsend(ws,{type:'error',msg:r.error});return;}
+        myRoom=room;isSpectator=true;
+        wsend(ws,{type:'welcome_anagramme_spectate',code,name:r.name});
+        wsend(ws,anagrammeSnap(room));broadcastLobby();break;
       }
       case 'start_anagramme':{
         if(!player||!myRoom||player.slot!==0||myRoom.phase!=='WAITING')return;
         if(myRoom.players.length<2){wsend(ws,{type:'error',msg:'Il faut au moins 2 joueurs.'});return;}
         myRoom.round=1;myRoom.scores={};myRoom.usedIdx=[];myRoom.currentWord=null;
         myRoom.players.forEach(p=>{myRoom.scores[p.slot]=0;});
-        bcast(myRoom.players,{type:'countdown',seconds:3});
+        bcastRoom(myRoom,{type:'countdown',seconds:3});
         clearTimeout(myRoom.timer);myRoom.timer=setTimeout(()=>anagrammeStartRound(myRoom),3000);broadcastLobby();break;
       }
       case 'anagramme_guess':{
@@ -4062,7 +4188,7 @@ wssAnagramme.on('connection',ws=>{
         if(guess===myRoom.currentWord){
           myRoom.roundOver=true;clearTimeout(myRoom.timer);
           myRoom.scores[player.slot]=(myRoom.scores[player.slot]||0)+3;
-          bcast(myRoom.players,{type:'anagramme_won',winner:player.name,slot:player.slot,word:myRoom.currentWord});
+          bcastRoom(myRoom,{type:'anagramme_won',winner:player.name,slot:player.slot,word:myRoom.currentWord});
           anagrammeNextRound(myRoom);
         }else{wsend(ws,{type:'anagramme_wrong',guess});}
         break;
@@ -4071,7 +4197,7 @@ wssAnagramme.on('connection',ws=>{
         if(!player||!myRoom||myRoom.phase!=='GAME_OVER')return;
         myRoom.phase='WAITING';myRoom.round=0;myRoom.scores={};myRoom.usedIdx=[];myRoom.currentWord=null;myRoom.scrambled=null;
         myRoom.players.forEach(p=>{myRoom.scores[p.slot]=0;});
-        bcast(myRoom.players,anagrammeSnap(myRoom));broadcastLobby();break;
+        bcastRoom(myRoom,anagrammeSnap(myRoom));broadcastLobby();break;
       }
     }
   });
@@ -4165,7 +4291,7 @@ const JUSTE_PRIX_QS=[
 ];
 
 const justeprixRooms=new Map();
-function makeJusteprixRoom(c,h){return{code:c,host:h,players:[],phase:'WAITING',round:0,totalRounds:8,currentQ:null,guesses:{},scores:{},timer:null,usedIdx:[]};}
+function makeJusteprixRoom(c,h){return{code:c,host:h,players:[],spectators:[],phase:'WAITING',round:0,totalRounds:8,currentQ:null,guesses:{},scores:{},timer:null,usedIdx:[]};}
 function justeprixSnap(room,extra={}){return{type:'justeprix_state',phase:room.phase,code:room.code,players:room.players.map(p=>({name:p.name,slot:p.slot,score:room.scores[p.slot]||0})),round:room.round,totalRounds:room.totalRounds,question:room.currentQ?room.currentQ.q:null,...extra};}
 
 function justeprixStartRound(room){
@@ -4175,7 +4301,7 @@ function justeprixStartRound(room){
   const pick=pool[Math.floor(Math.random()*pool.length)];
   room.usedIdx.push(JUSTE_PRIX_QS.indexOf(pick));
   room.currentQ=pick;room.phase='PLAYING';
-  bcast(room.players,{type:'justeprix_round',round:room.round,totalRounds:room.totalRounds,question:pick.q});
+  bcastRoom(room,{type:'justeprix_round',round:room.round,totalRounds:room.totalRounds,question:pick.q});
   clearTimeout(room.timer);
   room.timer=setTimeout(()=>justeprixReveal(room),15000);
   broadcastLobby();
@@ -4188,27 +4314,33 @@ function justeprixReveal(room){
   const pts=[4,2,1,0];
   guessArr.forEach((g,i)=>{if(g.guess!==null)room.scores[g.slot]=(room.scores[g.slot]||0)+(pts[i]||0);});
   room.phase='ROUNDOVER';
-  bcast(room.players,{...justeprixSnap(room),type:'justeprix_reveal',answer,guesses:guessArr});
+  bcastRoom(room,{...justeprixSnap(room),type:'justeprix_reveal',answer,guesses:guessArr});
   clearTimeout(room.timer);
   room.timer=setTimeout(()=>{
-    if(room.round>=room.totalRounds){room.phase='GAME_OVER';bcast(room.players,justeprixSnap(room));broadcastLobby();}
+    if(room.round>=room.totalRounds){room.phase='GAME_OVER';bcastRoom(room,justeprixSnap(room));broadcastLobby();}
     else{room.round++;justeprixStartRound(room);}
   },5000);
 }
 wssJustePrix.on('connection',ws=>{
   makeWS(wssJustePrix).alive(ws);
   let myRoom=null;
+  let isSpectator=false;
   ws.on('close',()=>{
     makeWS(wssJustePrix).clear(ws);
     if(!myRoom)return;
+    if(isSpectator){
+      disconnectSpectator(myRoom,ws);
+      broadcastLobby();
+      return;
+    }
     const idx=myRoom.players.findIndex(p=>p.ws===ws);if(idx<0)return;
     const name=myRoom.players[idx].name;
     myRoom.players.splice(idx,1);myRoom.players.forEach((p,i)=>p.slot=i);
     clearTimeout(myRoom.timer);
     if(!myRoom.players.length){justeprixRooms.delete(myRoom.code);broadcastLobby();return;}
-    bcast(myRoom.players,{type:'player_left',name});
-    if(['PLAYING','ROUNDOVER'].includes(myRoom.phase))bcast(myRoom.players,{type:'game_abandoned'});
-    myRoom.phase='WAITING';bcast(myRoom.players,justeprixSnap(myRoom));broadcastLobby();
+    bcastRoom(myRoom,{type:'player_left',name});
+    if(['PLAYING','ROUNDOVER'].includes(myRoom.phase))bcastRoom(myRoom,{type:'game_abandoned'});
+    myRoom.phase='WAITING';bcastRoom(myRoom,justeprixSnap(myRoom));broadcastLobby();
   });
   ws.on('message',raw=>{
     let d;try{d=JSON.parse(raw);}catch{return;}
@@ -4219,6 +4351,7 @@ wssJustePrix.on('connection',ws=>{
         const name=String(d.name||'').trim().slice(0,20)||'Joueur';
         const code=genCode(justeprixRooms);const room=makeJusteprixRoom(code,name);
         justeprixRooms.set(code,room);myRoom=room;
+        isSpectator=false;
         room.players.push({ws,name,slot:0});room.scores[0]=0;
         wsend(ws,{type:'created_justeprix',code,slot:0,name});wsend(ws,justeprixSnap(room));broadcastLobby();break;
       }
@@ -4229,14 +4362,22 @@ wssJustePrix.on('connection',ws=>{
         if(room.phase!=='WAITING'){wsend(ws,{type:'error',msg:'Partie déjà en cours.'});return;}
         const name=String(d.name||'').trim().slice(0,20)||'Joueur';
         const slot=room.players.length;room.players.push({ws,name,slot});room.scores[slot]=0;
-        myRoom=room;wsend(ws,{type:'welcome_justeprix',slot,name,code});bcast(room.players,justeprixSnap(room));broadcastLobby();break;
+        myRoom=room;isSpectator=false;wsend(ws,{type:'welcome_justeprix',slot,name,code});bcastRoom(room,justeprixSnap(room));broadcastLobby();break;
+      }
+      case 'join_justeprix_spectate':{
+        const code=String(d.code||'').trim().toUpperCase();const room=justeprixRooms.get(code);
+        const r=tryJoinSpectator(room,ws,d.name);
+        if(r.error){wsend(ws,{type:'error',msg:r.error});return;}
+        myRoom=room;isSpectator=true;
+        wsend(ws,{type:'welcome_justeprix_spectate',code,name:r.name});
+        wsend(ws,justeprixSnap(room));broadcastLobby();break;
       }
       case 'start_justeprix':{
         if(!player||!myRoom||player.slot!==0||myRoom.phase!=='WAITING')return;
         if(myRoom.players.length<2){wsend(ws,{type:'error',msg:'Il faut au moins 2 joueurs.'});return;}
         myRoom.round=1;myRoom.scores={};myRoom.usedIdx=[];
         myRoom.players.forEach(p=>{myRoom.scores[p.slot]=0;});
-        bcast(myRoom.players,{type:'countdown',seconds:3});
+        bcastRoom(myRoom,{type:'countdown',seconds:3});
         clearTimeout(myRoom.timer);myRoom.timer=setTimeout(()=>justeprixStartRound(myRoom),3000);broadcastLobby();break;
       }
       case 'justeprix_guess':{
@@ -4252,7 +4393,7 @@ wssJustePrix.on('connection',ws=>{
         if(!player||!myRoom||myRoom.phase!=='GAME_OVER')return;
         myRoom.phase='WAITING';myRoom.round=0;myRoom.scores={};myRoom.usedIdx=[];
         myRoom.players.forEach(p=>{myRoom.scores[p.slot]=0;});
-        bcast(myRoom.players,justeprixSnap(myRoom));broadcastLobby();break;
+        bcastRoom(myRoom,justeprixSnap(myRoom));broadcastLobby();break;
       }
     }
   });
@@ -4295,7 +4436,7 @@ const TIMELINE_EVENTS=[
 ];
 
 const timelineRooms=new Map();
-function makeTimelineRoom(c,h){return{code:c,host:h,players:[],phase:'WAITING',round:0,totalRounds:10,options:null,answer:-1,answerEvent:null,scores:{},locked:[],timer:null,usedIdx:[]};}
+function makeTimelineRoom(c,h){return{code:c,host:h,players:[],spectators:[],phase:'WAITING',round:0,totalRounds:10,options:null,answer:-1,answerEvent:null,scores:{},locked:[],timer:null,usedIdx:[]};}
 function timelineSnap(room,extra={}){return{type:'timeline_state',phase:room.phase,code:room.code,players:room.players.map(p=>({name:p.name,slot:p.slot,score:room.scores[p.slot]||0})),round:room.round,totalRounds:room.totalRounds,options:room.options,...extra};}
 
 function timelineStartRound(room){
@@ -4311,34 +4452,40 @@ function timelineStartRound(room){
   room.answer=shuffled.findIndex(ev=>ev===earliest);
   room.answerEvent=earliest;
   room.phase='PLAYING';
-  bcast(room.players,{type:'timeline_round',round:room.round,totalRounds:room.totalRounds,options:room.options,question:"Quel événement s'est produit EN PREMIER ?"});
+  bcastRoom(room,{type:'timeline_round',round:room.round,totalRounds:room.totalRounds,options:room.options,question:"Quel événement s'est produit EN PREMIER ?"});
   clearTimeout(room.timer);
   room.timer=setTimeout(()=>timelineReveal(room,-1),12000);
   broadcastLobby();
 }
 function timelineReveal(room,winnerSlot){
   clearTimeout(room.timer);room.phase='ROUNDOVER';
-  bcast(room.players,{...timelineSnap(room),type:'timeline_reveal',answer:room.answer,answerYear:room.answerEvent.y,answerEvent:room.answerEvent.e,winnerSlot});
+  bcastRoom(room,{...timelineSnap(room),type:'timeline_reveal',answer:room.answer,answerYear:room.answerEvent.y,answerEvent:room.answerEvent.e,winnerSlot});
   clearTimeout(room.timer);
   room.timer=setTimeout(()=>{
-    if(room.round>=room.totalRounds){room.phase='GAME_OVER';bcast(room.players,timelineSnap(room));broadcastLobby();}
+    if(room.round>=room.totalRounds){room.phase='GAME_OVER';bcastRoom(room,timelineSnap(room));broadcastLobby();}
     else{room.round++;timelineStartRound(room);}
   },4500);
 }
 wssTimeline.on('connection',ws=>{
   makeWS(wssTimeline).alive(ws);
   let myRoom=null;
+  let isSpectator=false;
   ws.on('close',()=>{
     makeWS(wssTimeline).clear(ws);
     if(!myRoom)return;
+    if(isSpectator){
+      disconnectSpectator(myRoom,ws);
+      broadcastLobby();
+      return;
+    }
     const idx=myRoom.players.findIndex(p=>p.ws===ws);if(idx<0)return;
     const name=myRoom.players[idx].name;
     myRoom.players.splice(idx,1);myRoom.players.forEach((p,i)=>p.slot=i);
     clearTimeout(myRoom.timer);
     if(!myRoom.players.length){timelineRooms.delete(myRoom.code);broadcastLobby();return;}
-    bcast(myRoom.players,{type:'player_left',name});
-    if(myRoom.phase==='PLAYING')bcast(myRoom.players,{type:'game_abandoned'});
-    myRoom.phase='WAITING';bcast(myRoom.players,timelineSnap(myRoom));broadcastLobby();
+    bcastRoom(myRoom,{type:'player_left',name});
+    if(myRoom.phase==='PLAYING')bcastRoom(myRoom,{type:'game_abandoned'});
+    myRoom.phase='WAITING';bcastRoom(myRoom,timelineSnap(myRoom));broadcastLobby();
   });
   ws.on('message',raw=>{
     let d;try{d=JSON.parse(raw);}catch{return;}
@@ -4349,6 +4496,7 @@ wssTimeline.on('connection',ws=>{
         const name=String(d.name||'').trim().slice(0,20)||'Joueur';
         const code=genCode(timelineRooms);const room=makeTimelineRoom(code,name);
         timelineRooms.set(code,room);myRoom=room;
+        isSpectator=false;
         room.players.push({ws,name,slot:0});room.scores[0]=0;
         wsend(ws,{type:'created_timeline',code,slot:0,name});wsend(ws,timelineSnap(room));broadcastLobby();break;
       }
@@ -4359,14 +4507,22 @@ wssTimeline.on('connection',ws=>{
         if(room.phase!=='WAITING'){wsend(ws,{type:'error',msg:'Partie déjà en cours.'});return;}
         const name=String(d.name||'').trim().slice(0,20)||'Joueur';
         const slot=room.players.length;room.players.push({ws,name,slot});room.scores[slot]=0;
-        myRoom=room;wsend(ws,{type:'welcome_timeline',slot,name,code});bcast(room.players,timelineSnap(room));broadcastLobby();break;
+        myRoom=room;isSpectator=false;wsend(ws,{type:'welcome_timeline',slot,name,code});bcastRoom(room,timelineSnap(room));broadcastLobby();break;
+      }
+      case 'join_timeline_spectate':{
+        const code=String(d.code||'').trim().toUpperCase();const room=timelineRooms.get(code);
+        const r=tryJoinSpectator(room,ws,d.name);
+        if(r.error){wsend(ws,{type:'error',msg:r.error});return;}
+        myRoom=room;isSpectator=true;
+        wsend(ws,{type:'welcome_timeline_spectate',code,name:r.name});
+        wsend(ws,timelineSnap(room));broadcastLobby();break;
       }
       case 'start_timeline':{
         if(!player||!myRoom||player.slot!==0||myRoom.phase!=='WAITING')return;
         if(myRoom.players.length<2){wsend(ws,{type:'error',msg:'Il faut au moins 2 joueurs.'});return;}
         myRoom.round=1;myRoom.scores={};myRoom.usedIdx=[];
         myRoom.players.forEach(p=>{myRoom.scores[p.slot]=0;});
-        bcast(myRoom.players,{type:'countdown',seconds:3});
+        bcastRoom(myRoom,{type:'countdown',seconds:3});
         clearTimeout(myRoom.timer);myRoom.timer=setTimeout(()=>timelineStartRound(myRoom),3000);broadcastLobby();break;
       }
       case 'timeline_answer':{
@@ -4387,7 +4543,7 @@ wssTimeline.on('connection',ws=>{
         if(!player||!myRoom||myRoom.phase!=='GAME_OVER')return;
         myRoom.phase='WAITING';myRoom.round=0;myRoom.scores={};myRoom.usedIdx=[];myRoom.options=null;myRoom.answer=-1;
         myRoom.players.forEach(p=>{myRoom.scores[p.slot]=0;});
-        bcast(myRoom.players,timelineSnap(myRoom));broadcastLobby();break;
+        bcastRoom(myRoom,timelineSnap(myRoom));broadcastLobby();break;
       }
     }
   });
@@ -4399,7 +4555,7 @@ wssTimeline.on('connection',ws=>{
 const MEMO_ICONS=['🎯','🎪','🎨','🎭','🎮','🎲','🎸','🎺','🏆','🌟','🦁','🦊','🐬','🦋','🍕','🍦','🌈','⚡','🔮','🎃','🚀','🎀','🎁','💎'];
 
 const memoRooms=new Map();
-function makeMemoRoom(c,h){return{code:c,host:h,players:[],phase:'WAITING',cards:[],matched:[],scores:{},turn:0,flipped:[],timer:null};}
+function makeMemoRoom(c,h){return{code:c,host:h,players:[],spectators:[],phase:'WAITING',cards:[],matched:[],scores:{},turn:0,flipped:[],timer:null};}
 function memoSnap(room,extra={}){return{type:'memo_state',phase:room.phase,code:room.code,players:room.players.map(p=>({name:p.name,slot:p.slot,score:room.scores[p.slot]||0})),turn:room.turn,cards:room.cards.map((c,i)=>({id:i,face:(room.matched.includes(i)||room.flipped.includes(i))?c.icon:null,matched:room.matched.includes(i),flipped:room.flipped.includes(i)})),matched:[...room.matched],...extra};}
 function memoSetup(room){
   const pairCount=room.players.length<=2?8:12;
@@ -4412,17 +4568,23 @@ function memoSetup(room){
 wssMemo.on('connection',ws=>{
   makeWS(wssMemo).alive(ws);
   let myRoom=null;
+  let isSpectator=false;
   ws.on('close',()=>{
     makeWS(wssMemo).clear(ws);
     if(!myRoom)return;
+    if(isSpectator){
+      disconnectSpectator(myRoom,ws);
+      broadcastLobby();
+      return;
+    }
     const idx=myRoom.players.findIndex(p=>p.ws===ws);if(idx<0)return;
     const name=myRoom.players[idx].name;
     myRoom.players.splice(idx,1);myRoom.players.forEach((p,i)=>p.slot=i);
     clearTimeout(myRoom.timer);
     if(!myRoom.players.length){memoRooms.delete(myRoom.code);broadcastLobby();return;}
-    bcast(myRoom.players,{type:'player_left',name});
-    if(myRoom.phase==='PLAYING')bcast(myRoom.players,{type:'game_abandoned'});
-    myRoom.phase='WAITING';bcast(myRoom.players,memoSnap(myRoom));broadcastLobby();
+    bcastRoom(myRoom,{type:'player_left',name});
+    if(myRoom.phase==='PLAYING')bcastRoom(myRoom,{type:'game_abandoned'});
+    myRoom.phase='WAITING';bcastRoom(myRoom,memoSnap(myRoom));broadcastLobby();
   });
   ws.on('message',raw=>{
     let d;try{d=JSON.parse(raw);}catch{return;}
@@ -4433,6 +4595,7 @@ wssMemo.on('connection',ws=>{
         const name=String(d.name||'').trim().slice(0,20)||'Joueur';
         const code=genCode(memoRooms);const room=makeMemoRoom(code,name);
         memoRooms.set(code,room);myRoom=room;
+        isSpectator=false;
         room.players.push({ws,name,slot:0});room.scores[0]=0;
         wsend(ws,{type:'created_memo',code,slot:0,name});wsend(ws,memoSnap(room));broadcastLobby();break;
       }
@@ -4443,15 +4606,23 @@ wssMemo.on('connection',ws=>{
         if(room.phase!=='WAITING'){wsend(ws,{type:'error',msg:'Partie déjà en cours.'});return;}
         const name=String(d.name||'').trim().slice(0,20)||'Joueur';
         const slot=room.players.length;room.players.push({ws,name,slot});room.scores[slot]=0;
-        myRoom=room;wsend(ws,{type:'welcome_memo',slot,name,code});bcast(room.players,memoSnap(room));broadcastLobby();break;
+        myRoom=room;isSpectator=false;wsend(ws,{type:'welcome_memo',slot,name,code});bcastRoom(room,memoSnap(room));broadcastLobby();break;
+      }
+      case 'join_memo_spectate':{
+        const code=String(d.code||'').trim().toUpperCase();const room=memoRooms.get(code);
+        const r=tryJoinSpectator(room,ws,d.name);
+        if(r.error){wsend(ws,{type:'error',msg:r.error});return;}
+        myRoom=room;isSpectator=true;
+        wsend(ws,{type:'welcome_memo_spectate',code,name:r.name});
+        wsend(ws,memoSnap(room));broadcastLobby();break;
       }
       case 'start_memo':{
         if(!player||!myRoom||player.slot!==0||myRoom.phase!=='WAITING')return;
         if(myRoom.players.length<2){wsend(ws,{type:'error',msg:'Il faut au moins 2 joueurs.'});return;}
         memoSetup(myRoom);
-        bcast(myRoom.players,{type:'countdown',seconds:3});
+        bcastRoom(myRoom,{type:'countdown',seconds:3});
         clearTimeout(myRoom.timer);
-        myRoom.timer=setTimeout(()=>{myRoom.phase='PLAYING';bcast(myRoom.players,memoSnap(myRoom));broadcastLobby();},3000);
+        myRoom.timer=setTimeout(()=>{myRoom.phase='PLAYING';bcastRoom(myRoom,memoSnap(myRoom));broadcastLobby();},3000);
         broadcastLobby();break;
       }
       case 'memo_flip':{
@@ -4462,7 +4633,7 @@ wssMemo.on('connection',ws=>{
         if(myRoom.matched.includes(id)||myRoom.flipped.includes(id))return;
         if(myRoom.flipped.length>=2)return;
         myRoom.flipped.push(id);
-        bcast(myRoom.players,memoSnap(myRoom));
+        bcastRoom(myRoom,memoSnap(myRoom));
         if(myRoom.flipped.length===2){
           const[a,b]=myRoom.flipped;
           if(myRoom.cards[a].icon===myRoom.cards[b].icon){
@@ -4470,16 +4641,16 @@ wssMemo.on('connection',ws=>{
             myRoom.scores[player.slot]=(myRoom.scores[player.slot]||0)+1;
             myRoom.flipped=[];
             if(myRoom.matched.length>=myRoom.cards.length){
-              myRoom.phase='GAME_OVER';bcast(myRoom.players,memoSnap(myRoom));broadcastLobby();
+              myRoom.phase='GAME_OVER';bcastRoom(myRoom,memoSnap(myRoom));broadcastLobby();
             }else{
-              bcast(myRoom.players,memoSnap(myRoom));
+              bcastRoom(myRoom,memoSnap(myRoom));
             }
           }else{
             clearTimeout(myRoom.timer);
             myRoom.timer=setTimeout(()=>{
               myRoom.flipped=[];
               myRoom.turn=(myRoom.turn+1)%myRoom.players.length;
-              bcast(myRoom.players,memoSnap(myRoom));
+              bcastRoom(myRoom,memoSnap(myRoom));
             },1500);
           }
         }
@@ -4488,7 +4659,7 @@ wssMemo.on('connection',ws=>{
       case 'restart_memo':{
         if(!player||!myRoom||myRoom.phase!=='GAME_OVER')return;
         myRoom.phase='WAITING';memoSetup(myRoom);
-        bcast(myRoom.players,memoSnap(myRoom));broadcastLobby();break;
+        bcastRoom(myRoom,memoSnap(myRoom));broadcastLobby();break;
       }
     }
   });
@@ -4573,7 +4744,7 @@ function imposteurGenCode() {
 const imposteurRooms = new Map();
 
 function makeImposteurRoom(code, host) {
-  return { code, host, players:[], phase:'WAITING',
+  return { code, host, players:[], spectators:[], phase:'WAITING',
            round:0, totalRounds:5, nbImposteurs:1,
            word:null, imposteurSlots:[], descOrder:[], descIndex:0,
            imposteurWord:null,
@@ -4581,22 +4752,30 @@ function makeImposteurRoom(code, host) {
 }
 
 function imposteurSnap(room, forSlot) {
-  const isImposteur = room.imposteurSlots.includes(forSlot);
+  const isSpectator = forSlot < 0;
+  const isImposteur = !isSpectator && room.imposteurSlots.includes(forSlot);
   const players = room.players.map(p => {
     const o = { name:p.name, slot:p.slot, score:room.scores[p.slot]||0 };
     if (['REVEAL','GUESS','SCORES','GAME_OVER'].includes(room.phase))
       o.isImposteur = room.imposteurSlots.includes(p.slot);
     return o;
   });
-  const showRoleToPlayer = room.phase !== 'WAITING';
+  const showRoleToPlayer = room.phase !== 'WAITING' && !isSpectator;
+  let wordField = null;
+  if (isSpectator) {
+    if (['REVEAL','GUESS','SCORES','GAME_OVER'].includes(room.phase)) wordField = room.word;
+    else wordField = null;
+  } else {
+    wordField = (room.phase==='DESCRIBE'||room.phase==='VOTE')
+      ? (isImposteur ? room.imposteurWord : room.word)
+      : (['REVEAL','GUESS','SCORES','GAME_OVER'].includes(room.phase) ? room.word : null);
+  }
   return {
     type:'imposteur_state', phase:room.phase,
     round:room.round, totalRounds:room.totalRounds, nbImposteurs:room.nbImposteurs,
-    players, code:room.code, host:room.host,
+    players, code:room.code, host:room.host, spectator: !!isSpectator,
     myRole: showRoleToPlayer ? (isImposteur ? 'imposteur' : 'civil') : null,
-    word: (room.phase==='DESCRIBE'||room.phase==='VOTE')
-      ? (isImposteur ? room.imposteurWord : room.word)
-      : (['REVEAL','GUESS','SCORES','GAME_OVER'].includes(room.phase) ? room.word : null),
+    word: wordField,
     descOrder:room.descOrder, descIndex:room.descIndex,
     descriptions:room.descriptions,
     votes: ['REVEAL','GUESS','SCORES','GAME_OVER'].includes(room.phase) ? room.votes : {},
@@ -4608,6 +4787,9 @@ function imposteurSnap(room, forSlot) {
 function imposteurBcast(room) {
   room.players.forEach(p => {
     if (p.ws.readyState === WebSocket.OPEN) wsend(p.ws, imposteurSnap(room, p.slot));
+  });
+  (room.spectators || []).forEach(s => {
+    if (s.ws.readyState === WebSocket.OPEN) wsend(s.ws, imposteurSnap(room, -1));
   });
 }
 
@@ -4735,6 +4917,27 @@ function imposteurNextRound(room) {
 wssImposteur.on('connection', ws => {
   makeWS(wssImposteur).alive(ws);
   let room = null;
+  let isSpectator = false;
+
+  ws.on('close', () => {
+    makeWS(wssImposteur).clear(ws);
+    if (!room) return;
+    if (isSpectator) {
+      disconnectSpectator(room, ws);
+      broadcastLobby();
+      return;
+    }
+    const leavingHost = room.players.find(p => p.ws === ws);
+    room.players = room.players.filter(p => p.ws !== ws);
+    if (room.players.length === 0) {
+      imposteurRooms.delete(room.code);
+      broadcastLobby();
+      return;
+    }
+    if (leavingHost && room.host === leavingHost.name) room.host = room.players[0].name;
+    imposteurBcast(room);
+    broadcastLobby();
+  });
 
   ws.on('message', raw => {
     let d; try { d = JSON.parse(raw); } catch { return; }
@@ -4762,7 +4965,20 @@ wssImposteur.on('connection', ws => {
       const slot = room.players.length;
       room.scores[slot] = 0;
       room.players.push({ ws, name, slot });
+      isSpectator = false;
       imposteurBcast(room);
+      broadcastLobby();
+    }
+
+    else if (d.type === 'join_imposteur_spectate') {
+      const code = String(d.code||'').toUpperCase().trim();
+      const r = imposteurRooms.get(code);
+      const out = tryJoinSpectator(r, ws, d.name);
+      if (out.error) { wsend(ws, { type:'error', msg: out.error }); return; }
+      room = r;
+      isSpectator = true;
+      wsend(ws, { type:'welcome_imposteur_spectate', code, name: out.name });
+      wsend(ws, imposteurSnap(room, -1));
       broadcastLobby();
     }
 
@@ -4855,17 +5071,6 @@ wssImposteur.on('connection', ws => {
     else if (d.type === 'lounge_chat') {
       handleLoungeChat(room, ws, d);
     }
-  });
-
-  ws.on('close', () => {
-    makeWS(wssImposteur).clear(ws);
-    if (!room) return;
-    room.players = room.players.filter(p => p.ws !== ws);
-    if (room.players.length === 0) { imposteurRooms.delete(room.code); broadcastLobby(); return; }
-    if (room.host === room.players.find(p=>p.ws===ws)?.name && room.players.length > 0)
-      room.host = room.players[0].name;
-    imposteurBcast(room);
-    broadcastLobby();
   });
 });
 
@@ -4972,7 +5177,7 @@ const debatRooms = new Map();
 
 function makeDebatRoom(code, host) {
   return {
-    code, host, players: [], phase: 'WAITING', round: 0, totalRounds: 6,
+    code, host, players: [], spectators: [], phase: 'WAITING', round: 0, totalRounds: 6,
     topic: '', forSlot: null, againstSlot: null,
     topicDeck: [], votes: {}, timer: null, scores: {},
     roundWinner: null, votesTally: null,
@@ -5003,7 +5208,7 @@ function debatSnap(room) {
 }
 
 function debatBcast(room) {
-  bcast(room.players, debatSnap(room));
+  bcastRoom(room, debatSnap(room));
 }
 
 function debatEndVote(room) {
@@ -5081,9 +5286,16 @@ function debatNextRound(room) {
 wssDebat.on('connection', ws => {
   makeWS(wssDebat).alive(ws);
   let room = null;
+  let isSpectator = false;
   ws.on('close', () => {
     makeWS(wssDebat).clear(ws);
     if (!room) return;
+    if (isSpectator) {
+      disconnectSpectator(room, ws);
+      debatBcast(room);
+      broadcastLobby();
+      return;
+    }
     const idx = room.players.findIndex(p => p.ws === ws);
     if (idx < 0) return;
     const name = room.players[idx].name;
@@ -5095,7 +5307,7 @@ wssDebat.on('connection', ws => {
     }
     if (room.players.length === 0) { debatRooms.delete(room.code); broadcastLobby(); return; }
     if (room.host === name && room.players.length) room.host = room.players[0].name;
-    bcast(room.players, { type: 'player_left', name });
+    bcastRoom(room, { type: 'player_left', name });
     if (room.phase !== 'WAITING' && room.phase !== 'GAME_OVER' && room.players.length < DEBAT_MIN_PLAYERS) {
       clearTimeout(room.timer);
       room.phase = 'WAITING';
@@ -5112,6 +5324,7 @@ wssDebat.on('connection', ws => {
         const name = String(d.name || '').trim().slice(0, 20) || 'Joueur';
         const code = genCode(debatRooms);
         room = makeDebatRoom(code, name);
+        isSpectator = false;
         room.players.push({ ws, name, slot: 0 });
         room.scores[0] = 0;
         debatRooms.set(code, room);
@@ -5131,8 +5344,22 @@ wssDebat.on('connection', ws => {
         r.players.push({ ws, name, slot });
         r.scores[slot] = 0;
         room = r;
+        isSpectator = false;
         wsend(ws, { type: 'welcome_debat', code, slot, name });
         debatBcast(r);
+        broadcastLobby();
+        break;
+      }
+      case 'join_debat_spectate': {
+        const code = String(d.code || '').trim().toUpperCase();
+        const r = debatRooms.get(code);
+        const out = tryJoinSpectator(r, ws, d.name);
+        if (out.error) { wsend(ws, { type: 'error', msg: out.error }); return; }
+        room = r;
+        isSpectator = true;
+        wsend(ws, { type: 'welcome_debat_spectate', code, name: out.name });
+        wsend(ws, debatSnap(room));
+        debatBcast(room);
         broadcastLobby();
         break;
       }

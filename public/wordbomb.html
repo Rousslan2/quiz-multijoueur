@@ -27,6 +27,8 @@ h1{text-align:center;font-size:1.9rem;background:linear-gradient(135deg,var(--pr
   backdrop-filter:blur(8px)
 }
 .hidden{display:none!important}
+.spectate-strip{display:none;margin:0 0 10px;padding:8px 12px;text-align:center;font-size:.76rem;font-weight:700;color:#a5f3fc;background:rgba(0,232,212,.1);border:1px solid rgba(0,232,212,.28);border-radius:10px;letter-spacing:.04em}
+.spectate-strip.on{display:block}
 .btn{border:none;border-radius:10px;padding:11px 14px;font-weight:700;cursor:pointer;transition:transform .1s,opacity .15s}
 .btn:active{transform:scale(.98)}
 .btn-primary{background:var(--primary);color:#fff}.btn-buzz{background:var(--buzz);color:#fff}.btn-muted{background:rgba(255,255,255,.12);color:var(--text)}
@@ -167,6 +169,7 @@ input:focus{border-color:var(--primary)}
 <button id="sound-btn" onclick="toggleSound()" title="Son">🔊</button>
 <div id="dot"></div>
 <div id="app">
+  <div id="spectate-strip" class="spectate-strip"></div>
   <h1>💣 Word Bomb</h1>
 
   <div id="name-screen">
@@ -177,6 +180,7 @@ input:focus{border-color:var(--primary)}
       <div id="join-area">
         <input id="code" maxlength="4" placeholder="Code (ABCD)" style="text-transform:uppercase;letter-spacing:.14em;text-align:center">
         <button class="btn btn-buzz" onclick="joinGame()">Rejoindre</button>
+        <button type="button" class="btn btn-muted" onclick="joinSpectate()">Regarder en spectateur</button>
       </div>
       <div id="err" style="color:#fca5a5;font-size:.82rem;min-height:18px;text-align:center"></div>
     </div>
@@ -233,6 +237,7 @@ input:focus{border-color:var(--primary)}
 <script>
 const WS_URL = `${location.protocol==='https:'?'wss':'ws'}://${location.host}/ws/bomb`;
 let ws=null,mySlot=-1,myCode='',myName='',state=null,pendingAction=null,timerInt=null,lastPhase='';
+let isSpectator=false;
 let activeTurnEndsAt=0;
 let activeTimerKey='';
 let serverOffsetMs = 0;
@@ -288,6 +293,21 @@ function toggleSound(){
   $('sound-btn').textContent=soundOn?'🔊':'🔇';
   if(!soundOn) stopFuseSound();
 }
+function syncSpectateStrip(){
+  const el=$('spectate-strip'); if(!el)return;
+  el.classList.toggle('on',!!isSpectator);
+  el.textContent=isSpectator?'Mode spectateur — tu vois la bombe et le chat, sans jouer.':'';
+}
+function joinSpectate(){
+  ensureAudio();
+  const n=$('name').value.trim(); const c=$('code').value.trim().toUpperCase();
+  if(!n||!c){$('err').textContent='Nom + code requis';return;}
+  myName=n; mySlot=-1; isSpectator=true; syncSpectateStrip();
+  if(window.ZapPlay)ZapPlay.savePseudo(n);
+  const action=()=>send({type:'join_bomb_spectate',name:n,code:c});
+  if(ws&&ws.readyState===1) action();
+  else { pendingAction=action; if(!ws||ws.readyState===3) connect(); }
+}
 function connect(){
   ws=new WebSocket(WS_URL);
   ws.onopen=()=>{ $('dot').classList.add('ok'); if(window.ZapPlay)ZapPlay.hideLoader(); if(pendingAction){pendingAction();pendingAction=null;} };
@@ -299,7 +319,7 @@ function toggleJoin(){ $('join-area').style.display = $('join-area').style.displ
 function createGame(){
   ensureAudio();
   const n=$('name').value.trim(); if(!n){$('err').textContent='Entre ton pseudo';return;}
-  myName=n; if(window.ZapPlay)ZapPlay.savePseudo(n);
+  myName=n; isSpectator=false; syncSpectateStrip(); if(window.ZapPlay)ZapPlay.savePseudo(n);
   const action=()=>send({type:'create_bomb',name:n});
   if(ws&&ws.readyState===1) action();
   else { pendingAction=action; if(!ws||ws.readyState===3) connect(); }
@@ -308,18 +328,19 @@ function joinGame(){
   ensureAudio();
   const n=$('name').value.trim(); const c=$('code').value.trim().toUpperCase();
   if(!n||!c){$('err').textContent='Nom + code requis';return;}
-  myName=n; if(window.ZapPlay)ZapPlay.savePseudo(n);
+  myName=n; isSpectator=false; syncSpectateStrip(); if(window.ZapPlay)ZapPlay.savePseudo(n);
   const action=()=>send({type:'join_bomb',name:n,code:c});
   if(ws&&ws.readyState===1) action();
   else { pendingAction=action; if(!ws||ws.readyState===3) connect(); }
 }
-function startGame(){ send({type:'start_bomb'}); }
+function startGame(){ if(isSpectator)return; send({type:'start_bomb'}); }
 function sendWord(){
+  if(isSpectator)return;
   ensureAudio();
   const w=$('word').value.trim(); if(!w)return;
   send({type:'bomb_word',word:w}); $('word').value='';
 }
-function restart(){ send({type:'restart_bomb'}); }
+function restart(){ if(isSpectator)return; send({type:'restart_bomb'}); }
 function copyCode(){ if(!myCode)return; navigator.clipboard.writeText(myCode).catch(()=>{}); }
 function setFeedback(text,type=''){
   const el=$('feedback');
@@ -361,8 +382,9 @@ function shakeWordInput(){
 }
 
 function handle(m){
-  if(m.type==='created_bomb'){mySlot=m.slot;myCode=m.code;showGame();}
-  if(m.type==='welcome_bomb'){mySlot=m.slot;myCode=m.code;showGame();}
+  if(m.type==='created_bomb'){mySlot=m.slot;myCode=m.code;isSpectator=false;syncSpectateStrip();showGame();}
+  if(m.type==='welcome_bomb'){mySlot=m.slot;myCode=m.code;isSpectator=false;syncSpectateStrip();showGame();}
+  if(m.type==='welcome_bomb_spectate'){mySlot=-1;myCode=m.code;isSpectator=true;syncSpectateStrip();showGame();}
   if(m.type==='error'){
     $('err').textContent=m.msg;
     setFeedback(m.msg,'bad');
@@ -395,10 +417,10 @@ function render(){
   $('room-code').textContent = state.code||myCode||'----';
   const players=state.players||[];
   if(state.phase==='WAITING'){
-    if(window.ZapPlay)ZapPlay.showLounge({players,mySlot,roomCode:state.code||myCode,gameName:'Word Bomb'});
+    if(window.ZapPlay)ZapPlay.showLounge({players,mySlot:isSpectator?-1:mySlot,roomCode:state.code||myCode,gameName:'Word Bomb'});
     setScreen('waiting');
     $('players').innerHTML=players.map(p=>`<span class="chip">${p.name}${p.slot===0?' 👑':''}</span>`).join('');
-    $('start-btn').classList.toggle('hidden', !(mySlot===0 && players.length>=2));
+    $('start-btn').classList.toggle('hidden', isSpectator||!(mySlot===0 && players.length>=2));
     stopTimer();
     resetCombo();
     return;
@@ -408,7 +430,7 @@ function render(){
     setScreen('playing');
     $('syllable').textContent=state.syllable||'--';
     const me=players.find(p=>p.slot===mySlot);
-    const canPlay = me && me.alive && state.turn===mySlot;
+    const canPlay = !isSpectator && me && me.alive && state.turn===mySlot;
     $('word').disabled=!canPlay;
     if(canPlay) $('word').focus();
     $('status').textContent = canPlay ? 'À toi ! Trouve un mot.' : `Tour de ${players.find(p=>p.slot===state.turn)?.name||'?'}`;
@@ -423,7 +445,7 @@ function render(){
     const rec=state.recentWords||[];
     const last = rec.length ? rec[rec.length-1] : null;
     const k = last ? `${last.name}::${last.word}` : '';
-    if(k && k!==lastRecentKey && last.name===myName){
+    if(!isSpectator && k && k!==lastRecentKey && last.name===myName){
       SND.good();
       bumpCombo();
       setFeedback(`✅ Mot validé (+1) • Combo x${Math.max(1,myCombo)}`,'ok');
@@ -450,8 +472,8 @@ function render(){
     resetCombo();
     const winName = state.winnerSlot>=0 ? (players.find(p=>p.slot===state.winnerSlot)?.name||'') : '';
     $('over-title').textContent = state.winnerSlot>=0 ? `🏆 ${winName} gagne !` : 'Égalité !';
-    if(lastPhase!=='GAME_OVER' && state.winnerSlot===mySlot && window.ZapFX) ZapFX.confetti({count:200});
-    if(lastPhase!=='GAME_OVER' && window.ZapPlay){
+    if(!isSpectator && lastPhase!=='GAME_OVER' && state.winnerSlot===mySlot && window.ZapFX) ZapFX.confetti({count:200});
+    if(!isSpectator && lastPhase!=='GAME_OVER' && window.ZapPlay){
       const pNames=players.map(p=>p.name);
       ZapPlay.saveGameResult({game:'bomb',gameName:'Word Bomb',players:pNames,winner:winName||'Égalité',myName,myScore:players.find(p=>p.slot===mySlot)?.score||0,isWinner:state.winnerSlot===mySlot});
     }
@@ -521,7 +543,16 @@ if(window.ZapPlay && !$('name').value){
 }
 if(p.get('code')){ $('code').value=p.get('code').toUpperCase(); $('join-area').style.display='flex'; }
 // Auto-join when coming from lobby (code + saved/URL name)
-if(p.get('code') && $('name').value){
+if(p.get('spectate')==='1' && p.get('code')){
+  $('join-area').style.display='flex';
+  const n=($('name').value||'').trim();
+  if(n){
+    myName=n; mySlot=-1; isSpectator=true; syncSpectateStrip();
+    pendingAction=()=>send({type:'join_bomb_spectate',name:n,code:$('code').value.trim().toUpperCase()});
+    if(!ws||ws.readyState===3)connect();
+  }
+}
+else if(p.get('code') && $('name').value){
   const n = $('name').value.trim().slice(0,20);
   if(n){
     myName = n;

@@ -45,6 +45,8 @@ h2{font-size:1.5rem;font-weight:800;background:linear-gradient(135deg,var(--prim
 .rank-row{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;border-radius:8px;background:rgba(255,255,255,.05);font-size:.9rem;gap:8px}
 .rank-row.me{background:rgba(255,77,109,.1);border:1px solid rgba(255,77,109,.25)}
 .big-num{font-size:5rem;font-weight:900;text-align:center;color:var(--primary)}
+.spectate-strip{display:none;margin:0 0 12px;padding:8px 12px;text-align:center;font-size:.76rem;font-weight:700;color:#fecdd3;background:rgba(255,77,109,.1);border:1px solid rgba(255,77,109,.28);border-radius:10px}
+.spectate-strip.on{display:block}
 .shake{animation:shake .4s ease}
 @keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
 </style>
@@ -52,6 +54,7 @@ h2{font-size:1.5rem;font-weight:800;background:linear-gradient(135deg,var(--prim
 <body>
 <div class="zp-space-bg"><div class="zp-neb1"></div><div class="zp-neb2"></div><div class="zp-stars" id="zp-stars-anagramme"></div><div class="zp-sgrid"></div><div class="zp-comet"></div></div>
 <div id="app">
+<div id="spectate-strip" class="spectate-strip"></div>
 <button id="back" onclick="history.back()">← Retour</button>
 <div id="dot"></div>
 
@@ -75,6 +78,7 @@ h2{font-size:1.5rem;font-weight:800;background:linear-gradient(135deg,var(--prim
     <div id="join-area" style="display:none;flex-direction:column;gap:8px">
       <input id="code-in" type="text" maxlength="4" placeholder="Code ABCD" autocomplete="off" style="text-transform:uppercase;text-align:center;font-size:1.2rem;letter-spacing:.15em">
       <button class="btn btn-p btn-full" onclick="joinGame()">Rejoindre →</button>
+      <button type="button" class="btn btn-s btn-full" onclick="joinSpectate()">Regarder en spectateur</button>
     </div>
     <p id="err" style="color:var(--bad);text-align:center;font-size:.85rem;min-height:18px"></p>
   </div>
@@ -147,10 +151,25 @@ h2{font-size:1.5rem;font-weight:800;background:linear-gradient(135deg,var(--prim
 const WS_URL = `${location.protocol==='https:'?'wss':'ws'}://${location.host}/ws/anagramme`;
 let ws, mySlot=-1, myCode='', timerIv=null, timerAnim=null, locked=false;
 let pendingAction=null;
+let isSpectator=false;
 const $ = id => document.getElementById(id);
 const show = id => $(id).classList.remove('hidden');
 const hide = id => $(id).classList.add('hidden');
 const send = d => ws && ws.readyState===1 && ws.send(JSON.stringify(d));
+
+function syncSpectateStrip(){
+  const el=$('spectate-strip'); if(!el)return;
+  el.classList.toggle('on',!!isSpectator);
+  el.textContent=isSpectator?'Mode spectateur — tu vois les anagrammes sans jouer.':'';
+}
+function joinSpectate(){
+  const n=$('name-input').value.trim()||'Joueur';
+  const c=$('code-in').value.trim().toUpperCase();
+  if(!c){$('err').textContent='Code requis';return;}
+  if(window.ZapPlay)ZapPlay.savePseudo(n);
+  isSpectator=true; mySlot=-1; syncSpectateStrip();
+  send({type:'join_anagramme_spectate',name:n,code:c});
+}
 
 function connect(){
   ws = new WebSocket(WS_URL);
@@ -161,13 +180,13 @@ function connect(){
 connect();
 
 function toggleJoin(){ const a=$('join-area'); a.style.display=a.style.display==='flex'?'none':'flex'; }
-function createGame(){ send({type:'create_anagramme',name:$('name-input').value.trim()||'Joueur'}); }
-function joinGame(){ send({type:'join_anagramme',name:$('name-input').value.trim()||'Joueur',code:$('code-in').value.trim().toUpperCase()}); }
+function createGame(){ isSpectator=false; syncSpectateStrip(); send({type:'create_anagramme',name:$('name-input').value.trim()||'Joueur'}); }
+function joinGame(){ isSpectator=false; syncSpectateStrip(); send({type:'join_anagramme',name:$('name-input').value.trim()||'Joueur',code:$('code-in').value.trim().toUpperCase()}); }
 function copyCode(){ try{ navigator.clipboard.writeText(myCode); }catch{} }
-function startGame(){ send({type:'start_anagramme'}); }
-function restart(){ send({type:'restart_anagramme'}); }
+function startGame(){ if(isSpectator)return; send({type:'start_anagramme'}); }
+function restart(){ if(isSpectator)return; send({type:'restart_anagramme'}); }
 function submitGuess(){
-  if(locked) return;
+  if(isSpectator||locked) return;
   const g = $('guess-in').value.trim().toLowerCase();
   if(!g) return;
   send({type:'anagramme_guess',word:g});
@@ -179,7 +198,7 @@ function renderScores(players, cid){
   players.forEach(p=>{
     const node=tpl.content.cloneNode(true);
     const chip=node.querySelector('.sc-chip');
-    if(p.slot===mySlot) chip.classList.add('me');
+    if(!isSpectator && p.slot===mySlot) chip.classList.add('me');
     node.querySelector('.sc-name').textContent=p.name;
     node.querySelector('.sc-pts').textContent=p.score||0;
     c.appendChild(node);
@@ -191,7 +210,7 @@ function renderRanks(rows,cid){
   rows.forEach(r=>{
     const node=tpl.content.cloneNode(true);
     const row=node.querySelector('.rank-row');
-    if(r.me) row.classList.add('me');
+    if(r.me && !isSpectator) row.classList.add('me');
     node.querySelector('.rk-medal').textContent=r.medal;
     node.querySelector('.rk-name').textContent=r.name;
     const pts=node.querySelector('.rk-pts');
@@ -221,11 +240,18 @@ const medals=['🥇','🥈','🥉','4️⃣'];
 
 function handleMsg(d){
   switch(d.type){
+    case 'welcome_anagramme_spectate':
+      isSpectator=true; mySlot=-1; myCode=d.code; syncSpectateStrip();
+      hide('scr-name'); show('scr-wait'); $('w-code').textContent=d.code;
+      $('w-hint').textContent='Spectateur — en attente du lancement.';
+      break;
     case 'created_anagramme':
+      isSpectator=false; syncSpectateStrip();
       mySlot=d.slot; myCode=d.code;
       hide('scr-name'); show('scr-wait');
       $('w-code').textContent=d.code; break;
     case 'welcome_anagramme':
+      isSpectator=false; syncSpectateStrip();
       mySlot=d.slot; myCode=d.code;
       hide('scr-name'); show('scr-wait');
       $('w-code').textContent=d.code;
@@ -243,7 +269,8 @@ function handleMsg(d){
       locked=false; ['scr-cd','scr-rnd'].forEach(hide); show('scr-play');
       $('rnd-info').textContent='MANCHE '+d.round+'/'+d.totalRounds;
       $('scramble-disp').innerHTML=d.scrambled.toUpperCase().split('').map(ch=>`<span>${ch}</span>`).join('');
-      $('guess-in').value=''; $('guess-in').disabled=false; $('guess-in').focus();
+      $('guess-in').value=''; $('guess-in').disabled=!!isSpectator;
+      if(!isSpectator) $('guess-in').focus();
       $('feed').textContent=''; buildDots(d.wordLen); startTimer(20); break;
     case 'anagramme_wrong':
       $('feed').textContent='✗ Mauvaise réponse !'; $('feed').style.color='var(--bad)';
@@ -254,7 +281,7 @@ function handleMsg(d){
       clearInterval(timerIv); locked=true;
       ['scr-play'].forEach(hide); show('scr-rnd');
       $('rnd-word').textContent=d.word.toUpperCase();
-      $('rnd-result').textContent=d.slot===mySlot?'🎉 Tu as trouvé !':(d.winner+' a trouvé !');
+      $('rnd-result').textContent=!isSpectator && d.slot===mySlot?'🎉 Tu as trouvé !':(d.winner+' a trouvé !');
       break;
     }
     case 'anagramme_timeout':{
@@ -275,8 +302,8 @@ function updateState(d){
     $('w-code').textContent=d.code;
     const pw=$('w-players'); pw.textContent='';
     d.players.forEach(p=>{ const c=document.createElement('span'); c.className='p-chip'; c.textContent=(p.slot===0?'👑 ':'')+p.name; pw.appendChild(c); });
-    if(mySlot===0) show('start-btn'); else $('w-hint').textContent='En attente du joueur 1…';
-    if(window.ZapPlay)ZapPlay.showLounge({players:d.players,mySlot,roomCode:d.code,gameName:'Anagramme'});
+    if(!isSpectator && mySlot===0) show('start-btn'); else $('w-hint').textContent=isSpectator?'Spectateur — en attente du lancement.':'En attente du joueur 1…';
+    if(window.ZapPlay)ZapPlay.showLounge({players:d.players,mySlot:isSpectator?-1:mySlot,roomCode:d.code,gameName:'Anagramme'});
   }
   if(d.phase==='PLAYING'){if(window.ZapPlay)ZapPlay.hideLounge(); renderScores(d.players,'score-bar');}
   if(['ROUNDOVER','PLAYING'].includes(d.phase)) renderScores(d.players,'score-bar-r');
@@ -285,8 +312,8 @@ function updateState(d){
     ['scr-play','scr-rnd'].forEach(hide); show('scr-over');
     const sorted=[...d.players].sort((a,b)=>b.score-a.score);
     $('winner-txt').textContent=sorted[0]?sorted[0].name+' gagne !':'';
-    renderRanks(sorted.map((p,i)=>({me:p.slot===mySlot,medal:medals[i]||'🏅',name:p.name,pts:p.score+' pts'})),'final-ranks');
-    if(sorted[0] && sorted[0].slot===mySlot && window.ZapFX) ZapFX.confetti({count:180});
+    renderRanks(sorted.map((p,i)=>({me:!isSpectator&&p.slot===mySlot,medal:medals[i]||'🏅',name:p.name,pts:p.score+' pts'})),'final-ranks');
+    if(!isSpectator && sorted[0] && sorted[0].slot===mySlot && window.ZapFX) ZapFX.confetti({count:180});
   }
 }
 $('guess-in').addEventListener('keydown',e=>{ if(e.key==='Enter') submitGuess(); });
@@ -298,6 +325,10 @@ $('guess-in').addEventListener('keydown',e=>{ if(e.key==='Enter') submitGuess();
   if(p.get('create')==='1'&&p.get('name')){
     const name=p.get('name'); $('name-input').value=name;
     pendingAction=()=>send({type:'create_anagramme',name});
+  }
+  if(p.get('spectate')==='1' && p.get('code')){
+    $('code-in').value=p.get('code').toUpperCase(); toggleJoin();
+    pendingAction=()=>joinSpectate();
   }
 })();
 function bindLoungeSender(){if(window.ZapPlay)ZapPlay.setLoungeSender(text=>send({type:'lounge_chat',text}));else setTimeout(bindLoungeSender,120);}
