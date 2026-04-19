@@ -1,9 +1,8 @@
-/* ZapPlay — shell PWA (CSS/JS) sans mettre en cache les pages HTML :
- * le cache HTTP + d’anciennes réponses dans le SW faisaient voir une vieille
- * accueil aux profils normaux, pas en navigation privée.
+/* ZapPlay — shell PWA : HTML toujours réseau ; JS/CSS réseau d’abord
+ * (évite shared.js / zp-shell.js figés → barre compte obsolète sans Shift+F5).
  */
-const CACHE = 'zapplay-shell-v3';
-const PRECACHE = ['/theme.css', '/shared.js', '/manifest.webmanifest'];
+const CACHE = 'zapplay-shell-v4';
+const PRECACHE = ['/theme.css', '/zp-shell.css', '/manifest.webmanifest'];
 
 self.addEventListener('install', e => {
   e.waitUntil(
@@ -36,6 +35,24 @@ self.addEventListener('fetch', event => {
       fetch(req).catch(() =>
         caches.match('/index.html')
       )
+    );
+    return;
+  }
+
+  // Scripts & styles : toujours réseau en priorité (sinon cache SW = vieille logique compte / UI)
+  if (/\.(js|css)$/i.test(url.pathname)) {
+    event.respondWith(
+      fetch(req)
+        .then(function (res) {
+          if (res && res.ok && res.type === 'basic') {
+            const copy = res.clone();
+            caches.open(CACHE).then(function (c) { c.put(req, copy); });
+          }
+          return res;
+        })
+        .catch(function () {
+          return caches.match(req);
+        })
     );
     return;
   }

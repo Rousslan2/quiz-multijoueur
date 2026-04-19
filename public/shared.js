@@ -1613,6 +1613,13 @@ function init(){
     });
   }
   updateNavAccountUI();
+  /* Barre compte / shell : re-sync après retour arrière (bfcache) ou onglet revu — sans Shift+F5 */
+  window.addEventListener('pageshow', function (ev) {
+    if (ev.persisted) updateNavAccountUI();
+  });
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'visible') updateNavAccountUI();
+  });
   // Auto-hide loader after 5s max
   if(!isIndex)setTimeout(hideLoader,8000);
 }
