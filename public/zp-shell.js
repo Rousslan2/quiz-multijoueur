@@ -181,7 +181,7 @@
     skyline: {
       title: 'Skyline',
       rules: [
-        'À tour de rôle : un curseur oscille sur une ligne — appuie quand il est dans la zone verte pour empiler un étage.',
+        'À tour de rôle : un curseur oscille sur une ligne — appuie quand il est dans la zone verte pour empiler un étage sur ta tour en 3D.',
         'Chaque étage réussi rapporte des points ; si tu rates ou si le temps est écoulé, toute ta tour s’effondre (retour à zéro étage).',
         'Le joueur avec le plus de points à la fin des manches gagne.'
       ]

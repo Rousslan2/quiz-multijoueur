@@ -12,7 +12,7 @@
 :root{--primary:#00E8D4;--gold:#fbbf24;--ok:#22c55e;--bad:#ef4444;--text:#E8E8F0;--muted:#7A8098;--border:rgba(0,232,212,.10)}
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Exo 2',sans-serif;color:var(--text);min-height:100dvh;padding-bottom:24px}
-#app{max-width:520px;margin:0 auto;padding:60px 14px 20px;display:flex;flex-direction:column;gap:14px}
+#app{max-width:520px;margin:0 auto;padding:60px 14px 20px;display:flex;flex-direction:column;gap:14px;position:relative;z-index:1}
 #back{position:fixed;top:8px;left:8px;background:none;border:none;color:var(--muted);cursor:pointer;padding:6px 10px;font-size:1rem;z-index:120}
 #dot{position:fixed;top:12px;right:12px;width:8px;height:8px;border-radius:50%;background:var(--bad);z-index:120}
 #dot.ok{background:var(--ok)}
@@ -44,9 +44,51 @@ h2{font-size:1.45rem;font-weight:800;background:linear-gradient(135deg,var(--pri
 .sky-perfect{position:absolute;left:50%;top:0;bottom:0;width:17%;transform:translateX(-50%);background:rgba(34,197,94,.22);border-left:1px solid rgba(34,197,94,.35);border-right:1px solid rgba(34,197,94,.35);pointer-events:none}
 .sky-cursor{position:absolute;top:4px;bottom:4px;width:10px;margin-left:-5px;border-radius:4px;background:linear-gradient(180deg,#fff,var(--primary));box-shadow:0 0 16px rgba(0,232,212,.6);pointer-events:none;will-change:left}
 
-.sky-tower-preview{display:flex;flex-direction:column;align-items:center;gap:6px;margin:16px 0;min-height:120px;justify-content:flex-end}
-.sky-tower-stack{display:flex;flex-direction:column-reverse;align-items:center;gap:3px;max-height:140px;overflow:hidden}
-.sky-floor{width:min(200px,72vw);height:14px;border-radius:4px;background:linear-gradient(180deg,#3d4a63,#1e2435);border:1px solid rgba(255,255,255,.12);box-shadow:0 2px 0 rgba(0,0,0,.3)}
+/* ── Ville 3D (arrière-plan) ── */
+.sky-city-bg{position:fixed;left:0;right:0;bottom:0;height:min(42vh,320px);pointer-events:none;z-index:0;overflow:hidden;opacity:.92}
+.sky-city-persp{position:absolute;inset:0;display:flex;align-items:flex-end;justify-content:center;perspective:900px;perspective-origin:50% 85%}
+.sky-city-slab{width:120%;height:200px;display:flex;align-items:flex-end;justify-content:center;gap:clamp(6px,2vw,14px);transform-style:preserve-3d;transform:rotateX(58deg) translateY(18%) scale(1.15);animation:sky-city-drift 22s ease-in-out infinite}
+@keyframes sky-city-drift{
+  0%,100%{transform:rotateX(58deg) translateY(18%) scale(1.15) rotateY(-6deg)}
+  50%{transform:rotateX(58deg) translateY(18%) scale(1.15) rotateY(6deg)}
+}
+.sky-bg-bld{--W:42px;--H:110px;--D:36px;flex-shrink:0;transform-style:preserve-3d;animation:sky-bld-pulse 4s ease-in-out infinite}
+.sky-bg-bld:nth-child(2n){animation-delay:-1.2s}
+.sky-bg-bld:nth-child(3n){animation-delay:-2.4s}
+@keyframes sky-bld-pulse{
+  0%,100%{filter:brightness(1)}
+  50%{filter:brightness(1.12)}
+}
+.sky-cube{width:var(--W);height:var(--H);position:relative;transform-style:preserve-3d;transform:translateZ(0)}
+.sky-cube .sky-face{position:absolute;box-sizing:border-box;backface-visibility:hidden;border:1px solid rgba(0,0,0,.35)}
+.sky-cube .sky-f-front{width:var(--W);height:var(--H);transform:translateZ(calc(var(--D)/2));background:linear-gradient(180deg,#4a5f78 0%,#2a3548 55%,#1a2230 100%);box-shadow:inset 0 0 24px rgba(0,232,212,.06)}
+.sky-cube .sky-f-back{width:var(--W);height:var(--H);transform:rotateY(180deg) translateZ(calc(var(--D)/2));background:linear-gradient(180deg,#283242,#151b26)}
+.sky-cube .sky-f-left{width:var(--D);height:var(--H);left:50%;margin-left:calc(var(--D)/-2);transform:rotateY(-90deg) translateZ(calc(var(--W)/2));background:linear-gradient(90deg,#1e2633,#2d3a4d)}
+.sky-cube .sky-f-right{width:var(--D);height:var(--H);left:50%;margin-left:calc(var(--D)/-2);transform:rotateY(90deg) translateZ(calc(var(--W)/2));background:linear-gradient(270deg,#1e2633,#2d3a4d)}
+.sky-cube .sky-f-top{width:var(--W);height:var(--D);top:0;left:0;transform:rotateX(90deg) translateZ(calc(var(--H)/2));background:linear-gradient(135deg,#5a6d88,#3d4d62)}
+.sky-win-grid{position:absolute;inset:8px 6px 14px 6px;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(5,1fr);gap:3px;pointer-events:none;opacity:.55}
+.sky-win-grid span{background:rgba(0,232,212,.25);border-radius:1px;box-shadow:0 0 6px rgba(0,232,212,.2)}
+.sky-ant{position:absolute;top:-14px;left:50%;width:4px;height:16px;margin-left:-2px;background:linear-gradient(180deg,#8899aa,#333);transform:translateZ(calc(var(--D)/2 + 1px));border-radius:1px}
+
+/* Tour joueur 3D */
+.sky-tower-preview{display:flex;flex-direction:column;align-items:center;gap:8px;margin:16px 0;min-height:140px;justify-content:flex-end;position:relative;z-index:1}
+.sky-tower-3d-wrap{perspective:520px;perspective-origin:50% 100%;height:168px;width:100%;display:flex;align-items:flex-end;justify-content:center}
+.sky-tower-stack{position:relative;width:min(220px,85vw);height:160px;display:flex;align-items:flex-end;justify-content:center;transform-style:preserve-3d}
+.sky-tower-spin{display:flex;flex-direction:column-reverse;align-items:center;transform-style:preserve-3d;transform:rotateX(-14deg) rotateY(24deg);transition:transform .35s cubic-bezier(.34,1.56,.64,1)}
+.sky-tower-spin.pop{transform:rotateX(-12deg) rotateY(26deg) scale(1.04)}
+.sky-t-floor{--tw:56px;--th:13px;--td:40px;width:var(--tw);height:var(--th);position:relative;transform-style:preserve-3d;margin-bottom:1px;flex-shrink:0}
+.sky-t-floor .tf{position:absolute;box-sizing:border-box;backface-visibility:hidden;border:1px solid rgba(0,0,0,.4)}
+.sky-t-floor .tf-front{width:var(--tw);height:var(--th);transform:translateZ(calc(var(--td)/2));background:linear-gradient(180deg,#5a6d85,#3d4a5e);box-shadow:inset 0 1px 0 rgba(255,255,255,.2)}
+.sky-t-floor .tf-left{width:var(--td);height:var(--th);left:50%;margin-left:calc(var(--td)/-2);transform:rotateY(-90deg) translateZ(calc(var(--tw)/2));background:linear-gradient(90deg,#252d3a,#3a4658)}
+.sky-t-floor .tf-right{width:var(--td);height:var(--th);left:50%;margin-left:calc(var(--td)/-2);transform:rotateY(90deg) translateZ(calc(var(--tw)/2));background:linear-gradient(270deg,#252d3a,#3a4658)}
+.sky-t-floor .tf-top{width:var(--tw);height:var(--td);top:calc(-1 * var(--td));left:0;transform:rotateX(90deg) translateZ(calc(var(--th)/2));background:linear-gradient(135deg,#6a7d94,#4a5868)}
+.sky-t-floor.roof .tf-top{background:linear-gradient(135deg,#8a9aad,#5a6578)}
+.sky-t-winrow{position:absolute;inset:2px 5px; display:flex; gap:4px; justify-content:center; pointer-events:none; opacity:.65}
+.sky-t-winrow i{width:6px;height:5px;background:rgba(0,232,212,.35);border-radius:1px;box-shadow:0 0 4px rgba(0,232,212,.25)}
+.sky-tower-stack.sky-tower--collapse .sky-tower-spin{animation:sky-tower-fall .55s cubic-bezier(.4,.1,.8,.2) forwards}
+@keyframes sky-tower-fall{
+  to{transform:rotateX(-14deg) rotateY(24deg) translateY(40px) rotateX(75deg);opacity:0}
+}
 .sky-tower-meta{font-size:.8rem;color:var(--muted)}
 .sky-tap-btn{width:100%;padding:18px;font-size:1.15rem;border-radius:14px;font-weight:900;letter-spacing:.04em}
 .sky-tap-btn:disabled{opacity:.45;cursor:not-allowed}
@@ -55,10 +97,25 @@ h2{font-size:1.45rem;font-weight:800;background:linear-gradient(135deg,var(--pri
 .sky-flash.on{opacity:1}
 .sky-flash.ok{color:var(--ok)}
 .sky-flash.bad{color:var(--bad)}
+@media (prefers-reduced-motion: reduce){
+  .sky-city-slab{animation:none!important}
+  .sky-bg-bld{animation:none!important}
+  .sky-tower-spin{transition:none!important}
+}
 </style>
 </head>
 <body>
 <div class="zp-space-bg"><div class="zp-neb1"></div><div class="zp-neb2"></div><div class="zp-stars" id="zp-stars-sky"></div><div class="zp-sgrid"></div><div class="zp-comet"></div></div>
+<div class="sky-city-bg" aria-hidden="true"><div class="sky-city-persp"><div class="sky-city-slab" id="sky-city-slab">
+<div class="sky-bg-bld" style="--W:36px;--H:72px;--D:30px"><div class="sky-cube"><div class="sky-face sky-f-front"></div><div class="sky-face sky-f-back"></div><div class="sky-face sky-f-left"></div><div class="sky-face sky-f-right"></div><div class="sky-face sky-f-top"></div><div class="sky-win-grid"><span></span><span></span><span></span><span></span><span></span><span></span></div></div></div>
+<div class="sky-bg-bld" style="--W:44px;--H:118px;--D:38px"><div class="sky-cube"><div class="sky-face sky-f-front"></div><div class="sky-face sky-f-back"></div><div class="sky-face sky-f-left"></div><div class="sky-face sky-f-right"></div><div class="sky-face sky-f-top"></div><div class="sky-ant"></div><div class="sky-win-grid"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div></div></div>
+<div class="sky-bg-bld" style="--W:40px;--H:96px;--D:34px"><div class="sky-cube"><div class="sky-face sky-f-front"></div><div class="sky-face sky-f-back"></div><div class="sky-face sky-f-left"></div><div class="sky-face sky-f-right"></div><div class="sky-face sky-f-top"></div><div class="sky-win-grid"><span></span><span></span><span></span><span></span><span></span><span></span></div></div></div>
+<div class="sky-bg-bld" style="--W:48px;--H:132px;--D:42px"><div class="sky-cube"><div class="sky-face sky-f-front"></div><div class="sky-face sky-f-back"></div><div class="sky-face sky-f-left"></div><div class="sky-face sky-f-right"></div><div class="sky-face sky-f-top"></div><div class="sky-ant"></div><div class="sky-win-grid"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div></div></div>
+<div class="sky-bg-bld" style="--W:34px;--H:64px;--D:28px"><div class="sky-cube"><div class="sky-face sky-f-front"></div><div class="sky-face sky-f-back"></div><div class="sky-face sky-f-left"></div><div class="sky-face sky-f-right"></div><div class="sky-face sky-f-top"></div><div class="sky-win-grid"><span></span><span></span><span></span><span></span></div></div></div>
+<div class="sky-bg-bld" style="--W:42px;--H:104px;--D:36px"><div class="sky-cube"><div class="sky-face sky-f-front"></div><div class="sky-face sky-f-back"></div><div class="sky-face sky-f-left"></div><div class="sky-face sky-f-right"></div><div class="sky-face sky-f-top"></div><div class="sky-win-grid"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div></div></div>
+<div class="sky-bg-bld" style="--W:38px;--H:88px;--D:32px"><div class="sky-cube"><div class="sky-face sky-f-front"></div><div class="sky-face sky-f-back"></div><div class="sky-face sky-f-left"></div><div class="sky-face sky-f-right"></div><div class="sky-face sky-f-top"></div><div class="sky-win-grid"><span></span><span></span><span></span><span></span><span></span><span></span></div></div></div>
+<div class="sky-bg-bld" style="--W:46px;--H:124px;--D:40px"><div class="sky-cube"><div class="sky-face sky-f-front"></div><div class="sky-face sky-f-back"></div><div class="sky-face sky-f-left"></div><div class="sky-face sky-f-right"></div><div class="sky-face sky-f-top"></div><div class="sky-ant"></div><div class="sky-win-grid"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div></div></div>
+</div></div></div>
 <div id="sky-flash" class="sky-flash" aria-hidden="true"></div>
 <div id="app">
 <div id="spectate-strip" class="spectate-strip"></div>
@@ -117,7 +174,11 @@ h2{font-size:1.45rem;font-weight:800;background:linear-gradient(135deg,var(--pri
     </div>
     <div class="sky-tower-preview">
       <div class="sky-tower-meta" id="tower-meta">Étages : 0 · Score : 0</div>
-      <div class="sky-tower-stack" id="tower-stack"></div>
+      <div class="sky-tower-3d-wrap">
+        <div class="sky-tower-stack" id="tower-stack">
+          <div class="sky-tower-spin" id="tower-spin"></div>
+        </div>
+      </div>
     </div>
     <button type="button" class="btn btn-p sky-tap-btn" id="tap-btn" onclick="doTap()">Poser l’étage</button>
   </div>
@@ -192,14 +253,32 @@ function cursorPos(turnStart, periodMs){
 function stopGameAnim(){ if(animId){cancelAnimationFrame(animId); animId=0;} }
 
 function renderTowerFloors(n){
-  const st=$('tower-stack'); if(!st)return;
-  st.textContent='';
-  const f=Math.min(18,Math.max(0,n|0));
-  for(let i=0;i<f;i++){
-    const d=document.createElement('div');
-    d.className='sky-floor';
-    d.style.opacity=0.45+0.04*i;
-    st.appendChild(d);
+  const stack=$('tower-stack');
+  const spin=$('tower-spin');
+  if(!stack||!spin)return;
+  const prev=spin.children.length;
+  n=Math.min(18,Math.max(0,n|0));
+  if(n===0&&prev>0){
+    stack.classList.add('sky-tower--collapse');
+    setTimeout(()=>{
+      stack.classList.remove('sky-tower--collapse');
+      spin.textContent='';
+    },520);
+    return;
+  }
+  stack.classList.remove('sky-tower--collapse');
+  spin.textContent='';
+  for(let i=0;i<n;i++){
+    const el=document.createElement('div');
+    el.className='sky-t-floor'+(i===n-1?' roof':'');
+    el.innerHTML='<div class="tf tf-front"></div><div class="tf tf-left"></div><div class="tf tf-right"></div><div class="tf tf-top"></div><div class="sky-t-winrow"><i></i><i></i><i></i><i></i></div>';
+    spin.appendChild(el);
+  }
+  if(n>prev){
+    spin.classList.remove('pop');
+    void spin.offsetWidth;
+    spin.classList.add('pop');
+    setTimeout(()=>spin.classList.remove('pop'),380);
   }
 }
 
