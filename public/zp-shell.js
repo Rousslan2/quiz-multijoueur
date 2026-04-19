@@ -257,6 +257,9 @@
     nav.id = 'zp-nav-global';
     nav.className = 'zp-nav-global';
     nav.setAttribute('role', 'navigation');
+    /* Secours si zp-shell.css est en retard ou bloqué : la barre reste au premier plan */
+    nav.style.cssText =
+      'position:fixed;top:0;left:0;right:0;z-index:2147483000;pointer-events:none;';
     nav.innerHTML =
       '<div class="zp-nav-global-inner">' +
       '<a class="zp-nav-global-back" href="/lobby.html" id="zp-nav-back-lobby" title="Lobby des salons">← Lobby</a>' +
@@ -276,6 +279,9 @@
       '</div>' +
       '</div>';
     document.body.appendChild(nav);
+    try {
+      nav.scrollIntoView({ block: 'nearest' });
+    } catch (_) {}
     document.body.classList.add('zp-has-shell');
 
     document.getElementById('zp-nav-rules').addEventListener('click', openRules);
