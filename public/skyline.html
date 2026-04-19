@@ -40,9 +40,10 @@ h2{font-size:1.45rem;font-weight:800;background:linear-gradient(135deg,var(--pri
 
 .sky-track-wrap{margin:8px 0 14px}
 .sky-track-label{font-size:.72rem;color:var(--muted);text-align:center;margin-bottom:8px}
-.sky-track{position:relative;height:52px;border-radius:12px;background:linear-gradient(180deg,rgba(20,24,40,.95),rgba(8,10,18,.98));border:1px solid rgba(255,255,255,.1);overflow:hidden}
-.sky-perfect{position:absolute;left:50%;top:0;bottom:0;width:17%;transform:translateX(-50%);background:rgba(34,197,94,.22);border-left:1px solid rgba(34,197,94,.35);border-right:1px solid rgba(34,197,94,.35);pointer-events:none}
+.sky-track{position:relative;height:52px;border-radius:12px;background:linear-gradient(180deg,rgba(20,24,40,.95),rgba(8,10,18,.98));border:1px solid rgba(255,255,255,.1);overflow:hidden;cursor:default;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+.sky-perfect{position:absolute;left:50%;top:0;bottom:0;width:22%;transform:translateX(-50%);background:rgba(34,197,94,.22);border-left:1px solid rgba(34,197,94,.35);border-right:1px solid rgba(34,197,94,.35);pointer-events:none}
 .sky-cursor{position:absolute;top:4px;bottom:4px;width:10px;margin-left:-5px;border-radius:4px;background:linear-gradient(180deg,#fff,var(--primary));box-shadow:0 0 16px rgba(0,232,212,.6);pointer-events:none;will-change:left}
+.sky-track.sky-track--live{cursor:pointer}
 
 /* ── Ville 3D (arrière-plan) ── */
 .sky-city-bg{position:fixed;left:0;right:0;bottom:0;height:min(42vh,320px);pointer-events:none;z-index:0;overflow:hidden;opacity:.92}
@@ -52,7 +53,14 @@ h2{font-size:1.45rem;font-weight:800;background:linear-gradient(135deg,var(--pri
   0%,100%{transform:rotateX(58deg) translateY(18%) scale(1.15) rotateY(-6deg)}
   50%{transform:rotateX(58deg) translateY(18%) scale(1.15) rotateY(6deg)}
 }
-.sky-bg-bld{--W:42px;--H:110px;--D:36px;flex-shrink:0;transform-style:preserve-3d;animation:sky-bld-pulse 4s ease-in-out infinite}
+.sky-bg-bld{--W:42px;--H:110px;--D:36px;flex-shrink:0;transform-style:preserve-3d;animation:sky-bld-pulse 4s ease-in-out infinite;transform-origin:50% 100%}
+.sky-bg-bld.sky-bg-bld--fall{animation:none!important;filter:none!important}
+.sky-bg-bld.sky-bg-bld--fall .sky-cube{animation:sky-cube-crash .95s cubic-bezier(.25,.1,.45,1) forwards;transform-origin:50% 100%}
+@keyframes sky-cube-crash{
+  0%{transform:translateZ(0) rotateX(0deg)}
+  35%{transform:translateZ(20px) rotateX(-18deg)}
+  100%{transform:translateZ(-60px) rotateX(-92deg) translateY(140px);opacity:.25}
+}
 .sky-bg-bld:nth-child(2n){animation-delay:-1.2s}
 .sky-bg-bld:nth-child(3n){animation-delay:-2.4s}
 @keyframes sky-bld-pulse{
@@ -166,7 +174,7 @@ h2{font-size:1.45rem;font-weight:800;background:linear-gradient(135deg,var(--pri
     </div>
     <div class="sky-time-bar"><i id="game-time-i"></i></div>
     <div class="sky-track-wrap">
-      <div class="sky-track-label">Zone parfaite au centre — le curseur oscille</div>
+      <div class="sky-track-label">Zone verte au centre — touche la barre entière ou le bouton quand le curseur est dedans</div>
       <div class="sky-track" id="sky-track">
         <div class="sky-perfect" id="sky-perfect"></div>
         <div class="sky-cursor" id="sky-cursor"></div>
@@ -199,6 +207,7 @@ const WS_URL = (location.protocol==='https:'?'wss':'ws')+'://'+location.host+'/w
 let ws, mySlot=-1, myCode='', isSpectator=false, pendingAction=null;
 let serverOffsetMs = 0;
 let animId = 0;
+const skyTurnState = { turnStart: 0, turnEnd: 0, periodMs: 2800, turnSlot: -1, phase: '' };
 const $ = id => document.getElementById(id);
 const show = id => $(id).classList.remove('hidden');
 const hide = id => $(id).classList.add('hidden');
@@ -242,12 +251,48 @@ function syncServerTime(serverTime){
   if(serverTime) serverOffsetMs = serverTime - Date.now();
 }
 
-function cursorPos(turnStart, periodMs){
+function cursorPos(){
+  const ts = skyTurnState.turnStart;
+  const period = skyTurnState.periodMs || 2800;
   const t = Date.now() + serverOffsetMs;
-  const elapsed = Math.max(0, t - turnStart);
-  const period = periodMs || 2800;
+  const elapsed = Math.max(0, t - ts);
   const phase = ((elapsed % period) / period) * Math.PI * 2;
   return 0.5 + 0.5 * Math.sin(phase);
+}
+
+function isTapEnabled(){
+  return !isSpectator && skyTurnState.phase === 'TURNING' && skyTurnState.turnSlot === mySlot;
+}
+
+function setupTrackTap(){
+  const tr = $('sky-track');
+  if(!tr) return;
+  if(tr._skyTapHandler){
+    tr.removeEventListener('pointerdown', tr._skyTapHandler);
+    tr._skyTapHandler = null;
+  }
+  tr._skyTapHandler = function(e){
+    if(!isTapEnabled()) return;
+    e.preventDefault();
+    doTap();
+  };
+  tr.addEventListener('pointerdown', tr._skyTapHandler, { passive: false });
+  tr.classList.toggle('sky-track--live', isTapEnabled());
+}
+
+function triggerCityBuildingFall(){
+  const slab = $('sky-city-slab');
+  if(!slab) return;
+  const kids = slab.querySelectorAll('.sky-bg-bld');
+  if(!kids.length) return;
+  const k = kids[Math.floor(Math.random() * kids.length)];
+  k.classList.add('sky-bg-bld--fall');
+  const inner = k.querySelector('.sky-cube');
+  const done = () => { k.classList.remove('sky-bg-bld--fall'); };
+  if(inner){
+    inner.addEventListener('animationend', done, { once: true });
+    setTimeout(done, 1100);
+  } else setTimeout(done, 1100);
 }
 
 function stopGameAnim(){ if(animId){cancelAnimationFrame(animId); animId=0;} }
@@ -284,13 +329,13 @@ function renderTowerFloors(n){
 
 function gameLoop(state){
   const ts = state.turnStart, te = state.turnEnd, period = state.periodMs || 2800;
-  const half = state.perfectHalf != null ? state.perfectHalf : 0.085;
+  const half = state.perfectHalf != null ? state.perfectHalf : 0.11;
   const cur = $('sky-cursor');
   const perf = $('sky-perfect');
   const ti = $('game-time-i');
   if(perf) perf.style.width = (half * 200) + '%';
   function frame(){
-    const pos = cursorPos(ts, period);
+    const pos = cursorPos();
     if(cur) cur.style.left = (pos * 100) + '%';
     if(ti && te){
       const left = Math.max(0, te - Date.now() - serverOffsetMs);
@@ -304,11 +349,16 @@ function gameLoop(state){
 }
 
 function applyGameVisual(state){
+  skyTurnState.turnStart = state.turnStart || 0;
+  skyTurnState.turnEnd = state.turnEnd || 0;
+  skyTurnState.periodMs = state.periodMs || 2800;
+  skyTurnState.turnSlot = state.turnSlot != null ? state.turnSlot : -1;
+  skyTurnState.phase = state.phase || '';
   const pl = (state.players||[]).find(p=>p.slot===state.turnSlot);
   const name = pl ? pl.name : '?';
   const myTurn = !isSpectator && state.turnSlot === mySlot;
   $('game-who').textContent = myTurn ? 'À toi !' : ('Tour de ' + name);
-  $('game-sub').textContent = myTurn ? 'Appuie quand le curseur est dans le vert' : (isSpectator ? 'Observation' : 'Attends ton tour…');
+  $('game-sub').textContent = myTurn ? 'Tape la barre (ou le bouton) quand le curseur est dans le vert' : (isSpectator ? 'Observation' : 'Attends ton tour…');
   const me = (state.players||[]).find(p=>p.slot===mySlot);
   let floors = 0, score = 0;
   if (isSpectator){
@@ -329,6 +379,7 @@ function applyGameVisual(state){
   }
   $('game-rnd').textContent = 'MANCHE ' + (state.round||1) + '/' + (state.totalRounds||5);
   gameLoop(state);
+  setupTrackTap();
 }
 
 function showGameScreen(state){
@@ -387,7 +438,11 @@ function flash(msg, ok){
   setTimeout(()=>{ el.classList.remove('on'); el.setAttribute('aria-hidden','true'); }, 900);
 }
 
-function doTap(){ send({type:'skyline_tap'}); }
+function doTap(){
+  if(!isTapEnabled()) return;
+  const elapsed = Math.round((Date.now() + serverOffsetMs) - skyTurnState.turnStart);
+  send({ type: 'skyline_tap', elapsedMs: Math.max(0, Math.min(20000, elapsed)) });
+}
 
 function handleMsg(d){
   switch(d.type){
@@ -435,6 +490,7 @@ function handleMsg(d){
       break;
     case 'skyline_turn_result':
       syncServerTime(d.serverTime);
+      if(!d.success) triggerCityBuildingFall();
       if(d.slot===mySlot){
         flash(d.success ? 'Parfait +10 pts !' : (d.reason==='timeout'?'Temps écoulé !':'Raté — la tour tombe !'), !!d.success);
       }

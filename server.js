@@ -5435,7 +5435,7 @@ wssDebat.on('connection', ws => {
 const SKYLINE_TOTAL_ROUNDS = 5;
 const SKYLINE_TURN_MS = 12000;
 const SKYLINE_PERIOD_MS = 2800;
-const SKYLINE_PERFECT_HALF = 0.085;
+const SKYLINE_PERFECT_HALF = 0.11;
 
 const skylineRooms = new Map();
 function makeSkylineRoom(code, host) {
@@ -5539,11 +5539,17 @@ function skylineAdvanceTurn(room) {
   skylineStartTurn(room);
 }
 
-function skylineProcessTap(room, slot) {
+function skylineProcessTap(room, slot, elapsedFromClient) {
   const now = Date.now();
   if (now > room.turnEnd || now < room.turnStart) return false;
   clearTimeout(room.timer);
-  const elapsed = now - room.turnStart;
+  let elapsed = now - room.turnStart;
+  if (elapsedFromClient != null && Number.isFinite(elapsedFromClient)) {
+    const c = Math.round(elapsedFromClient);
+    if (c >= 0 && c <= SKYLINE_TURN_MS + 400) {
+      elapsed = Math.min(SKYLINE_TURN_MS, Math.max(0, c));
+    }
+  }
   const period = room.periodMs || SKYLINE_PERIOD_MS;
   const phase = ((elapsed % period) / period) * Math.PI * 2;
   const pos = 0.5 + 0.5 * Math.sin(phase);
@@ -5678,7 +5684,8 @@ wssSkyline.on('connection', ws => {
       case 'skyline_tap': {
         if (!player || !myRoom || myRoom.phase !== 'TURNING' || isSpectator) return;
         if (player.slot !== myRoom.turnSlot) return;
-        skylineProcessTap(myRoom, player.slot);
+        const el = d.elapsedMs != null ? Number(d.elapsedMs) : null;
+        skylineProcessTap(myRoom, player.slot, el);
         broadcastLobby();
         break;
       }
