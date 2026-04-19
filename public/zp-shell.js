@@ -183,7 +183,7 @@
       rules: [
         'Chaque manche, choisis une hauteur de tour de 1 à 10 (secrète jusqu’à la révélation).',
         'Les tours s’affichent dans l’ordre des joueurs (ou mélangées en « catastrophe »).',
-        'Ton score de manche = (longueur de la plus longue chaîne croissante qui se termine sur ta tour) × hauteur.'
+        'Ton score = chaîne croissante (jusqu’à toi) × hauteur × (12 − hauteur) : les tours trop hautes coûtent cher.'
       ]
     },
     lobby: {

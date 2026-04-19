@@ -5429,8 +5429,9 @@ wssDebat.on('connection', ws => {
 });
 
 // ════════════════════════════════════════════════════════
-//  SKYLINE — hauteurs secrètes, score = (LIS se terminant ici) × hauteur
-//  Évite le spam « toujours 10 » : une tour très haute sans prédécesseurs plus bas rapporte peu.
+//  SKYLINE — hauteurs secrètes
+//  Score = (chaîne croissante se terminant ici) × h × (12 − h)
+//  Le facteur (12−h) pénalise les gratte-ciels extrêmes : viser 10 n’est plus optimal par défaut.
 // ════════════════════════════════════════════════════════
 function skylineLisEndingEach(heights) {
   const n = heights.length;
@@ -5448,9 +5449,13 @@ function skylineGlobalLisFromEnding(each) {
   return Math.max(...each);
 }
 
+function skylineHeightEfficiency(h) {
+  return Math.max(0, 12 - h);
+}
+
 function skylineRoundScores(heights) {
   const lisAt = skylineLisEndingEach(heights);
-  return heights.map((h, i) => lisAt[i] * h);
+  return heights.map((h, i) => lisAt[i] * h * skylineHeightEfficiency(h));
 }
 
 const skylineRooms = new Map();
@@ -5515,13 +5520,15 @@ function skylineEndRound(room) {
   });
   const details = order.map((slot, i) => {
     const pl = room.players.find(x => x.slot === slot);
+    const h = heights[i];
     return {
       slot,
       name: pl ? pl.name : '?',
-      height: heights[i],
+      height: h,
       points: roundPts[i],
       lis,
-      lisChain: lisEach[i]
+      lisChain: lisEach[i],
+      efficiency: skylineHeightEfficiency(h)
     };
   });
   room.phase = 'ROUNDOVER';

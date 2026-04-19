@@ -58,7 +58,7 @@ h2{font-size:1.45rem;font-weight:800;background:linear-gradient(135deg,var(--pri
 <div id="scr-name">
   <h2>🏙️ Skyline</h2>
   <div class="card" style="display:flex;flex-direction:column;gap:10px">
-    <p style="text-align:center;color:var(--muted);font-size:.85rem">Choisis une hauteur de tour (1–10). Score = <b>chaîne croissante × hauteur</b> (une tour toute seule ne rapporte pas grand-chose). Parfois l’ordre est mélangé !</p>
+    <p style="text-align:center;color:var(--muted);font-size:.85rem">Choisis une hauteur (1–10). Score = <b>chaîne × hauteur × (12 − hauteur)</b> : les gratte-ciels trop hauts coûtent cher — le sweet spot est vers le milieu. Parfois l’ordre est mélangé !</p>
     <input id="name-input" type="text" maxlength="20" placeholder="Ton pseudo" autocomplete="off">
     <div style="display:flex;gap:8px">
       <button class="btn btn-p" style="flex:1" onclick="createGame()">Créer une salle</button>
@@ -103,7 +103,7 @@ h2{font-size:1.45rem;font-weight:800;background:linear-gradient(135deg,var(--pri
 <div id="scr-reveal" class="hidden">
   <div class="rnd-tag" id="rev-rnd">Révélation</div>
   <div class="card">
-    <p style="text-align:center;font-size:.78rem;color:var(--muted);margin-bottom:10px">Meilleure chaîne sur l’horizon : <b id="rev-lis">0</b> étages — tes points = <b>ta chaîne</b> × <b>ta hauteur</b></p>
+    <p style="text-align:center;font-size:.78rem;color:var(--muted);margin-bottom:10px">Meilleure chaîne : <b id="rev-lis">0</b> — points = chaîne × hauteur × <b>(12 − hauteur)</b></p>
     <div class="skyline-row" id="skyline-vis"></div>
     <div id="rev-details" style="margin-top:12px;font-size:.82rem;line-height:1.5"></div>
   </div>
@@ -321,7 +321,8 @@ function handleMsg(d){
         p.style.borderBottom='1px solid rgba(255,255,255,.06)';
         p.style.padding='6px 0';
         const chain=x.lisChain!=null?x.lisChain:'?';
-        p.innerHTML='<b>'+esc(x.name)+'</b> — tour '+x.height+' · chaîne <b>'+chain+'</b> → <b style="color:var(--gold)">+'+x.points+'</b> pts';
+        const eff=x.efficiency!=null?x.efficiency:(12-x.height);
+        p.innerHTML='<b>'+esc(x.name)+'</b> — h.'+x.height+' · chaîne <b>'+chain+'</b> × efficacité <b>'+eff+'</b> → <b style="color:var(--gold)">+'+x.points+'</b> pts';
         det.appendChild(p);
       });
       break;
