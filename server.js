@@ -5429,30 +5429,28 @@ wssDebat.on('connection', ws => {
 });
 
 // ════════════════════════════════════════════════════════
-//  SKYLINE — hauteurs secrètes, score = LIS + ta tour
+//  SKYLINE — hauteurs secrètes, score = (LIS se terminant ici) × hauteur
+//  Évite le spam « toujours 10 » : une tour très haute sans prédécesseurs plus bas rapporte peu.
 // ════════════════════════════════════════════════════════
-function skylineLisLen(heights) {
+function skylineLisEndingEach(heights) {
   const n = heights.length;
-  if (!n) return 0;
-  const tails = [];
+  const dp = new Array(n).fill(1);
   for (let i = 0; i < n; i++) {
-    const x = heights[i];
-    let lo = 0;
-    let hi = tails.length;
-    while (lo < hi) {
-      const mid = (lo + hi) >> 1;
-      if (tails[mid] < x) lo = mid + 1;
-      else hi = mid;
+    for (let j = 0; j < i; j++) {
+      if (heights[j] < heights[i]) dp[i] = Math.max(dp[i], dp[j] + 1);
     }
-    if (lo === tails.length) tails.push(x);
-    else tails[lo] = x;
   }
-  return tails.length;
+  return dp;
+}
+
+function skylineGlobalLisFromEnding(each) {
+  if (!each.length) return 0;
+  return Math.max(...each);
 }
 
 function skylineRoundScores(heights) {
-  const lis = skylineLisLen(heights);
-  return heights.map(h => lis + h);
+  const lisAt = skylineLisEndingEach(heights);
+  return heights.map((h, i) => lisAt[i] * h);
 }
 
 const skylineRooms = new Map();
@@ -5509,7 +5507,8 @@ function skylineEndRound(room) {
     const v = room.picks[s];
     return v != null && v >= 1 && v <= 10 ? v : 1 + Math.floor(Math.random() * 10);
   });
-  const lis = skylineLisLen(heights);
+  const lisEach = skylineLisEndingEach(heights);
+  const lis = skylineGlobalLisFromEnding(lisEach);
   const roundPts = skylineRoundScores(heights);
   order.forEach((slot, i) => {
     room.scores[slot] = (room.scores[slot] || 0) + roundPts[i];
@@ -5521,7 +5520,8 @@ function skylineEndRound(room) {
       name: pl ? pl.name : '?',
       height: heights[i],
       points: roundPts[i],
-      lis
+      lis,
+      lisChain: lisEach[i]
     };
   });
   room.phase = 'ROUNDOVER';

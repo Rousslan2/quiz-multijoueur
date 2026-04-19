@@ -262,6 +262,20 @@ body.home-page .hero-right { animation-delay: -6s; }
   body.home-page .zp-apple-stage { transform: none !important; transition: none !important; }
 }
 
+/* Menu principal : moins d’animations GPU sur petit écran (FPS) */
+@media (max-width: 760px) {
+  body.home-page .zp-aurora-a,
+  body.home-page .zp-aurora-b,
+  body.home-page .zp-depth { animation: none !important; opacity: 0.85; }
+  body.home-page .zp-orb-1,
+  body.home-page .zp-orb-2,
+  body.home-page .zp-orb-3,
+  body.home-page .zp-apple-shine { animation: none !important; }
+  body.home-page .hero-card { animation: none !important; }
+  body.home-page .zp-space-bg .zp-neb1,
+  body.home-page .zp-space-bg .zp-neb2 { filter: blur(48px); }
+}
+
 /* ── PARTICLES ── */
 .particles { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
 .particle {
@@ -2021,7 +2035,7 @@ body.home-page .footer .zp-admin-nav.zp-admin-visible {
 (function(){
   const sc = document.getElementById('bg-stars');
   if(!sc) return;
-  const n = (typeof innerWidth!=='undefined' && innerWidth<700) ? 36 : 70;
+  const n = (typeof innerWidth!=='undefined' && innerWidth<760) ? 22 : 48;
   if(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
   for(let i=0;i<n;i++){
     const s=document.createElement('div');
@@ -2038,7 +2052,7 @@ body.home-page .footer .zp-admin-nav.zp-admin-visible {
   if(!c) return;
   if(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
   const colors=['#00E8D4','#FF4D6D','#5B9FFF','#A78BFA','#F5D547'];
-  const maxP = (typeof innerWidth!=='undefined' && innerWidth<700) ? 14 : 30;
+  const maxP = (typeof innerWidth!=='undefined' && innerWidth<760) ? 8 : 18;
   for(let i = 0; i < maxP; i++){
     const p = document.createElement('div');
     p.className = 'particle';
@@ -2208,6 +2222,8 @@ document.querySelectorAll('.section-label, .panel').forEach(el=>{
 
   const clamp=(v,min,max)=>Math.max(min,Math.min(max,v));
   const supportsHover = matchMedia && matchMedia('(hover:hover)').matches;
+  /* Évite le coût du tilt 3D sur mobile / coarse pointer */
+  if (matchMedia && matchMedia('(pointer: coarse)').matches) return;
 
   cards.forEach(c=>{
     c.setAttribute('data-tilt','1');

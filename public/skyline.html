@@ -29,9 +29,17 @@ h2{font-size:1.45rem;font-weight:800;background:linear-gradient(135deg,var(--pri
 .code-big{font-size:2.2rem;font-weight:900;letter-spacing:.2em;color:var(--primary);font-family:monospace}
 .spectate-strip{display:none;margin:0 0 12px;padding:8px 12px;text-align:center;font-size:.76rem;font-weight:700;color:#99f6e4;background:rgba(0,232,212,.1);border:1px solid rgba(0,232,212,.28);border-radius:10px}
 .spectate-strip.on{display:block}
-.skyline-row{display:flex;align-items:flex-end;justify-content:center;gap:6px;min-height:140px;padding:12px 4px;border-radius:12px;background:rgba(0,0,0,.2)}
-.sky-bar{flex:1;min-width:0;max-width:48px;border-radius:8px 8px 4px 4px;background:linear-gradient(180deg,var(--primary),#0a5c56);display:flex;align-items:flex-end;justify-content:center;padding-bottom:6px;font-size:.65rem;font-weight:800;color:#041018;transition:height .4s ease}
-.sky-bar.dim{opacity:.45}
+.skyline-row{display:flex;align-items:flex-end;justify-content:center;gap:8px;min-height:160px;padding:14px 8px 10px;border-radius:14px;background:linear-gradient(180deg,rgba(8,12,28,.85),rgba(4,6,14,.92));border:1px solid rgba(0,232,212,.12);box-shadow:inset 0 1px 0 rgba(255,255,255,.06)}
+.sky-bar-wrap{flex:1;min-width:0;max-width:56px;display:flex;flex-direction:column;align-items:center;gap:4px}
+.sky-bar-label{font-size:.62rem;font-weight:700;color:var(--muted);text-align:center;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sky-bar{position:relative;width:100%;border-radius:6px 6px 3px 3px;background:linear-gradient(180deg,#2a3a55 0%,#151a28 38%,#0c1018 100%);border:1px solid rgba(255,255,255,.12);box-shadow:0 8px 0 rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.18),inset 0 -6px 12px rgba(0,0,0,.4);display:flex;flex-direction:column;align-items:stretch;justify-content:flex-start;overflow:hidden;transition:height .45s cubic-bezier(.22,1,.36,1)}
+.sky-bar::before{content:'';position:absolute;left:0;right:0;top:0;height:28%;background:linear-gradient(180deg,rgba(255,255,255,.14),transparent);pointer-events:none}
+.sky-bar-facade{flex:1;position:relative;display:grid;grid-template-columns:repeat(3,1fr);gap:2px;padding:6px 4px 4px;align-content:start}
+.sky-bar-facade span{background:linear-gradient(180deg,rgba(0,232,212,.22),rgba(0,232,212,.06));border:1px solid rgba(0,0,0,.35);border-radius:2px;min-height:8px;opacity:.85}
+.sky-bar-roof{height:10px;margin:0 12% -1px;background:linear-gradient(180deg,#4a5a72,#2a3548);border-radius:3px 3px 0 0;border:1px solid rgba(255,255,255,.1)}
+.sky-bar-h{display:flex;align-items:center;justify-content:center;padding:4px 2px 6px;font-size:.72rem;font-weight:900;color:#c8f7f2;text-shadow:0 1px 2px rgba(0,0,0,.6)}
+.sky-bar.dim{opacity:.42;filter:saturate(.65)}
+.sky-bar.hot{box-shadow:0 8px 0 rgba(0,0,0,.3),0 0 24px rgba(251,191,36,.35),inset 0 1px 0 rgba(255,255,255,.22)}
 .pick-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
 .pick-grid button{aspect-ratio:1.2;border-radius:10px;border:1px solid var(--border);background:rgba(255,255,255,.08);color:var(--text);font-weight:800;font-size:1.1rem;cursor:pointer}
 .pick-grid button:hover,.pick-grid button.on{border-color:var(--primary);background:rgba(0,232,212,.15)}
@@ -50,7 +58,7 @@ h2{font-size:1.45rem;font-weight:800;background:linear-gradient(135deg,var(--pri
 <div id="scr-name">
   <h2>🏙️ Skyline</h2>
   <div class="card" style="display:flex;flex-direction:column;gap:10px">
-    <p style="text-align:center;color:var(--muted);font-size:.85rem">Choisis une hauteur de tour (1–10). Score = <b>ligne croissante</b> + ta hauteur. Parfois l’ordre des tours est mélangé !</p>
+    <p style="text-align:center;color:var(--muted);font-size:.85rem">Choisis une hauteur de tour (1–10). Score = <b>chaîne croissante × hauteur</b> (une tour toute seule ne rapporte pas grand-chose). Parfois l’ordre est mélangé !</p>
     <input id="name-input" type="text" maxlength="20" placeholder="Ton pseudo" autocomplete="off">
     <div style="display:flex;gap:8px">
       <button class="btn btn-p" style="flex:1" onclick="createGame()">Créer une salle</button>
@@ -95,7 +103,7 @@ h2{font-size:1.45rem;font-weight:800;background:linear-gradient(135deg,var(--pri
 <div id="scr-reveal" class="hidden">
   <div class="rnd-tag" id="rev-rnd">Révélation</div>
   <div class="card">
-    <p style="text-align:center;font-size:.78rem;color:var(--muted);margin-bottom:10px">LIS (sous-suite croissante max) = <b id="rev-lis">0</b> — points = LIS + hauteur</p>
+    <p style="text-align:center;font-size:.78rem;color:var(--muted);margin-bottom:10px">Meilleure chaîne sur l’horizon : <b id="rev-lis">0</b> étages — tes points = <b>ta chaîne</b> × <b>ta hauteur</b></p>
     <div class="skyline-row" id="skyline-vis"></div>
     <div id="rev-details" style="margin-top:12px;font-size:.82rem;line-height:1.5"></div>
   </div>
@@ -268,22 +276,52 @@ function handleMsg(d){
       $('rev-rnd').textContent='Révélation manche';
       const row=$('skyline-vis'); row.textContent='';
       const maxH=Math.max(...(d.heights||[1]),1);
+      const minPx=52, maxPx=118;
       (d.order||[]).forEach((slot,i)=>{
         const h=(d.heights||[])[i]||1;
+        const pl=(d.players||[]).find(p=>p.slot===slot);
+        const wrap=document.createElement('div');
+        wrap.className='sky-bar-wrap';
+        const lab=document.createElement('div');
+        lab.className='sky-bar-label';
+        lab.textContent=pl?pl.name:'?';
         const bar=document.createElement('div');
         bar.className='sky-bar';
-        bar.style.height=(30+(h/maxH)*100)+'px';
-        const pl=(d.players||[]).find(p=>p.slot===slot);
-        bar.title=(pl?pl.name:'')+' : '+h;
-        bar.textContent=h;
-        row.appendChild(bar);
+        const px=minPx+((h-1)/9)*(maxPx-minPx);
+        bar.style.height=Math.round(px)+'px';
+        const roof=document.createElement('div');
+        roof.className='sky-bar-roof';
+        const facade=document.createElement('div');
+        facade.className='sky-bar-facade';
+        const rows=Math.min(8,Math.max(2,Math.round(h*0.65)));
+        for(let r=0;r<rows;r++){
+          for(let c=0;c<3;c++){
+            const win=document.createElement('span');
+            const flick=(slot*7+h*11+r*3+c*5)%10;
+            win.style.opacity=(0.38+flick*0.055).toFixed(2);
+            facade.appendChild(win);
+          }
+        }
+        const hi=document.createElement('div');
+        hi.className='sky-bar-h';
+        hi.textContent=String(h);
+        bar.appendChild(roof);
+        bar.appendChild(facade);
+        bar.appendChild(hi);
+        bar.title=(pl?pl.name:'')+' — hauteur '+h;
+        const detRow=(d.details||[]).find(t=>t.slot===slot);
+        if(detRow && detRow.lisChain!=null && detRow.lisChain===d.lis) bar.classList.add('hot');
+        wrap.appendChild(lab);
+        wrap.appendChild(bar);
+        row.appendChild(wrap);
       });
       const det=$('rev-details'); det.textContent='';
       (d.details||[]).forEach(x=>{
         const p=document.createElement('div');
         p.style.borderBottom='1px solid rgba(255,255,255,.06)';
         p.style.padding='6px 0';
-        p.innerHTML='<b>'+esc(x.name)+'</b> — tour '+x.height+' → <b style="color:var(--gold)">+'+x.points+'</b> pts';
+        const chain=x.lisChain!=null?x.lisChain:'?';
+        p.innerHTML='<b>'+esc(x.name)+'</b> — tour '+x.height+' · chaîne <b>'+chain+'</b> → <b style="color:var(--gold)">+'+x.points+'</b> pts';
         det.appendChild(p);
       });
       break;
