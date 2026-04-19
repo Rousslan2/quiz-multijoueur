@@ -181,9 +181,9 @@
     skyline: {
       title: 'Skyline',
       rules: [
-        'À tour de rôle : un curseur oscille — appuie dans la zone verte pour empiler un étage sur ta tour 3D. Chaque manche a un objectif d’étages ; si tu l’atteins, bonus de points.',
-        'La difficulté augmente chaque manche : moins de temps, curseur plus rapide, zone verte plus étroite.',
-        'Si tu rates ou si le temps est écoulé, ta tour tombe. Le joueur avec le plus de points à la fin gagne.'
+        'À tour de rôle : un bloc d’étage glisse sur un rail — aligne-le sur la zone verte (le centre change à chaque tour). L’étage se pose sur ta tour 3D ; viser le centre du vert rapporte plus de points.',
+        'Chaque manche a un objectif d’étages (bonus si atteint). La difficulté augmente : moins de temps, bloc plus rapide, zone plus petite.',
+        'Si tu rates ou si le temps est écoulé, toute ta tour tombe. Le plus de points gagne.'
       ]
     },
     lobby: {

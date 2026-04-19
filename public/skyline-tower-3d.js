@@ -3,35 +3,42 @@
  * Attend window.THREE (three.min.js chargé avant ce fichier).
  */
 (function () {
-  var scene, camera, renderer, towerRoot, bgCities, starsPoints, groundMesh, horizonMesh, canvas, container;
+  var scene, camera, renderer, towerRoot, pedestalMesh, bgCities, starsPoints, groundMesh, horizonMesh, canvas, container;
   var floorMeshes = [];
   var rafId = 0;
   var collapseActive = false;
-  var FLOOR_H = 0.42;
-  var BASE_W = 1.15;
-  var BASE_D = 0.95;
+  var stackAnimActive = false;
+  var FLOOR_H = 0.58;
+  var BASE_W = 1.22;
+  var BASE_D = 1.02;
+  var PEDESTAL_H = 0.22;
   var MAX_F = 18;
 
-  var wallMat, winMat, roofMat;
+  var wallMat, wallMatB, winMat, roofMat;
 
   function makeMaterials() {
     wallMat = new THREE.MeshStandardMaterial({
-      color: 0x3d4f66,
-      metalness: 0.25,
-      roughness: 0.72,
+      color: 0x4a6a8a,
+      metalness: 0.35,
+      roughness: 0.55,
       flatShading: false
+    });
+    wallMatB = new THREE.MeshStandardMaterial({
+      color: 0x3d5a72,
+      metalness: 0.28,
+      roughness: 0.62
     });
     winMat = new THREE.MeshStandardMaterial({
       color: 0x0a1816,
-      emissive: 0x00c4b0,
-      emissiveIntensity: 0.55,
-      metalness: 0.2,
-      roughness: 0.45
+      emissive: 0x00e8d4,
+      emissiveIntensity: 0.62,
+      metalness: 0.25,
+      roughness: 0.4
     });
     roofMat = new THREE.MeshStandardMaterial({
-      color: 0x5a6d82,
-      metalness: 0.35,
-      roughness: 0.55
+      color: 0x7a8ca8,
+      metalness: 0.45,
+      roughness: 0.42
     });
   }
 
@@ -64,7 +71,7 @@
     var h = FLOOR_H;
     var d = BASE_D;
     var geo = new THREE.BoxGeometry(w, h, d);
-    var mat = isTop ? roofMat : wallMat;
+    var mat = isTop ? roofMat : index % 2 === 0 ? wallMat : wallMatB;
     var mesh = new THREE.Mesh(geo, mat);
     mesh.castShadow = true;
     mesh.receiveShadow = true;
@@ -72,11 +79,11 @@
     addWindowsToFace(mesh, w, h, d, isTop);
     var g = new THREE.Group();
     g.add(mesh);
-    g.position.y = index * h;
+    g.position.y = PEDESTAL_H + index * h;
     return g;
   }
 
-  function clearTower() {
+  function clearFloorsOnly() {
     floorMeshes.forEach(function (g) {
       if (g.parent) g.parent.remove(g);
       g.traverse(function (o) {
@@ -84,36 +91,116 @@
       });
     });
     floorMeshes = [];
-    if (towerRoot) {
-      while (towerRoot.children.length) towerRoot.remove(towerRoot.children[0]);
+  }
+
+  function clearTower() {
+    clearFloorsOnly();
+    if (towerRoot && pedestalMesh) {
+      towerRoot.remove(pedestalMesh);
+      if (pedestalMesh.geometry) pedestalMesh.geometry.dispose();
+      if (pedestalMesh.material) pedestalMesh.material.dispose();
+      pedestalMesh = null;
     }
   }
 
+  function ensurePedestal() {
+    if (!towerRoot || pedestalMesh) return;
+    pedestalMesh = new THREE.Mesh(
+      new THREE.BoxGeometry(BASE_W * 1.35, PEDESTAL_H, BASE_D * 1.25),
+      new THREE.MeshStandardMaterial({
+        color: 0x2a3038,
+        metalness: 0.15,
+        roughness: 0.88
+      })
+    );
+    pedestalMesh.castShadow = true;
+    pedestalMesh.receiveShadow = true;
+    pedestalMesh.position.y = PEDESTAL_H / 2;
+    towerRoot.add(pedestalMesh);
+  }
+
+  function updateCameraForStack(n) {
+    if (!camera) return;
+    var stackH = PEDESTAL_H + Math.max(0, n) * FLOOR_H;
+    var lookY = stackH * 0.42 + 0.15;
+    var camY = Math.min(6.5, 1.1 + stackH * 0.52);
+    var camZ = Math.min(10, 4.8 + stackH * 0.38);
+    camera.position.set(0.35, camY, camZ);
+    camera.lookAt(0, lookY, 0);
+  }
+
   function setFloors(n) {
-    if (!towerRoot || collapseActive) return;
+    if (!towerRoot || collapseActive || stackAnimActive) return;
     n = Math.max(0, Math.min(MAX_F, n | 0));
-    clearTower();
+    clearFloorsOnly();
+    ensurePedestal();
     for (var i = 0; i < n; i++) {
       var g = buildFloorMesh(i, n, i === n - 1);
       towerRoot.add(g);
       floorMeshes.push(g);
     }
+    updateCameraForStack(n);
   }
 
   /** Vide la tour sans animation (nouvelle manche) */
   function setFloorsInstant(n) {
     if (!towerRoot) return;
     collapseActive = false;
+    stackAnimActive = false;
     setFloors(n);
   }
 
   function bumpPop() {
-    if (!towerRoot || collapseActive) return;
-    var s = 1.08;
+    if (!towerRoot || collapseActive || stackAnimActive) return;
+    var s = 1.06;
     towerRoot.scale.setScalar(s);
     requestAnimationFrame(function () {
       towerRoot.scale.setScalar(1);
     });
+  }
+
+  /** Réaffiche toute la pile puis anime la chute du dernier bloc (empilement visible). */
+  function setFloorsFromBottom(prevN, newN, done) {
+    if (!towerRoot || collapseActive) {
+      if (typeof done === 'function') done();
+      return;
+    }
+    prevN = Math.max(0, Math.min(MAX_F, prevN | 0));
+    newN = Math.max(0, Math.min(MAX_F, newN | 0));
+    stackAnimActive = true;
+    clearFloorsOnly();
+    ensurePedestal();
+    for (var i = 0; i < newN; i++) {
+      var g = buildFloorMesh(i, newN, i === newN - 1);
+      towerRoot.add(g);
+      floorMeshes.push(g);
+    }
+    updateCameraForStack(newN);
+    if (newN <= prevN || newN < 1) {
+      stackAnimActive = false;
+      if (typeof done === 'function') done();
+      return;
+    }
+    var top = floorMeshes[floorMeshes.length - 1];
+    var startY = top.position.y + 2.4;
+    top.position.y = startY;
+    var t0 = performance.now();
+    var dropDur = 420;
+    var targetY = PEDESTAL_H + (newN - 1) * FLOOR_H;
+    function dropStep(now) {
+      var u = Math.min(1, (now - t0) / dropDur);
+      var e = 1 - Math.pow(1 - u, 3);
+      top.position.y = startY + (targetY - startY) * e;
+      if (u < 1) {
+        requestAnimationFrame(dropStep);
+      } else {
+        top.position.y = targetY;
+        stackAnimActive = false;
+        bumpPop();
+        if (typeof done === 'function') done();
+      }
+    }
+    requestAnimationFrame(dropStep);
   }
 
   function prefersReducedMotion() {
@@ -126,8 +213,8 @@
 
   function tick() {
     if (!renderer || !scene || !camera) return;
-    if (towerRoot && !collapseActive && !prefersReducedMotion()) {
-      towerRoot.rotation.y += 0.004;
+    if (towerRoot && !collapseActive && !stackAnimActive && !prefersReducedMotion()) {
+      towerRoot.rotation.y += 0.0022;
     }
     if (bgCities && !prefersReducedMotion()) {
       bgCities.rotation.y += 0.0006;
@@ -161,9 +248,9 @@
     scene.background = new THREE.Color(0x060814);
     scene.fog = new THREE.Fog(0x0a0e1c, 12, 42);
 
-    camera = new THREE.PerspectiveCamera(40, 1, 0.1, 90);
-    camera.position.set(4.2, 2.35, 5.1);
-    camera.lookAt(0, 1.15, 0);
+    camera = new THREE.PerspectiveCamera(38, 1, 0.1, 100);
+    camera.position.set(0.4, 2.2, 5.4);
+    camera.lookAt(0, 0.9, 0);
 
     renderer = new THREE.WebGLRenderer({
       canvas: canvas,
@@ -438,6 +525,7 @@
       if (typeof done === 'function') done();
       return;
     }
+    stackAnimActive = false;
     collapseActive = true;
     var start = performance.now();
     var dur = 650;
@@ -524,6 +612,7 @@
       return initWebGL(el);
     },
     setFloors: setFloors,
+    setFloorsFromBottom: setFloorsFromBottom,
     setFloorsInstant: setFloorsInstant,
     bumpPop: bumpPop,
     playCollapse: playCollapse,

@@ -5429,8 +5429,8 @@ wssDebat.on('connection', ws => {
 });
 
 // ════════════════════════════════════════════════════════
-//  SKYLINE — timing : curseur oscillant, appuie dans la zone verte
-//  Tour à tour : bon timing = +1 étage et points ; raté = la tour tombe (étages à 0).
+//  SKYLINE — bloc qui glisse (gauche↔droite) : aligne-le sur la zone verte
+//  (stackCenter ± tolérance). Chaque manche : centre et vitesse varient.
 // ════════════════════════════════════════════════════════
 const SKYLINE_TOTAL_ROUNDS = 5;
 const SKYLINE_TURN_MS = 12000;
@@ -5477,6 +5477,8 @@ function makeSkylineRoom(code, host) {
     periodMs: SKYLINE_PERIOD_MS,
     perfectHalf: SKYLINE_PERFECT_HALF,
     turnDurationMs: SKYLINE_TURN_MS,
+    stackCenter: 0.5,
+    blockPhase0: 0,
     timer: null
   };
 }
@@ -5503,6 +5505,8 @@ function skylineSnap(room, extra = {}) {
     periodMs: room.periodMs,
     perfectHalf: room.perfectHalf,
     turnDurationMs: room.turnDurationMs || SKYLINE_TURN_MS,
+    stackCenter: room.stackCenter != null ? room.stackCenter : 0.5,
+    blockPhase0: room.blockPhase0 != null ? room.blockPhase0 : 0,
     ...extra
   };
 }
@@ -5545,6 +5549,8 @@ function skylineResetFloorsForNewRound(room) {
 
 function skylineStartTurn(room) {
   room.phase = 'TURNING';
+  room.stackCenter = 0.26 + Math.random() * 0.48;
+  room.blockPhase0 = Math.random() * Math.PI * 2;
   const now = Date.now();
   const dur = room.turnDurationMs || SKYLINE_TURN_MS;
   room.turnStart = now;
@@ -5607,15 +5613,19 @@ function skylineProcessTap(room, slot, elapsedFromClient) {
     }
   }
   const period = room.periodMs || SKYLINE_PERIOD_MS;
-  const phase = ((elapsed % period) / period) * Math.PI * 2;
-  const pos = 0.5 + 0.5 * Math.sin(phase);
-  const dist = Math.abs(pos - 0.5);
+  const omega = (2 * Math.PI) / period;
+  const blockX = 0.5 + 0.45 * Math.sin(elapsed * omega + (room.blockPhase0 || 0));
+  const center = room.stackCenter != null ? room.stackCenter : 0.5;
+  const dist = Math.abs(blockX - center);
   const half = room.perfectHalf != null ? room.perfectHalf : SKYLINE_PERFECT_HALF;
+  let pointsDelta = 0;
   const success = dist <= half;
   if (success) {
     room.floors[slot] = (room.floors[slot] || 0) + 1;
-    const pts = 10;
+    const precision = Math.max(0, 1 - dist / half);
+    const pts = 10 + Math.floor(5 * precision);
     room.scores[slot] = (room.scores[slot] || 0) + pts;
+    pointsDelta = pts;
   } else {
     room.floors[slot] = 0;
   }
@@ -5625,8 +5635,11 @@ function skylineProcessTap(room, slot, elapsedFromClient) {
     slot,
     name: pl ? pl.name : '?',
     success,
-    pos,
+    pos: blockX,
+    blockX,
+    stackCenter: center,
     dist,
+    pointsDelta,
     floors: room.floors[slot] || 0,
     score: room.scores[slot] || 0,
     round: room.round,
