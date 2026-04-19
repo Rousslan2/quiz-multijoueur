@@ -371,6 +371,7 @@ select option{background:#0a0a1a;color:var(--text)}
         <option value="memo">🃏 Mémoire</option>
         <option value="debat">⚖️ Débat express</option>
         <option value="imposteur">🕵️ Imposteur</option>
+        <option value="skyline">🏙️ Skyline</option>
       </select>
       <input type="text" id="inp-create-name" placeholder="Votre prénom" maxlength="20" autocomplete="off">
       <button class="btn btn-create" onclick="doCreate()">Créer la salle</button>
@@ -449,14 +450,16 @@ const GAME_URLS = {
   typer:'typer.html', anagramme:'anagramme.html',
   justeprix:'justeprix.html', timeline:'timeline.html', memo:'memoire.html',
   debat:'debat.html',
-  imposteur:'imposteur.html'
+  imposteur:'imposteur.html',
+  skyline:'skyline.html'
 };
 const GAME_ICONS = {
   quiz:'⚡', draw:'✏️', p4:'🟠', morpion:'✖️', taboo:'🚫', emoji:'🌟',
   loup:'🐺', uno:'🃏', bomb:'💣', sumo:'🥋', paint:'🎨', naval:'⚓',
   typer:'⌨️', anagramme:'🔤', justeprix:'💰', timeline:'📅', memo:'🃏',
   debat:'⚖️',
-  imposteur:'🕵️'
+  imposteur:'🕵️',
+  skyline:'🏙️'
 };
 
 let createdCode = null;

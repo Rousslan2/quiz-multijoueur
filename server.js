@@ -58,6 +58,7 @@ const wssTimeline  = new WebSocket.Server({ noServer: true });
 const wssMemo      = new WebSocket.Server({ noServer: true });
 const wssImposteur = new WebSocket.Server({ noServer: true });
 const wssDebat = new WebSocket.Server({ noServer: true });
+const wssSkyline = new WebSocket.Server({ noServer: true });
 
 server.on('upgrade', (req, socket, head) => {
   const routes = {
@@ -68,7 +69,8 @@ server.on('upgrade', (req, socket, head) => {
     '/ws/typer':wssTyper,'/ws/anagramme':wssAnagramme,'/ws/justeprix':wssJustePrix,
     '/ws/timeline':wssTimeline,'/ws/memo':wssMemo,
     '/ws/imposteur':wssImposteur,
-    '/ws/debat':wssDebat
+    '/ws/debat':wssDebat,
+    '/ws/skyline':wssSkyline
   };
   const h = routes[req.url];
   if (h) h.handleUpgrade(req, socket, head, ws => h.emit('connection', ws));
@@ -109,12 +111,13 @@ const GAME_NAMES = {
   loup:'Loup-Garou', uno:'Uno', bomb:'Word Bomb', sumo:'Sumo Arena', paint:'Paint.io',
   naval:'Bataille navale', typer:'Typer Race', anagramme:'Anagramme',
   justeprix:'Juste Prix', timeline:'Timeline', memo:'Mémoire', imposteur:'Imposteur',
-  debat:'Débat express'
+  debat:'Débat express',
+  skyline:'Skyline'
 };
 
 function getRoomsSnapshot() {
   const all = [];
-  const maps = { quiz:quizRooms, draw:drawRooms, p4:p4Rooms, morpion:morpionRooms, taboo:tabooRooms, emoji:emojiRooms, loup:loupRooms, uno:unoRooms, bomb:bombRooms, sumo:sumoRooms, paint:paintRooms, naval:navalRooms, typer:typerRooms, anagramme:anagrammeRooms, justeprix:justeprixRooms, timeline:timelineRooms, memo:memoRooms, imposteur:imposteurRooms, debat:debatRooms };
+  const maps = { quiz:quizRooms, draw:drawRooms, p4:p4Rooms, morpion:morpionRooms, taboo:tabooRooms, emoji:emojiRooms, loup:loupRooms, uno:unoRooms, bomb:bombRooms, sumo:sumoRooms, paint:paintRooms, naval:navalRooms, typer:typerRooms, anagramme:anagrammeRooms, justeprix:justeprixRooms, timeline:timelineRooms, memo:memoRooms, imposteur:imposteurRooms, debat:debatRooms, skyline:skylineRooms };
   for (const [game, map] of Object.entries(maps)) {
     for (const [code, room] of map) {
       const playerNames = game === 'quiz'
@@ -126,7 +129,7 @@ function getRoomsSnapshot() {
         gameName: GAME_NAMES[game],
         host: room.host,
         players: playerNames,
-        maxPlayers: game==='loup'?10:game==='bomb'?6:game==='sumo'?4:game==='uno'?4:game==='paint'?4:game==='naval'?4:game==='imposteur'?8:game==='debat'?6:4,
+        maxPlayers: game==='loup'?10:game==='bomb'?6:game==='sumo'?4:game==='uno'?4:game==='paint'?4:game==='naval'?4:game==='imposteur'?8:game==='debat'?6:game==='skyline'?8:4,
         status: ['WAITING','SETUP','PLACING','COUNTDOWN'].includes(room.phase) ? 'waiting' : 'playing'
       });
     }
@@ -5418,6 +5421,247 @@ wssDebat.on('connection', ws => {
         room.players.forEach(p => { room.scores[p.slot] = 0; });
         clearTimeout(room.timer);
         debatBcast(room);
+        broadcastLobby();
+        break;
+      }
+    }
+  });
+});
+
+// ════════════════════════════════════════════════════════
+//  SKYLINE — hauteurs secrètes, score = LIS + ta tour
+// ════════════════════════════════════════════════════════
+function skylineLisLen(heights) {
+  const n = heights.length;
+  if (!n) return 0;
+  const tails = [];
+  for (let i = 0; i < n; i++) {
+    const x = heights[i];
+    let lo = 0;
+    let hi = tails.length;
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1;
+      if (tails[mid] < x) lo = mid + 1;
+      else hi = mid;
+    }
+    if (lo === tails.length) tails.push(x);
+    else tails[lo] = x;
+  }
+  return tails.length;
+}
+
+function skylineRoundScores(heights) {
+  const lis = skylineLisLen(heights);
+  return heights.map(h => lis + h);
+}
+
+const skylineRooms = new Map();
+function makeSkylineRoom(code, host) {
+  return {
+    code,
+    host,
+    players: [],
+    spectators: [],
+    phase: 'WAITING',
+    round: 0,
+    totalRounds: 5,
+    scores: {},
+    picks: {},
+    timer: null,
+    catastrophe: false
+  };
+}
+
+function skylineSnap(room, extra = {}) {
+  return {
+    type: 'skyline_state',
+    phase: room.phase,
+    code: room.code,
+    players: room.players.map(p => ({
+      name: p.name,
+      slot: p.slot,
+      score: room.scores[p.slot] || 0,
+      picked: !!room.picks && room.picks[p.slot] != null
+    })),
+    round: room.round,
+    totalRounds: room.totalRounds,
+    catastrophe: !!room.catastrophe,
+    ...extra
+  };
+}
+
+function skylineStartRound(room) {
+  room.picks = {};
+  room.catastrophe = Math.random() < 0.22;
+  room.phase = 'PICKING';
+  clearTimeout(room.timer);
+  room.timer = setTimeout(() => skylineEndRound(room), 35000);
+  bcastRoom(room, { type: 'skyline_round', round: room.round, totalRounds: room.totalRounds, catastrophe: room.catastrophe });
+  bcastRoom(room, skylineSnap(room));
+  broadcastLobby();
+}
+
+function skylineEndRound(room) {
+  clearTimeout(room.timer);
+  const slots = room.players.map(p => p.slot);
+  const order = room.catastrophe ? shuffle([...slots]) : [...slots];
+  const heights = order.map(s => {
+    const v = room.picks[s];
+    return v != null && v >= 1 && v <= 10 ? v : 1 + Math.floor(Math.random() * 10);
+  });
+  const lis = skylineLisLen(heights);
+  const roundPts = skylineRoundScores(heights);
+  order.forEach((slot, i) => {
+    room.scores[slot] = (room.scores[slot] || 0) + roundPts[i];
+  });
+  const details = order.map((slot, i) => {
+    const pl = room.players.find(x => x.slot === slot);
+    return {
+      slot,
+      name: pl ? pl.name : '?',
+      height: heights[i],
+      points: roundPts[i],
+      lis
+    };
+  });
+  room.phase = 'ROUNDOVER';
+  bcastRoom(room, {
+    type: 'skyline_reveal',
+    order,
+    heights,
+    lis,
+    details,
+    players: room.players.map(p => ({ name: p.name, slot: p.slot, score: room.scores[p.slot] || 0 }))
+  });
+  clearTimeout(room.timer);
+  room.timer = setTimeout(() => {
+    if (room.round >= room.totalRounds) {
+      room.phase = 'GAME_OVER';
+      bcastRoom(room, skylineSnap(room));
+      broadcastLobby();
+    } else {
+      room.round++;
+      skylineStartRound(room);
+    }
+  }, 4500);
+}
+
+wssSkyline.on('connection', ws => {
+  makeWS(wssSkyline).alive(ws);
+  let myRoom = null;
+  let isSpectator = false;
+  ws.on('close', () => {
+    makeWS(wssSkyline).clear(ws);
+    if (!myRoom) return;
+    if (isSpectator) {
+      disconnectSpectator(myRoom, ws);
+      broadcastLobby();
+      return;
+    }
+    const idx = myRoom.players.findIndex(p => p.ws === ws);
+    if (idx < 0) return;
+    const name = myRoom.players[idx].name;
+    myRoom.players.splice(idx, 1);
+    myRoom.players.forEach((p, i) => { p.slot = i; });
+    clearTimeout(myRoom.timer);
+    if (!myRoom.players.length) {
+      skylineRooms.delete(myRoom.code);
+      broadcastLobby();
+      return;
+    }
+    bcastRoom(myRoom, { type: 'player_left', name });
+    if (['PICKING', 'ROUNDOVER'].includes(myRoom.phase)) {
+      myRoom.phase = 'WAITING';
+      myRoom.round = 0;
+      myRoom.picks = {};
+      myRoom.players.forEach(p => { myRoom.scores[p.slot] = 0; });
+    }
+    bcastRoom(myRoom, skylineSnap(myRoom));
+    broadcastLobby();
+  });
+  ws.on('message', raw => {
+    let d;
+    try { d = JSON.parse(raw); } catch { return; }
+    const player = myRoom ? myRoom.players.find(p => p.ws === ws) : null;
+    switch (d.type) {
+      case 'lounge_chat':
+        handleLoungeChat(myRoom, ws, d);
+        break;
+      case 'create_skyline': {
+        const name = String(d.name || '').trim().slice(0, 20) || 'Joueur';
+        const code = genCode(skylineRooms);
+        const room = makeSkylineRoom(code, name);
+        skylineRooms.set(code, room);
+        myRoom = room;
+        isSpectator = false;
+        room.players.push({ ws, name, slot: 0 });
+        room.scores[0] = 0;
+        wsend(ws, { type: 'created_skyline', code, slot: 0, name });
+        wsend(ws, skylineSnap(room));
+        broadcastLobby();
+        break;
+      }
+      case 'join_skyline': {
+        const code = String(d.code || '').trim().toUpperCase();
+        const room = skylineRooms.get(code);
+        if (!room) { wsend(ws, { type: 'error', msg: 'Salle introuvable.' }); return; }
+        if (room.players.length >= 8) { wsend(ws, { type: 'error', msg: 'Partie pleine (8 max).' }); return; }
+        if (room.phase !== 'WAITING') { wsend(ws, { type: 'error', msg: 'Partie déjà en cours.' }); return; }
+        const name = String(d.name || '').trim().slice(0, 20) || 'Joueur';
+        const slot = room.players.length;
+        room.players.push({ ws, name, slot });
+        room.scores[slot] = 0;
+        myRoom = room;
+        isSpectator = false;
+        wsend(ws, { type: 'welcome_skyline', code, slot, name });
+        bcastRoom(room, skylineSnap(room));
+        broadcastLobby();
+        break;
+      }
+      case 'join_skyline_spectate': {
+        const code = String(d.code || '').trim().toUpperCase();
+        const room = skylineRooms.get(code);
+        const r = tryJoinSpectator(room, ws, d.name);
+        if (r.error) { wsend(ws, { type: 'error', msg: r.error }); return; }
+        myRoom = room;
+        isSpectator = true;
+        wsend(ws, { type: 'welcome_skyline_spectate', code, name: r.name });
+        wsend(ws, skylineSnap(room));
+        broadcastLobby();
+        break;
+      }
+      case 'start_skyline': {
+        if (!player || !myRoom || player.slot !== 0 || myRoom.phase !== 'WAITING') return;
+        if (myRoom.players.length < 2) { wsend(ws, { type: 'error', msg: 'Il faut au moins 2 joueurs.' }); return; }
+        myRoom.round = 1;
+        myRoom.players.forEach(p => { myRoom.scores[p.slot] = 0; });
+        bcastRoom(myRoom, { type: 'countdown', seconds: 3 });
+        clearTimeout(myRoom.timer);
+        myRoom.timer = setTimeout(() => skylineStartRound(myRoom), 3000);
+        broadcastLobby();
+        break;
+      }
+      case 'skyline_pick': {
+        if (!player || !myRoom || myRoom.phase !== 'PICKING' || isSpectator) return;
+        const h = Math.min(10, Math.max(1, parseInt(d.height, 10) || 0));
+        if (!h) return;
+        myRoom.picks[player.slot] = h;
+        bcastRoom(myRoom, skylineSnap(myRoom));
+        const allIn = myRoom.players.every(p => myRoom.picks[p.slot] != null);
+        if (allIn) {
+          clearTimeout(myRoom.timer);
+          skylineEndRound(myRoom);
+        }
+        break;
+      }
+      case 'restart_skyline': {
+        if (!player || !myRoom || player.slot !== 0 || myRoom.phase !== 'GAME_OVER') return;
+        myRoom.phase = 'WAITING';
+        myRoom.round = 0;
+        myRoom.picks = {};
+        myRoom.players.forEach(p => { myRoom.scores[p.slot] = 0; });
+        clearTimeout(myRoom.timer);
+        bcastRoom(myRoom, skylineSnap(myRoom));
         broadcastLobby();
         break;
       }

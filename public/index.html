@@ -1977,6 +1977,14 @@ body.home-page .footer .zp-admin-nav.zp-admin-visible {
     <span class="card-badge">3&ndash;6 joueurs &middot; Oral</span>
   </a>
 
+  <a class="game-card neon-card c-teal" data-game-id="skyline" href="skyline.html">
+    <div class="zp-shine"></div>
+    <span class="card-icon zp-glitch-icon"><img src="/icons/games/skyline.svg" width="56" height="56" alt="" loading="lazy" decoding="async"></span>
+    <div class="card-name">Skyline</div>
+    <div class="card-desc">Choisis la hauteur de ta tour : bluff et maths sur la ligne d’horizon.</div>
+    <span class="card-badge">2–8 joueurs · Bluff</span>
+  </a>
+
   <a class="game-card neon-card c-lobby lobby-full" href="lobby.html">
     <div class="zp-shine"></div>
     <span class="card-icon zp-glitch-icon"><img src="/icons/games/lobby.svg" width="56" height="56" alt="" loading="lazy" decoding="async"></span>
@@ -2157,7 +2165,7 @@ fetch('/api/public/stats').then(r=>r.json()).then(s=>{
     sumo:'sumo.html', paint:'paint.html', naval:'naval.html',
     typer:'typer.html', anagramme:'anagramme.html',
     justeprix:'justeprix.html', timeline:'timeline.html', memo:'memoire.html',
-    debat:'debat.html', imposteur:'imposteur.html'
+    debat:'debat.html', imposteur:'imposteur.html', skyline:'skyline.html'
   };
   try{
     const raw = localStorage.getItem(LS);

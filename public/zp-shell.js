@@ -5,6 +5,18 @@
 (function () {
   'use strict';
 
+  function ensureShellCriticalCss() {
+    if (document.getElementById('zp-shell-critical-css')) return;
+    const s = document.createElement('style');
+    s.id = 'zp-shell-critical-css';
+    s.textContent =
+      '#zp-nav-global{position:fixed!important;top:0!important;left:0!important;right:0!important;' +
+      'z-index:2147483000!important;pointer-events:none!important;box-sizing:border-box!important;' +
+      'background:linear-gradient(180deg,rgba(3,3,18,.96),rgba(3,3,18,.55) 70%,transparent)!important;}' +
+      '#zp-nav-global .zp-nav-global-inner{pointer-events:auto!important;}';
+    (document.head || document.documentElement).appendChild(s);
+  }
+
   const GAME_META = {
     home: {
       title: 'Accueil',
@@ -166,6 +178,14 @@
         'Un tir par tour : viser juste.'
       ]
     },
+    skyline: {
+      title: 'Skyline',
+      rules: [
+        'Chaque manche, choisis une hauteur de tour de 1 à 10 (secrète jusqu’à la révélation).',
+        'Les tours s’affichent dans l’ordre des joueurs (ou mélangées en « catastrophe »).',
+        'Ton score de manche = longueur de la plus longue suite croissante (LIS) + hauteur de ta tour.'
+      ]
+    },
     lobby: {
       title: 'Lobby',
       rules: [
@@ -278,7 +298,8 @@
       '<button type="button" class="zp-nav-global-icon" id="zp-nav-sound" title="Effets sonores" aria-label="Effets sonores">🔊</button>' +
       '</div>' +
       '</div>';
-    document.body.appendChild(nav);
+    /* Hors de <body> : évite tout empilement / blend bizarre avec body::before */
+    document.documentElement.appendChild(nav);
     try {
       nav.scrollIntoView({ block: 'nearest' });
     } catch (_) {}
@@ -431,6 +452,8 @@
 
   function init() {
     if (document.body.getAttribute('data-zp-no-shell') === '1') return;
+
+    ensureShellCriticalCss();
 
     if (!document.querySelector('link[href*="Orbitron"]')) {
       const lf = document.createElement('link');

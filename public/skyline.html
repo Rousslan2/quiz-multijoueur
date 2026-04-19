@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="fr" data-zp-game="skyline">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/favicon.svg">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="theme.css">
+<title>ZapPlay — Skyline</title>
+<link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--primary:#00E8D4;--gold:#fbbf24;--ok:#22c55e;--bad:#ef4444;--text:#E8E8F0;--muted:#7A8098;--card:#12121f;--border:rgba(0,232,212,.10)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Exo 2',sans-serif;color:var(--text);min-height:100dvh;padding-bottom:24px}
+#app{max-width:520px;margin:0 auto;padding:60px 14px 20px;display:flex;flex-direction:column;gap:14px}
+#back{position:fixed;top:8px;left:8px;background:none;border:none;color:var(--muted);cursor:pointer;padding:6px 10px;font-size:1rem;z-index:120}
+#dot{position:fixed;top:12px;right:12px;width:8px;height:8px;border-radius:50%;background:var(--bad);z-index:120}
+#dot.ok{background:var(--ok)}
+.hidden{display:none!important}
+.card{background:linear-gradient(180deg,rgba(255,255,255,.07),rgba(255,255,255,.03));border:1px solid var(--border);border-radius:14px;padding:16px;backdrop-filter:blur(8px)}
+.btn{border:none;border-radius:10px;padding:12px 16px;font-weight:700;cursor:pointer;transition:transform .1s;font-size:.95rem;font-family:inherit}
+.btn:active{transform:scale(.97)}
+.btn-p{background:var(--primary);color:#000}
+.btn-s{background:rgba(255,255,255,.12);color:var(--text)}
+.btn-full{width:100%}
+input{width:100%;background:rgba(255,255,255,.08);border:1px solid var(--border);border-radius:10px;color:var(--text);padding:12px;font-size:1rem;outline:none;font-family:inherit}
+h2{font-size:1.45rem;font-weight:800;background:linear-gradient(135deg,var(--primary),var(--gold));-webkit-background-clip:text;-webkit-text-fill-color:transparent;text-align:center;margin-bottom:4px}
+.code-box{text-align:center;background:rgba(0,232,212,.07);border:1px solid rgba(0,232,212,.2);border-radius:12px;padding:12px;cursor:pointer;width:100%}
+.code-big{font-size:2.2rem;font-weight:900;letter-spacing:.2em;color:var(--primary);font-family:monospace}
+.spectate-strip{display:none;margin:0 0 12px;padding:8px 12px;text-align:center;font-size:.76rem;font-weight:700;color:#99f6e4;background:rgba(0,232,212,.1);border:1px solid rgba(0,232,212,.28);border-radius:10px}
+.spectate-strip.on{display:block}
+.skyline-row{display:flex;align-items:flex-end;justify-content:center;gap:6px;min-height:140px;padding:12px 4px;border-radius:12px;background:rgba(0,0,0,.2)}
+.sky-bar{flex:1;min-width:0;max-width:48px;border-radius:8px 8px 4px 4px;background:linear-gradient(180deg,var(--primary),#0a5c56);display:flex;align-items:flex-end;justify-content:center;padding-bottom:6px;font-size:.65rem;font-weight:800;color:#041018;transition:height .4s ease}
+.sky-bar.dim{opacity:.45}
+.pick-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+.pick-grid button{aspect-ratio:1.2;border-radius:10px;border:1px solid var(--border);background:rgba(255,255,255,.08);color:var(--text);font-weight:800;font-size:1.1rem;cursor:pointer}
+.pick-grid button:hover,.pick-grid button.on{border-color:var(--primary);background:rgba(0,232,212,.15)}
+.cat-banner{text-align:center;padding:8px;border-radius:10px;font-size:.78rem;font-weight:700;margin-bottom:8px}
+.cat-banner.on{background:rgba(251,191,36,.15);border:1px solid rgba(251,191,36,.35);color:#fcd34d}
+.rnd-tag{font-size:.72rem;color:var(--muted);letter-spacing:.1em;text-align:center;margin-bottom:6px}
+</style>
+</head>
+<body>
+<div class="zp-space-bg"><div class="zp-neb1"></div><div class="zp-neb2"></div><div class="zp-stars" id="zp-stars-sky"></div><div class="zp-sgrid"></div><div class="zp-comet"></div></div>
+<div id="app">
+<div id="spectate-strip" class="spectate-strip"></div>
+<button id="back" type="button" onclick="history.back()">← Retour</button>
+<div id="dot"></div>
+
+<div id="scr-name">
+  <h2>🏙️ Skyline</h2>
+  <div class="card" style="display:flex;flex-direction:column;gap:10px">
+    <p style="text-align:center;color:var(--muted);font-size:.85rem">Choisis une hauteur de tour (1–10). Score = <b>ligne croissante</b> + ta hauteur. Parfois l’ordre des tours est mélangé !</p>
+    <input id="name-input" type="text" maxlength="20" placeholder="Ton pseudo" autocomplete="off">
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-p" style="flex:1" onclick="createGame()">Créer une salle</button>
+      <button class="btn btn-s" style="flex:1" onclick="toggleJoin()">Rejoindre</button>
+    </div>
+    <div id="join-area" style="display:none;flex-direction:column;gap:8px">
+      <input id="code-in" type="text" maxlength="4" placeholder="Code" style="text-transform:uppercase;text-align:center;font-size:1.2rem;letter-spacing:.15em">
+      <button class="btn btn-p btn-full" onclick="joinGame()">Rejoindre</button>
+      <button type="button" class="btn btn-s btn-full" onclick="joinSpectate()">Regarder en spectateur</button>
+    </div>
+    <p id="err" style="color:var(--bad);text-align:center;font-size:.85rem;min-height:18px"></p>
+  </div>
+</div>
+
+<div id="scr-wait" class="hidden">
+  <h2>🏙️ Skyline</h2>
+  <div class="card" style="display:flex;flex-direction:column;gap:12px;align-items:center">
+    <div class="code-box" onclick="copyCode()">
+      <div style="font-size:.62rem;color:var(--muted);letter-spacing:.08em;margin-bottom:4px">CODE</div>
+      <div class="code-big" id="w-code">----</div>
+    </div>
+    <p id="w-hint" style="color:var(--muted);font-size:.82rem"></p>
+    <button id="start-btn" class="btn btn-p btn-full hidden" onclick="startGame()">▶ Lancer</button>
+  </div>
+</div>
+
+<div id="scr-cd" class="hidden" style="min-height:40vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px">
+  <p style="color:var(--muted);letter-spacing:.1em;text-transform:uppercase;font-size:.9rem">C’est parti</p>
+  <div style="font-size:4.5rem;font-weight:900;color:var(--primary)" id="cd-n">3</div>
+</div>
+
+<div id="scr-pick" class="hidden">
+  <div class="rnd-tag" id="pick-rnd">MANCHE 1/5</div>
+  <div id="cat-b" class="cat-banner" style="display:none">⚠️ Catastrophe : l’ordre des tours sera mélangé à la révélation !</div>
+  <div class="card">
+    <p style="text-align:center;font-size:.88rem;margin-bottom:12px">Choisis la <b>hauteur</b> de ta tour (1 = bas, 10 = gratte-ciel).</p>
+    <div class="pick-grid" id="pick-btns"></div>
+    <p id="pick-status" style="text-align:center;margin-top:12px;font-size:.85rem;color:var(--muted)"></p>
+  </div>
+</div>
+
+<div id="scr-reveal" class="hidden">
+  <div class="rnd-tag" id="rev-rnd">Révélation</div>
+  <div class="card">
+    <p style="text-align:center;font-size:.78rem;color:var(--muted);margin-bottom:10px">LIS (sous-suite croissante max) = <b id="rev-lis">0</b> — points = LIS + hauteur</p>
+    <div class="skyline-row" id="skyline-vis"></div>
+    <div id="rev-details" style="margin-top:12px;font-size:.82rem;line-height:1.5"></div>
+  </div>
+</div>
+
+<div id="scr-over" class="hidden">
+  <div class="card" style="text-align:center">
+    <div style="font-size:2.5rem;margin-bottom:8px">🏆</div>
+    <p id="winner-txt" style="font-size:1.15rem;font-weight:800;color:var(--gold);margin-bottom:14px"></p>
+    <div id="final-ranks" style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px;text-align:left"></div>
+    <button class="btn btn-s btn-full" onclick="restart()">Rejouer</button>
+  </div>
+</div>
+
+</div>
+<script>
+const WS_URL = (location.protocol==='https:'?'wss':'ws')+'://'+location.host+'/ws/skyline';
+let ws, mySlot=-1, myCode='', isSpectator=false, pendingAction=null, selectedH=0;
+const $ = id => document.getElementById(id);
+const show = id => $(id).classList.remove('hidden');
+const hide = id => $(id).classList.add('hidden');
+const send = d => ws && ws.readyState===1 && ws.send(JSON.stringify(d));
+
+function syncSpectateStrip(){
+  const el=$('spectate-strip'); if(!el)return;
+  el.classList.toggle('on',!!isSpectator);
+  el.textContent=isSpectator?'Spectateur — tu vois les révélations, pas les choix.':'';
+}
+function joinSpectate(){
+  const n=$('name-input').value.trim()||'Joueur';
+  const c=$('code-in').value.trim().toUpperCase();
+  if(!c){$('err').textContent='Code requis';return;}
+  if(window.ZapPlay)ZapPlay.savePseudo(n);
+  isSpectator=true; mySlot=-1; syncSpectateStrip();
+  send({type:'join_skyline_spectate',name:n,code:c});
+}
+
+function connect(){
+  ws=new WebSocket(WS_URL);
+  ws.onopen=()=>{$('dot').classList.add('ok'); if(pendingAction){pendingAction();pendingAction=null;}};
+  ws.onclose=()=>{$('dot').classList.remove('ok'); setTimeout(connect,2000);};
+  ws.onmessage=e=>{ try{ handleMsg(JSON.parse(e.data)); }catch(_){} };
+}
+connect();
+function bindLounge(){ if(window.ZapPlay) ZapPlay.setLoungeSender(t=>send({type:'lounge_chat',text:t})); else setTimeout(bindLounge,120); }
+bindLounge();
+
+function toggleJoin(){
+  const a=$('join-area');
+  a.style.display=a.style.display==='flex'?'none':'flex';
+}
+function createGame(){ isSpectator=false; syncSpectateStrip(); send({type:'create_skyline',name:$('name-input').value.trim()||'Joueur'}); }
+function joinGame(){ isSpectator=false; syncSpectateStrip(); send({type:'join_skyline',name:$('name-input').value.trim()||'Joueur',code:$('code-in').value.trim().toUpperCase()}); }
+function copyCode(){ try{ navigator.clipboard.writeText(myCode); }catch(_){} }
+function startGame(){ if(isSpectator)return; send({type:'start_skyline'}); }
+function restart(){ if(isSpectator)return; send({type:'restart_skyline'}); }
+
+function buildPickGrid(){
+  const g=$('pick-btns'); g.textContent='';
+  for(let i=1;i<=10;i++){
+    const b=document.createElement('button');
+    b.type='button'; b.textContent=i;
+    b.onclick=()=>{
+      if(isSpectator)return;
+      selectedH=i;
+      [...g.querySelectorAll('button')].forEach(x=>x.classList.remove('on'));
+      b.classList.add('on');
+      send({type:'skyline_pick',height:i});
+      $('pick-status').textContent='Choix '+i+' envoyé ✓';
+    };
+    g.appendChild(b);
+  }
+}
+buildPickGrid();
+
+function renderGameOverFromState(d){
+  hide('scr-pick'); hide('scr-reveal'); hide('scr-cd'); hide('scr-wait'); show('scr-over');
+  const pl=d.players||[];
+  const sorted=[...pl].sort((a,b)=>(b.score||0)-(a.score||0));
+  const w=sorted[0];
+  $('winner-txt').textContent=w ? '🏆 '+w.name+' gagne avec '+w.score+' pts !' : 'Partie terminée';
+  const fr=$('final-ranks'); fr.textContent='';
+  sorted.forEach((p,i)=>{
+    const div=document.createElement('div');
+    div.style.padding='8px 12px';
+    div.style.background='rgba(255,255,255,.05)';
+    div.style.borderRadius='8px';
+    div.textContent=(i+1)+'. '+p.name+' — '+p.score+' pts';
+    fr.appendChild(div);
+  });
+  if(window.ZapPlay) ZapPlay.hideLounge();
+}
+
+function updateState(d){
+  if(d.phase==='PICKING' && window.ZapPlay){
+    ZapPlay.showLounge({players:d.players||[],mySlot:isSpectator?-1:mySlot,roomCode:d.code||myCode,gameName:'Skyline'});
+  }
+  if(d.phase==='WAITING'){
+    hide('scr-cd'); hide('scr-pick'); hide('scr-reveal'); hide('scr-over');
+    show('scr-wait');
+    $('w-code').textContent=d.code||myCode;
+    const host = d.players && d.players[0] ? d.players[0].name : '';
+    const n = (d.players||[]).length;
+    $('start-btn').classList.toggle('hidden', !(mySlot===0 && n>=2));
+    $('w-hint').textContent = n<2 ? 'En attente d’un adversaire…' : (mySlot===0 ? 'Tu es l’hôte — lance quand tout le monde est prêt.' : 'En attente du lancement par '+host+'…');
+    if(window.ZapPlay) ZapPlay.showLounge({players:d.players||[],mySlot:isSpectator?-1:mySlot,roomCode:d.code||myCode,gameName:'Skyline'});
+  }
+  if(d.phase==='GAME_OVER'){
+    renderGameOverFromState(d);
+  }
+}
+
+function handleMsg(d){
+  switch(d.type){
+    case 'error':
+      $('err').textContent=d.msg||'Erreur';
+      break;
+    case 'welcome_skyline_spectate':
+      isSpectator=true; mySlot=-1; myCode=d.code; syncSpectateStrip();
+      hide('scr-name'); show('scr-wait');
+      $('w-code').textContent=d.code;
+      $('w-hint').textContent='Mode spectateur.';
+      $('start-btn').classList.add('hidden');
+      break;
+    case 'created_skyline':
+    case 'welcome_skyline':
+      isSpectator=false; syncSpectateStrip();
+      mySlot=d.slot; myCode=d.code;
+      hide('scr-name'); show('scr-wait');
+      $('w-code').textContent=d.code;
+      $('w-hint').textContent='';
+      break;
+    case 'skyline_state':
+      updateState(d);
+      if(d.phase==='PICKING'){
+        hide('scr-wait'); hide('scr-reveal'); hide('scr-over'); show('scr-pick');
+        $('pick-rnd').textContent='MANCHE '+d.round+'/'+d.totalRounds;
+        if(!isSpectator){
+          $('pick-status').textContent='';
+          [...$('pick-btns').querySelectorAll('button')].forEach(x=>x.classList.remove('on'));
+          selectedH=0;
+        } else {
+          $('pick-status').textContent='Les joueurs choisissent leur hauteur…';
+        }
+      }
+      break;
+    case 'countdown':
+      hide('scr-name'); hide('scr-wait'); hide('scr-pick'); hide('scr-reveal');
+      if(window.ZapPlay) ZapPlay.hideLounge();
+      show('scr-cd');
+      let n=d.seconds||3; $('cd-n').textContent=n;
+      const iv=setInterval(()=>{ n--; if(n<=0){ clearInterval(iv); hide('scr-cd'); } else $('cd-n').textContent=n; },1000);
+      break;
+    case 'skyline_round':
+      hide('scr-wait'); hide('scr-reveal'); hide('scr-over'); show('scr-pick');
+      $('pick-rnd').textContent='MANCHE '+d.round+'/'+d.totalRounds;
+      const cb=$('cat-b');
+      if(d.catastrophe){ cb.style.display='block'; cb.classList.add('on'); }
+      else { cb.style.display='none'; cb.classList.remove('on'); }
+      if(!isSpectator){
+        $('pick-status').textContent='';
+        [...$('pick-btns').querySelectorAll('button')].forEach(x=>x.classList.remove('on'));
+      } else {
+        $('pick-status').textContent='Les joueurs choisissent…';
+      }
+      break;
+    case 'skyline_reveal':
+      hide('scr-pick'); show('scr-reveal');
+      $('rev-lis').textContent=String(d.lis||0);
+      $('rev-rnd').textContent='Révélation manche';
+      const row=$('skyline-vis'); row.textContent='';
+      const maxH=Math.max(...(d.heights||[1]),1);
+      (d.order||[]).forEach((slot,i)=>{
+        const h=(d.heights||[])[i]||1;
+        const bar=document.createElement('div');
+        bar.className='sky-bar';
+        bar.style.height=(30+(h/maxH)*100)+'px';
+        const pl=(d.players||[]).find(p=>p.slot===slot);
+        bar.title=(pl?pl.name:'')+' : '+h;
+        bar.textContent=h;
+        row.appendChild(bar);
+      });
+      const det=$('rev-details'); det.textContent='';
+      (d.details||[]).forEach(x=>{
+        const p=document.createElement('div');
+        p.style.borderBottom='1px solid rgba(255,255,255,.06)';
+        p.style.padding='6px 0';
+        p.innerHTML='<b>'+esc(x.name)+'</b> — tour '+x.height+' → <b style="color:var(--gold)">+'+x.points+'</b> pts';
+        det.appendChild(p);
+      });
+      break;
+    case 'player_left':
+      $('w-hint').textContent=(d.name||'Un joueur')+' a quitté.';
+      break;
+    case 'lounge_chat':
+      if(window.ZapPlay) ZapPlay.addLoungeMessage(d);
+      break;
+  }
+}
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+(function(){
+  const p=new URLSearchParams(location.search);
+  if(p.get('create')==='1'&&p.get('name')){
+    $('name-input').value=p.get('name');
+    pendingAction=()=>send({type:'create_skyline',name:p.get('name')});
+  }
+  if(p.get('code')&&p.get('name')&&!p.get('create')){
+    $('name-input').value=p.get('name');
+    $('code-in').value=p.get('code').toUpperCase();
+    $('join-area').style.display='flex';
+    pendingAction=()=>send({type:'join_skyline',name:p.get('name'),code:p.get('code').toUpperCase()});
+  }
+  if(p.get('spectate')==='1'&&p.get('code')){
+    $('code-in').value=p.get('code').toUpperCase();
+    $('join-area').style.display='flex';
+    pendingAction=()=>send({type:'join_skyline_spectate',name:p.get('name')||'Spectateur',code:p.get('code').toUpperCase()});
+  }
+})();
+</script>
+<script>(function(){var sc=document.getElementById('zp-stars-sky');if(!sc)return;for(var i=0;i<48;i++){var s=document.createElement('div');s.className='zp-star';var sz=(.4+Math.random()*1.6).toFixed(1);s.style.cssText='left:'+Math.random()*100+'%;top:'+Math.random()*100+'%;width:'+sz+'px;height:'+sz+'px;opacity:'+((.2+Math.random()*.8).toFixed(2))+';animation-duration:'+(2+Math.random()*4).toFixed(1)+'s;animation-delay:'+(Math.random()*5).toFixed(1)+'s';sc.appendChild(s);}})();</script>
+<script src="fx.js"></script>
+<script src="shared.js"></script>
+<script src="zp-shell.js"></script>
+<script src="chat.js"></script>
+</body>
+</html>

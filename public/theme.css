@@ -175,9 +175,9 @@ body::before {
 }
 
 /* Ensure all game content sits above the fixed space bg.
-   Exclure la barre globale et les overlays zp-shell : sinon leur z-index est écrasé
-   et la nav reste invisible derrière #app (spécificité body > * > .zp-nav-global). */
-body > *:not(.zp-space-bg):not(#zp-nav-global):not(#zp-rules-backdrop):not(#zp-rules-panel):not(#zp-end-backdrop) {
+   La barre #zp-nav-global est sous <html> (pas dans body) pour éviter tout masquage.
+   Exclure les overlays zp-shell : sinon leur z-index est écrasé. */
+body > *:not(.zp-space-bg):not(#zp-rules-backdrop):not(#zp-rules-panel):not(#zp-end-backdrop) {
   position: relative;
   z-index: 1;
 }
