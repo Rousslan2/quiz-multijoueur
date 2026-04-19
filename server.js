@@ -9,6 +9,7 @@ const adminLib = require('./lib/admin');
 const profileLib = require('./lib/profile');
 const accountLib = require('./lib/account');
 const quizSessionLib = require('./lib/quizSession');
+const skylineGame = require('./lib/skylineGame');
 let QRCode; try { QRCode = require('qrcode'); } catch {}
 
 /** Mot de passe admin (défaut + surcharge par ADMIN_PASSWORD sur le serveur) */
@@ -5431,181 +5432,88 @@ wssDebat.on('connection', ws => {
 // ════════════════════════════════════════════════════════
 //  SKYLINE — même principe que stack-tower-game (rebond + chute + découpe)
 //  Le client joue en local (canvas) puis envoie le score de la pile.
+//  Logique d'état pure dans lib/skylineGame.js — ce bloc ne gère que les
+//  effets de bord (timers, broadcasts WS, lobby).
 // ════════════════════════════════════════════════════════
-const SKYLINE_TOTAL_ROUNDS = 5;
-const SKYLINE_STACK_TURN_MS = 120000;
-const SKYLINE_ROUND_BONUS = 30;
-const SKYLINE_PTS_PER_FLOOR = 5;
-
-function skylineTargetFloorsForRound(r) {
-  return Math.min(14, 3 + Math.max(0, r - 1) * 2);
-}
-
-function skylineStackDifficulty(r) {
-  return 1 + Math.max(0, (r || 1) - 1) * 0.14;
-}
-
-function applySkylineDifficultyForRound(room) {
-  room.stackDifficulty = skylineStackDifficulty(room.round || 1);
-}
-
 const skylineRooms = new Map();
-function makeSkylineRoom(code, host) {
-  return {
-    code,
-    host,
-    players: [],
-    spectators: [],
-    phase: 'WAITING',
-    round: 0,
-    totalRounds: SKYLINE_TOTAL_ROUNDS,
-    scores: {},
-    floors: {},
-    turnSlot: 0,
-    turnStart: 0,
-    turnEnd: 0,
-    stackDifficulty: 1,
-    timer: null
-  };
+
+function skylineSnap(room, extra) {
+  return skylineGame.snapshot(room, Date.now(), extra);
 }
 
-function skylineSnap(room, extra = {}) {
-  const tgt = skylineTargetFloorsForRound(room.round || 1);
-  return {
-    type: 'skyline_state',
-    phase: room.phase,
-    code: room.code,
-    serverTime: Date.now(),
-    players: room.players.map(p => ({
-      name: p.name,
-      slot: p.slot,
-      score: room.scores[p.slot] || 0,
-      floors: room.floors[p.slot] || 0
-    })),
-    round: room.round,
-    totalRounds: room.totalRounds,
-    targetFloors: tgt,
-    turnSlot: room.turnSlot,
-    turnStart: room.turnStart,
-    turnEnd: room.turnEnd,
-    stackDifficulty: room.stackDifficulty != null ? room.stackDifficulty : 1,
-    ...extra
-  };
-}
-
-function skylineBeginGame(room) {
-  room.phase = 'TURNING';
-  room.round = 1;
-  room.turnSlot = 0;
-  room.players.forEach(p => {
-    room.scores[p.slot] = 0;
-    room.floors[p.slot] = 0;
-  });
-  applySkylineDifficultyForRound(room);
-  skylineStartTurn(room);
-}
-
-function skylineEvaluateRound(room) {
-  const R = room.round || 1;
-  const target = skylineTargetFloorsForRound(R);
-  const bonuses = [];
-  room.players.forEach(p => {
-    const f = room.floors[p.slot] || 0;
-    if (f >= target) {
-      room.scores[p.slot] = (room.scores[p.slot] || 0) + SKYLINE_ROUND_BONUS;
-      bonuses.push({ slot: p.slot, name: p.name, bonus: SKYLINE_ROUND_BONUS, floors: f });
-    }
-  });
-  bcastRoom(room, {
-    type: 'skyline_round_result',
-    round: R,
-    targetFloors: target,
-    bonuses,
-    serverTime: Date.now()
-  });
-}
-
-function skylineResetFloorsForNewRound(room) {
-  room.players.forEach(p => { room.floors[p.slot] = 0; });
+function skylineClearTimer(room) {
+  if (room.timer) {
+    clearTimeout(room.timer);
+    room.timer = null;
+  }
 }
 
 function skylineStartTurn(room) {
-  room.phase = 'TURNING';
-  const now = Date.now();
-  room.turnStart = now;
-  room.turnEnd = now + SKYLINE_STACK_TURN_MS;
-  clearTimeout(room.timer);
-  room.timer = setTimeout(() => skylineStackTimeout(room), SKYLINE_STACK_TURN_MS);
+  skylineClearTimer(room);
+  skylineGame.startTurn(room, Date.now());
+  room.timer = setTimeout(() => skylineStackTimeout(room), skylineGame.STACK_TURN_MS);
   bcastRoom(room, skylineSnap(room));
   broadcastLobby();
 }
 
-function skylineStackTimeout(room) {
-  if (room.phase !== 'TURNING') return;
-  const slot = room.turnSlot;
-  room.floors[slot] = 0;
-  const pl = room.players.find(p => p.slot === slot);
-  bcastRoom(room, {
+function skylineBroadcastTurnResult(room, result) {
+  bcastRoom(room, Object.assign({
     type: 'skyline_turn_result',
-    slot,
-    name: pl ? pl.name : '?',
-    stackScore: 0,
-    success: false,
-    reason: 'timeout',
-    floors: 0,
-    score: room.scores[slot] || 0,
-    round: room.round,
-    serverTime: Date.now()
-  });
-  skylineAdvanceTurn(room);
+    serverTime: Date.now(),
+  }, result));
 }
 
-function skylineAdvanceTurn(room) {
-  clearTimeout(room.timer);
-  const n = room.players.length;
-  room.turnSlot = (room.turnSlot + 1) % n;
-  if (room.turnSlot === 0) {
-    skylineEvaluateRound(room);
-    room.round++;
-    if (room.round > room.totalRounds) {
-      room.phase = 'GAME_OVER';
-      bcastRoom(room, skylineSnap(room));
-      broadcastLobby();
-      return;
-    }
-    skylineResetFloorsForNewRound(room);
-    applySkylineDifficultyForRound(room);
+function skylineBroadcastRoundResult(room, roundResult) {
+  if (!roundResult) return;
+  bcastRoom(room, {
+    type: 'skyline_round_result',
+    round: roundResult.round,
+    targetFloors: roundResult.targetFloors,
+    bonuses: roundResult.bonuses,
+    scores: roundResult.scores,
+    serverTime: Date.now(),
+  });
+}
+
+function skylineAfterTurnEnded(room) {
+  const outcome = skylineGame.advanceTurn(room);
+  skylineBroadcastRoundResult(room, outcome.roundResult);
+  if (outcome.gameOver) {
+    skylineClearTimer(room);
+    bcastRoom(room, skylineSnap(room));
+    broadcastLobby();
+    return;
   }
   skylineStartTurn(room);
 }
 
+function skylineStackTimeout(room) {
+  const result = skylineGame.timeoutCurrentTurn(room);
+  if (!result) return;
+  skylineBroadcastTurnResult(room, result);
+  skylineAfterTurnEnded(room);
+}
+
 function skylineProcessStackDone(room, slot, stackScore) {
-  if (room.phase !== 'TURNING' || slot !== room.turnSlot) return false;
-  clearTimeout(room.timer);
-  const sc = Math.max(0, Math.min(500, Math.floor(Number(stackScore) || 0)));
-  const pl = room.players.find(p => p.slot === slot);
-  let pts = 0;
-  if (sc < 1) {
-    room.floors[slot] = 0;
-  } else {
-    room.floors[slot] = sc;
-    pts = sc * SKYLINE_PTS_PER_FLOOR;
-    room.scores[slot] = (room.scores[slot] || 0) + pts;
-  }
-  bcastRoom(room, {
-    type: 'skyline_turn_result',
-    slot,
-    name: pl ? pl.name : '?',
-    stackScore: sc,
-    success: sc >= 1,
-    pointsDelta: pts,
-    floors: room.floors[slot] || 0,
-    score: room.scores[slot] || 0,
-    round: room.round,
-    serverTime: Date.now()
-  });
-  skylineAdvanceTurn(room);
+  const result = skylineGame.processStackDone(room, slot, stackScore);
+  if (!result) return false;
+  skylineClearTimer(room);
+  skylineBroadcastTurnResult(room, result);
+  skylineAfterTurnEnded(room);
   return true;
+}
+
+function skylineBeginGame(room) {
+  // Garde-fou : la salle a pu changer pendant le décompte de 3 s.
+  if (room.phase !== 'WAITING') return;
+  if (room.players.length < skylineGame.MIN_PLAYERS_TO_START) {
+    skylineClearTimer(room);
+    bcastRoom(room, skylineSnap(room));
+    broadcastLobby();
+    return;
+  }
+  skylineGame.beginGame(room);
+  skylineStartTurn(room);
 }
 
 wssSkyline.on('connection', ws => {
@@ -5620,27 +5528,17 @@ wssSkyline.on('connection', ws => {
       broadcastLobby();
       return;
     }
-    const idx = myRoom.players.findIndex(p => p.ws === ws);
-    if (idx < 0) return;
-    const name = myRoom.players[idx].name;
-    myRoom.players.splice(idx, 1);
-    myRoom.players.forEach((p, i) => { p.slot = i; });
-    clearTimeout(myRoom.timer);
+    const removed = skylineGame.removePlayerByWs(myRoom, ws);
+    if (!removed) return;
+    skylineClearTimer(myRoom);
     if (!myRoom.players.length) {
       skylineRooms.delete(myRoom.code);
       broadcastLobby();
       return;
     }
-    bcastRoom(myRoom, { type: 'player_left', name });
+    bcastRoom(myRoom, { type: 'player_left', name: removed.name });
     if (['TURNING', 'GAME_OVER'].includes(myRoom.phase)) {
-      myRoom.phase = 'WAITING';
-      myRoom.round = 0;
-      myRoom.turnSlot = 0;
-      myRoom.players.forEach(p => {
-        myRoom.scores[p.slot] = 0;
-        myRoom.floors[p.slot] = 0;
-      });
-      clearTimeout(myRoom.timer);
+      skylineGame.resetToWaiting(myRoom);
     }
     bcastRoom(myRoom, skylineSnap(myRoom));
     broadcastLobby();
@@ -5654,15 +5552,13 @@ wssSkyline.on('connection', ws => {
         handleLoungeChat(myRoom, ws, d);
         break;
       case 'create_skyline': {
-        const name = String(d.name || '').trim().slice(0, 20) || 'Joueur';
+        const name = skylineGame.sanitizeName(d.name);
         const code = genCode(skylineRooms);
-        const room = makeSkylineRoom(code, name);
+        const room = skylineGame.createRoom(code, name);
         skylineRooms.set(code, room);
         myRoom = room;
         isSpectator = false;
-        room.players.push({ ws, name, slot: 0 });
-        room.scores[0] = 0;
-        room.floors[0] = 0;
+        skylineGame.addPlayer(room, ws, name);
         wsend(ws, { type: 'created_skyline', code, slot: 0, name });
         wsend(ws, skylineSnap(room));
         broadcastLobby();
@@ -5672,13 +5568,14 @@ wssSkyline.on('connection', ws => {
         const code = String(d.code || '').trim().toUpperCase();
         const room = skylineRooms.get(code);
         if (!room) { wsend(ws, { type: 'error', msg: 'Salle introuvable.' }); return; }
-        if (room.players.length >= 8) { wsend(ws, { type: 'error', msg: 'Partie pleine (8 max).' }); return; }
         if (room.phase !== 'WAITING') { wsend(ws, { type: 'error', msg: 'Partie déjà en cours.' }); return; }
-        const name = String(d.name || '').trim().slice(0, 20) || 'Joueur';
-        const slot = room.players.length;
-        room.players.push({ ws, name, slot });
-        room.scores[slot] = 0;
-        room.floors[slot] = 0;
+        if (room.players.length >= skylineGame.MAX_PLAYERS) {
+          wsend(ws, { type: 'error', msg: `Partie pleine (${skylineGame.MAX_PLAYERS} max).` });
+          return;
+        }
+        const slot = skylineGame.addPlayer(room, ws, d.name);
+        if (slot < 0) { wsend(ws, { type: 'error', msg: 'Impossible de rejoindre.' }); return; }
+        const name = room.players[slot].name;
         myRoom = room;
         isSpectator = false;
         wsend(ws, { type: 'welcome_skyline', code, slot, name });
@@ -5700,33 +5597,26 @@ wssSkyline.on('connection', ws => {
       }
       case 'start_skyline': {
         if (!player || !myRoom || player.slot !== 0 || myRoom.phase !== 'WAITING') return;
-        if (myRoom.players.length < 2) { wsend(ws, { type: 'error', msg: 'Il faut au moins 2 joueurs.' }); return; }
+        if (myRoom.players.length < skylineGame.MIN_PLAYERS_TO_START) {
+          wsend(ws, { type: 'error', msg: 'Il faut au moins 2 joueurs.' });
+          return;
+        }
         bcastRoom(myRoom, { type: 'countdown', seconds: 3 });
-        clearTimeout(myRoom.timer);
-        myRoom.timer = setTimeout(() => {
-          skylineBeginGame(myRoom);
-        }, 3000);
+        skylineClearTimer(myRoom);
+        myRoom.timer = setTimeout(() => skylineBeginGame(myRoom), 3000);
         broadcastLobby();
         break;
       }
       case 'skyline_stack_done': {
-        if (!player || !myRoom || myRoom.phase !== 'TURNING' || isSpectator) return;
-        if (player.slot !== myRoom.turnSlot) return;
+        if (!player || !myRoom || isSpectator) return;
         skylineProcessStackDone(myRoom, player.slot, d.score);
         broadcastLobby();
         break;
       }
       case 'restart_skyline': {
         if (!player || !myRoom || player.slot !== 0 || myRoom.phase !== 'GAME_OVER') return;
-        myRoom.phase = 'WAITING';
-        myRoom.round = 0;
-        myRoom.turnSlot = 0;
-        myRoom.stackDifficulty = 1;
-        myRoom.players.forEach(p => {
-          myRoom.scores[p.slot] = 0;
-          myRoom.floors[p.slot] = 0;
-        });
-        clearTimeout(myRoom.timer);
+        skylineClearTimer(myRoom);
+        skylineGame.resetToWaiting(myRoom);
         bcastRoom(myRoom, skylineSnap(myRoom));
         broadcastLobby();
         break;

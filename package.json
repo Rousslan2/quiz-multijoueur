@@ -6,7 +6,10 @@
   "scripts": {
     "build": "echo 'No build step'",
     "start": "node server.js",
-    "test": "node --check server.js && node --check lib/admin.js && node --check lib/profile.js && node --check lib/account.js && node --check lib/quizSession.js"
+    "check": "node --check server.js && node --check lib/admin.js && node --check lib/profile.js && node --check lib/account.js && node --check lib/quizSession.js && node --check lib/skylineGame.js",
+    "test:unit": "node tests/skyline.unit.test.js",
+    "test:ws": "node tests/skyline.ws.test.js",
+    "test": "npm run check && npm run test:unit && npm run test:ws"
   },
   "dependencies": {
     "an-array-of-french-words": "^2.0.0",

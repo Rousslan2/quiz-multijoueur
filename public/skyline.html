@@ -84,8 +84,21 @@ h2{font-size:1.45rem;font-weight:800;background:linear-gradient(135deg,var(--pri
 
 .sky-round-goal{font-size:.78rem;color:var(--primary);text-align:center;font-weight:700;margin-bottom:8px;min-height:1.2em}
 .sky-tower-meta{font-size:.82rem;color:var(--muted);text-align:center;margin-top:8px}
-.sky-tap-btn{width:100%;padding:18px;font-size:1.05rem;border-radius:14px;font-weight:800;letter-spacing:.02em}
+.sky-timer-row{display:flex;justify-content:space-between;align-items:center;margin:8px 0 2px;gap:10px;min-height:18px}
+.sky-timer-chip{font-size:.72rem;color:var(--muted);letter-spacing:.04em;font-weight:700}
+.sky-timer-val{color:var(--primary);font-weight:800;font-variant-numeric:tabular-nums;font-size:.84rem}
+.sky-timer-val.warn{color:var(--gold)}
+.sky-timer-val.crit{color:var(--bad)}
+.sky-timer-bar{position:relative;flex:1;height:6px;background:rgba(255,255,255,.06);border-radius:3px;overflow:hidden}
+.sky-timer-bar>span{position:absolute;inset:0 100% 0 0;background:linear-gradient(90deg,var(--primary),var(--gold));transition:right .18s linear;border-radius:3px}
+.sky-timer-bar.crit>span{background:linear-gradient(90deg,var(--gold),var(--bad))}
+.sky-action-row{display:flex;gap:8px;margin-top:8px}
+.sky-tap-btn{flex:1;padding:18px;font-size:1.05rem;border-radius:14px;font-weight:800;letter-spacing:.02em}
 .sky-tap-btn:disabled{opacity:.45;cursor:not-allowed}
+.sky-submit-btn{flex:0 0 auto;padding:18px 14px;font-size:.9rem;border-radius:14px;font-weight:700}
+.sky-submit-btn:disabled{opacity:.35;cursor:not-allowed}
+.sky-copy-flash{position:absolute;right:8px;top:8px;font-size:.68rem;color:var(--ok);font-weight:700;opacity:0;transition:opacity .25s;letter-spacing:.08em}
+.sky-copy-flash.on{opacity:1}
 .sky-wait-card{text-align:center;padding:20px;color:var(--muted);font-size:.9rem}
 .sky-flash{position:fixed;inset:0;pointer-events:none;z-index:200;display:flex;align-items:center;justify-content:center;font-size:2rem;font-weight:900;text-shadow:0 2px 20px rgba(0,0,0,.8);opacity:0;transition:opacity .2s}
 .sky-flash.on{opacity:1}
@@ -136,9 +149,10 @@ h2{font-size:1.45rem;font-weight:800;background:linear-gradient(135deg,var(--pri
 <div id="scr-wait" class="hidden">
   <h2>🏙️ Skyline</h2>
   <div class="card" style="display:flex;flex-direction:column;gap:12px;align-items:center">
-    <div class="code-box" onclick="copyCode()">
+    <div class="code-box" onclick="copyCode()" style="position:relative">
       <div style="font-size:.62rem;color:var(--muted);letter-spacing:.08em;margin-bottom:4px">CODE</div>
       <div class="code-big" id="w-code">----</div>
+      <div id="w-copy-flash" class="sky-copy-flash">COPIÉ</div>
     </div>
     <p id="w-hint" style="color:var(--muted);font-size:.82rem"></p>
     <button id="start-btn" class="btn btn-p btn-full hidden" onclick="startGame()">▶ Lancer</button>
@@ -170,7 +184,15 @@ h2{font-size:1.45rem;font-weight:800;background:linear-gradient(135deg,var(--pri
     </div>
     <p class="sky-stack-hint" id="sky-stack-hint"></p>
     <div class="sky-tower-meta" id="tower-meta">—</div>
-    <button type="button" class="btn btn-p sky-tap-btn" id="tap-btn" onclick="doStackAction()">Lâcher le bloc (clic ou Espace)</button>
+    <div class="sky-timer-row" id="sky-timer-row" aria-live="polite">
+      <span class="sky-timer-chip">⏱ Tour</span>
+      <div class="sky-timer-bar" id="sky-timer-bar"><span id="sky-timer-fill"></span></div>
+      <span class="sky-timer-val" id="sky-timer-val">—</span>
+    </div>
+    <div class="sky-action-row">
+      <button type="button" class="btn btn-p sky-tap-btn" id="tap-btn" onclick="doStackAction()">Lâcher le bloc (clic ou Espace)</button>
+      <button type="button" class="btn btn-s sky-submit-btn" id="submit-btn" onclick="submitTurnNow()" title="Valide le score actuel sans risquer la chute">Valider</button>
+    </div>
   </div>
 </div>
 
@@ -189,8 +211,10 @@ h2{font-size:1.45rem;font-weight:800;background:linear-gradient(135deg,var(--pri
 <script src="skyline-stack-canvas.js"></script>
 <script>
 const WS_URL = (location.protocol==='https:'?'wss':'ws')+'://'+location.host+'/ws/skyline';
-let ws, mySlot=-1, myCode='', isSpectator=false, pendingAction=null;
-const skyTurnState = { turnSlot: -1, phase: '', targetFloors: 3, stackDifficulty: 1, round: 1 };
+let ws, mySlot=-1, myCode='', isSpectator=false;
+/** File d'actions à rejouer à la (re)connexion WebSocket — gère les clics avant ouverture. */
+const pendingActions = [];
+const skyTurnState = { turnSlot: -1, phase: '', targetFloors: 3, stackDifficulty: 1, round: 1, turnStart: 0, turnEnd: 0, serverOffset: 0 };
 let stackGame = null;
 let stackFinishedSent = false;
 let lastStackTurnKey = '';
@@ -198,6 +222,10 @@ let lastTowerFloors = -1;
 let towerThreeReady = false;
 /** Copie des joueurs pour mise à jour après skyline_turn_result (étages du tour terminé). */
 let playersSnapshot = [];
+/** Timer UI : fin de tour locale (Date.now() relative). */
+let localTurnEndMs = 0;
+let localTurnDurationMs = 0;
+let timerRaf = 0;
 
 function stopStack(){
   if(stackGame && typeof stackGame.stop==='function'){ try{ stackGame.stop(); }catch(_){} }
@@ -251,21 +279,33 @@ function syncSpectateStrip(){
   el.textContent=isSpectator?'Spectateur — tu vois la partie, pas le bouton.':'';
 }
 function joinSpectate(){
+  clearErr();
   const n=$('name-input').value.trim()||'Joueur';
   const c=$('code-in').value.trim().toUpperCase();
   if(!c){$('err').textContent='Code requis';return;}
   if(window.ZapPlay)ZapPlay.savePseudo(n);
   isSpectator=true; mySlot=-1; syncSpectateStrip();
-  send({type:'join_skyline_spectate',name:n,code:c});
+  queueSend({type:'join_skyline_spectate',name:n,code:c});
 }
 
 function connect(){
   ws=new WebSocket(WS_URL);
-  ws.onopen=()=>{$('dot').classList.add('ok'); if(pendingAction){pendingAction();pendingAction=null;}};
+  ws.onopen=()=>{
+    $('dot').classList.add('ok');
+    /** Rejoue les actions en attente (utilisateur qui a cliqué avant l'ouverture). */
+    while(pendingActions.length){
+      try{ pendingActions.shift()(); }catch(_){ }
+    }
+  };
   ws.onclose=()=>{$('dot').classList.remove('ok'); setTimeout(connect,2000);};
   ws.onmessage=e=>{ try{ handleMsg(JSON.parse(e.data)); }catch(_){} };
 }
 connect();
+
+function queueSend(msg){
+  if(ws && ws.readyState===1){ ws.send(JSON.stringify(msg)); return; }
+  pendingActions.push(()=>ws && ws.readyState===1 && ws.send(JSON.stringify(msg)));
+}
 function bindLounge(){ if(window.ZapPlay) ZapPlay.setLoungeSender(t=>send({type:'lounge_chat',text:t})); else setTimeout(bindLounge,120); }
 bindLounge();
 
@@ -273,11 +313,44 @@ function toggleJoin(){
   const a=$('join-area');
   a.style.display=a.style.display==='flex'?'none':'flex';
 }
-function createGame(){ isSpectator=false; syncSpectateStrip(); send({type:'create_skyline',name:$('name-input').value.trim()||'Joueur'}); }
-function joinGame(){ isSpectator=false; syncSpectateStrip(); send({type:'join_skyline',name:$('name-input').value.trim()||'Joueur',code:$('code-in').value.trim().toUpperCase()}); }
-function copyCode(){ try{ navigator.clipboard.writeText(myCode); }catch(_){} }
-function startGame(){ if(isSpectator)return; send({type:'start_skyline'}); }
-function restart(){ if(isSpectator)return; send({type:'restart_skyline'}); }
+function clearErr(){ const e=$('err'); if(e) e.textContent=''; }
+function createGame(){ clearErr(); isSpectator=false; syncSpectateStrip(); queueSend({type:'create_skyline',name:$('name-input').value.trim()||'Joueur'}); }
+function joinGame(){
+  clearErr();
+  const c=$('code-in').value.trim().toUpperCase();
+  if(!c){ $('err').textContent='Code requis'; return; }
+  isSpectator=false; syncSpectateStrip();
+  queueSend({type:'join_skyline',name:$('name-input').value.trim()||'Joueur',code:c});
+}
+function flashCopied(){
+  const el=$('w-copy-flash'); if(!el) return;
+  el.classList.add('on');
+  setTimeout(()=>el.classList.remove('on'), 900);
+}
+function copyCode(){
+  if(!myCode) return;
+  try{
+    if(navigator.clipboard&&navigator.clipboard.writeText){
+      navigator.clipboard.writeText(myCode).then(flashCopied, ()=>fallbackCopy(myCode));
+    }else{
+      fallbackCopy(myCode);
+    }
+  }catch(_){ fallbackCopy(myCode); }
+}
+function fallbackCopy(txt){
+  try{
+    const ta=document.createElement('textarea');
+    ta.value=txt; ta.setAttribute('readonly','');
+    ta.style.position='absolute'; ta.style.left='-9999px';
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    flashCopied();
+  }catch(_){ }
+}
+function startGame(){ if(isSpectator)return; queueSend({type:'start_skyline'}); }
+function restart(){ if(isSpectator)return; queueSend({type:'restart_skyline'}); }
 
 function isStackTurn(){
   return !isSpectator && skyTurnState.phase === 'TURNING' && skyTurnState.turnSlot === mySlot;
@@ -416,6 +489,11 @@ function applyGameVisual(state){
   skyTurnState.targetFloors=state.targetFloors!=null?state.targetFloors:3;
   skyTurnState.stackDifficulty=state.stackDifficulty!=null?state.stackDifficulty:1;
   skyTurnState.round=state.round!=null?state.round:1;
+  if(state.phase==='TURNING'){
+    startTimerForTurn(state);
+  }else{
+    stopTimerForTurn();
+  }
   playersSnapshot=(state.players||[]).map(p=>({name:p.name,slot:p.slot,score:p.score|0,floors:p.floors|0}));
   const pl=(state.players||[]).find(p=>p.slot===state.turnSlot);
   const name=pl?pl.name:'?';
@@ -454,6 +532,11 @@ function applyGameVisual(state){
     btn.disabled=!myTurn||isSpectator;
     btn.textContent=isSpectator?'Spectateur':(myTurn?'Lâcher le bloc (clic ou Espace)':'Pas ton tour');
   }
+  const sb=$('submit-btn');
+  if(sb){
+    sb.disabled=!myTurn||isSpectator;
+    sb.style.display=(isSpectator||!myTurn)?'none':'';
+  }
   $('game-rnd').textContent='MANCHE '+(state.round||1)+'/'+(state.totalRounds||5);
 }
 
@@ -475,6 +558,7 @@ function updateState(d){
   if(d.phase==='WAITING'){
     teardownTower3D();
     stopStack();
+    stopTimerForTurn();
     lastStackTurnKey='';
     hide('scr-cd'); hide('scr-game'); hide('scr-over');
     show('scr-wait');
@@ -488,6 +572,7 @@ function updateState(d){
   if(d.phase==='GAME_OVER'){
     teardownTower3D();
     stopStack();
+    stopTimerForTurn();
     renderGameOverFromState(d);
   }
 }
@@ -522,6 +607,78 @@ function flash(msg, ok){
 function doStackAction(){
   if(!isStackTurn()||!stackGame||typeof stackGame.handleInput!=='function')return;
   stackGame.handleInput();
+}
+
+/**
+ * Termine le tour côté client avec le score courant — appelé soit par le bouton
+ * « Valider », soit automatiquement ~250 ms avant le timeout serveur. Fixe le
+ * bug où 120 s écoulés sans chute = score 0.
+ */
+function submitTurnNow(){
+  if(!isStackTurn()||!stackGame) return;
+  if(stackFinishedSent) return;
+  if(typeof stackGame.submitCurrentScore==='function'){
+    stackGame.submitCurrentScore();
+  }else{
+    stackFinishedSent = true;
+    const sc = (typeof stackGame.getScore==='function') ? stackGame.getScore() : (stackGame.score|0);
+    queueSend({type:'skyline_stack_done', score: sc|0});
+    stopStack();
+  }
+}
+
+function setTimerDisplay(remainingMs, crit){
+  const val=$('sky-timer-val');
+  const fill=$('sky-timer-fill');
+  const bar=$('sky-timer-bar');
+  if(!val||!fill||!bar) return;
+  if(remainingMs < 0) remainingMs = 0;
+  const s = Math.ceil(remainingMs/1000);
+  val.textContent = s + 's';
+  val.classList.toggle('warn', remainingMs<=15000 && remainingMs>5000);
+  val.classList.toggle('crit', remainingMs<=5000);
+  bar.classList.toggle('crit', crit);
+  const total = localTurnDurationMs || 1;
+  const ratioFilled = Math.max(0, Math.min(1, remainingMs/total));
+  fill.style.right = (100 - ratioFilled*100).toFixed(2) + '%';
+}
+
+function clearTimerUi(){
+  if(timerRaf){ cancelAnimationFrame(timerRaf); timerRaf=0; }
+  const val=$('sky-timer-val');
+  const fill=$('sky-timer-fill');
+  if(val){ val.textContent='—'; val.classList.remove('warn','crit'); }
+  if(fill) fill.style.right='100%';
+}
+
+function tickTimer(){
+  timerRaf = 0;
+  if(skyTurnState.phase !== 'TURNING' || !localTurnEndMs){
+    clearTimerUi();
+    return;
+  }
+  const rem = localTurnEndMs - Date.now();
+  setTimerDisplay(rem, rem<=5000);
+  /** Auto-validation pour éviter le timeout = score 0 — marge 300 ms. */
+  if(rem <= 300 && isStackTurn() && stackGame && !stackFinishedSent){
+    submitTurnNow();
+  }
+  timerRaf = requestAnimationFrame(tickTimer);
+}
+
+function startTimerForTurn(state){
+  clearTimerUi();
+  const serverNow = Number(state.serverTime) || Date.now();
+  skyTurnState.serverOffset = serverNow - Date.now();
+  const remaining = Math.max(0, (Number(state.turnEnd)||0) - serverNow);
+  localTurnEndMs = Date.now() + remaining;
+  localTurnDurationMs = Math.max(1000, Math.min(600000, remaining || 120000));
+  tickTimer();
+}
+
+function stopTimerForTurn(){
+  localTurnEndMs = 0;
+  clearTimerUi();
 }
 
 (function setupStackInput(){
@@ -577,7 +734,7 @@ function handleMsg(d){
       break;
     case 'skyline_turn_result':
       mergePlayersFromTurnResult(d);
-      if(d.slot===mySlot) stopStack();
+      if(d.slot===mySlot){ stopStack(); stopTimerForTurn(); }
       if(!d.success) triggerCityBuildingFall();
       refreshHudFromSnapshot();
       if(d.slot===mySlot){
@@ -594,8 +751,16 @@ function handleMsg(d){
       break;
     case 'skyline_round_result':
       resetTowerForNewRound();
-      teardownTower3D();
+      /** Ne pas détruire la scène 3D à chaque manche — `resetTowerForNewRound`
+       *  remet les étages à zéro instantanément, la prochaine snap rebâtira la tour. */
       lastStackTurnKey='';
+      if(Array.isArray(d.scores)){
+        d.scores.forEach(function(sc){
+          const idx=playersSnapshot.findIndex(p=>p.slot===sc.slot);
+          if(idx>=0){ playersSnapshot[idx]={name:sc.name||playersSnapshot[idx].name,slot:sc.slot,score:sc.score|0,floors:0}; }
+        });
+        refreshHudFromSnapshot();
+      }
       (d.bonuses||[]).forEach(b=>{
         if(b.slot===mySlot && b.bonus){
           flash('Objectif manche '+d.round+' atteint ! +'+(b.bonus||0)+' pts', true);
@@ -622,18 +787,19 @@ document.addEventListener('keydown', e=>{
   const p=new URLSearchParams(location.search);
   if(p.get('create')==='1'&&p.get('name')){
     $('name-input').value=p.get('name');
-    pendingAction=()=>send({type:'create_skyline',name:p.get('name')});
+    queueSend({type:'create_skyline',name:p.get('name')});
   }
   if(p.get('code')&&p.get('name')&&!p.get('create')){
     $('name-input').value=p.get('name');
     $('code-in').value=p.get('code').toUpperCase();
     $('join-area').style.display='flex';
-    pendingAction=()=>send({type:'join_skyline',name:p.get('name'),code:p.get('code').toUpperCase()});
+    queueSend({type:'join_skyline',name:p.get('name'),code:p.get('code').toUpperCase()});
   }
   if(p.get('spectate')==='1'&&p.get('code')){
+    isSpectator=true;
     $('code-in').value=p.get('code').toUpperCase();
     $('join-area').style.display='flex';
-    pendingAction=()=>send({type:'join_skyline_spectate',name:p.get('name')||'Spectateur',code:p.get('code').toUpperCase()});
+    queueSend({type:'join_skyline_spectate',name:p.get('name')||'Spectateur',code:p.get('code').toUpperCase()});
   }
 })();
 </script>

@@ -219,6 +219,26 @@
     }
   };
 
+  /**
+   * Termine le tour volontairement avec le score courant — à appeler par le
+   * client soit via un bouton « Valider » soit automatiquement à l'approche du
+   * timeout serveur. Évite le bug « 120 s écoulés = score 0 » quand un joueur
+   * empile prudemment sans jamais sortir du rail.
+   */
+  SkylineStackGame.prototype.submitCurrentScore = function () {
+    if (this.mode === MODES.GAME_OVER) return;
+    var s = this.score | 0;
+    this.stop();
+    if (typeof this.onFinish === 'function') {
+      this.onFinish(s);
+    }
+  };
+
+  /** Score courant (nombre d'étages) — utile pour l'UI sans attendre onFinish. */
+  SkylineStackGame.prototype.getScore = function () {
+    return this.score | 0;
+  };
+
   function randomColor() {
     var r = 80 + Math.floor(Math.random() * 120);
     var g = 120 + Math.floor(Math.random() * 100);
