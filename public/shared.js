@@ -1377,7 +1377,8 @@ function showWelcomeScreen(){
   css.id='zp-welcome-css';
   css.textContent=[
     /* ── overlay ── */
-    '#zp-welcome{position:fixed!important;inset:0!important;z-index:'+(ZP_LOADER_Z-2)+'!important;width:100%!important;min-height:100dvh!important;background:#03030A;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;}',
+    /* Même pile que le loader : au-dessus de la barre globale (nouveaux utilisateurs, accueil) */
+    '#zp-welcome{position:fixed!important;inset:0!important;z-index:'+ZP_LOADER_Z+'!important;width:100%!important;min-height:100dvh!important;background:#03030A;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;}',
     '#zp-welcome.hide{animation:wc-out .75s cubic-bezier(.4,0,1,1) forwards;pointer-events:none;}',
     '@keyframes wc-out{0%{opacity:1;filter:blur(0)}60%{opacity:.8;filter:blur(2px)}100%{opacity:0;filter:blur(8px);transform:scale(1.04)}}',
     /* animated grid */
@@ -1463,6 +1464,7 @@ function showWelcomeScreen(){
   document.head.appendChild(css);
 
   const ov=document.createElement('div');ov.id='zp-welcome';
+  ov.style.setProperty('z-index',String(ZP_LOADER_Z),'important');
 
   /* scan line (once) */
   const sl=document.createElement('div');sl.className='wc-scan-line';ov.appendChild(sl);
@@ -1516,7 +1518,7 @@ function showWelcomeScreen(){
   ov.appendChild(cont);
 
   const greet=document.createElement('div');greet.className='wc-greet';ov.appendChild(greet);
-  document.body.prepend(ov);
+  document.documentElement.appendChild(ov);
 
   /* char counter */
   const inpEl=document.getElementById('wc-inp');
@@ -1539,8 +1541,8 @@ function showWelcomeScreen(){
       const sz=Math.random()<.3?Math.random()*8+4:Math.random()*4+2;
       const dur=(.6+Math.random()*.5).toFixed(2)+'s';
       const rot=(Math.random()*360).toFixed(0)+'deg';
-      bp.style.cssText='left:'+cx+'px;top:'+cy+'px;width:'+sz+'px;height:'+sz+'px;background:'+bc[i%bc.length]+';--tx:translate('+Math.cos(ang)*dist+'px,'+Math.sin(ang)*dist+'px);--dur:'+dur+';--rot:'+rot+';border-radius:'+(Math.random()<.4?'2px':'50%');
-      document.body.appendChild(bp);
+      bp.style.cssText='left:'+cx+'px;top:'+cy+'px;width:'+sz+'px;height:'+sz+'px;z-index:'+(ZP_LOADER_Z+1)+';background:'+bc[i%bc.length]+';--tx:translate('+Math.cos(ang)*dist+'px,'+Math.sin(ang)*dist+'px);--dur:'+dur+';--rot:'+rot+';border-radius:'+(Math.random()<.4?'2px':'50%');
+      document.documentElement.appendChild(bp);
       setTimeout(()=>bp.remove(),1100);
     }
   }
