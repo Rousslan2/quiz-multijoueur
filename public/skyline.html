@@ -299,6 +299,11 @@ function renderTowerFloors(n){
   if(!wrap)return;
   n=Math.min(18,Math.max(0,n|0));
   const prev=lastTowerFloors;
+  /* Ne pas reconstruire la mesh si le nombre d’étages n’a pas changé (sinon clignotement /
+     disparition quand un autre joueur joue et renvoie le même état pour toi). */
+  if(n===prev && prev>=0){
+    return;
+  }
   lastTowerFloors=n;
   if(typeof window.SkylineTower3D==='undefined'||typeof window.SkylineTower3D.init!=='function'){
     if(fb){ fb.style.display='flex'; fb.textContent='Chargement du moteur 3D…'; }
@@ -313,7 +318,7 @@ function renderTowerFloors(n){
     if(fb) fb.style.display='none';
   }
   if(n===0&&prev>0){
-    SkylineTower3D.playCollapse(function(){ SkylineTower3D.setFloors(0); });
+    SkylineTower3D.playCollapse(function(){ SkylineTower3D.setFloors(0); lastTowerFloors=0; });
     return;
   }
   SkylineTower3D.setFloors(n);

@@ -3,7 +3,7 @@
  * Attend window.THREE (three.min.js chargé avant ce fichier).
  */
 (function () {
-  var scene, camera, renderer, towerRoot, bgCities, starsPoints, groundMesh, canvas, container;
+  var scene, camera, renderer, towerRoot, bgCities, starsPoints, groundMesh, horizonMesh, canvas, container;
   var floorMeshes = [];
   var rafId = 0;
   var collapseActive = false;
@@ -158,12 +158,12 @@
     makeMaterials();
 
     scene = new THREE.Scene();
-    scene.background = null;
-    scene.fog = new THREE.FogExp2(0x050510, 0.04);
+    scene.background = new THREE.Color(0x060814);
+    scene.fog = new THREE.Fog(0x0a0e1c, 12, 42);
 
-    camera = new THREE.PerspectiveCamera(42, 1, 0.1, 80);
-    camera.position.set(3.2, 2.1, 4.2);
-    camera.lookAt(0, 1.2, 0);
+    camera = new THREE.PerspectiveCamera(40, 1, 0.1, 90);
+    camera.position.set(4.2, 2.35, 5.1);
+    camera.lookAt(0, 1.15, 0);
 
     renderer = new THREE.WebGLRenderer({
       canvas: canvas,
@@ -186,32 +186,189 @@
 
     bgCities = new THREE.Group();
     scene.add(bgCities);
-    var bMat = new THREE.MeshStandardMaterial({
-      color: 0x2a3548,
-      metalness: 0.2,
-      roughness: 0.85
+
+    var matGlass = new THREE.MeshStandardMaterial({
+      color: 0x1a2838,
+      metalness: 0.55,
+      roughness: 0.18,
+      envMapIntensity: 0.8
     });
-    var bWin = new THREE.MeshStandardMaterial({
-      color: 0x061210,
-      emissive: 0x008877,
-      emissiveIntensity: 0.4,
-      roughness: 0.5
+    var matConcrete = new THREE.MeshStandardMaterial({
+      color: 0x4a5568,
+      metalness: 0.08,
+      roughness: 0.92
     });
-    for (var bi = 0; bi < 28; bi++) {
-      var ang = (bi / 28) * Math.PI * 2 + bi * 0.17;
-      var rad = 5.5 + (bi % 5) * 0.35;
-      var bw = 0.35 + (bi % 7) * 0.08;
-      var bh = 0.8 + (bi * 73 % 17) / 7;
-      var bd = 0.32 + (bi % 4) * 0.06;
-      var box = new THREE.Mesh(new THREE.BoxGeometry(bw, bh, bd), bMat);
-      box.castShadow = true;
-      box.receiveShadow = true;
-      box.position.set(Math.cos(ang) * rad, bh / 2, Math.sin(ang) * rad);
-      box.rotation.y = ang + 0.4;
-      bgCities.add(box);
-      var wmesh = new THREE.Mesh(new THREE.PlaneGeometry(bw * 0.35, bh * 0.2), bWin);
-      wmesh.position.set(0, 0, bd / 2 + 0.01);
-      box.add(wmesh);
+    var matBrick = new THREE.MeshStandardMaterial({
+      color: 0x5c4033,
+      metalness: 0.05,
+      roughness: 0.88
+    });
+    var matDark = new THREE.MeshStandardMaterial({
+      color: 0x1e2433,
+      metalness: 0.15,
+      roughness: 0.78
+    });
+    var winTeal = new THREE.MeshStandardMaterial({
+      color: 0x020808,
+      emissive: 0x00c9b8,
+      emissiveIntensity: 0.5,
+      roughness: 0.35
+    });
+    var winGold = new THREE.MeshStandardMaterial({
+      color: 0x1a1205,
+      emissive: 0xffb84d,
+      emissiveIntensity: 0.35,
+      roughness: 0.4
+    });
+
+    function addWinStrip(parent, w, h, zFace, mat) {
+      var rows = Math.max(2, Math.floor(h * 4));
+      var cols = 3;
+      for (var r = 0; r < rows; r++) {
+        for (var c = 0; c < cols; c++) {
+          var gw = w * 0.12;
+          var gh = h * 0.08;
+          var g = new THREE.PlaneGeometry(gw, gh);
+          var m = new THREE.Mesh(g, Math.random() > 0.15 ? mat : winGold);
+          m.position.set(
+            (c - 1) * w * 0.22,
+            (r / rows - 0.5) * h * 0.85 + h * 0.05,
+            zFace
+          );
+          parent.add(m);
+        }
+      }
+    }
+
+    function buildingSlim(x, z, h, rot, winM) {
+      var w = 0.38;
+      var d = 0.34;
+      var mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), matGlass);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      mesh.position.set(x, h / 2, z);
+      mesh.rotation.y = rot;
+      addWinStrip(mesh, w, h, d / 2 + 0.01, winM);
+      bgCities.add(mesh);
+      if (h > 1.6) {
+        var ant = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.02, 0.03, 0.35, 6),
+          new THREE.MeshStandardMaterial({ color: 0x8899aa, metalness: 0.6, roughness: 0.35 })
+        );
+        ant.position.set(0, h / 2 + 0.2, 0);
+        mesh.add(ant);
+      }
+    }
+
+    function buildingPodiumTower(x, z, rot) {
+      var pw = 0.95;
+      var pd = 0.75;
+      var ph = 0.35;
+      var base = new THREE.Mesh(new THREE.BoxGeometry(pw, ph, pd), matConcrete);
+      base.castShadow = true;
+      base.receiveShadow = true;
+      base.position.set(x, ph / 2, z);
+      base.rotation.y = rot;
+      bgCities.add(base);
+      var tw = 0.42;
+      var th = 1.45;
+      var td = 0.38;
+      var top = new THREE.Mesh(new THREE.BoxGeometry(tw, th, td), matGlass);
+      top.castShadow = true;
+      top.position.set(0, ph + th / 2, 0);
+      base.add(top);
+      addWinStrip(top, tw, th, td / 2 + 0.01, winTeal);
+    }
+
+    function buildingStepped(x, z, rot) {
+      var g = new THREE.Group();
+      g.position.set(x, 0, z);
+      g.rotation.y = rot;
+      var y = 0;
+      var w = 0.85;
+      var d = 0.72;
+      for (var s = 0; s < 4; s++) {
+        var sh = 0.32 + s * 0.06;
+        var mesh = new THREE.Mesh(
+          new THREE.BoxGeometry(w, sh, d),
+          s % 2 === 0 ? matBrick : matDark
+        );
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+        mesh.position.y = y + sh / 2;
+        y += sh;
+        w *= 0.82;
+        d *= 0.82;
+        g.add(mesh);
+        addWinStrip(mesh, w * 1.15, sh, d / 2 + 0.02, winTeal);
+      }
+      bgCities.add(g);
+    }
+
+    function buildingCylinder(x, z, h, rot) {
+      var r = 0.28 + (h % 1) * 0.08;
+      var mesh = new THREE.Mesh(
+        new THREE.CylinderGeometry(r, r * 1.08, h, 14),
+        matGlass
+      );
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      mesh.position.set(x, h / 2, z);
+      mesh.rotation.y = rot;
+      bgCities.add(mesh);
+      var ring = new THREE.Mesh(
+        new THREE.TorusGeometry(r * 1.02, 0.025, 6, 24),
+        new THREE.MeshStandardMaterial({ color: 0x00e8d4, emissive: 0x004d44, emissiveIntensity: 0.3 })
+      );
+      ring.rotation.x = Math.PI / 2;
+      ring.position.y = h * 0.35;
+      mesh.add(ring);
+    }
+
+    function buildingLShape(x, z, rot) {
+      var g = new THREE.Group();
+      g.position.set(x, 0, z);
+      g.rotation.y = rot;
+      var a = new THREE.Mesh(new THREE.BoxGeometry(0.55, 1.1, 0.4), matConcrete);
+      a.castShadow = true;
+      a.position.set(-0.15, 0.55, 0);
+      g.add(a);
+      addWinStrip(a, 0.55, 1.1, 0.21, winTeal);
+      var b = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.75, 0.45), matDark);
+      b.castShadow = true;
+      b.position.set(0.2, 0.375, 0.15);
+      g.add(b);
+      addWinStrip(b, 0.4, 0.75, 0.23, winGold);
+      bgCities.add(g);
+    }
+
+    var placements = [
+      { fn: 'slim', x: -5.2, z: 2.1, h: 1.9, r: 0.4 },
+      { fn: 'podium', x: -3.8, z: 4.2, r: -0.25 },
+      { fn: 'step', x: -2.1, z: 5.5, r: 0.55 },
+      { fn: 'cyl', x: -0.5, z: 6.1, h: 1.65, r: 0.2 },
+      { fn: 'slim', x: 1.2, z: 5.8, h: 2.2, r: -0.35 },
+      { fn: 'L', x: 3.4, z: 4.9, r: 0.9 },
+      { fn: 'podium', x: 5.1, z: 3.2, r: -0.6 },
+      { fn: 'step', x: 6.0, z: 1.0, r: 1.2 },
+      { fn: 'cyl', x: 5.5, z: -1.2, h: 1.4, r: 2.0 },
+      { fn: 'slim', x: 4.2, z: -3.5, h: 1.7, r: 2.3 },
+      { fn: 'L', x: 2.0, z: -4.8, r: -0.9 },
+      { fn: 'podium', x: -0.5, z: -5.5, r: -0.2 },
+      { fn: 'step', x: -2.8, z: -4.9, r: 0.15 },
+      { fn: 'cyl', x: -4.5, z: -3.2, h: 1.55, r: 0.5 },
+      { fn: 'slim', x: -5.8, z: -0.8, h: 2.0, r: 0.0 },
+      { fn: 'L', x: -4.0, z: 1.5, r: 0.7 },
+      { fn: 'slim', x: 6.2, z: -3.8, h: 1.5, r: -2.5 },
+      { fn: 'step', x: -6.0, z: 3.0, r: -0.4 }
+    ];
+    for (var pi = 0; pi < placements.length; pi++) {
+      var p = placements[pi];
+      if (p.fn === 'slim') buildingSlim(p.x, p.z, p.h, p.r, winTeal);
+      else if (p.fn === 'podium') buildingPodiumTower(p.x, p.z, p.r);
+      else if (p.fn === 'step') buildingStepped(p.x, p.z, p.r);
+      else if (p.fn === 'cyl') buildingCylinder(p.x, p.z, p.h, p.r);
+      else if (p.fn === 'L') buildingLShape(p.x, p.z, p.r);
     }
     var starGeo = new THREE.BufferGeometry();
     var starCount = 420;
@@ -240,17 +397,29 @@
     scene.add(rim);
 
     groundMesh = new THREE.Mesh(
-      new THREE.PlaneGeometry(40, 40),
+      new THREE.PlaneGeometry(80, 80),
       new THREE.MeshStandardMaterial({
-        color: 0x080a12,
-        metalness: 0.1,
-        roughness: 0.95
+        color: 0x0a0c18,
+        metalness: 0.05,
+        roughness: 0.98
       })
     );
     groundMesh.rotation.x = -Math.PI / 2;
     groundMesh.position.y = -0.02;
     groundMesh.receiveShadow = true;
     scene.add(groundMesh);
+
+    horizonMesh = new THREE.Mesh(
+      new THREE.SphereGeometry(48, 24, 12, 0, Math.PI * 2, 0, Math.PI * 0.42),
+      new THREE.MeshBasicMaterial({
+        color: 0x0d1528,
+        side: THREE.BackSide,
+        transparent: true,
+        opacity: 0.95
+      })
+    );
+    horizonMesh.position.y = 6;
+    scene.add(horizonMesh);
 
     onResize();
     window.addEventListener('resize', onResize);
@@ -306,9 +475,16 @@
     clearTower();
     if (bgCities && scene) {
       scene.remove(bgCities);
+      var matDone = {};
       bgCities.traverse(function (o) {
         if (o.geometry) o.geometry.dispose();
-        if (o.material && !Array.isArray(o.material)) o.material.dispose();
+        if (o.material && !Array.isArray(o.material)) {
+          var u = o.material.uuid;
+          if (!matDone[u]) {
+            matDone[u] = true;
+            o.material.dispose();
+          }
+        }
       });
       bgCities = null;
     }
@@ -323,6 +499,12 @@
       if (groundMesh.geometry) groundMesh.geometry.dispose();
       if (groundMesh.material) groundMesh.material.dispose();
       groundMesh = null;
+    }
+    if (horizonMesh && scene) {
+      scene.remove(horizonMesh);
+      if (horizonMesh.geometry) horizonMesh.geometry.dispose();
+      if (horizonMesh.material) horizonMesh.material.dispose();
+      horizonMesh = null;
     }
     if (renderer) {
       renderer.dispose();
