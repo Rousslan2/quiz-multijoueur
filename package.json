@@ -7,7 +7,7 @@
     "build": "echo 'No build step'",
     "start": "node server.js",
     "check": "node --check server.js && node --check lib/admin.js && node --check lib/profile.js && node --check lib/account.js && node --check lib/quizSession.js && node --check lib/skylineGame.js",
-    "test:unit": "node tests/skyline.unit.test.js && node tests/skyline.assets.test.js",
+    "test:unit": "node tests/skyline.unit.test.js && node tests/skyline.assets.test.js && node tests/zp-loader.assets.test.js",
     "test:ws": "node tests/skyline.ws.test.js",
     "test": "npm run check && npm run test:unit && npm run test:ws"
   },
