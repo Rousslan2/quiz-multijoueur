@@ -1,8 +1,8 @@
 /* ZapPlay — shell PWA : HTML toujours réseau ; JS/CSS réseau d’abord
  * (évite shared.js / zp-shell.js figés → barre compte obsolète sans Shift+F5).
  */
-const CACHE = 'zapplay-shell-v6';
-const PRECACHE = ['/theme.css', '/zp-shell.css', '/manifest.webmanifest'];
+const CACHE = 'zapplay-shell-v7';
+const PRECACHE = ['/theme.css', '/zp-shell.css', '/skyline.css', '/manifest.webmanifest'];
 
 self.addEventListener('install', e => {
   e.waitUntil(

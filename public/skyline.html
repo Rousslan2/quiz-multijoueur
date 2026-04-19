@@ -6,111 +6,11 @@
 <link rel="apple-touch-icon" href="/favicon.svg">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="stylesheet" href="theme.css">
+<link rel="stylesheet" href="skyline.css">
 <title>ZapPlay — Skyline</title>
 <link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;600;700;800&display=swap" rel="stylesheet">
-<style>
-:root{--primary:#00E8D4;--gold:#fbbf24;--ok:#22c55e;--bad:#ef4444;--text:#E8E8F0;--muted:#7A8098;--border:rgba(0,232,212,.10)}
-*{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Exo 2',sans-serif;color:var(--text);min-height:100dvh;padding-bottom:24px}
-#app{max-width:520px;margin:0 auto;padding:60px 14px 20px;display:flex;flex-direction:column;gap:14px;position:relative;z-index:1}
-#back{position:fixed;top:8px;left:8px;background:none;border:none;color:var(--muted);cursor:pointer;padding:6px 10px;font-size:1rem;z-index:120}
-#dot{position:fixed;top:12px;right:12px;width:8px;height:8px;border-radius:50%;background:var(--bad);z-index:120}
-#dot.ok{background:var(--ok)}
-.hidden{display:none!important}
-.card{background:linear-gradient(180deg,rgba(255,255,255,.07),rgba(255,255,255,.03));border:1px solid var(--border);border-radius:14px;padding:16px;backdrop-filter:blur(8px)}
-.btn{border:none;border-radius:10px;padding:12px 16px;font-weight:700;cursor:pointer;transition:transform .1s;font-size:.95rem;font-family:inherit}
-.btn:active{transform:scale(.97)}
-.btn-p{background:var(--primary);color:#000}
-.btn-s{background:rgba(255,255,255,.12);color:var(--text)}
-.btn-full{width:100%}
-input{width:100%;background:rgba(255,255,255,.08);border:1px solid var(--border);border-radius:10px;color:var(--text);padding:12px;font-size:1rem;outline:none;font-family:inherit}
-h2{font-size:1.45rem;font-weight:800;background:linear-gradient(135deg,var(--primary),var(--gold));-webkit-background-clip:text;-webkit-text-fill-color:transparent;text-align:center;margin-bottom:4px}
-.code-box{text-align:center;background:rgba(0,232,212,.07);border:1px solid rgba(0,232,212,.2);border-radius:12px;padding:12px;cursor:pointer;width:100%}
-.code-big{font-size:2.2rem;font-weight:900;letter-spacing:.2em;color:var(--primary);font-family:monospace}
-.spectate-strip{display:none;margin:0 0 12px;padding:8px 12px;text-align:center;font-size:.76rem;font-weight:700;color:#99f6e4;background:rgba(0,232,212,.1);border:1px solid rgba(0,232,212,.28);border-radius:10px}
-.spectate-strip.on{display:block}
-.rnd-tag{font-size:.72rem;color:var(--muted);letter-spacing:.1em;text-align:center;margin-bottom:6px}
-
-.sky-game-hud{text-align:center;margin-bottom:8px}
-.sky-game-hud .who{font-size:1.05rem;font-weight:800;color:var(--text)}
-.sky-game-hud .sub{font-size:.78rem;color:var(--muted);margin-top:4px}
-.sky-play-duo{display:flex;flex-direction:column;gap:12px;width:100%}
-@media (min-width:640px){
-  .sky-play-duo{flex-direction:row;align-items:stretch}
-  .sky-play-duo .sky-tower-3d-wrap{flex:0 0 38%;max-width:220px}
-  .sky-play-duo .sky-stack-canvas-wrap{flex:1;min-width:0}
-}
-.sky-tower-3d-wrap{position:relative;border-radius:14px;overflow:hidden;background:radial-gradient(120% 80% at 50% 100%,#0a1020 0%,#04060d 100%);border:1px solid rgba(0,232,212,.16);min-height:min(28vh,200px);aspect-ratio:4/3}
-.sky-tower-3d-wrap canvas.sky-tower-webgl{display:block;width:100%;height:100%}
-.sky-tower-fallback{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:.76rem;color:var(--muted);padding:10px;text-align:center}
-.sky-stack-canvas-wrap{position:relative;flex:1;border-radius:14px;overflow:hidden;background:linear-gradient(180deg,#12182a,#070914);border:1px solid rgba(0,232,212,.14);min-height:min(44vh,340px)}
-#sky-stack-canvas{display:block;width:100%;height:auto;vertical-align:middle;touch-action:manipulation;cursor:pointer}
-.sky-stack-overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(5,8,18,.72);color:#e8f0ff;font-weight:800;font-size:1.05rem;text-align:center;padding:16px;line-height:1.35;pointer-events:none;z-index:2}
-.sky-stack-overlay.hidden{display:none!important}
-.sky-stack-hint{font-size:.74rem;color:var(--muted);text-align:center;margin-top:10px}
-
-/* ── Ville 3D (arrière-plan) ── */
-.sky-city-bg{position:fixed;left:0;right:0;bottom:0;height:min(42vh,320px);pointer-events:none;z-index:0;overflow:hidden;opacity:.92}
-.sky-city-persp{position:absolute;inset:0;display:flex;align-items:flex-end;justify-content:center;perspective:900px;perspective-origin:50% 85%}
-.sky-city-slab{width:120%;height:200px;display:flex;align-items:flex-end;justify-content:center;gap:clamp(6px,2vw,14px);transform-style:preserve-3d;transform:rotateX(58deg) translateY(18%) scale(1.15);animation:sky-city-drift 22s ease-in-out infinite}
-@keyframes sky-city-drift{
-  0%,100%{transform:rotateX(58deg) translateY(18%) scale(1.15) rotateY(-6deg)}
-  50%{transform:rotateX(58deg) translateY(18%) scale(1.15) rotateY(6deg)}
-}
-.sky-bg-bld{--W:42px;--H:110px;--D:36px;flex-shrink:0;transform-style:preserve-3d;animation:sky-bld-pulse 4s ease-in-out infinite;transform-origin:50% 100%}
-.sky-bg-bld.sky-bg-bld--fall{animation:none!important;filter:none!important}
-.sky-bg-bld.sky-bg-bld--fall .sky-cube{animation:sky-cube-crash .95s cubic-bezier(.25,.1,.45,1) forwards;transform-origin:50% 100%}
-@keyframes sky-cube-crash{
-  0%{transform:translateZ(0) rotateX(0deg)}
-  35%{transform:translateZ(20px) rotateX(-18deg)}
-  100%{transform:translateZ(-60px) rotateX(-92deg) translateY(140px);opacity:.25}
-}
-.sky-bg-bld:nth-child(2n){animation-delay:-1.2s}
-.sky-bg-bld:nth-child(3n){animation-delay:-2.4s}
-@keyframes sky-bld-pulse{
-  0%,100%{filter:brightness(1)}
-  50%{filter:brightness(1.12)}
-}
-.sky-cube{width:var(--W);height:var(--H);position:relative;transform-style:preserve-3d;transform:translateZ(0)}
-.sky-cube .sky-face{position:absolute;box-sizing:border-box;backface-visibility:hidden;border:1px solid rgba(0,0,0,.35)}
-.sky-cube .sky-f-front{width:var(--W);height:var(--H);transform:translateZ(calc(var(--D)/2));background:linear-gradient(180deg,#4a5f78 0%,#2a3548 55%,#1a2230 100%);box-shadow:inset 0 0 24px rgba(0,232,212,.06)}
-.sky-cube .sky-f-back{width:var(--W);height:var(--H);transform:rotateY(180deg) translateZ(calc(var(--D)/2));background:linear-gradient(180deg,#283242,#151b26)}
-.sky-cube .sky-f-left{width:var(--D);height:var(--H);left:50%;margin-left:calc(var(--D)/-2);transform:rotateY(-90deg) translateZ(calc(var(--W)/2));background:linear-gradient(90deg,#1e2633,#2d3a4d)}
-.sky-cube .sky-f-right{width:var(--D);height:var(--H);left:50%;margin-left:calc(var(--D)/-2);transform:rotateY(90deg) translateZ(calc(var(--W)/2));background:linear-gradient(270deg,#1e2633,#2d3a4d)}
-.sky-cube .sky-f-top{width:var(--W);height:var(--D);top:0;left:0;transform:rotateX(90deg) translateZ(calc(var(--H)/2));background:linear-gradient(135deg,#5a6d88,#3d4d62)}
-.sky-win-grid{position:absolute;inset:8px 6px 14px 6px;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(5,1fr);gap:3px;pointer-events:none;opacity:.55}
-.sky-win-grid span{background:rgba(0,232,212,.25);border-radius:1px;box-shadow:0 0 6px rgba(0,232,212,.2)}
-.sky-ant{position:absolute;top:-14px;left:50%;width:4px;height:16px;margin-left:-2px;background:linear-gradient(180deg,#8899aa,#333);transform:translateZ(calc(var(--D)/2 + 1px));border-radius:1px}
-
-.sky-round-goal{font-size:.78rem;color:var(--primary);text-align:center;font-weight:700;margin-bottom:8px;min-height:1.2em}
-.sky-tower-meta{font-size:.82rem;color:var(--muted);text-align:center;margin-top:8px}
-.sky-timer-row{display:flex;justify-content:space-between;align-items:center;margin:8px 0 2px;gap:10px;min-height:18px}
-.sky-timer-chip{font-size:.72rem;color:var(--muted);letter-spacing:.04em;font-weight:700}
-.sky-timer-val{color:var(--primary);font-weight:800;font-variant-numeric:tabular-nums;font-size:.84rem}
-.sky-timer-val.warn{color:var(--gold)}
-.sky-timer-val.crit{color:var(--bad)}
-.sky-timer-bar{position:relative;flex:1;height:6px;background:rgba(255,255,255,.06);border-radius:3px;overflow:hidden}
-.sky-timer-bar>span{position:absolute;inset:0 100% 0 0;background:linear-gradient(90deg,var(--primary),var(--gold));transition:right .18s linear;border-radius:3px}
-.sky-timer-bar.crit>span{background:linear-gradient(90deg,var(--gold),var(--bad))}
-.sky-action-row{display:flex;gap:8px;margin-top:8px}
-.sky-tap-btn{flex:1;padding:18px;font-size:1.05rem;border-radius:14px;font-weight:800;letter-spacing:.02em}
-.sky-tap-btn:disabled{opacity:.45;cursor:not-allowed}
-.sky-submit-btn{flex:0 0 auto;padding:18px 14px;font-size:.9rem;border-radius:14px;font-weight:700}
-.sky-submit-btn:disabled{opacity:.35;cursor:not-allowed}
-.sky-copy-flash{position:absolute;right:8px;top:8px;font-size:.68rem;color:var(--ok);font-weight:700;opacity:0;transition:opacity .25s;letter-spacing:.08em}
-.sky-copy-flash.on{opacity:1}
-.sky-wait-card{text-align:center;padding:20px;color:var(--muted);font-size:.9rem}
-.sky-flash{position:fixed;inset:0;pointer-events:none;z-index:200;display:flex;align-items:center;justify-content:center;font-size:2rem;font-weight:900;text-shadow:0 2px 20px rgba(0,0,0,.8);opacity:0;transition:opacity .2s}
-.sky-flash.on{opacity:1}
-.sky-flash.ok{color:var(--ok)}
-.sky-flash.bad{color:var(--bad)}
-@media (prefers-reduced-motion: reduce){
-  .sky-city-slab{animation:none!important}
-  .sky-bg-bld{animation:none!important}
-}
-</style>
 </head>
-<body>
+<body class="skyline-page">
 <div class="zp-space-bg"><div class="zp-neb1"></div><div class="zp-neb2"></div><div class="zp-stars" id="zp-stars-sky"></div><div class="zp-sgrid"></div><div class="zp-comet"></div></div>
 <div class="sky-city-bg" aria-hidden="true"><div class="sky-city-persp"><div class="sky-city-slab" id="sky-city-slab">
 <div class="sky-bg-bld" style="--W:36px;--H:72px;--D:30px"><div class="sky-cube"><div class="sky-face sky-f-front"></div><div class="sky-face sky-f-back"></div><div class="sky-face sky-f-left"></div><div class="sky-face sky-f-right"></div><div class="sky-face sky-f-top"></div><div class="sky-win-grid"><span></span><span></span><span></span><span></span><span></span><span></span></div></div></div>
@@ -124,62 +24,75 @@ h2{font-size:1.45rem;font-weight:800;background:linear-gradient(135deg,var(--pri
 </div></div></div>
 <div id="sky-flash" class="sky-flash" aria-hidden="true"></div>
 <div id="app">
-<div id="spectate-strip" class="spectate-strip"></div>
+<div id="spectate-strip" class="sky-spectate-strip"></div>
 <button id="back" type="button" onclick="history.back()">← Retour</button>
 <div id="dot"></div>
 
 <div id="scr-name">
-  <h2>🏙️ Skyline</h2>
-  <div class="card" style="display:flex;flex-direction:column;gap:10px">
-    <p style="text-align:center;color:var(--muted);font-size:.85rem">Même principe que <b>Stack Tower</b> : le bloc rebondit en haut — <b>clic ou Espace</b> pour le lâcher. Mal aligné = découpe ; complètement à côté = game over pour ton tour. Objectif d’étages par manche.</p>
-    <input id="name-input" type="text" maxlength="20" placeholder="Ton pseudo" autocomplete="off">
+  <header class="sky-brand sky-brand--intro">
+    <div class="sky-logo" aria-hidden="true"></div>
+    <h1>Skyline</h1>
+    <p class="sky-tagline">Stack Tower multijoueur : empile des étages au bon timing. <b>Clic</b> ou <b>Espace</b> pour lâcher le bloc — mal aligné ça se coupe, trop à côté c’est la chute. Objectif d’étages chaque manche.</p>
+  </header>
+  <div class="sky-card" style="display:flex;flex-direction:column;gap:12px">
+    <input id="name-input" type="text" maxlength="20" placeholder="Ton pseudo" autocomplete="off" aria-label="Pseudo">
     <div style="display:flex;gap:8px">
-      <button class="btn btn-p" style="flex:1" onclick="createGame()">Créer une salle</button>
-      <button class="btn btn-s" style="flex:1" onclick="toggleJoin()">Rejoindre</button>
+      <button class="btn btn-p" style="flex:1" type="button" onclick="createGame()">Créer une salle</button>
+      <button class="btn btn-s" style="flex:1" type="button" onclick="toggleJoin()">Rejoindre</button>
     </div>
     <div id="join-area" style="display:none;flex-direction:column;gap:8px">
-      <input id="code-in" type="text" maxlength="4" placeholder="Code" style="text-transform:uppercase;text-align:center;font-size:1.2rem;letter-spacing:.15em">
-      <button class="btn btn-p btn-full" onclick="joinGame()">Rejoindre</button>
+      <input id="code-in" type="text" maxlength="4" placeholder="Code à 4 lettres" style="text-transform:uppercase;text-align:center;font-size:1.2rem;letter-spacing:.15em" aria-label="Code de la salle">
+      <button class="btn btn-p btn-full" type="button" onclick="joinGame()">Rejoindre</button>
       <button type="button" class="btn btn-s btn-full" onclick="joinSpectate()">Regarder en spectateur</button>
     </div>
-    <p id="err" style="color:var(--bad);text-align:center;font-size:.85rem;min-height:18px"></p>
+    <p id="err" style="color:var(--sky-bad, #f87171);text-align:center;font-size:.85rem;min-height:18px"></p>
   </div>
 </div>
 
 <div id="scr-wait" class="hidden">
-  <h2>🏙️ Skyline</h2>
-  <div class="card" style="display:flex;flex-direction:column;gap:12px;align-items:center">
-    <div class="code-box" onclick="copyCode()" style="position:relative">
-      <div style="font-size:.62rem;color:var(--muted);letter-spacing:.08em;margin-bottom:4px">CODE</div>
-      <div class="code-big" id="w-code">----</div>
+  <header class="sky-brand">
+    <h1>Skyline</h1>
+    <p class="sky-tagline">Partage le code avec tes amis.</p>
+  </header>
+  <div class="sky-card sky-card--wait" style="display:flex;flex-direction:column;gap:14px">
+    <div class="sky-code-box" onclick="copyCode()" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' ')copyCode()">
+      <div class="sky-code-label">Code de la salle</div>
+      <div class="sky-code-big" id="w-code">----</div>
       <div id="w-copy-flash" class="sky-copy-flash">COPIÉ</div>
     </div>
-    <p id="w-hint" style="color:var(--muted);font-size:.82rem"></p>
-    <button id="start-btn" class="btn btn-p btn-full hidden" onclick="startGame()">▶ Lancer</button>
+    <p id="w-hint" style="color:var(--sky-muted);font-size:.84rem;text-align:center"></p>
+    <button id="start-btn" class="btn btn-p btn-full hidden" type="button" onclick="startGame()">▶ Lancer la partie</button>
   </div>
 </div>
 
-<div id="scr-cd" class="hidden" style="min-height:40vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px">
-  <p style="color:var(--muted);letter-spacing:.1em;text-transform:uppercase;font-size:.9rem">C’est parti</p>
-  <div style="font-size:4.5rem;font-weight:900;color:var(--primary)" id="cd-n">3</div>
+<div id="scr-cd" class="hidden sky-cd-screen">
+  <p class="sky-cd-label">Prépare-toi</p>
+  <div class="sky-cd-num" id="cd-n">3</div>
 </div>
 
 <div id="scr-game" class="hidden">
-  <div class="rnd-tag" id="game-rnd">MANCHE 1/5</div>
-  <div class="card">
+  <div class="sky-round-pill"><span id="game-rnd">MANCHE 1/5</span></div>
+  <div class="sky-card">
     <div class="sky-game-hud">
       <div class="who" id="game-who">—</div>
       <div class="sub" id="game-sub"></div>
     </div>
     <div class="sky-round-goal" id="sky-round-goal"></div>
+    <div id="sky-scoreboard" class="sky-scoreboard hidden" aria-label="Scores"></div>
     <div class="sky-play-duo">
-      <div class="sky-tower-3d-wrap" id="sky-tower-3d-wrap">
-        <canvas class="sky-tower-webgl" aria-hidden="true"></canvas>
-        <div class="sky-tower-fallback" id="sky-tower-fallback">Préparation du rendu 3D…</div>
+      <div>
+        <div class="sky-panel-label">Prévisualisation 3D</div>
+        <div class="sky-tower-3d-wrap" id="sky-tower-3d-wrap">
+          <canvas class="sky-tower-webgl" aria-hidden="true"></canvas>
+          <div class="sky-tower-fallback" id="sky-tower-fallback">Préparation du rendu 3D…</div>
+        </div>
       </div>
-      <div class="sky-stack-canvas-wrap" id="sky-stack-wrap">
-        <canvas id="sky-stack-canvas" width="400" height="360" aria-label="Jeu — empiler les blocs"></canvas>
-        <div class="sky-stack-overlay hidden" id="sky-stack-overlay"></div>
+      <div>
+        <div class="sky-panel-label">Terrain</div>
+        <div class="sky-stack-canvas-wrap" id="sky-stack-wrap">
+          <canvas id="sky-stack-canvas" width="400" height="360" aria-label="Jeu — empiler les blocs"></canvas>
+          <div class="sky-stack-overlay hidden" id="sky-stack-overlay"></div>
+        </div>
       </div>
     </div>
     <p class="sky-stack-hint" id="sky-stack-hint"></p>
@@ -197,11 +110,13 @@ h2{font-size:1.45rem;font-weight:800;background:linear-gradient(135deg,var(--pri
 </div>
 
 <div id="scr-over" class="hidden">
-  <div class="card" style="text-align:center">
-    <div style="font-size:2.5rem;margin-bottom:8px">🏆</div>
-    <p id="winner-txt" style="font-size:1.15rem;font-weight:800;color:var(--gold);margin-bottom:14px"></p>
-    <div id="final-ranks" style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px;text-align:left"></div>
-    <button class="btn btn-s btn-full" onclick="restart()">Rejouer</button>
+  <div class="sky-card" style="text-align:center">
+    <div class="sky-over-hero">
+      <div class="sky-over-icon" aria-hidden="true">🏆</div>
+    </div>
+    <p id="winner-txt" class="sky-winner-txt"></p>
+    <div id="final-ranks" class="sky-podium"></div>
+    <button class="btn btn-p btn-full" type="button" onclick="restart()">Rejouer</button>
   </div>
 </div>
 
@@ -254,19 +169,46 @@ function mergePlayersFromTurnResult(d){
 /** Après un résultat de tour : scores à jour avant le prochain skyline_state. */
 function refreshHudFromSnapshot(){
   if(skyTurnState.phase!=='TURNING'||$('scr-game').classList.contains('hidden'))return;
-  const tgt=skyTurnState.targetFloors;
   const pl=playersSnapshot.find(function(p){return p.slot===skyTurnState.turnSlot;});
-  const name=pl?pl.name:(skyTurnState._activeName||'?');
   const myTurn=!isSpectator&&skyTurnState.turnSlot===mySlot;
-  const me=playersSnapshot.find(function(p){return p.slot===mySlot;});
   const activeFloors=pl? (pl.floors||0):0;
   const line=playersSnapshot.slice().sort(function(a,b){return a.slot-b.slot;}).map(function(p){
     return p.name+' '+p.score+' pts';
   }).join(' · ');
   if($('tower-meta')) $('tower-meta').textContent=line||'—';
+  renderScoreboard();
   if(isSpectator||!myTurn){
     renderTowerFloors(activeFloors,{force:true});
   }
+}
+
+/** Grille de scores live (tous les joueurs, tour actif mis en avant). */
+function renderScoreboard(){
+  const board=$('sky-scoreboard');
+  if(!board)return;
+  if(skyTurnState.phase!=='TURNING'||$('scr-game').classList.contains('hidden')){
+    board.classList.add('hidden');
+    board.textContent='';
+    return;
+  }
+  board.classList.remove('hidden');
+  const list=playersSnapshot.slice().sort(function(a,b){return a.slot-b.slot;});
+  board.textContent='';
+  list.forEach(function(p){
+    const row=document.createElement('div');
+    row.className='sky-score-row';
+    if(p.slot===skyTurnState.turnSlot) row.classList.add('is-active');
+    if(!isSpectator&&p.slot===mySlot) row.classList.add('is-me');
+    const nm=document.createElement('span');
+    nm.className='sky-sc-name';
+    nm.textContent=p.name;
+    const pts=document.createElement('span');
+    pts.className='sky-sc-pts';
+    pts.textContent=(p.score|0)+' pts';
+    row.appendChild(nm);
+    row.appendChild(pts);
+    board.appendChild(row);
+  });
 }
 const $ = id => document.getElementById(id);
 const show = id => $(id).classList.remove('hidden');
@@ -523,6 +465,7 @@ function applyGameVisual(state){
     scoreLine=(name||'Adversaire')+' joue : '+floorsViz+' étages visibles · tes points : '+(me?((me.score!=null)?me.score:0):0);
   }
   $('tower-meta').textContent=scoreLine;
+  renderScoreboard();
   if(isSpectator||!myTurn){
     renderTowerFloors(floorsViz,{force:true});
   }
@@ -560,6 +503,8 @@ function updateState(d){
     stopStack();
     stopTimerForTurn();
     lastStackTurnKey='';
+    const sbb=$('sky-scoreboard');
+    if(sbb){ sbb.classList.add('hidden'); sbb.textContent=''; }
     hide('scr-cd'); hide('scr-game'); hide('scr-over');
     show('scr-wait');
     $('w-code').textContent=d.code||myCode;
@@ -579,17 +524,33 @@ function updateState(d){
 
 function renderGameOverFromState(d){
   hide('scr-game'); hide('scr-cd'); hide('scr-wait'); show('scr-over');
+  const sb=$('sky-scoreboard');
+  if(sb){ sb.classList.add('hidden'); sb.textContent=''; }
   const pl=d.players||[];
   const sorted=[...pl].sort((a,b)=>(b.score||0)-(a.score||0));
   const w=sorted[0];
-  $('winner-txt').textContent=w ? '🏆 '+w.name+' gagne avec '+w.score+' pts !' : 'Partie terminée';
-  const fr=$('final-ranks'); fr.textContent='';
+  const wt=$('winner-txt');
+  if(wt) wt.textContent=w ? (w.name+' remporte la partie — '+w.score+' pts') : 'Partie terminée';
+  const fr=$('final-ranks');
+  if(!fr)return;
+  fr.textContent='';
+  const medals=['🥇','🥈','🥉'];
   sorted.forEach((p,i)=>{
+    const rank=i+1;
     const div=document.createElement('div');
-    div.style.padding='8px 12px';
-    div.style.background='rgba(255,255,255,.05)';
-    div.style.borderRadius='8px';
-    div.textContent=(i+1)+'. '+p.name+' — '+p.score+' pts';
+    div.className='sky-podium-row rank-'+Math.min(rank,3);
+    const med=document.createElement('span');
+    med.className='sky-podium-medal';
+    med.textContent=medals[i]||('#'+rank);
+    const nm=document.createElement('span');
+    nm.className='sky-podium-name';
+    nm.textContent=p.name;
+    const pt=document.createElement('span');
+    pt.className='sky-podium-pts';
+    pt.textContent=(p.score|0)+' pts';
+    div.appendChild(med);
+    div.appendChild(nm);
+    div.appendChild(pt);
     fr.appendChild(div);
   });
   if(window.ZapPlay) ZapPlay.hideLounge();

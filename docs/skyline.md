@@ -27,13 +27,23 @@ tour pendant son tour (120 s max), puis la main passe au joueur suivant.
 
 ```
 public/skyline.html           — UI + binding WebSocket
+public/skyline.css            — design system (cartes glass, scoreboard, podium, timer)
 public/skyline-stack-canvas.js — moteur 2D canvas (bloc qui rebondit, chute, découpe)
 public/skyline-tower-3d.js    — aperçu 3D WebGL (Three.js) de la tour empilée
 server.js § SKYLINE           — handlers WS, timers, broadcasts
 lib/skylineGame.js            — machine d'état pure (sans effet de bord)
 tests/skyline.unit.test.js    — tests unitaires de lib/skylineGame.js
+tests/skyline.assets.test.js  — cohérence HTML/CSS (hooks UI, fichier CSS présent)
 tests/skyline.ws.test.js      — tests d'intégration WebSocket end-to-end
 ```
+
+### Design (UI)
+
+- **Fichier dédié** `skyline.css` : variables `--sky-*`, cartes en verre (`backdrop-filter`),
+  grille **scoreboard** live pendant `TURNING`, labels « Prévisualisation 3D » / « Terrain »,
+  compte à rebours, écran de fin avec **podium** (🥇🥈🥉).
+- **Accessibilité** : `prefers-reduced-motion` pour la ville CSS en arrière-plan ;
+  focus clavier sur la boîte de code (lobby).
 
 L'état pur dans `lib/skylineGame.js` n'a **aucune** dépendance à `ws` / timers /
 broadcasts. Le serveur se contente d'appeler ces fonctions puis de diffuser les
