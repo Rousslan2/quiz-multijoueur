@@ -43,6 +43,11 @@
     var self = this;
     this.stop();
     this._resize();
+    /** Nouveau tour : effacer tout état visuel (évite l’écran rouge « Partie terminée » figé). */
+    this.canvas.style.backgroundColor = '';
+    if (this.ctx) {
+      this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    }
     if (this._boundResize) window.removeEventListener('resize', this._boundResize);
     this._boundResize = function () {
       self._resize();
@@ -87,17 +92,24 @@
     ctx.clearRect(0, 0, c.width, c.height);
     this._drawBoxes();
 
-    if (this.mode === MODES.GAME_OVER) {
-      this._drawGameOver();
-    } else if (this.mode === MODES.BOUNCE) {
+    if (this.mode === MODES.BOUNCE) {
       this._bounce();
     } else if (this.mode === MODES.FALL) {
       this._fall();
     }
 
-    this.animationId = requestAnimationFrame(function () {
-      self._loop();
-    });
+    if (this.mode === MODES.GAME_OVER) {
+      this._drawGameOver();
+    }
+
+    /** Ne pas boucler en GAME_OVER : sinon rAF infini + overlay rouge figé entre les tours. */
+    if (this.mode !== MODES.GAME_OVER) {
+      this.animationId = requestAnimationFrame(function () {
+        self._loop();
+      });
+    } else {
+      this.animationId = null;
+    }
   };
 
   SkylineStackGame.prototype._notifyFloors = function () {
@@ -194,7 +206,7 @@
   };
 
   SkylineStackGame.prototype._finish = function () {
-    this.stop();
+    this.mode = MODES.GAME_OVER;
     if (typeof this.onFinish === 'function') {
       this.onFinish(this.score);
     }

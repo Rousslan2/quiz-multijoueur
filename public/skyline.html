@@ -196,10 +196,49 @@ let stackFinishedSent = false;
 let lastStackTurnKey = '';
 let lastTowerFloors = -1;
 let towerThreeReady = false;
+/** Copie des joueurs pour mise à jour après skyline_turn_result (étages du tour terminé). */
+let playersSnapshot = [];
 
 function stopStack(){
   if(stackGame && typeof stackGame.stop==='function'){ try{ stackGame.stop(); }catch(_){} }
   stackGame = null;
+}
+
+function mergePlayersFromTurnResult(d){
+  if(!d||d.slot==null)return;
+  const slot=d.slot|0;
+  const floors=d.floors!=null?d.floors|0:0;
+  const score=d.score!=null?d.score|0:0;
+  const name=(typeof d.name==='string')?d.name:'';
+  let ok=false;
+  playersSnapshot=playersSnapshot.map(function(p){
+    if(p.slot===slot){
+      ok=true;
+      return {name:p.name||name,slot:slot,score:score,floors:floors};
+    }
+    return p;
+  });
+  if(!ok){
+    playersSnapshot.push({name:name||'?',slot:slot,score:score,floors:floors});
+  }
+}
+
+/** Après un résultat de tour : scores à jour avant le prochain skyline_state. */
+function refreshHudFromSnapshot(){
+  if(skyTurnState.phase!=='TURNING'||$('scr-game').classList.contains('hidden'))return;
+  const tgt=skyTurnState.targetFloors;
+  const pl=playersSnapshot.find(function(p){return p.slot===skyTurnState.turnSlot;});
+  const name=pl?pl.name:(skyTurnState._activeName||'?');
+  const myTurn=!isSpectator&&skyTurnState.turnSlot===mySlot;
+  const me=playersSnapshot.find(function(p){return p.slot===mySlot;});
+  const activeFloors=pl? (pl.floors||0):0;
+  const line=playersSnapshot.slice().sort(function(a,b){return a.slot-b.slot;}).map(function(p){
+    return p.name+' '+p.score+' pts';
+  }).join(' · ');
+  if($('tower-meta')) $('tower-meta').textContent=line||'—';
+  if(isSpectator||!myTurn){
+    renderTowerFloors(activeFloors,{force:true});
+  }
 }
 const $ = id => document.getElementById(id);
 const show = id => $(id).classList.remove('hidden');
@@ -377,6 +416,7 @@ function applyGameVisual(state){
   skyTurnState.targetFloors=state.targetFloors!=null?state.targetFloors:3;
   skyTurnState.stackDifficulty=state.stackDifficulty!=null?state.stackDifficulty:1;
   skyTurnState.round=state.round!=null?state.round:1;
+  playersSnapshot=(state.players||[]).map(p=>({name:p.name,slot:p.slot,score:p.score|0,floors:p.floors|0}));
   const pl=(state.players||[]).find(p=>p.slot===state.turnSlot);
   const name=pl?pl.name:'?';
   skyTurnState._activeName=name;
@@ -387,25 +427,26 @@ function applyGameVisual(state){
   $('game-sub').textContent=myTurn
     ? ('Manche '+skyTurnState.round+' · vitesse ×'+spd+' — empile le plus possible avant la fin du temps.')
     :(isSpectator?('Observation · objectif : '+tgt+' étages · vitesse ×'+spd)
-    :('Attends… · objectif : '+tgt+' étages'));
+    :('Attends… · objectif : '+tgt+' étages — la prévisualisation 3D montre la pile de '+name));
   const goalEl=$('sky-round-goal');
   if(goalEl) goalEl.textContent='Objectif manche : '+tgt+' étages ou plus (+30 pts bonus si réussi)';
   const me=(state.players||[]).find(p=>p.slot===mySlot);
+  /** Étages du joueur dont c’est le tour (toujours pour la prévisu quand tu n’es pas le joueur actif). */
+  const activeFloors=pl? (pl.floors||0):0;
   let floorsViz=0, scoreLine='';
   if(isSpectator){
-    const ap=pl;
-    floorsViz=ap? (ap.floors||0):0;
-    scoreLine=name+' — record du tour (serv.) : '+floorsViz+' étages · score '+(ap?(ap.score||0):0);
+    floorsViz=activeFloors;
+    scoreLine=name+' — '+floorsViz+' étages ce tour · score total '+((pl&&pl.score!=null)?pl.score:0);
   }else if(myTurn){
     floorsViz=0;
-    scoreLine='Ton meilleur score ce tour partira au serveur à la fin (temps ou chute).';
+    scoreLine='Ton score part au serveur à la fin du tour (temps écoulé ou chute).';
   }else{
-    floorsViz=me? (me.floors||0):0;
-    scoreLine='Tes étages enregistrés : '+floorsViz+'/'+tgt+' · score '+(me?(me.score||0):0);
+    floorsViz=activeFloors;
+    scoreLine=(name||'Adversaire')+' joue : '+floorsViz+' étages visibles · tes points : '+(me?((me.score!=null)?me.score:0):0);
   }
   $('tower-meta').textContent=scoreLine;
   if(isSpectator||!myTurn){
-    renderTowerFloors(floorsViz,{force:isSpectator});
+    renderTowerFloors(floorsViz,{force:true});
   }
   syncStackOverlay();
   const btn=$('tap-btn');
@@ -535,8 +576,10 @@ function handleMsg(d){
       const iv=setInterval(()=>{ n--; if(n<=0){ clearInterval(iv); hide('scr-cd'); } else $('cd-n').textContent=n; },1000);
       break;
     case 'skyline_turn_result':
+      mergePlayersFromTurnResult(d);
       if(d.slot===mySlot) stopStack();
       if(!d.success) triggerCityBuildingFall();
+      refreshHudFromSnapshot();
       if(d.slot===mySlot){
         const bonus=d.pointsDelta!=null?d.pointsDelta:0;
         const sc=d.stackScore!=null?d.stackScore:0;
