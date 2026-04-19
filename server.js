@@ -5429,34 +5429,13 @@ wssDebat.on('connection', ws => {
 });
 
 // ════════════════════════════════════════════════════════
-//  SKYLINE — hauteurs secrètes
-//  Score = (chaîne croissante se terminant ici) × h × (12 − h)
-//  Le facteur (12−h) pénalise les gratte-ciels extrêmes : viser 10 n’est plus optimal par défaut.
+//  SKYLINE — timing : curseur oscillant, appuie dans la zone verte
+//  Tour à tour : bon timing = +1 étage et points ; raté = la tour tombe (étages à 0).
 // ════════════════════════════════════════════════════════
-function skylineLisEndingEach(heights) {
-  const n = heights.length;
-  const dp = new Array(n).fill(1);
-  for (let i = 0; i < n; i++) {
-    for (let j = 0; j < i; j++) {
-      if (heights[j] < heights[i]) dp[i] = Math.max(dp[i], dp[j] + 1);
-    }
-  }
-  return dp;
-}
-
-function skylineGlobalLisFromEnding(each) {
-  if (!each.length) return 0;
-  return Math.max(...each);
-}
-
-function skylineHeightEfficiency(h) {
-  return Math.max(0, 12 - h);
-}
-
-function skylineRoundScores(heights) {
-  const lisAt = skylineLisEndingEach(heights);
-  return heights.map((h, i) => lisAt[i] * h * skylineHeightEfficiency(h));
-}
+const SKYLINE_TOTAL_ROUNDS = 5;
+const SKYLINE_TURN_MS = 12000;
+const SKYLINE_PERIOD_MS = 2800;
+const SKYLINE_PERFECT_HALF = 0.085;
 
 const skylineRooms = new Map();
 function makeSkylineRoom(code, host) {
@@ -5467,11 +5446,15 @@ function makeSkylineRoom(code, host) {
     spectators: [],
     phase: 'WAITING',
     round: 0,
-    totalRounds: 5,
+    totalRounds: SKYLINE_TOTAL_ROUNDS,
     scores: {},
-    picks: {},
-    timer: null,
-    catastrophe: false
+    floors: {},
+    turnSlot: 0,
+    turnStart: 0,
+    turnEnd: 0,
+    periodMs: SKYLINE_PERIOD_MS,
+    perfectHalf: SKYLINE_PERFECT_HALF,
+    timer: null
   };
 }
 
@@ -5480,77 +5463,115 @@ function skylineSnap(room, extra = {}) {
     type: 'skyline_state',
     phase: room.phase,
     code: room.code,
+    serverTime: Date.now(),
     players: room.players.map(p => ({
       name: p.name,
       slot: p.slot,
       score: room.scores[p.slot] || 0,
-      picked: !!room.picks && room.picks[p.slot] != null
+      floors: room.floors[p.slot] || 0
     })),
     round: room.round,
     totalRounds: room.totalRounds,
-    catastrophe: !!room.catastrophe,
+    turnSlot: room.turnSlot,
+    turnStart: room.turnStart,
+    turnEnd: room.turnEnd,
+    periodMs: room.periodMs,
+    perfectHalf: room.perfectHalf,
     ...extra
   };
 }
 
-function skylineStartRound(room) {
-  room.picks = {};
-  room.catastrophe = Math.random() < 0.22;
-  room.phase = 'PICKING';
+function skylineBeginGame(room) {
+  room.phase = 'TURNING';
+  room.round = 1;
+  room.turnSlot = 0;
+  room.players.forEach(p => {
+    room.scores[p.slot] = 0;
+    room.floors[p.slot] = 0;
+  });
+  skylineStartTurn(room);
+}
+
+function skylineStartTurn(room) {
+  room.phase = 'TURNING';
+  const now = Date.now();
+  room.turnStart = now;
+  room.turnEnd = now + SKYLINE_TURN_MS;
   clearTimeout(room.timer);
-  room.timer = setTimeout(() => skylineEndRound(room), 35000);
-  bcastRoom(room, { type: 'skyline_round', round: room.round, totalRounds: room.totalRounds, catastrophe: room.catastrophe });
+  room.timer = setTimeout(() => skylineTimeoutTurn(room), SKYLINE_TURN_MS);
   bcastRoom(room, skylineSnap(room));
   broadcastLobby();
 }
 
-function skylineEndRound(room) {
-  clearTimeout(room.timer);
-  const slots = room.players.map(p => p.slot);
-  const order = room.catastrophe ? shuffle([...slots]) : [...slots];
-  const heights = order.map(s => {
-    const v = room.picks[s];
-    return v != null && v >= 1 && v <= 10 ? v : 1 + Math.floor(Math.random() * 10);
-  });
-  const lisEach = skylineLisEndingEach(heights);
-  const lis = skylineGlobalLisFromEnding(lisEach);
-  const roundPts = skylineRoundScores(heights);
-  order.forEach((slot, i) => {
-    room.scores[slot] = (room.scores[slot] || 0) + roundPts[i];
-  });
-  const details = order.map((slot, i) => {
-    const pl = room.players.find(x => x.slot === slot);
-    const h = heights[i];
-    return {
-      slot,
-      name: pl ? pl.name : '?',
-      height: h,
-      points: roundPts[i],
-      lis,
-      lisChain: lisEach[i],
-      efficiency: skylineHeightEfficiency(h)
-    };
-  });
-  room.phase = 'ROUNDOVER';
+function skylineTimeoutTurn(room) {
+  if (room.phase !== 'TURNING') return;
+  const slot = room.turnSlot;
+  room.floors[slot] = 0;
+  const pl = room.players.find(p => p.slot === slot);
   bcastRoom(room, {
-    type: 'skyline_reveal',
-    order,
-    heights,
-    lis,
-    details,
-    players: room.players.map(p => ({ name: p.name, slot: p.slot, score: room.scores[p.slot] || 0 }))
+    type: 'skyline_turn_result',
+    slot,
+    name: pl ? pl.name : '?',
+    success: false,
+    reason: 'timeout',
+    pos: null,
+    floors: 0,
+    score: room.scores[slot] || 0,
+    round: room.round,
+    serverTime: Date.now()
   });
+  skylineAdvanceTurn(room);
+}
+
+function skylineAdvanceTurn(room) {
   clearTimeout(room.timer);
-  room.timer = setTimeout(() => {
-    if (room.round >= room.totalRounds) {
+  const n = room.players.length;
+  room.turnSlot = (room.turnSlot + 1) % n;
+  if (room.turnSlot === 0) {
+    room.round++;
+    if (room.round > room.totalRounds) {
       room.phase = 'GAME_OVER';
       bcastRoom(room, skylineSnap(room));
       broadcastLobby();
-    } else {
-      room.round++;
-      skylineStartRound(room);
+      return;
     }
-  }, 4500);
+  }
+  skylineStartTurn(room);
+}
+
+function skylineProcessTap(room, slot) {
+  const now = Date.now();
+  if (now > room.turnEnd || now < room.turnStart) return false;
+  clearTimeout(room.timer);
+  const elapsed = now - room.turnStart;
+  const period = room.periodMs || SKYLINE_PERIOD_MS;
+  const phase = ((elapsed % period) / period) * Math.PI * 2;
+  const pos = 0.5 + 0.5 * Math.sin(phase);
+  const dist = Math.abs(pos - 0.5);
+  const half = room.perfectHalf != null ? room.perfectHalf : SKYLINE_PERFECT_HALF;
+  const success = dist <= half;
+  if (success) {
+    room.floors[slot] = (room.floors[slot] || 0) + 1;
+    const pts = 10;
+    room.scores[slot] = (room.scores[slot] || 0) + pts;
+  } else {
+    room.floors[slot] = 0;
+  }
+  const pl = room.players.find(p => p.slot === slot);
+  bcastRoom(room, {
+    type: 'skyline_turn_result',
+    slot,
+    name: pl ? pl.name : '?',
+    success,
+    pos,
+    dist,
+    floors: room.floors[slot] || 0,
+    score: room.scores[slot] || 0,
+    round: room.round,
+    serverTime: Date.now()
+  });
+  skylineAdvanceTurn(room);
+  return true;
 }
 
 wssSkyline.on('connection', ws => {
@@ -5577,11 +5598,15 @@ wssSkyline.on('connection', ws => {
       return;
     }
     bcastRoom(myRoom, { type: 'player_left', name });
-    if (['PICKING', 'ROUNDOVER'].includes(myRoom.phase)) {
+    if (['TURNING', 'GAME_OVER'].includes(myRoom.phase)) {
       myRoom.phase = 'WAITING';
       myRoom.round = 0;
-      myRoom.picks = {};
-      myRoom.players.forEach(p => { myRoom.scores[p.slot] = 0; });
+      myRoom.turnSlot = 0;
+      myRoom.players.forEach(p => {
+        myRoom.scores[p.slot] = 0;
+        myRoom.floors[p.slot] = 0;
+      });
+      clearTimeout(myRoom.timer);
     }
     bcastRoom(myRoom, skylineSnap(myRoom));
     broadcastLobby();
@@ -5603,6 +5628,7 @@ wssSkyline.on('connection', ws => {
         isSpectator = false;
         room.players.push({ ws, name, slot: 0 });
         room.scores[0] = 0;
+        room.floors[0] = 0;
         wsend(ws, { type: 'created_skyline', code, slot: 0, name });
         wsend(ws, skylineSnap(room));
         broadcastLobby();
@@ -5618,6 +5644,7 @@ wssSkyline.on('connection', ws => {
         const slot = room.players.length;
         room.players.push({ ws, name, slot });
         room.scores[slot] = 0;
+        room.floors[slot] = 0;
         myRoom = room;
         isSpectator = false;
         wsend(ws, { type: 'welcome_skyline', code, slot, name });
@@ -5640,33 +5667,30 @@ wssSkyline.on('connection', ws => {
       case 'start_skyline': {
         if (!player || !myRoom || player.slot !== 0 || myRoom.phase !== 'WAITING') return;
         if (myRoom.players.length < 2) { wsend(ws, { type: 'error', msg: 'Il faut au moins 2 joueurs.' }); return; }
-        myRoom.round = 1;
-        myRoom.players.forEach(p => { myRoom.scores[p.slot] = 0; });
         bcastRoom(myRoom, { type: 'countdown', seconds: 3 });
         clearTimeout(myRoom.timer);
-        myRoom.timer = setTimeout(() => skylineStartRound(myRoom), 3000);
+        myRoom.timer = setTimeout(() => {
+          skylineBeginGame(myRoom);
+        }, 3000);
         broadcastLobby();
         break;
       }
-      case 'skyline_pick': {
-        if (!player || !myRoom || myRoom.phase !== 'PICKING' || isSpectator) return;
-        const h = Math.min(10, Math.max(1, parseInt(d.height, 10) || 0));
-        if (!h) return;
-        myRoom.picks[player.slot] = h;
-        bcastRoom(myRoom, skylineSnap(myRoom));
-        const allIn = myRoom.players.every(p => myRoom.picks[p.slot] != null);
-        if (allIn) {
-          clearTimeout(myRoom.timer);
-          skylineEndRound(myRoom);
-        }
+      case 'skyline_tap': {
+        if (!player || !myRoom || myRoom.phase !== 'TURNING' || isSpectator) return;
+        if (player.slot !== myRoom.turnSlot) return;
+        skylineProcessTap(myRoom, player.slot);
+        broadcastLobby();
         break;
       }
       case 'restart_skyline': {
         if (!player || !myRoom || player.slot !== 0 || myRoom.phase !== 'GAME_OVER') return;
         myRoom.phase = 'WAITING';
         myRoom.round = 0;
-        myRoom.picks = {};
-        myRoom.players.forEach(p => { myRoom.scores[p.slot] = 0; });
+        myRoom.turnSlot = 0;
+        myRoom.players.forEach(p => {
+          myRoom.scores[p.slot] = 0;
+          myRoom.floors[p.slot] = 0;
+        });
         clearTimeout(myRoom.timer);
         bcastRoom(myRoom, skylineSnap(myRoom));
         broadcastLobby();

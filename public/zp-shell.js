@@ -181,9 +181,9 @@
     skyline: {
       title: 'Skyline',
       rules: [
-        'Chaque manche, choisis une hauteur de tour de 1 à 10 (secrète jusqu’à la révélation).',
-        'Les tours s’affichent dans l’ordre des joueurs (ou mélangées en « catastrophe »).',
-        'Ton score = chaîne croissante (jusqu’à toi) × hauteur × (12 − hauteur) : les tours trop hautes coûtent cher.'
+        'À tour de rôle : un curseur oscille sur une ligne — appuie quand il est dans la zone verte pour empiler un étage.',
+        'Chaque étage réussi rapporte des points ; si tu rates ou si le temps est écoulé, toute ta tour s’effondre (retour à zéro étage).',
+        'Le joueur avec le plus de points à la fin des manches gagne.'
       ]
     },
     lobby: {
