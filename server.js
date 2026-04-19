@@ -5436,6 +5436,28 @@ const SKYLINE_TOTAL_ROUNDS = 5;
 const SKYLINE_TURN_MS = 12000;
 const SKYLINE_PERIOD_MS = 2800;
 const SKYLINE_PERFECT_HALF = 0.11;
+const SKYLINE_ROUND_BONUS = 30;
+
+function skylineTargetFloorsForRound(r) {
+  return Math.min(14, 3 + Math.max(0, r - 1) * 2);
+}
+
+function skylineDifficultyForRound(r) {
+  const t = Math.max(0, r - 1);
+  return {
+    turnMs: Math.max(5200, SKYLINE_TURN_MS - t * 900),
+    periodMs: Math.max(1650, SKYLINE_PERIOD_MS - t * 190),
+    perfectHalf: Math.max(0.052, SKYLINE_PERFECT_HALF - t * 0.012)
+  };
+}
+
+function applySkylineDifficultyForRound(room) {
+  const r = room.round || 1;
+  const d = skylineDifficultyForRound(r);
+  room.periodMs = d.periodMs;
+  room.perfectHalf = d.perfectHalf;
+  room.turnDurationMs = d.turnMs;
+}
 
 const skylineRooms = new Map();
 function makeSkylineRoom(code, host) {
@@ -5454,11 +5476,13 @@ function makeSkylineRoom(code, host) {
     turnEnd: 0,
     periodMs: SKYLINE_PERIOD_MS,
     perfectHalf: SKYLINE_PERFECT_HALF,
+    turnDurationMs: SKYLINE_TURN_MS,
     timer: null
   };
 }
 
 function skylineSnap(room, extra = {}) {
+  const tgt = skylineTargetFloorsForRound(room.round || 1);
   return {
     type: 'skyline_state',
     phase: room.phase,
@@ -5472,11 +5496,13 @@ function skylineSnap(room, extra = {}) {
     })),
     round: room.round,
     totalRounds: room.totalRounds,
+    targetFloors: tgt,
     turnSlot: room.turnSlot,
     turnStart: room.turnStart,
     turnEnd: room.turnEnd,
     periodMs: room.periodMs,
     perfectHalf: room.perfectHalf,
+    turnDurationMs: room.turnDurationMs || SKYLINE_TURN_MS,
     ...extra
   };
 }
@@ -5489,16 +5515,42 @@ function skylineBeginGame(room) {
     room.scores[p.slot] = 0;
     room.floors[p.slot] = 0;
   });
+  applySkylineDifficultyForRound(room);
   skylineStartTurn(room);
+}
+
+function skylineEvaluateRound(room) {
+  const R = room.round || 1;
+  const target = skylineTargetFloorsForRound(R);
+  const bonuses = [];
+  room.players.forEach(p => {
+    const f = room.floors[p.slot] || 0;
+    if (f >= target) {
+      room.scores[p.slot] = (room.scores[p.slot] || 0) + SKYLINE_ROUND_BONUS;
+      bonuses.push({ slot: p.slot, name: p.name, bonus: SKYLINE_ROUND_BONUS, floors: f });
+    }
+  });
+  bcastRoom(room, {
+    type: 'skyline_round_result',
+    round: R,
+    targetFloors: target,
+    bonuses,
+    serverTime: Date.now()
+  });
+}
+
+function skylineResetFloorsForNewRound(room) {
+  room.players.forEach(p => { room.floors[p.slot] = 0; });
 }
 
 function skylineStartTurn(room) {
   room.phase = 'TURNING';
   const now = Date.now();
+  const dur = room.turnDurationMs || SKYLINE_TURN_MS;
   room.turnStart = now;
-  room.turnEnd = now + SKYLINE_TURN_MS;
+  room.turnEnd = now + dur;
   clearTimeout(room.timer);
-  room.timer = setTimeout(() => skylineTimeoutTurn(room), SKYLINE_TURN_MS);
+  room.timer = setTimeout(() => skylineTimeoutTurn(room), dur);
   bcastRoom(room, skylineSnap(room));
   broadcastLobby();
 }
@@ -5528,6 +5580,7 @@ function skylineAdvanceTurn(room) {
   const n = room.players.length;
   room.turnSlot = (room.turnSlot + 1) % n;
   if (room.turnSlot === 0) {
+    skylineEvaluateRound(room);
     room.round++;
     if (room.round > room.totalRounds) {
       room.phase = 'GAME_OVER';
@@ -5535,6 +5588,8 @@ function skylineAdvanceTurn(room) {
       broadcastLobby();
       return;
     }
+    skylineResetFloorsForNewRound(room);
+    applySkylineDifficultyForRound(room);
   }
   skylineStartTurn(room);
 }
@@ -5546,8 +5601,9 @@ function skylineProcessTap(room, slot, elapsedFromClient) {
   let elapsed = now - room.turnStart;
   if (elapsedFromClient != null && Number.isFinite(elapsedFromClient)) {
     const c = Math.round(elapsedFromClient);
-    if (c >= 0 && c <= SKYLINE_TURN_MS + 400) {
-      elapsed = Math.min(SKYLINE_TURN_MS, Math.max(0, c));
+    const maxEl = (room.turnDurationMs || SKYLINE_TURN_MS) + 400;
+    if (c >= 0 && c <= maxEl) {
+      elapsed = Math.min(room.turnDurationMs || SKYLINE_TURN_MS, Math.max(0, c));
     }
   }
   const period = room.periodMs || SKYLINE_PERIOD_MS;
@@ -5694,6 +5750,9 @@ wssSkyline.on('connection', ws => {
         myRoom.phase = 'WAITING';
         myRoom.round = 0;
         myRoom.turnSlot = 0;
+        myRoom.periodMs = SKYLINE_PERIOD_MS;
+        myRoom.perfectHalf = SKYLINE_PERFECT_HALF;
+        myRoom.turnDurationMs = SKYLINE_TURN_MS;
         myRoom.players.forEach(p => {
           myRoom.scores[p.slot] = 0;
           myRoom.floors[p.slot] = 0;

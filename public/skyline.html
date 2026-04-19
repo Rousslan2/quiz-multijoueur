@@ -83,6 +83,7 @@ h2{font-size:1.45rem;font-weight:800;background:linear-gradient(135deg,var(--pri
 .sky-tower-3d-wrap{width:100%;height:200px;border-radius:14px;overflow:hidden;background:linear-gradient(180deg,rgba(6,8,18,.75),rgba(3,4,12,.92));border:1px solid rgba(0,232,212,.12);box-shadow:inset 0 0 40px rgba(0,0,0,.4)}
 #sky-tower-webgl{display:block;width:100%;height:100%;touch-action:none}
 .sky-tower-fallback{width:100%;height:180px;display:none;align-items:center;justify-content:center;color:var(--muted);font-size:.85rem;text-align:center;padding:12px}
+.sky-round-goal{font-size:.78rem;color:var(--primary);text-align:center;font-weight:700;margin-bottom:2px;min-height:1.2em}
 .sky-tower-meta{font-size:.8rem;color:var(--muted)}
 .sky-tap-btn{width:100%;padding:18px;font-size:1.15rem;border-radius:14px;font-weight:900;letter-spacing:.04em}
 .sky-tap-btn:disabled{opacity:.45;cursor:not-allowed}
@@ -166,6 +167,7 @@ h2{font-size:1.45rem;font-weight:800;background:linear-gradient(135deg,var(--pri
       </div>
     </div>
     <div class="sky-tower-preview">
+      <div class="sky-round-goal" id="sky-round-goal"></div>
       <div class="sky-tower-meta" id="tower-meta">Étages : 0 · Score : 0</div>
       <div class="sky-tower-3d-wrap" id="sky-tower-3d-wrap">
         <canvas id="sky-tower-webgl" aria-label="Tour 3D"></canvas>
@@ -191,7 +193,7 @@ const WS_URL = (location.protocol==='https:'?'wss':'ws')+'://'+location.host+'/w
 let ws, mySlot=-1, myCode='', isSpectator=false, pendingAction=null;
 let serverOffsetMs = 0;
 let animId = 0;
-const skyTurnState = { turnStart: 0, turnEnd: 0, periodMs: 2800, turnSlot: -1, phase: '' };
+const skyTurnState = { turnStart: 0, turnEnd: 0, periodMs: 2800, turnDurationMs: 12000, turnSlot: -1, phase: '', targetFloors: 3 };
 let lastTowerFloors = -1;
 let towerThreeReady = false;
 
@@ -318,6 +320,13 @@ function renderTowerFloors(n){
   if(n>prev&&prev>=0) SkylineTower3D.bumpPop();
 }
 
+function resetTowerForNewRound(){
+  lastTowerFloors = -1;
+  if(towerThreeReady && window.SkylineTower3D && typeof SkylineTower3D.setFloorsInstant==='function'){
+    SkylineTower3D.setFloorsInstant(0);
+  }
+}
+
 function gameLoop(state){
   const ts = state.turnStart, te = state.turnEnd, period = state.periodMs || 2800;
   const half = state.perfectHalf != null ? state.perfectHalf : 0.11;
@@ -343,24 +352,30 @@ function applyGameVisual(state){
   skyTurnState.turnStart = state.turnStart || 0;
   skyTurnState.turnEnd = state.turnEnd || 0;
   skyTurnState.periodMs = state.periodMs || 2800;
+  skyTurnState.turnDurationMs = state.turnDurationMs || 12000;
   skyTurnState.turnSlot = state.turnSlot != null ? state.turnSlot : -1;
   skyTurnState.phase = state.phase || '';
+  skyTurnState.targetFloors = state.targetFloors != null ? state.targetFloors : 3;
   const pl = (state.players||[]).find(p=>p.slot===state.turnSlot);
   const name = pl ? pl.name : '?';
   const myTurn = !isSpectator && state.turnSlot === mySlot;
   $('game-who').textContent = myTurn ? 'À toi !' : ('Tour de ' + name);
-  $('game-sub').textContent = myTurn ? 'Tape la barre (ou le bouton) quand le curseur est dans le vert' : (isSpectator ? 'Observation' : 'Attends ton tour…');
+  const tgt = skyTurnState.targetFloors;
+  const diffHint = 'Manche ' + (state.round||1) + ' — curseur plus rapide, zone plus étroite';
+  $('game-sub').textContent = myTurn ? (diffHint + ' · tape dans le vert') : (isSpectator ? ('Observation · objectif manche : ' + tgt + ' étages') : ('Attends… · objectif : ' + tgt + ' étages'));
+  const goalEl = $('sky-round-goal');
+  if(goalEl) goalEl.textContent = 'Objectif manche : atteindre ' + tgt + ' étages (+30 pts bonus si réussi)';
   const me = (state.players||[]).find(p=>p.slot===mySlot);
   let floors = 0, score = 0;
   if (isSpectator){
     const ap = pl;
     floors = ap ? (ap.floors||0) : 0;
     score = ap ? (ap.score||0) : 0;
-    $('tower-meta').textContent = name + ' — étages : ' + floors + ' · score : ' + score;
+    $('tower-meta').textContent = name + ' — ' + floors + '/' + tgt + ' étages · score ' + score;
   } else {
     floors = me ? (me.floors||0) : 0;
     score = me ? (me.score||0) : 0;
-    $('tower-meta').textContent = 'Tes étages : ' + floors + ' · Ton score : ' + score;
+    $('tower-meta').textContent = 'Tes étages : ' + floors + '/' + tgt + ' · score ' + score;
   }
   renderTowerFloors(floors);
   const btn = $('tap-btn');
@@ -434,7 +449,8 @@ function flash(msg, ok){
 function doTap(){
   if(!isTapEnabled()) return;
   const elapsed = Math.round((Date.now() + serverOffsetMs) - skyTurnState.turnStart);
-  send({ type: 'skyline_tap', elapsedMs: Math.max(0, Math.min(20000, elapsed)) });
+  const cap = (skyTurnState.turnDurationMs || 12000) + 400;
+  send({ type: 'skyline_tap', elapsedMs: Math.max(0, Math.min(cap, elapsed)) });
 }
 
 function handleMsg(d){
@@ -487,6 +503,15 @@ function handleMsg(d){
       if(d.slot===mySlot){
         flash(d.success ? 'Parfait +10 pts !' : (d.reason==='timeout'?'Temps écoulé !':'Raté — la tour tombe !'), !!d.success);
       }
+      break;
+    case 'skyline_round_result':
+      syncServerTime(d.serverTime);
+      resetTowerForNewRound();
+      (d.bonuses||[]).forEach(b=>{
+        if(b.slot===mySlot && b.bonus){
+          flash('Objectif manche '+d.round+' atteint ! +'+(b.bonus||0)+' pts', true);
+        }
+      });
       break;
     case 'player_left':
       $('w-hint').textContent=(d.name||'Un joueur')+' a quitté.';

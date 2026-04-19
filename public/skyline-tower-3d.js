@@ -3,7 +3,7 @@
  * Attend window.THREE (three.min.js chargé avant ce fichier).
  */
 (function () {
-  var scene, camera, renderer, towerRoot, canvas, container;
+  var scene, camera, renderer, towerRoot, bgCities, starsPoints, groundMesh, canvas, container;
   var floorMeshes = [];
   var rafId = 0;
   var collapseActive = false;
@@ -100,6 +100,13 @@
     }
   }
 
+  /** Vide la tour sans animation (nouvelle manche) */
+  function setFloorsInstant(n) {
+    if (!towerRoot) return;
+    collapseActive = false;
+    setFloors(n);
+  }
+
   function bumpPop() {
     if (!towerRoot || collapseActive) return;
     var s = 1.08;
@@ -121,6 +128,12 @@
     if (!renderer || !scene || !camera) return;
     if (towerRoot && !collapseActive && !prefersReducedMotion()) {
       towerRoot.rotation.y += 0.004;
+    }
+    if (bgCities && !prefersReducedMotion()) {
+      bgCities.rotation.y += 0.0006;
+    }
+    if (starsPoints && !prefersReducedMotion()) {
+      starsPoints.rotation.y += 0.00015;
     }
     renderer.render(scene, camera);
     rafId = requestAnimationFrame(tick);
@@ -171,6 +184,50 @@
     towerRoot.position.y = 0;
     scene.add(towerRoot);
 
+    bgCities = new THREE.Group();
+    scene.add(bgCities);
+    var bMat = new THREE.MeshStandardMaterial({
+      color: 0x2a3548,
+      metalness: 0.2,
+      roughness: 0.85
+    });
+    var bWin = new THREE.MeshStandardMaterial({
+      color: 0x061210,
+      emissive: 0x008877,
+      emissiveIntensity: 0.4,
+      roughness: 0.5
+    });
+    for (var bi = 0; bi < 28; bi++) {
+      var ang = (bi / 28) * Math.PI * 2 + bi * 0.17;
+      var rad = 5.5 + (bi % 5) * 0.35;
+      var bw = 0.35 + (bi % 7) * 0.08;
+      var bh = 0.8 + (bi * 73 % 17) / 7;
+      var bd = 0.32 + (bi % 4) * 0.06;
+      var box = new THREE.Mesh(new THREE.BoxGeometry(bw, bh, bd), bMat);
+      box.castShadow = true;
+      box.receiveShadow = true;
+      box.position.set(Math.cos(ang) * rad, bh / 2, Math.sin(ang) * rad);
+      box.rotation.y = ang + 0.4;
+      bgCities.add(box);
+      var wmesh = new THREE.Mesh(new THREE.PlaneGeometry(bw * 0.35, bh * 0.2), bWin);
+      wmesh.position.set(0, 0, bd / 2 + 0.01);
+      box.add(wmesh);
+    }
+    var starGeo = new THREE.BufferGeometry();
+    var starCount = 420;
+    var pos = new Float32Array(starCount * 3);
+    for (var si = 0; si < starCount; si++) {
+      pos[si * 3] = (Math.random() - 0.5) * 70;
+      pos[si * 3 + 1] = 4 + Math.random() * 22;
+      pos[si * 3 + 2] = (Math.random() - 0.5) * 70;
+    }
+    starGeo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    starsPoints = new THREE.Points(
+      starGeo,
+      new THREE.PointsMaterial({ color: 0xaaccff, size: 0.045, transparent: true, opacity: 0.65 })
+    );
+    scene.add(starsPoints);
+
     var amb = new THREE.AmbientLight(0x6a7a90, 0.45);
     scene.add(amb);
     var dir = new THREE.DirectionalLight(0xffffff, 1.05);
@@ -182,7 +239,7 @@
     rim.position.set(-3, 4, -4);
     scene.add(rim);
 
-    var ground = new THREE.Mesh(
+    groundMesh = new THREE.Mesh(
       new THREE.PlaneGeometry(40, 40),
       new THREE.MeshStandardMaterial({
         color: 0x080a12,
@@ -190,10 +247,10 @@
         roughness: 0.95
       })
     );
-    ground.rotation.x = -Math.PI / 2;
-    ground.position.y = -0.02;
-    ground.receiveShadow = true;
-    scene.add(ground);
+    groundMesh.rotation.x = -Math.PI / 2;
+    groundMesh.position.y = -0.02;
+    groundMesh.receiveShadow = true;
+    scene.add(groundMesh);
 
     onResize();
     window.addEventListener('resize', onResize);
@@ -247,6 +304,26 @@
     if (rafId) cancelAnimationFrame(rafId);
     rafId = 0;
     clearTower();
+    if (bgCities && scene) {
+      scene.remove(bgCities);
+      bgCities.traverse(function (o) {
+        if (o.geometry) o.geometry.dispose();
+        if (o.material && !Array.isArray(o.material)) o.material.dispose();
+      });
+      bgCities = null;
+    }
+    if (starsPoints && scene) {
+      scene.remove(starsPoints);
+      if (starsPoints.geometry) starsPoints.geometry.dispose();
+      if (starsPoints.material) starsPoints.material.dispose();
+      starsPoints = null;
+    }
+    if (groundMesh && scene) {
+      scene.remove(groundMesh);
+      if (groundMesh.geometry) groundMesh.geometry.dispose();
+      if (groundMesh.material) groundMesh.material.dispose();
+      groundMesh = null;
+    }
     if (renderer) {
       renderer.dispose();
       renderer = null;
@@ -265,6 +342,7 @@
       return initWebGL(el);
     },
     setFloors: setFloors,
+    setFloorsInstant: setFloorsInstant,
     bumpPop: bumpPop,
     playCollapse: playCollapse,
     dispose: dispose,
