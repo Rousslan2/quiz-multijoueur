@@ -181,9 +181,9 @@
     skyline: {
       title: 'Skyline',
       rules: [
-        'À tour de rôle : un bloc d’étage glisse sur un rail — aligne-le sur la zone verte (le centre change à chaque tour). L’étage se pose sur ta tour 3D ; viser le centre du vert rapporte plus de points.',
-        'Chaque manche a un objectif d’étages (bonus si atteint). La difficulté augmente : moins de temps, bloc plus rapide, zone plus petite.',
-        'Si tu rates ou si le temps est écoulé, toute ta tour tombe. Le plus de points gagne.'
+        'Type Stack Tower : le bloc rebondit en haut — clic ou Espace pour le lâcher. Mal aligné il se coupe ; complètement à côté c’est la chute (fin du tour).',
+        'Prévisualisation 3D à côté du terrain : tu vois la tour grandir étage par étage. À chaque manche : objectif d’étages et bonus si tu l’atteins ; la vitesse augmente.',
+        'À la fin du temps (ou après la chute), ton meilleur score d’étages part au serveur. Le plus de points gagne la partie.'
       ]
     },
     lobby: {

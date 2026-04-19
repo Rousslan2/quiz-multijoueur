@@ -31,19 +31,23 @@ h2{font-size:1.45rem;font-weight:800;background:linear-gradient(135deg,var(--pri
 .spectate-strip.on{display:block}
 .rnd-tag{font-size:.72rem;color:var(--muted);letter-spacing:.1em;text-align:center;margin-bottom:6px}
 
-/* Jeu timing */
 .sky-game-hud{text-align:center;margin-bottom:8px}
 .sky-game-hud .who{font-size:1.05rem;font-weight:800;color:var(--text)}
 .sky-game-hud .sub{font-size:.78rem;color:var(--muted);margin-top:4px}
-.sky-time-bar{height:6px;border-radius:99px;background:rgba(255,255,255,.08);overflow:hidden;margin:12px 0 16px}
-.sky-time-bar>i{display:block;height:100%;background:linear-gradient(90deg,var(--primary),#5b9fff);width:100%;transform-origin:left;transition:transform .1s linear}
-
-.sky-track-wrap{margin:8px 0 14px}
-.sky-track-label{font-size:.72rem;color:var(--muted);text-align:center;margin-bottom:8px}
-.sky-track{position:relative;height:56px;border-radius:12px;background:linear-gradient(180deg,rgba(20,24,40,.95),rgba(8,10,18,.98));border:1px solid rgba(255,255,255,.1);overflow:hidden;cursor:default;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
-.sky-perfect{position:absolute;top:0;bottom:0;width:22%;transform:translateX(-50%);background:rgba(34,197,94,.2);border-left:1px solid rgba(34,197,94,.4);border-right:1px solid rgba(34,197,94,.4);pointer-events:none;transition:left .12s ease}
-.sky-block{position:absolute;top:6px;bottom:6px;width:18%;margin-left:-9%;border-radius:8px;background:linear-gradient(180deg,#ffd89b,var(--primary));box-shadow:0 4px 18px rgba(0,232,212,.55),inset 0 1px 0 rgba(255,255,255,.35);pointer-events:none;will-change:left;border:1px solid rgba(255,255,255,.25)}
-.sky-track.sky-track--live{cursor:pointer}
+.sky-play-duo{display:flex;flex-direction:column;gap:12px;width:100%}
+@media (min-width:640px){
+  .sky-play-duo{flex-direction:row;align-items:stretch}
+  .sky-play-duo .sky-tower-3d-wrap{flex:0 0 38%;max-width:220px}
+  .sky-play-duo .sky-stack-canvas-wrap{flex:1;min-width:0}
+}
+.sky-tower-3d-wrap{position:relative;border-radius:14px;overflow:hidden;background:radial-gradient(120% 80% at 50% 100%,#0a1020 0%,#04060d 100%);border:1px solid rgba(0,232,212,.16);min-height:min(28vh,200px);aspect-ratio:4/3}
+.sky-tower-3d-wrap canvas.sky-tower-webgl{display:block;width:100%;height:100%}
+.sky-tower-fallback{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:.76rem;color:var(--muted);padding:10px;text-align:center}
+.sky-stack-canvas-wrap{position:relative;flex:1;border-radius:14px;overflow:hidden;background:linear-gradient(180deg,#12182a,#070914);border:1px solid rgba(0,232,212,.14);min-height:min(44vh,340px)}
+#sky-stack-canvas{display:block;width:100%;height:auto;vertical-align:middle;touch-action:manipulation;cursor:pointer}
+.sky-stack-overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(5,8,18,.72);color:#e8f0ff;font-weight:800;font-size:1.05rem;text-align:center;padding:16px;line-height:1.35;pointer-events:none;z-index:2}
+.sky-stack-overlay.hidden{display:none!important}
+.sky-stack-hint{font-size:.74rem;color:var(--muted);text-align:center;margin-top:10px}
 
 /* ── Ville 3D (arrière-plan) ── */
 .sky-city-bg{position:fixed;left:0;right:0;bottom:0;height:min(42vh,320px);pointer-events:none;z-index:0;overflow:hidden;opacity:.92}
@@ -78,14 +82,9 @@ h2{font-size:1.45rem;font-weight:800;background:linear-gradient(135deg,var(--pri
 .sky-win-grid span{background:rgba(0,232,212,.25);border-radius:1px;box-shadow:0 0 6px rgba(0,232,212,.2)}
 .sky-ant{position:absolute;top:-14px;left:50%;width:4px;height:16px;margin-left:-2px;background:linear-gradient(180deg,#8899aa,#333);transform:translateZ(calc(var(--D)/2 + 1px));border-radius:1px}
 
-/* Tour joueur — WebGL (Three.js) dans #sky-tower-webgl */
-.sky-tower-preview{display:flex;flex-direction:column;align-items:center;gap:8px;margin:16px 0;min-height:140px;justify-content:flex-end;position:relative;z-index:1}
-.sky-tower-3d-wrap{width:100%;height:min(52vh,280px);min-height:220px;border-radius:14px;overflow:hidden;background:linear-gradient(180deg,rgba(6,8,18,.75),rgba(3,4,12,.92));border:1px solid rgba(0,232,212,.12);box-shadow:inset 0 0 40px rgba(0,0,0,.4)}
-#sky-tower-webgl{display:block;width:100%;height:100%;touch-action:none}
-.sky-tower-fallback{width:100%;height:180px;display:none;align-items:center;justify-content:center;color:var(--muted);font-size:.85rem;text-align:center;padding:12px}
-.sky-round-goal{font-size:.78rem;color:var(--primary);text-align:center;font-weight:700;margin-bottom:2px;min-height:1.2em}
-.sky-tower-meta{font-size:.8rem;color:var(--muted)}
-.sky-tap-btn{width:100%;padding:18px;font-size:1.15rem;border-radius:14px;font-weight:900;letter-spacing:.04em}
+.sky-round-goal{font-size:.78rem;color:var(--primary);text-align:center;font-weight:700;margin-bottom:8px;min-height:1.2em}
+.sky-tower-meta{font-size:.82rem;color:var(--muted);text-align:center;margin-top:8px}
+.sky-tap-btn{width:100%;padding:18px;font-size:1.05rem;border-radius:14px;font-weight:800;letter-spacing:.02em}
 .sky-tap-btn:disabled{opacity:.45;cursor:not-allowed}
 .sky-wait-card{text-align:center;padding:20px;color:var(--muted);font-size:.9rem}
 .sky-flash{position:fixed;inset:0;pointer-events:none;z-index:200;display:flex;align-items:center;justify-content:center;font-size:2rem;font-weight:900;text-shadow:0 2px 20px rgba(0,0,0,.8);opacity:0;transition:opacity .2s}
@@ -119,7 +118,7 @@ h2{font-size:1.45rem;font-weight:800;background:linear-gradient(135deg,var(--pri
 <div id="scr-name">
   <h2>🏙️ Skyline</h2>
   <div class="card" style="display:flex;flex-direction:column;gap:10px">
-    <p style="text-align:center;color:var(--muted);font-size:.85rem">À <b>tour de rôle</b> : un <b>bloc d’étage</b> glisse sur un rail — aligne-le sur la <b>zone verte</b> (le centre bouge chaque tour). Réussi = étage qui se pose sur ta tour 3D ; raté = tout tombe.</p>
+    <p style="text-align:center;color:var(--muted);font-size:.85rem">Même principe que <b>Stack Tower</b> : le bloc rebondit en haut — <b>clic ou Espace</b> pour le lâcher. Mal aligné = découpe ; complètement à côté = game over pour ton tour. Objectif d’étages par manche.</p>
     <input id="name-input" type="text" maxlength="20" placeholder="Ton pseudo" autocomplete="off">
     <div style="display:flex;gap:8px">
       <button class="btn btn-p" style="flex:1" onclick="createGame()">Créer une salle</button>
@@ -158,23 +157,20 @@ h2{font-size:1.45rem;font-weight:800;background:linear-gradient(135deg,var(--pri
       <div class="who" id="game-who">—</div>
       <div class="sub" id="game-sub"></div>
     </div>
-    <div class="sky-time-bar"><i id="game-time-i"></i></div>
-    <div class="sky-track-wrap">
-      <div class="sky-track-label" id="sky-track-hint">Aligne le bloc orange sur la zone verte — barre ou bouton</div>
-      <div class="sky-track" id="sky-track">
-        <div class="sky-perfect" id="sky-perfect"></div>
-        <div class="sky-block" id="sky-block"></div>
-      </div>
-    </div>
-    <div class="sky-tower-preview">
-      <div class="sky-round-goal" id="sky-round-goal"></div>
-      <div class="sky-tower-meta" id="tower-meta">Étages : 0 · Score : 0</div>
+    <div class="sky-round-goal" id="sky-round-goal"></div>
+    <div class="sky-play-duo">
       <div class="sky-tower-3d-wrap" id="sky-tower-3d-wrap">
-        <canvas id="sky-tower-webgl" aria-label="Tour 3D"></canvas>
-        <div class="sky-tower-fallback" id="sky-tower-fallback">Chargement WebGL…</div>
+        <canvas class="sky-tower-webgl" aria-hidden="true"></canvas>
+        <div class="sky-tower-fallback" id="sky-tower-fallback">Préparation du rendu 3D…</div>
+      </div>
+      <div class="sky-stack-canvas-wrap" id="sky-stack-wrap">
+        <canvas id="sky-stack-canvas" width="400" height="360" aria-label="Jeu — empiler les blocs"></canvas>
+        <div class="sky-stack-overlay hidden" id="sky-stack-overlay"></div>
       </div>
     </div>
-    <button type="button" class="btn btn-p sky-tap-btn" id="tap-btn" onclick="doTap()">Poser l’étage</button>
+    <p class="sky-stack-hint" id="sky-stack-hint"></p>
+    <div class="sky-tower-meta" id="tower-meta">—</div>
+    <button type="button" class="btn btn-p sky-tap-btn" id="tap-btn" onclick="doStackAction()">Lâcher le bloc (clic ou Espace)</button>
   </div>
 </div>
 
@@ -188,21 +184,22 @@ h2{font-size:1.45rem;font-weight:800;background:linear-gradient(135deg,var(--pri
 </div>
 
 </div>
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js" crossorigin="anonymous"></script>
+<script src="skyline-tower-3d.js"></script>
+<script src="skyline-stack-canvas.js"></script>
 <script>
 const WS_URL = (location.protocol==='https:'?'wss':'ws')+'://'+location.host+'/ws/skyline';
 let ws, mySlot=-1, myCode='', isSpectator=false, pendingAction=null;
-let serverOffsetMs = 0;
-let animId = 0;
-const skyTurnState = { turnStart: 0, turnEnd: 0, periodMs: 2800, turnDurationMs: 12000, turnSlot: -1, phase: '', targetFloors: 3, stackCenter: 0.5, blockPhase0: 0 };
+const skyTurnState = { turnSlot: -1, phase: '', targetFloors: 3, stackDifficulty: 1, round: 1 };
+let stackGame = null;
+let stackFinishedSent = false;
+let lastStackTurnKey = '';
 let lastTowerFloors = -1;
 let towerThreeReady = false;
 
-function teardownTower3D(){
-  lastTowerFloors = -1;
-  towerThreeReady = false;
-  if(window.SkylineTower3D && typeof window.SkylineTower3D.dispose==='function'){
-    try{ window.SkylineTower3D.dispose(); }catch(_){}
-  }
+function stopStack(){
+  if(stackGame && typeof stackGame.stop==='function'){ try{ stackGame.stop(); }catch(_){} }
+  stackGame = null;
 }
 const $ = id => document.getElementById(id);
 const show = id => $(id).classList.remove('hidden');
@@ -243,35 +240,66 @@ function copyCode(){ try{ navigator.clipboard.writeText(myCode); }catch(_){} }
 function startGame(){ if(isSpectator)return; send({type:'start_skyline'}); }
 function restart(){ if(isSpectator)return; send({type:'restart_skyline'}); }
 
-function syncServerTime(serverTime){
-  if(serverTime) serverOffsetMs = serverTime - Date.now();
-}
-
-function blockXFromElapsed(elapsed){
-  const period = skyTurnState.periodMs || 2800;
-  const omega = (2 * Math.PI) / period;
-  const ph0 = skyTurnState.blockPhase0 || 0;
-  return 0.5 + 0.45 * Math.sin(elapsed * omega + ph0);
-}
-
-function isTapEnabled(){
+function isStackTurn(){
   return !isSpectator && skyTurnState.phase === 'TURNING' && skyTurnState.turnSlot === mySlot;
 }
 
-function setupTrackTap(){
-  const tr = $('sky-track');
-  if(!tr) return;
-  if(tr._skyTapHandler){
-    tr.removeEventListener('pointerdown', tr._skyTapHandler);
-    tr._skyTapHandler = null;
+function syncStackOverlay(){
+  const ov=$('sky-stack-overlay');
+  const pl=(typeof skyTurnState._activeName==='string')?skyTurnState._activeName:'';
+  const hint=$('sky-stack-hint');
+  if(!ov)return;
+  if(isStackTurn()){
+    ov.classList.add('hidden');
+    if(hint) hint.textContent='Clique ou Espace pour lâcher le bloc quand il est bien au-dessus de la pile.';
+  }else{
+    ov.classList.remove('hidden');
+    ov.textContent=isSpectator?'Spectateur — '+pl+' joue.':('Tour de '+pl+' — regarde la pile et la prévisualisation 3D.');
+    if(hint) hint.textContent=isSpectator?'Tu observes le joueur actif.':'Ce n’est pas ton tour — la prévisualisation 3D suit la pile du joueur actif.';
   }
-  tr._skyTapHandler = function(e){
-    if(!isTapEnabled()) return;
-    e.preventDefault();
-    doTap();
+}
+
+function startStackForTurn(state){
+  const key=(state.turnSlot||0)+'_'+(state.round||1)+'_'+(state.stackDifficulty||1);
+  if(isSpectator){
+    lastStackTurnKey=key;
+    return;
+  }
+  if(!isStackTurn()){
+    lastStackTurnKey=key;
+    stopStack();
+    return;
+  }
+  if(lastStackTurnKey===key && stackGame)return;
+  if(lastStackTurnKey===key && stackFinishedSent)return;
+  lastStackTurnKey=key;
+  stackFinishedSent=false;
+  stopStack();
+  towerThreeReady=false;
+  lastTowerFloors=-1;
+  const c=$('sky-stack-canvas');
+  if(!c||typeof window.SkylineStackGame!=='function')return;
+  stackGame=new SkylineStackGame(c);
+  stackGame.onFloorCountChange=function(n){
+    const n3=Math.min(18,Math.max(0,n|0));
+    if(!towerThreeReady&&window.SkylineTower3D){
+      towerThreeReady=!!SkylineTower3D.init('sky-tower-3d-wrap');
+      const fb=$('sky-tower-fallback');
+      if(fb) fb.style.display=towerThreeReady?'none':'flex';
+    }
+    var prev=lastTowerFloors;
+    if(towerThreeReady&&typeof SkylineTower3D.setFloorsFromBottom==='function'&&n3>prev){
+      SkylineTower3D.setFloorsFromBottom(Math.max(0,prev),n3,function(){});
+      lastTowerFloors=n3;
+    }
   };
-  tr.addEventListener('pointerdown', tr._skyTapHandler, { passive: false });
-  tr.classList.toggle('sky-track--live', isTapEnabled());
+  stackGame.onFinish=function(score){
+    if(stackFinishedSent)return;
+    stackFinishedSent=true;
+    stopStack();
+    send({type:'skyline_stack_done',score:score|0});
+  };
+  stackGame.start({speedMul:state.stackDifficulty||1});
 }
 
 function triggerCityBuildingFall(){
@@ -289,17 +317,25 @@ function triggerCityBuildingFall(){
   } else setTimeout(done, 1100);
 }
 
-function stopGameAnim(){ if(animId){cancelAnimationFrame(animId); animId=0;} }
+function teardownTower3D(){
+  lastTowerFloors=-1;
+  towerThreeReady=false;
+  if(window.SkylineTower3D&&typeof SkylineTower3D.dispose==='function'){
+    try{ SkylineTower3D.dispose(); }catch(_){}
+  }
+  const fb=$('sky-tower-fallback');
+  if(fb){ fb.style.display='flex'; fb.textContent=''; }
+}
 
-function renderTowerFloors(n){
+function renderTowerFloors(n, opts){
+  opts=opts||{};
+  const force=!!opts.force;
   const wrap=$('sky-tower-3d-wrap');
   const fb=$('sky-tower-fallback');
   if(!wrap)return;
   n=Math.min(18,Math.max(0,n|0));
   const prev=lastTowerFloors;
-  if(n===prev && prev>=0){
-    return;
-  }
+  if(!force&&n===prev&&prev>=0)return;
   if(typeof window.SkylineTower3D==='undefined'||typeof window.SkylineTower3D.init!=='function'){
     if(fb){ fb.style.display='flex'; fb.textContent='Chargement du moteur 3D…'; }
     return;
@@ -317,7 +353,7 @@ function renderTowerFloors(n){
     SkylineTower3D.playCollapse(function(){ SkylineTower3D.setFloors(0); });
     return;
   }
-  if(n>prev && n>=1 && typeof SkylineTower3D.setFloorsFromBottom==='function'){
+  if(!force&&n>prev&&n>=1&&typeof SkylineTower3D.setFloorsFromBottom==='function'){
     lastTowerFloors=n;
     SkylineTower3D.setFloorsFromBottom(Math.max(0,prev),n,function(){});
     return;
@@ -327,107 +363,90 @@ function renderTowerFloors(n){
 }
 
 function resetTowerForNewRound(){
-  lastTowerFloors = -1;
-  if(towerThreeReady && window.SkylineTower3D && typeof SkylineTower3D.setFloorsInstant==='function'){
+  lastTowerFloors=-1;
+  if(towerThreeReady&&window.SkylineTower3D&&typeof SkylineTower3D.setFloorsInstant==='function'){
     SkylineTower3D.setFloorsInstant(0);
   }
 }
 
-function gameLoop(state){
-  const ts = state.turnStart, te = state.turnEnd;
-  const center = state.stackCenter != null ? state.stackCenter : 0.5;
-  const half = state.perfectHalf != null ? state.perfectHalf : 0.11;
-  const blk = $('sky-block');
-  const perf = $('sky-perfect');
-  const ti = $('game-time-i');
-  if(perf){
-    perf.style.width = (half * 200) + '%';
-    perf.style.left = (center * 100) + '%';
-  }
-  function frame(){
-    const elapsed = Math.max(0, (Date.now() + serverOffsetMs) - ts);
-    const x = blockXFromElapsed(elapsed);
-    if(blk) blk.style.left = (x * 100) + '%';
-    if(ti && te){
-      const left = Math.max(0, te - Date.now() - serverOffsetMs);
-      const total = Math.max(1, te - ts);
-      ti.style.transform = 'scaleX(' + Math.max(0, left / total) + ')';
-    }
-    animId = requestAnimationFrame(frame);
-  }
-  stopGameAnim();
-  animId = requestAnimationFrame(frame);
-}
-
 function applyGameVisual(state){
-  skyTurnState.turnStart = state.turnStart || 0;
-  skyTurnState.turnEnd = state.turnEnd || 0;
-  skyTurnState.periodMs = state.periodMs || 2800;
-  skyTurnState.turnDurationMs = state.turnDurationMs || 12000;
-  skyTurnState.turnSlot = state.turnSlot != null ? state.turnSlot : -1;
-  skyTurnState.phase = state.phase || '';
-  skyTurnState.targetFloors = state.targetFloors != null ? state.targetFloors : 3;
-  skyTurnState.stackCenter = state.stackCenter != null ? state.stackCenter : 0.5;
-  skyTurnState.blockPhase0 = state.blockPhase0 != null ? state.blockPhase0 : 0;
-  const pl = (state.players||[]).find(p=>p.slot===state.turnSlot);
-  const name = pl ? pl.name : '?';
-  const myTurn = !isSpectator && state.turnSlot === mySlot;
-  $('game-who').textContent = myTurn ? 'À toi !' : ('Tour de ' + name);
-  const tgt = skyTurnState.targetFloors;
-  const diffHint = 'Manche ' + (state.round||1) + ' — rail plus rapide, zone plus étroite';
-  $('game-sub').textContent = myTurn ? (diffHint + ' · aligne le bloc') : (isSpectator ? ('Observation · objectif : ' + tgt + ' étages') : ('Attends… · objectif : ' + tgt + ' étages'));
-  const goalEl = $('sky-round-goal');
-  if(goalEl) goalEl.textContent = 'Objectif manche : atteindre ' + tgt + ' étages (+30 pts bonus si réussi)';
-  const me = (state.players||[]).find(p=>p.slot===mySlot);
-  let floors = 0, score = 0;
-  if (isSpectator){
-    const ap = pl;
-    floors = ap ? (ap.floors||0) : 0;
-    score = ap ? (ap.score||0) : 0;
-    $('tower-meta').textContent = name + ' — ' + floors + '/' + tgt + ' étages · score ' + score;
-  } else {
-    floors = me ? (me.floors||0) : 0;
-    score = me ? (me.score||0) : 0;
-    $('tower-meta').textContent = 'Tes étages : ' + floors + '/' + tgt + ' · score ' + score;
+  skyTurnState.turnStart=state.turnStart||0;
+  skyTurnState.turnEnd=state.turnEnd||0;
+  skyTurnState.turnSlot=state.turnSlot!=null?state.turnSlot:-1;
+  skyTurnState.phase=state.phase||'';
+  skyTurnState.targetFloors=state.targetFloors!=null?state.targetFloors:3;
+  skyTurnState.stackDifficulty=state.stackDifficulty!=null?state.stackDifficulty:1;
+  skyTurnState.round=state.round!=null?state.round:1;
+  const pl=(state.players||[]).find(p=>p.slot===state.turnSlot);
+  const name=pl?pl.name:'?';
+  skyTurnState._activeName=name;
+  const myTurn=!isSpectator&&state.turnSlot===mySlot;
+  $('game-who').textContent=myTurn?'À toi !':('Tour de '+name);
+  const tgt=skyTurnState.targetFloors;
+  const spd=(skyTurnState.stackDifficulty||1).toFixed(2).replace(/\.?0+$/,'');
+  $('game-sub').textContent=myTurn
+    ? ('Manche '+skyTurnState.round+' · vitesse ×'+spd+' — empile le plus possible avant la fin du temps.')
+    :(isSpectator?('Observation · objectif : '+tgt+' étages · vitesse ×'+spd)
+    :('Attends… · objectif : '+tgt+' étages'));
+  const goalEl=$('sky-round-goal');
+  if(goalEl) goalEl.textContent='Objectif manche : '+tgt+' étages ou plus (+30 pts bonus si réussi)';
+  const me=(state.players||[]).find(p=>p.slot===mySlot);
+  let floorsViz=0, scoreLine='';
+  if(isSpectator){
+    const ap=pl;
+    floorsViz=ap? (ap.floors||0):0;
+    scoreLine=name+' — record du tour (serv.) : '+floorsViz+' étages · score '+(ap?(ap.score||0):0);
+  }else if(myTurn){
+    floorsViz=0;
+    scoreLine='Ton meilleur score ce tour partira au serveur à la fin (temps ou chute).';
+  }else{
+    floorsViz=me? (me.floors||0):0;
+    scoreLine='Tes étages enregistrés : '+floorsViz+'/'+tgt+' · score '+(me?(me.score||0):0);
   }
-  renderTowerFloors(floors);
-  const btn = $('tap-btn');
+  $('tower-meta').textContent=scoreLine;
+  if(isSpectator||!myTurn){
+    renderTowerFloors(floorsViz,{force:isSpectator});
+  }
+  syncStackOverlay();
+  const btn=$('tap-btn');
   if(btn){
-    btn.disabled = !myTurn || isSpectator;
-    btn.textContent = isSpectator ? 'Spectateur' : (myTurn ? 'Poser l’étage' : 'Pas ton tour');
+    btn.disabled=!myTurn||isSpectator;
+    btn.textContent=isSpectator?'Spectateur':(myTurn?'Lâcher le bloc (clic ou Espace)':'Pas ton tour');
   }
-  $('game-rnd').textContent = 'MANCHE ' + (state.round||1) + '/' + (state.totalRounds||5);
-  gameLoop(state);
-  setupTrackTap();
+  $('game-rnd').textContent='MANCHE '+(state.round||1)+'/'+(state.totalRounds||5);
 }
 
 function showGameScreen(state){
   hide('scr-name'); hide('scr-wait'); hide('scr-cd'); hide('scr-over'); show('scr-game');
-  syncServerTime(state.serverTime);
+  stopStack();
   applyGameVisual(state);
+  if(state.phase==='TURNING'){
+    startStackForTurn(state);
+  }
 }
 
 function updateState(d){
-  if(d.phase==='TURNING' && window.ZapPlay){
-    const showLou = d.turnSlot !== mySlot || isSpectator;
+  if(d.phase==='TURNING'&&window.ZapPlay){
+    const showLou=d.turnSlot!==mySlot||isSpectator;
     if(showLou) ZapPlay.showLounge({players:d.players||[],mySlot:isSpectator?-1:mySlot,roomCode:d.code||myCode,gameName:'Skyline'});
     else ZapPlay.hideLounge();
   }
   if(d.phase==='WAITING'){
-    stopGameAnim();
     teardownTower3D();
+    stopStack();
+    lastStackTurnKey='';
     hide('scr-cd'); hide('scr-game'); hide('scr-over');
     show('scr-wait');
     $('w-code').textContent=d.code||myCode;
-    const host = d.players && d.players[0] ? d.players[0].name : '';
-    const n = (d.players||[]).length;
-    $('start-btn').classList.toggle('hidden', !(mySlot===0 && n>=2));
-    $('w-hint').textContent = n<2 ? 'En attente d’un adversaire…' : (mySlot===0 ? 'Tu es l’hôte — lance quand tout le monde est prêt.' : 'En attente du lancement par '+host+'…');
+    const host=d.players&&d.players[0]?d.players[0].name:'';
+    const n=(d.players||[]).length;
+    $('start-btn').classList.toggle('hidden',!(mySlot===0&&n>=2));
+    $('w-hint').textContent=n<2?'En attente d’un adversaire…':(mySlot===0?'Tu es l’hôte — lance quand tout le monde est prêt.':'En attente du lancement par '+host+'…');
     if(window.ZapPlay) ZapPlay.showLounge({players:d.players||[],mySlot:isSpectator?-1:mySlot,roomCode:d.code||myCode,gameName:'Skyline'});
   }
   if(d.phase==='GAME_OVER'){
-    stopGameAnim();
     teardownTower3D();
+    stopStack();
     renderGameOverFromState(d);
   }
 }
@@ -459,12 +478,20 @@ function flash(msg, ok){
   setTimeout(()=>{ el.classList.remove('on'); el.setAttribute('aria-hidden','true'); }, 900);
 }
 
-function doTap(){
-  if(!isTapEnabled()) return;
-  const elapsed = Math.round((Date.now() + serverOffsetMs) - skyTurnState.turnStart);
-  const cap = (skyTurnState.turnDurationMs || 12000) + 400;
-  send({ type: 'skyline_tap', elapsedMs: Math.max(0, Math.min(cap, elapsed)) });
+function doStackAction(){
+  if(!isStackTurn()||!stackGame||typeof stackGame.handleInput!=='function')return;
+  stackGame.handleInput();
 }
+
+(function setupStackInput(){
+  const cv=$('sky-stack-canvas');
+  if(!cv)return;
+  cv.addEventListener('pointerdown',function(e){
+    if(!isStackTurn())return;
+    e.preventDefault();
+    doStackAction();
+  },{passive:false});
+})();
 
 function handleMsg(d){
   switch(d.type){
@@ -487,14 +514,11 @@ function handleMsg(d){
       $('w-hint').textContent='';
       break;
     case 'skyline_state':
-      syncServerTime(d.serverTime);
       if(d.phase==='GAME_OVER'){
-        stopGameAnim();
         updateState(d);
         break;
       }
       if(d.phase==='WAITING'){
-        stopGameAnim();
         updateState(d);
         break;
       }
@@ -511,16 +535,24 @@ function handleMsg(d){
       const iv=setInterval(()=>{ n--; if(n<=0){ clearInterval(iv); hide('scr-cd'); } else $('cd-n').textContent=n; },1000);
       break;
     case 'skyline_turn_result':
-      syncServerTime(d.serverTime);
+      if(d.slot===mySlot) stopStack();
       if(!d.success) triggerCityBuildingFall();
       if(d.slot===mySlot){
-        const bonus = d.pointsDelta != null ? d.pointsDelta : (d.success ? 10 : 0);
-        flash(d.success ? ('Posé ! +' + bonus + ' pts') : (d.reason==='timeout'?'Temps écoulé !':'Raté — la tour tombe !'), !!d.success);
+        const bonus=d.pointsDelta!=null?d.pointsDelta:0;
+        const sc=d.stackScore!=null?d.stackScore:0;
+        if(d.reason==='timeout'){
+          flash('Temps écoulé — score envoyé : '+sc+' étages.',false);
+        }else if(d.success){
+          flash('Tour terminé ! '+sc+' étages · +'+bonus+' pts',true);
+        }else{
+          flash('Chute ! Score : '+sc+' étages.',false);
+        }
       }
       break;
     case 'skyline_round_result':
-      syncServerTime(d.serverTime);
       resetTowerForNewRound();
+      teardownTower3D();
+      lastStackTurnKey='';
       (d.bonuses||[]).forEach(b=>{
         if(b.slot===mySlot && b.bonus){
           flash('Objectif manche '+d.round+' atteint ! +'+(b.bonus||0)+' pts', true);
@@ -539,7 +571,7 @@ function handleMsg(d){
 document.addEventListener('keydown', e=>{
   if(e.code==='Space' && !$('scr-game').classList.contains('hidden')){
     const btn=$('tap-btn');
-    if(btn && !btn.disabled){ e.preventDefault(); doTap(); }
+    if(btn && !btn.disabled){ e.preventDefault(); doStackAction(); }
   }
 });
 
@@ -563,8 +595,6 @@ document.addEventListener('keydown', e=>{
 })();
 </script>
 <script>(function(){var sc=document.getElementById('zp-stars-sky');if(!sc)return;for(var i=0;i<32;i++){var s=document.createElement('div');s.className='zp-star';var sz=(.4+Math.random()*1.6).toFixed(1);s.style.cssText='left:'+Math.random()*100+'%;top:'+Math.random()*100+'%;width:'+sz+'px;height:'+sz+'px;opacity:'+((.2+Math.random()*.8).toFixed(2))+';animation-duration:'+(2+Math.random()*4).toFixed(1)+'s;animation-delay:'+(Math.random()*5).toFixed(1)+'s';sc.appendChild(s);}})();</script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js" crossorigin="anonymous"></script>
-<script src="skyline-tower-3d.js"></script>
 <script src="fx.js"></script>
 <script src="shared.js"></script>
 <script src="zp-shell.js"></script>

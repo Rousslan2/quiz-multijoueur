@@ -5429,34 +5429,24 @@ wssDebat.on('connection', ws => {
 });
 
 // ════════════════════════════════════════════════════════
-//  SKYLINE — bloc qui glisse (gauche↔droite) : aligne-le sur la zone verte
-//  (stackCenter ± tolérance). Chaque manche : centre et vitesse varient.
+//  SKYLINE — même principe que stack-tower-game (rebond + chute + découpe)
+//  Le client joue en local (canvas) puis envoie le score de la pile.
 // ════════════════════════════════════════════════════════
 const SKYLINE_TOTAL_ROUNDS = 5;
-const SKYLINE_TURN_MS = 12000;
-const SKYLINE_PERIOD_MS = 2800;
-const SKYLINE_PERFECT_HALF = 0.11;
+const SKYLINE_STACK_TURN_MS = 120000;
 const SKYLINE_ROUND_BONUS = 30;
+const SKYLINE_PTS_PER_FLOOR = 5;
 
 function skylineTargetFloorsForRound(r) {
   return Math.min(14, 3 + Math.max(0, r - 1) * 2);
 }
 
-function skylineDifficultyForRound(r) {
-  const t = Math.max(0, r - 1);
-  return {
-    turnMs: Math.max(5200, SKYLINE_TURN_MS - t * 900),
-    periodMs: Math.max(1650, SKYLINE_PERIOD_MS - t * 190),
-    perfectHalf: Math.max(0.052, SKYLINE_PERFECT_HALF - t * 0.012)
-  };
+function skylineStackDifficulty(r) {
+  return 1 + Math.max(0, (r || 1) - 1) * 0.14;
 }
 
 function applySkylineDifficultyForRound(room) {
-  const r = room.round || 1;
-  const d = skylineDifficultyForRound(r);
-  room.periodMs = d.periodMs;
-  room.perfectHalf = d.perfectHalf;
-  room.turnDurationMs = d.turnMs;
+  room.stackDifficulty = skylineStackDifficulty(room.round || 1);
 }
 
 const skylineRooms = new Map();
@@ -5474,11 +5464,7 @@ function makeSkylineRoom(code, host) {
     turnSlot: 0,
     turnStart: 0,
     turnEnd: 0,
-    periodMs: SKYLINE_PERIOD_MS,
-    perfectHalf: SKYLINE_PERFECT_HALF,
-    turnDurationMs: SKYLINE_TURN_MS,
-    stackCenter: 0.5,
-    blockPhase0: 0,
+    stackDifficulty: 1,
     timer: null
   };
 }
@@ -5502,11 +5488,7 @@ function skylineSnap(room, extra = {}) {
     turnSlot: room.turnSlot,
     turnStart: room.turnStart,
     turnEnd: room.turnEnd,
-    periodMs: room.periodMs,
-    perfectHalf: room.perfectHalf,
-    turnDurationMs: room.turnDurationMs || SKYLINE_TURN_MS,
-    stackCenter: room.stackCenter != null ? room.stackCenter : 0.5,
-    blockPhase0: room.blockPhase0 != null ? room.blockPhase0 : 0,
+    stackDifficulty: room.stackDifficulty != null ? room.stackDifficulty : 1,
     ...extra
   };
 }
@@ -5549,19 +5531,16 @@ function skylineResetFloorsForNewRound(room) {
 
 function skylineStartTurn(room) {
   room.phase = 'TURNING';
-  room.stackCenter = 0.26 + Math.random() * 0.48;
-  room.blockPhase0 = Math.random() * Math.PI * 2;
   const now = Date.now();
-  const dur = room.turnDurationMs || SKYLINE_TURN_MS;
   room.turnStart = now;
-  room.turnEnd = now + dur;
+  room.turnEnd = now + SKYLINE_STACK_TURN_MS;
   clearTimeout(room.timer);
-  room.timer = setTimeout(() => skylineTimeoutTurn(room), dur);
+  room.timer = setTimeout(() => skylineStackTimeout(room), SKYLINE_STACK_TURN_MS);
   bcastRoom(room, skylineSnap(room));
   broadcastLobby();
 }
 
-function skylineTimeoutTurn(room) {
+function skylineStackTimeout(room) {
   if (room.phase !== 'TURNING') return;
   const slot = room.turnSlot;
   room.floors[slot] = 0;
@@ -5570,9 +5549,9 @@ function skylineTimeoutTurn(room) {
     type: 'skyline_turn_result',
     slot,
     name: pl ? pl.name : '?',
+    stackScore: 0,
     success: false,
     reason: 'timeout',
-    pos: null,
     floors: 0,
     score: room.scores[slot] || 0,
     round: room.round,
@@ -5600,46 +5579,26 @@ function skylineAdvanceTurn(room) {
   skylineStartTurn(room);
 }
 
-function skylineProcessTap(room, slot, elapsedFromClient) {
-  const now = Date.now();
-  if (now > room.turnEnd || now < room.turnStart) return false;
+function skylineProcessStackDone(room, slot, stackScore) {
+  if (room.phase !== 'TURNING' || slot !== room.turnSlot) return false;
   clearTimeout(room.timer);
-  let elapsed = now - room.turnStart;
-  if (elapsedFromClient != null && Number.isFinite(elapsedFromClient)) {
-    const c = Math.round(elapsedFromClient);
-    const maxEl = (room.turnDurationMs || SKYLINE_TURN_MS) + 400;
-    if (c >= 0 && c <= maxEl) {
-      elapsed = Math.min(room.turnDurationMs || SKYLINE_TURN_MS, Math.max(0, c));
-    }
-  }
-  const period = room.periodMs || SKYLINE_PERIOD_MS;
-  const omega = (2 * Math.PI) / period;
-  const blockX = 0.5 + 0.45 * Math.sin(elapsed * omega + (room.blockPhase0 || 0));
-  const center = room.stackCenter != null ? room.stackCenter : 0.5;
-  const dist = Math.abs(blockX - center);
-  const half = room.perfectHalf != null ? room.perfectHalf : SKYLINE_PERFECT_HALF;
-  let pointsDelta = 0;
-  const success = dist <= half;
-  if (success) {
-    room.floors[slot] = (room.floors[slot] || 0) + 1;
-    const precision = Math.max(0, 1 - dist / half);
-    const pts = 10 + Math.floor(5 * precision);
-    room.scores[slot] = (room.scores[slot] || 0) + pts;
-    pointsDelta = pts;
-  } else {
-    room.floors[slot] = 0;
-  }
+  const sc = Math.max(0, Math.min(500, Math.floor(Number(stackScore) || 0)));
   const pl = room.players.find(p => p.slot === slot);
+  let pts = 0;
+  if (sc < 1) {
+    room.floors[slot] = 0;
+  } else {
+    room.floors[slot] = sc;
+    pts = sc * SKYLINE_PTS_PER_FLOOR;
+    room.scores[slot] = (room.scores[slot] || 0) + pts;
+  }
   bcastRoom(room, {
     type: 'skyline_turn_result',
     slot,
     name: pl ? pl.name : '?',
-    success,
-    pos: blockX,
-    blockX,
-    stackCenter: center,
-    dist,
-    pointsDelta,
+    stackScore: sc,
+    success: sc >= 1,
+    pointsDelta: pts,
     floors: room.floors[slot] || 0,
     score: room.scores[slot] || 0,
     round: room.round,
@@ -5750,11 +5709,10 @@ wssSkyline.on('connection', ws => {
         broadcastLobby();
         break;
       }
-      case 'skyline_tap': {
+      case 'skyline_stack_done': {
         if (!player || !myRoom || myRoom.phase !== 'TURNING' || isSpectator) return;
         if (player.slot !== myRoom.turnSlot) return;
-        const el = d.elapsedMs != null ? Number(d.elapsedMs) : null;
-        skylineProcessTap(myRoom, player.slot, el);
+        skylineProcessStackDone(myRoom, player.slot, d.score);
         broadcastLobby();
         break;
       }
@@ -5763,9 +5721,7 @@ wssSkyline.on('connection', ws => {
         myRoom.phase = 'WAITING';
         myRoom.round = 0;
         myRoom.turnSlot = 0;
-        myRoom.periodMs = SKYLINE_PERIOD_MS;
-        myRoom.perfectHalf = SKYLINE_PERFECT_HALF;
-        myRoom.turnDurationMs = SKYLINE_TURN_MS;
+        myRoom.stackDifficulty = 1;
         myRoom.players.forEach(p => {
           myRoom.scores[p.slot] = 0;
           myRoom.floors[p.slot] = 0;
