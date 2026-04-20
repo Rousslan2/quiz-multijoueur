@@ -1462,7 +1462,7 @@ if(document.readyState==='loading'){
 
 function init(){
   const isIndex=location.pathname.endsWith('index.html')||location.pathname.endsWith('/');
-  if(!isIndex){injectLoader();loaderShownAt=Date.now();}
+  if(!isIndex && !loaderHideScheduled){injectLoader();loaderShownAt=Date.now();}
   initAdminNavVisibility();
   autoFillPseudo();
   hookPseudoInputs();
