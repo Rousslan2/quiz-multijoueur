@@ -6,12 +6,46 @@
 
 (function () {
   const Z_INDEX = 2147483646;
-  const MIN_MS = 400; // petit minimum pour éviter le flash
+  /** Aligné sur shared.js (MIN_LOADER_MS) — évite un flash trop court */
+  const MIN_MS = 1500;
   const SAFETY_MS = 12000;
 
   let shownAt = 0;
   let hideScheduled = false;
   let safetyTimer = null;
+
+  /** Plein viewport (overlay toujours au-dessus, même si CSS arrive en retard) */
+  function lockFullscreen(el) {
+    if (!el) return;
+    if (el.parentNode !== document.documentElement) {
+      try { document.documentElement.appendChild(el); } catch (_) {}
+    }
+    el.style.setProperty('z-index', String(Z_INDEX), 'important');
+    el.style.setProperty('position', 'fixed', 'important');
+    el.style.setProperty('top', '0', 'important');
+    el.style.setProperty('right', '0', 'important');
+    el.style.setProperty('bottom', '0', 'important');
+    el.style.setProperty('left', '0', 'important');
+    el.style.setProperty('width', '100%', 'important');
+    el.style.setProperty('max-width', '100%', 'important');
+    el.style.setProperty('box-sizing', 'border-box', 'important');
+    try { el.style.minHeight = '100vh'; } catch (_) {}
+    try { el.style.minHeight = '100dvh'; } catch (_) {}
+  }
+
+  function applyScrollLock() {
+    try {
+      document.documentElement.classList.add('zp-page-loading');
+      document.body.style.setProperty('overflow', 'hidden', 'important');
+    } catch (_) {}
+  }
+
+  function releaseScrollLock() {
+    try {
+      document.documentElement.classList.remove('zp-page-loading');
+      document.body.style.removeProperty('overflow');
+    } catch (_) {}
+  }
 
   function ensureCss() {
     // Si la page a déjà un <link>, rien à faire
@@ -32,13 +66,9 @@
   function inject() {
     let el = document.getElementById('zp-loader');
     if (el) {
-      el.style.setProperty('z-index', String(Z_INDEX), 'important');
-      el.style.setProperty('position', 'fixed', 'important');
-      el.style.setProperty('inset', '0', 'important');
-      el.style.setProperty('width', '100%', 'important');
-      el.style.setProperty('min-height', '100dvh', 'important');
-      if (el.parentNode !== document.documentElement) document.documentElement.appendChild(el);
       ensureCss();
+      lockFullscreen(el);
+      applyScrollLock();
       return el;
     }
 
@@ -47,7 +77,6 @@
     // Essaie de coller au markup déjà utilisé dans shared.js / zp-loader.css
     el = mk('div');
     el.id = 'zp-loader';
-    el.style.setProperty('z-index', String(Z_INDEX), 'important');
 
     ['a', 'b'].forEach(c => el.appendChild(mk('div', 'zl-nebula ' + c)));
     ['tl', 'tr', 'bl', 'br'].forEach(c => el.appendChild(mk('div', 'zl-corner ' + c)));
@@ -98,6 +127,8 @@
     el._cycleId = cycleId;
 
     document.documentElement.appendChild(el);
+    lockFullscreen(el);
+    applyScrollLock();
     return el;
   }
 
@@ -107,12 +138,14 @@
       try { window.ZapPlay.showLoader(); } catch (_) {}
       shownAt = Date.now();
       hideScheduled = false;
+      requestAnimationFrame(() => lockFullscreen(document.getElementById('zp-loader')));
       return;
     }
     const el = inject();
     shownAt = Date.now();
     hideScheduled = false;
     if (el) el.classList.remove('hide');
+    lockFullscreen(el);
     if (safetyTimer) clearTimeout(safetyTimer);
     safetyTimer = setTimeout(() => {
       safetyTimer = null;
@@ -135,7 +168,10 @@
     const remaining = Math.max(0, MIN_MS - elapsed);
     setTimeout(() => {
       el.classList.add('hide');
-      setTimeout(() => { try { el.remove(); } catch (_) {} }, 650);
+      setTimeout(() => {
+        try { el.remove(); } catch (_) {}
+        releaseScrollLock();
+      }, 650);
     }, remaining);
   }
 
@@ -147,7 +183,13 @@
   // Si l’accueil a déjà un loader legacy (#loader), on n’affiche pas un deuxième overlay.
   if (!document.getElementById('loader')) {
     show();
-    window.addEventListener('load', () => hide(), { once: true });
+    window.addEventListener(
+      'load',
+      () => {
+        requestAnimationFrame(() => hide());
+      },
+      { once: true }
+    );
   }
 })();
 
