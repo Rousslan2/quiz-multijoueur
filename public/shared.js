@@ -1462,7 +1462,8 @@ if(document.readyState==='loading'){
 
 function init(){
   const isIndex=location.pathname.endsWith('index.html')||location.pathname.endsWith('/');
-  if(!isIndex && !loaderHideScheduled){injectLoader();loaderShownAt=Date.now();}
+  // Loader : géré par zp-page-loader.js (style menu principal). Fallback si absent.
+  if(!isIndex && !window.ZPLoader && !loaderHideScheduled){injectLoader();loaderShownAt=Date.now();}
   initAdminNavVisibility();
   autoFillPseudo();
   hookPseudoInputs();
@@ -1492,8 +1493,8 @@ function init(){
   document.addEventListener('visibilitychange', function () {
     if (document.visibilityState === 'visible') updateNavAccountUI();
   });
-  // Auto-hide loader after 5s max
-  if(!isIndex)setTimeout(hideLoader,8000);
+  // Filet de sécurité pour le loader legacy uniquement (ZPLoader gère le sien).
+  if(!isIndex && !window.ZPLoader) setTimeout(hideLoader, 8000);
 }
 
 /**
