@@ -924,14 +924,6 @@
   </div>
 </footer>
 
-<!-- Page transition loader (for clicks to external game pages) -->
-<div class="page-loader" id="page-loader">
-  <div class="page-loader__bar"></div>
-  <div class="page-loader__core">
-    <div class="page-loader__mark"></div>
-    <div class="page-loader__text">Chargement du jeu...</div>
-  </div>
-</div>
 
 <script type="module">
   import { initHero, initCTA } from './three-scene.js';
@@ -995,21 +987,6 @@
   setTimeout(() => loader.classList.add('is-hidden'), 4500);
 })();
 
-/* ====== Page transition loader on game card clicks ====== */
-(function() {
-  const pageLoader = document.getElementById('page-loader');
-  if (!pageLoader) return;
-  const links = document.querySelectorAll('a.game');
-  links.forEach(a => {
-    a.addEventListener('click', (e) => {
-      // Only show if opens in new tab (target=_blank still triggers briefly)
-      pageLoader.classList.add('is-active');
-      setTimeout(() => pageLoader.classList.remove('is-active'), 1200);
-    });
-  });
-  // Also hide on pageshow (e.g., back navigation)
-  window.addEventListener('pageshow', () => pageLoader.classList.remove('is-active'));
-})();
 
 /* ====== PWA service worker ====== */
 if ('serviceWorker' in navigator) {
