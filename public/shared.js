@@ -1462,7 +1462,10 @@ if(document.readyState==='loading'){
 
 function init(){
   const isIndex=location.pathname.endsWith('index.html')||location.pathname.endsWith('/');
+  /** Accueil avec `data-zp-home-loader="1"` : même #zp-loader que lobby/jeux (plus de loader styles.css). */
+  const homeUnifiedLoader=isIndex && document.documentElement.getAttribute('data-zp-home-loader')==='1';
   if(!isIndex){injectLoader();loaderShownAt=Date.now();}
+  else if(homeUnifiedLoader){injectLoader();loaderShownAt=Date.now();setTimeout(hideLoader,2200);}
   initAdminNavVisibility();
   autoFillPseudo();
   hookPseudoInputs();
@@ -1476,7 +1479,10 @@ function init(){
     if(document.visibilityState!=='hidden') touchPresence();
   });
   if(isIndex){
-    if(!getSavedPseudo()) showWelcomeScreen();
+    if(!getSavedPseudo()){
+      if(homeUnifiedLoader)setTimeout(showWelcomeScreen,2400);
+      else showWelcomeScreen();
+    }
     renderHistoryWidget('history-widget');
     renderSocialWidget('social-widget');
     setInterval(()=>renderSocialWidget('social-widget'),12000);
@@ -1492,7 +1498,6 @@ function init(){
   document.addEventListener('visibilitychange', function () {
     if (document.visibilityState === 'visible') updateNavAccountUI();
   });
-  // Auto-hide loader after 5s max
   if(!isIndex)setTimeout(hideLoader,8000);
 }
 

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="fr" data-zp-home-loader="1" data-zp-game="home">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -10,49 +10,12 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=5">
+<link rel="stylesheet" href="theme.css">
+<link rel="stylesheet" href="/zp-loader.css">
+<link rel="stylesheet" href="zp-shell.css">
+<link rel="stylesheet" href="styles.css?v=6">
 </head>
-<body>
-
-<!-- Loader -->
-<div class="loader" id="loader">
-  <div class="loader__bg"></div>
-  <div class="loader__content">
-    <div class="loader__mark">
-      <svg viewBox="0 0 120 120" width="120" height="120">
-        <defs>
-          <linearGradient id="lgrad" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stop-color="#5eead4"/>
-            <stop offset="50%" stop-color="#a78bfa"/>
-            <stop offset="100%" stop-color="#ff4d6d"/>
-          </linearGradient>
-        </defs>
-        <circle class="loader__ring loader__ring--1" cx="60" cy="60" r="54" fill="none" stroke="url(#lgrad)" stroke-width="1.5" stroke-dasharray="340" stroke-dashoffset="0"/>
-        <circle class="loader__ring loader__ring--2" cx="60" cy="60" r="42" fill="none" stroke="rgba(255,255,255,.12)" stroke-width="1"/>
-        <circle class="loader__ring loader__ring--3" cx="60" cy="60" r="30" fill="none" stroke="url(#lgrad)" stroke-width="1" stroke-dasharray="12 8"/>
-        <path class="loader__bolt" d="M58 32 L42 66 L56 66 L50 88 L74 52 L60 52 Z" fill="url(#lgrad)"/>
-      </svg>
-    </div>
-    <div class="loader__brand">
-      <span class="loader__word">ZAPPLAY</span>
-      <span class="loader__dot">.</span>
-    </div>
-    <div class="loader__tagline">
-      <span class="loader__char">P</span><span class="loader__char">L</span><span class="loader__char">A</span><span class="loader__char">Y</span>
-      <span class="loader__gap"></span>
-      <span class="loader__char">W</span><span class="loader__char">I</span><span class="loader__char">T</span><span class="loader__char">H</span>
-      <span class="loader__gap"></span>
-      <span class="loader__char">F</span><span class="loader__char">R</span><span class="loader__char">I</span><span class="loader__char">E</span><span class="loader__char">N</span><span class="loader__char">D</span><span class="loader__char">S</span>
-    </div>
-    <div class="loader__bar">
-      <div class="loader__bar-fill" id="loader-fill"></div>
-    </div>
-    <div class="loader__meta">
-      <span id="loader-pct">0%</span>
-      <span class="loader__status" id="loader-status">Connexion aux serveurs</span>
-    </div>
-  </div>
-</div>
+<body class="home-page">
 
 <!-- Cursor -->
 <div class="cursor-dot"></div>
@@ -924,91 +887,26 @@
   </div>
 </footer>
 
-<!-- Page transition loader (for clicks to external game pages) -->
-<div class="page-loader" id="page-loader">
-  <div class="page-loader__bar"></div>
-  <div class="page-loader__core">
-    <div class="page-loader__mark"></div>
-    <div class="page-loader__text">Chargement du jeu...</div>
-  </div>
-</div>
-
 <script type="module">
   import { initHero, initCTA } from './three-scene.js';
   initHero(document.getElementById('hero-canvas'));
   initCTA(document.getElementById('cta-canvas'));
 </script>
 <script src="ui.js"></script>
+<script src="shared.js"></script>
+<script src="zp-shell.js"></script>
 <script>
-/* ====== Initial loader ====== */
-(function() {
-  const loader = document.getElementById('loader');
-  const fill = document.getElementById('loader-fill');
-  const pct = document.getElementById('loader-pct');
-  const status = document.getElementById('loader-status');
-  if (!loader) return;
-
-  const steps = [
-    { t: 12, msg: 'Connexion aux serveurs' },
-    { t: 28, msg: 'Chargement des assets' },
-    { t: 48, msg: 'Initialisation du moteur 3D' },
-    { t: 72, msg: 'Synchronisation du lobby' },
-    { t: 92, msg: 'Préparation des jeux' },
-    { t: 100, msg: 'Prêt à jouer' },
-  ];
-
-  let current = 0;
-  let target = 0;
-  let progress = 0;
-  let stepIdx = 0;
-
-  // Advance steps
-  const stepTick = setInterval(() => {
-    if (stepIdx < steps.length) {
-      target = steps[stepIdx].t;
-      status.textContent = steps[stepIdx].msg;
-      stepIdx++;
-    } else {
-      clearInterval(stepTick);
-    }
-  }, 340);
-
-  // Smooth fill
-  function animate() {
-    progress += (target - progress) * 0.12;
-    const displayed = Math.round(progress);
-    fill.style.width = displayed + '%';
-    pct.textContent = displayed + '%';
-    if (progress < 99.5 || !document.readyState.match(/complete|interactive/)) {
-      requestAnimationFrame(animate);
-    } else {
-      fill.style.width = '100%';
-      pct.textContent = '100%';
-      setTimeout(() => {
-        loader.classList.add('is-hidden');
-      }, 450);
-    }
-  }
-  requestAnimationFrame(animate);
-
-  // Safety timeout
-  setTimeout(() => loader.classList.add('is-hidden'), 4500);
-})();
-
-/* ====== Page transition loader on game card clicks ====== */
-(function() {
-  const pageLoader = document.getElementById('page-loader');
-  if (!pageLoader) return;
-  const links = document.querySelectorAll('a.game');
-  links.forEach(a => {
-    a.addEventListener('click', (e) => {
-      // Only show if opens in new tab (target=_blank still triggers briefly)
-      pageLoader.classList.add('is-active');
-      setTimeout(() => pageLoader.classList.remove('is-active'), 1200);
+/* Même #zp-loader que lobby / jeux au clic (cartes jeu, lobby, liens .html internes) */
+(function () {
+  function bind () {
+    document.querySelectorAll('a[href^="/"][href$=".html"]').forEach(function (a) {
+      a.addEventListener('click', function () {
+        if (window.ZapPlay && typeof ZapPlay.showLoader === 'function') ZapPlay.showLoader();
+      });
     });
-  });
-  // Also hide on pageshow (e.g., back navigation)
-  window.addEventListener('pageshow', () => pageLoader.classList.remove('is-active'));
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind);
+  else bind();
 })();
 
 /* ====== PWA service worker ====== */
