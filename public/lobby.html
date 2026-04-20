@@ -617,6 +617,8 @@ fetch('/api/public/config').then(r=>r.json()).then(cfg=>{
   const fParam=urlParams.get('filter');
   if(fParam==='waiting'||fParam==='playing'){const fs=document.getElementById('filter-status');if(fs)fs.value=fParam;}
   updateInviteBarFromInputs();
+  /* Les filtres viennent de se mettre à jour : relancer le rendu pour ne rien masquer par hasard. */
+  try{renderRoomsFiltered();}catch(_){}
 }).catch(()=>updateInviteBarFromInputs());
 
 function sendLobbyPing(){
@@ -672,7 +674,10 @@ function fetchRoomsFromApi(){
 }
 fetchRoomsFromApi();
 /* Secours si le WS lobby est lent ou bloqué (liste à jour même sans push temps réel). */
-setInterval(fetchRoomsFromApi,8000);
+setInterval(fetchRoomsFromApi,4000);
+/* Petit burst au démarrage : rafraîchir vite si une salle vient d’être créée ailleurs. */
+setTimeout(fetchRoomsFromApi,800);
+setTimeout(fetchRoomsFromApi,1800);
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')fetchRoomsFromApi();});
 window.addEventListener('pageshow',e=>{if(e.persisted)fetchRoomsFromApi();});
 

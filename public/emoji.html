@@ -421,6 +421,14 @@ function connect() {
     document.getElementById('name-input').value = name;
     myName = name; pendingAction = () => send({ type: 'create_emoji', name }); connect();
   }
+  /* Depuis le lobby : ?code=XXXX&name=… → rejoindre automatiquement */
+  else if (p.get('code') && p.get('name')) {
+    const name = p.get('name'); const code = p.get('code').toUpperCase();
+    document.getElementById('name-input').value = name; myName = name;
+    if (window.ZapPlay) ZapPlay.savePseudo(name);
+    pendingAction = () => send({ type: 'join_emoji', name, code });
+    connect();
+  }
 })();
 
 function send(obj) {

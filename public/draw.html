@@ -466,6 +466,13 @@ bindLoungeSender();
     const tryCreate=()=>{if(ws&&ws.readyState===WebSocket.OPEN){myName=name;send({type:'create_draw',name});}else reconnectAction=tryCreate;};
     setTimeout(tryCreate,300);
   }
+  /* Depuis le lobby : ?code=XXXX&name=… → rejoindre automatiquement */
+  else if(p.get('code')&&p.get('name')&&p.get('spectate')!=='1'){
+    const name=decodeURIComponent(p.get('name'));
+    const code=p.get('code').toUpperCase();
+    const tryJoin=()=>{if(ws&&ws.readyState===WebSocket.OPEN){isSpectator=false;myName=name;if(window.ZapPlay)ZapPlay.savePseudo(name);send({type:'join_draw',name,code});}else reconnectAction=tryJoin;};
+    setTimeout(tryJoin,320);
+  }
 })();
 
 // ── Round selector ────────────────────────────────────────────────────────────

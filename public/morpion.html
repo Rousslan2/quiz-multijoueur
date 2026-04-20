@@ -760,6 +760,14 @@
       const name = p.get('name'); $('name-input').value = name;
       playerName = name; pendingAction = () => send({ type: 'create_morpion', name }); connect();
     }
+    /* Depuis le lobby : ?code=XXXX&name=… → rejoindre automatiquement */
+    else if (p.get('code') && p.get('name')) {
+      const name = p.get('name'); const code = p.get('code').toUpperCase();
+      $('name-input').value = name; playerName = name;
+      if (window.ZapPlay) ZapPlay.savePseudo(name);
+      pendingAction = () => send({ type: 'join_morpion', name, code });
+      connect();
+    }
   })();
   $('code-input') && $('code-input').addEventListener('input', e => { e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,''); });
 

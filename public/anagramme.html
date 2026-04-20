@@ -329,9 +329,16 @@ $('guess-in').addEventListener('keydown',e=>{ if(e.key==='Enter') submitGuess();
     const name=p.get('name'); $('name-input').value=name;
     pendingAction=()=>send({type:'create_anagramme',name});
   }
-  if(p.get('spectate')==='1' && p.get('code')){
+  else if(p.get('spectate')==='1' && p.get('code')){
     $('code-in').value=p.get('code').toUpperCase(); toggleJoin();
     pendingAction=()=>joinSpectate();
+  }
+  /* Depuis le lobby : ?code=XXXX&name=… → rejoindre automatiquement */
+  else if(p.get('code')&&p.get('name')){
+    const name=p.get('name'); const code=p.get('code').toUpperCase();
+    $('name-input').value=name;
+    if(window.ZapPlay)ZapPlay.savePseudo(name);
+    pendingAction=()=>send({type:'join_anagramme',name,code});
   }
 })();
 function bindLoungeSender(){if(window.ZapPlay)ZapPlay.setLoungeSender(text=>send({type:'lounge_chat',text}));else setTimeout(bindLoungeSender,120);}

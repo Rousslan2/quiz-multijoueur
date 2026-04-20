@@ -562,6 +562,15 @@ if(p.get('create')==='1'&&p.get('name')){
   if(ws&&ws.readyState===1) action();
   else { pendingAction=action; if(!ws||ws.readyState===3) connect(); }
 }
+/* Depuis le lobby : ?code=XXXX&name=… → rejoindre automatiquement */
+else if(p.get('code')&&p.get('name')){
+  const n=p.get('name'); const c=p.get('code').toUpperCase();
+  $('name').value=n; myName=n;
+  if(window.ZapPlay)ZapPlay.savePseudo(n);
+  const action=()=>send({type:'join_paint',name:n,code:c});
+  if(ws&&ws.readyState===1) action();
+  else { pendingAction=action; if(!ws||ws.readyState===3) connect(); }
+}
 $('name').addEventListener('keydown',e=>{if(e.key==='Enter')createGame();});
 $('code').addEventListener('input',e=>{e.target.value=e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,'');});
 $('code').addEventListener('keydown',e=>{if(e.key==='Enter')joinGame();});

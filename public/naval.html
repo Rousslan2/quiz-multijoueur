@@ -718,6 +718,14 @@ if(q.get('create')==='1'&&q.get('name')){
   const go=()=>send({type:'create_naval',name:n});
   if(ws&&ws.readyState===1)go(); else{pending=go; if(!ws||ws.readyState===3)connect();}
 }
+/* Depuis le lobby : ?code=XXXX&name=… → rejoindre automatiquement */
+else if(q.get('code')&&q.get('name')){
+  const n=q.get('name'); const c=q.get('code').toUpperCase();
+  $('name').value=n; myName=n;
+  if(window.ZapPlay)ZapPlay.savePseudo(n);
+  const go=()=>send({type:'join_naval',name:n,code:c});
+  if(ws&&ws.readyState===1)go(); else{pending=go; if(!ws||ws.readyState===3)connect();}
+}
 $('name').addEventListener('keydown',e=>{if(e.key==='Enter')createGame();});
 $('code').addEventListener('input',e=>{e.target.value=e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,'');});
 </script>
