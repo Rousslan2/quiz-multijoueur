@@ -116,7 +116,7 @@ const GAME_NAMES = {
   skyline:'Skyline'
 };
 
-/** Phases « en attente / pas encore en match » pour le lobby (filtre « En attente », badge). */
+/** Phases « salon pas encore en manche / peut accueillir » (badge + filtre « En attente »). */
 function lobbyRoomIsWaiting(game, room) {
   const p = String(room.phase || '');
   return ['WAITING', 'SETUP', 'READY', 'PLACING', 'COUNTDOWN'].includes(p);
@@ -144,10 +144,41 @@ function getRoomsSnapshot() {
   return all;
 }
 
+/** Une entrée snapshot pour un code (scan tous les jeux) — utilisé par le lobby pour « rejoindre par code ». */
+function findRoomSnapshotByCode(rawCode) {
+  const code = String(rawCode || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+  if (code.length < 2) return null;
+  const maps = { quiz:quizRooms, draw:drawRooms, p4:p4Rooms, morpion:morpionRooms, taboo:tabooRooms, emoji:emojiRooms, loup:loupRooms, uno:unoRooms, bomb:bombRooms, sumo:sumoRooms, paint:paintRooms, naval:navalRooms, typer:typerRooms, anagramme:anagrammeRooms, justeprix:justeprixRooms, timeline:timelineRooms, memo:memoRooms, imposteur:imposteurRooms, debat:debatRooms, skyline:skylineRooms };
+  for (const [game, map] of Object.entries(maps)) {
+    const room = map.get(code);
+    if (!room) continue;
+    const playerNames = game === 'quiz'
+      ? quizActivePlayers(room).map(p => p.name)
+      : room.players.map(p => p.name);
+    return {
+      code,
+      game,
+      gameName: GAME_NAMES[game],
+      host: room.host,
+      players: playerNames,
+      maxPlayers: game==='loup'?10:game==='bomb'?6:game==='sumo'?4:game==='uno'?4:game==='paint'?4:game==='naval'?4:game==='imposteur'?8:game==='debat'?6:game==='skyline'?8:4,
+      status: lobbyRoomIsWaiting(game, room) ? 'waiting' : 'playing'
+    };
+  }
+  return null;
+}
+
 app.get('/api/rooms', (_, res) => {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
   res.setHeader('Pragma', 'no-cache');
   res.json({ rooms: getRoomsSnapshot(), ts: Date.now() });
+});
+
+app.get('/api/room/:code', (req, res) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  const room = findRoomSnapshotByCode(req.params.code);
+  if (!room) return res.status(404).json({ ok: false, error: 'not_found' });
+  res.json({ ok: true, room });
 });
 
 /** Liste des jeux masqués (menu / lobby) — lecture seule, sans secret */

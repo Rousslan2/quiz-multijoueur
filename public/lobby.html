@@ -590,6 +590,14 @@ function updateStats(){
   el('stat-rooms',String(total||0));el('stat-players',String(players||0));el('stat-waiting',String(waiting||0));
 }
 
+/* Filtres : valeur par défaut = tout voir (évite liste vide si restée sur un filtre d’une session précédente). */
+['filter-search','filter-status','filter-game'].forEach(id=>{
+  const el=document.getElementById(id);
+  if(id==='filter-search'&&el)el.value='';
+  if(id==='filter-status'&&el)el.value='all';
+  if(id==='filter-game'&&el)el.value='all';
+});
+
 fetch('/api/public/config').then(r=>r.json()).then(cfg=>{
   const hidden=new Set((cfg.hiddenGames||[]).map(g=>String(g).toLowerCase()));
   const sel=document.getElementById('sel-game');
@@ -648,15 +656,17 @@ function connectLobby(){
 }
 connectLobby();
 function fetchRoomsFromApi(){
-  fetch('/api/rooms?_='+Date.now(),{cache:'no-store'}).then(r=>{
+  const roomsUrl=new URL('/api/rooms',location.origin);
+  roomsUrl.searchParams.set('_',String(Date.now()));
+  fetch(roomsUrl.toString(),{cache:'no-store',credentials:'same-origin'}).then(r=>{
     if(!r.ok)throw new Error('rooms http '+r.status);
     return r.json();
   }).then(data=>{
     const rooms=Array.isArray(data)?data:(data.rooms||[]);
     const ts=Array.isArray(data)?Date.now():data.ts;
     applyLobbyRoomsPayload(rooms,ts);
-  }).catch(()=>{
-    /* Réseau / offline : éviter le spinner infini */
+  }).catch(err=>{
+    console.warn('[lobby] /api/rooms',err);
     applyLobbyRoomsPayload(allRooms.length?allRooms:[],Date.now());
   });
 }
@@ -736,24 +746,34 @@ function joinRoom(code,game){
   location.href=GAME_URLS[game]+'?code='+code+'&name='+encodeURIComponent(name);
 }
 function doJoinCode(){
-  const code=document.getElementById('inp-join-code').value.trim().toUpperCase();
+  const code=document.getElementById('inp-join-code').value.trim().toUpperCase().replace(/[^A-Z0-9]/g,'');
   const name=document.getElementById('inp-join-name').value.trim();
   const statusEl=document.getElementById('join-status');
   if(!code||code.length<2){showStatus(statusEl,'Entre le code de la salle !','err');return;}
   if(!name){showStatus(statusEl,'Entre ton prénom !','err');return;}
-  fetch('/api/rooms?_='+Date.now(),{cache:'no-store'}).then(r=>{
-    if(!r.ok)throw new Error('http');
-    return r.json();
-  }).then(data=>{
-    const rooms=Array.isArray(data)?data:(data.rooms||[]);
-    const room=rooms.find(r=>r.code===code);
-    if(!room){showStatus(statusEl,'Salle introuvable. Vérifie le code.','err');return;}
-    var pl=(room.players&&room.players.length)||0;
-    var maxP=room.maxPlayers!=null?room.maxPlayers:8;
-    if(pl>=maxP){showStatus(statusEl,'Cette salle est pleine !','err');return;}
-    try{localStorage.setItem('zapplay_last_room',JSON.stringify({code:room.code,game:room.game,gameName:room.gameName,at:Date.now()}));}catch(e){}
-    location.href=GAME_URLS[room.game]+'?code='+code+'&name='+encodeURIComponent(name);
-  }).catch(()=>showStatus(statusEl,'Erreur réseau. Réessaie.','err'));
+  const u=new URL('/api/room/'+encodeURIComponent(code),location.origin);
+  u.searchParams.set('_',String(Date.now()));
+  fetch(u.toString(),{cache:'no-store',credentials:'same-origin'})
+    .then(r=>r.json().then(j=>({ok:r.ok,status:r.status,j})))
+    .then(({ok,j})=>{
+      if(!ok||!j.ok||!j.room){
+        showStatus(statusEl,j.error==='not_found'||!ok?'Salle introuvable. Vérifie le code.':'Salle introuvable.','err');
+        return;
+      }
+      const room=j.room;
+      var pl=(room.players&&room.players.length)||0;
+      var maxP=room.maxPlayers!=null?room.maxPlayers:8;
+      if(!room.status||room.status!=='waiting'){
+        showStatus(statusEl,'Cette salle est déjà en partie.','err');
+        return;
+      }
+      if(pl>=maxP){showStatus(statusEl,'Cette salle est pleine !','err');return;}
+      const gameKey=room.game;
+      if(!GAME_URLS[gameKey]){showStatus(statusEl,'Jeu inconnu pour ce code.','err');return;}
+      try{localStorage.setItem('zapplay_last_room',JSON.stringify({code:room.code,game:room.game,gameName:room.gameName,at:Date.now()}));}catch(e){}
+      location.href=GAME_URLS[gameKey]+'?code='+encodeURIComponent(room.code)+'&name='+encodeURIComponent(name);
+    })
+    .catch(()=>showStatus(statusEl,'Erreur réseau. Réessaie.','err'));
 }
 function copyCode(){
   if(!createdCode)return;
