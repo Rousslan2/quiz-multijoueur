@@ -61,6 +61,13 @@ const ZP_LOADER_Z = 2147483646;
 
 function ensureZPLoaderStylesheet(){
   if(document.querySelector('link[href*="zp-loader.css"]'))return;
+  const sheets = Array.from(document.styleSheets || []);
+  for (let i = 0; i < sheets.length; i++) {
+    try {
+      const h = sheets[i].href || '';
+      if (h.indexOf('zp-loader.css') !== -1) return;
+    } catch (_) { /* cross-origin */ }
+  }
   const l=document.createElement('link');
   l.rel='stylesheet';
   l.href='/zp-loader.css';
