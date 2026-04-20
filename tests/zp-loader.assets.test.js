@@ -40,6 +40,14 @@ test('pages jeu incluent zp-loader.css dans le head (après theme.css)', () => {
   assert.ok(quiz.indexOf('theme.css') < quiz.indexOf('zp-loader.css'), 'ordre theme puis zp-loader');
 });
 
+test('accueil (index.html) utilise le même loader (zp-loader + shared.js)', () => {
+  const idx = read(path.join(root, 'public', 'index.html'));
+  assert.ok(/href="\/zp-loader\.css"/.test(idx), 'index.html link zp-loader.css');
+  assert.ok(idx.includes('shared.js'), 'index.html charge shared.js');
+  assert.ok(!idx.includes('id="loader"'), 'plus de #loader landing');
+  assert.ok(!idx.includes('id="page-loader"'), 'plus de #page-loader');
+});
+
 test('shared.js charge zp-loader.css et ne réinjecte plus le gros bloc CSS inline loader', () => {
   const js = read(sharedPath);
   assert.ok(js.includes('zp-loader.css'), 'href zp-loader.css');

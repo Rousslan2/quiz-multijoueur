@@ -1462,7 +1462,11 @@ if(document.readyState==='loading'){
 
 function init(){
   const isIndex=location.pathname.endsWith('index.html')||location.pathname.endsWith('/');
-  if(!isIndex){injectLoader();loaderShownAt=Date.now();}
+  /** Même loader partout (zp-loader) : accueil + jeux. */
+  injectLoader();
+  loaderShownAt=Date.now();
+  if(isIndex){ setTimeout(hideLoader,2200); }
+  else{ setTimeout(hideLoader,8000); }
   initAdminNavVisibility();
   autoFillPseudo();
   hookPseudoInputs();
@@ -1492,8 +1496,6 @@ function init(){
   document.addEventListener('visibilitychange', function () {
     if (document.visibilityState === 'visible') updateNavAccountUI();
   });
-  // Auto-hide loader after 5s max
-  if(!isIndex)setTimeout(hideLoader,8000);
 }
 
 /**
