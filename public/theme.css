@@ -3,9 +3,8 @@
    Partagé par tous les jeux + lobby + index
    ───────────────────────────────────────────── */
 
-/* Loader global (zp-loader) : chargé ici pour que le rendu soit correct
-   dès l’injection par shared.js — pas seulement après exécution du script. */
-@import url('/zp-loader.css');
+/* Loader global : inclure <link rel="stylesheet" href="/zp-loader.css"> dans le <head>
+   de chaque page (après theme.css) — évite le flash « sans style » vs @import async. */
 
 /* ============================================================
    FX PREMIUM — Ripple · Reveal · Confetti · Page‑in · 3D flip

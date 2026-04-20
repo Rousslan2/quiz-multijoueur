@@ -5,7 +5,7 @@
 | Fichier | Rôle |
 |---------|------|
 | `public/zp-loader.css` | Styles du **loader** (`#zp-loader`) et de l’**écran première visite** (`#zp-welcome`). Variables `--zp-*`, `prefers-reduced-motion`. |
-| `public/theme.css` | `@import url('/zp-loader.css')` en tête — le loader est stylé **dès le parse du head** sur toutes les pages qui incluent `theme.css`, avant l’exécution de `shared.js`. |
+| `public/theme.css` | Feuille partagée ; le loader **n’y est pas importé** (évite `@import` async). Chaque page inclut `<link href="/zp-loader.css">` **juste après** `theme.css`. |
 | `public/shared.js` | `injectLoader()`, `hideLoader()`, `showWelcomeScreen()` — injection DOM + logique (messages cycliques, soumission pseudo). |
 
 Le CSS n’est plus injecté en bloc dans `shared.js` : feuille dédiée + `ensureZPLoaderStylesheet()` (évite doublons si déjà chargé via `theme.css`).
