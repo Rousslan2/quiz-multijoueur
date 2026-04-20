@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ZapPlay — Démo loader</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #07070e; --bg2: #0b0b17;
+    --ink: #f4f3ff; --muted: #a9a8c4; --dim: #6c6a89;
+    --teal: #5EEAD4; --violet: #A78BFA; --pink: #FF4D6D;
+    --line: rgba(255,255,255,.08);
+  }
+  html, body { background: var(--bg); color: var(--ink); font-family: 'Inter', sans-serif; min-height: 100vh; }
+
+  /* ── page content (visible after loader hides) ── */
+  .page { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 48px; padding: 40px 24px; }
+
+  .hero-title {
+    font-family: 'Instrument Serif', serif;
+    font-style: italic;
+    font-size: clamp(44px, 10vw, 96px);
+    line-height: .95;
+    letter-spacing: -.02em;
+    text-align: center;
+  }
+  .hero-title em {
+    background: linear-gradient(100deg, var(--teal), var(--violet), var(--pink));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+
+  .doc-card {
+    width: min(720px, 100%);
+    background: var(--bg2);
+    border: 1px solid var(--line);
+    border-radius: 20px;
+    padding: 36px;
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+  }
+  .doc-card h2 {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: .22em;
+    text-transform: uppercase;
+    color: var(--teal);
+  }
+  .doc-card p {
+    font-size: 15px;
+    color: var(--muted);
+    line-height: 1.65;
+  }
+  .doc-card p strong { color: var(--ink); }
+
+  pre {
+    background: rgba(0,0,0,.45);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 20px 22px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    line-height: 1.7;
+    color: var(--muted);
+    overflow-x: auto;
+  }
+  pre .c-teal   { color: var(--teal); }
+  pre .c-violet { color: var(--violet); }
+  pre .c-pink   { color: var(--pink); }
+  pre .c-dim    { color: var(--dim); }
+
+  .steps {
+    display: flex; flex-direction: column; gap: 16px;
+  }
+  .step {
+    display: grid;
+    grid-template-columns: 28px 1fr;
+    gap: 14px;
+    align-items: start;
+  }
+  .step-num {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    border: 1px solid rgba(94,234,212,.35);
+    display: grid; place-items: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--teal);
+    flex-shrink: 0;
+  }
+  .step-text { font-size: 14px; color: var(--muted); line-height: 1.6; padding-top: 4px; }
+  .step-text strong { color: var(--ink); }
+  .step-text code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    background: rgba(94,234,212,.08);
+    border: 1px solid rgba(94,234,212,.2);
+    border-radius: 5px;
+    padding: 1px 6px;
+    color: var(--teal);
+  }
+
+  .replay-btn {
+    align-self: flex-start;
+    padding: 12px 22px;
+    border: 1px solid rgba(94,234,212,.4);
+    border-radius: 999px;
+    background: rgba(94,234,212,.06);
+    color: var(--teal);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: background .25s, box-shadow .25s;
+  }
+  .replay-btn:hover { background: rgba(94,234,212,.12); box-shadow: 0 0 20px rgba(94,234,212,.15); }
+
+  .tag {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: .15em;
+    text-transform: uppercase;
+  }
+  .tag--ws  { background: rgba(167,139,250,.1); border: 1px solid rgba(167,139,250,.3); color: var(--violet); }
+  .tag--auto{ background: rgba(94,234,212,.1);  border: 1px solid rgba(94,234,212,.3);  color: var(--teal); }
+
+  .games-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 10px;
+    width: 100%;
+  }
+  .game-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 14px;
+    background: rgba(255,255,255,.02);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    font-size: 13px; color: var(--muted);
+  }
+  .game-row::before {
+    content: ""; width: 6px; height: 6px; border-radius: 50%;
+    background: var(--teal); flex-shrink: 0;
+  }
+</style>
+</head>
+<body>
+
+<div class="page">
+  <div style="text-align:center;display:flex;flex-direction:column;gap:12px;align-items:center">
+    <span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--dim)">ZapPlay · Loader universel</span>
+    <h1 class="hero-title">Loader sur<br><em>toutes les pages</em></h1>
+    <p style="color:var(--muted);font-size:15px;max-width:480px;line-height:1.6">
+      Un seul fichier à inclure dans chaque page de jeu pour afficher l'écran de chargement identique au menu principal.
+    </p>
+    <button class="replay-btn" onclick="replayLoader()">↺ Rejouer le loader</button>
+  </div>
+
+  <!-- INTEGRATION GUIDE -->
+  <div class="doc-card">
+    <h2>Intégration — 1 ligne</h2>
+    <p>Copie <strong>zp-page-loader.js</strong> dans ton dossier <code style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--teal)">public/</code>, puis ajoute cette balise juste avant <code style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--teal)">&lt;/body&gt;</code> dans chaque page :</p>
+
+    <pre><span class="c-dim">&lt;!-- ↓ Loader ZapPlay universel — coller avant &lt;/body&gt; --&gt;</span>
+<span class="c-teal">&lt;script</span> <span class="c-violet">src</span>=<span class="c-pink">"zp-page-loader.js"</span><span class="c-teal">&gt;&lt;/script&gt;</span></pre>
+
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-text"><strong>Mode automatique</strong> <span class="tag tag--auto">auto</span><br>
+        Le loader disparaît seul après le chargement de la page. Rien d'autre à faire.</div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-text"><strong>Mode WebSocket</strong> <span class="tag tag--ws">ws</span><br>
+        Pour les pages avec WebSocket, appelle <code>window.ZPLoader.hide()</code> dans <code>ws.onopen</code> pour que le loader disparaisse exactement quand la connexion est établie :</div>
+      </div>
+    </div>
+
+    <pre><span class="c-dim">// Dans ton ws.onopen existant :</span>
+<span class="c-violet">ws</span>.<span class="c-teal">onopen</span> = () => {
+  <span class="c-dim">// ... ton code existant ...</span>
+  <span class="c-violet">document</span>.getElementById(<span class="c-pink">'dot'</span>).classList.add(<span class="c-pink">'ok'</span>);
+  <span class="c-dim">// ↓ Ajouter cette ligne</span>
+  <span class="c-teal">window.ZPLoader</span>?.hide();
+};</pre>
+  </div>
+
+  <!-- PAGES LIST -->
+  <div class="doc-card">
+    <h2>Pages à mettre à jour</h2>
+    <p>Voici les <strong>20 pages</strong> du projet qui bénéficieront du loader :</p>
+    <div class="games-grid">
+      <div class="game-row">quiz.html</div>
+      <div class="game-row">lobby.html</div>
+      <div class="game-row">draw.html</div>
+      <div class="game-row">imposteur.html</div>
+      <div class="game-row">debat.html</div>
+      <div class="game-row">anagramme.html</div>
+      <div class="game-row">loup.html</div>
+      <div class="game-row">skyline.html</div>
+      <div class="game-row">taboo.html</div>
+      <div class="game-row">emoji.html</div>
+      <div class="game-row">timeline.html</div>
+      <div class="game-row">naval.html</div>
+      <div class="game-row">p4.html</div>
+      <div class="game-row">morpion.html</div>
+      <div class="game-row">uno.html</div>
+      <div class="game-row">wordbomb.html</div>
+      <div class="game-row">justeprix.html</div>
+      <div class="game-row">memoire.html</div>
+      <div class="game-row">paint.html</div>
+      <div class="game-row">sumo.html</div>
+      <div class="game-row">typer.html</div>
+      <div class="game-row">account.html</div>
+    </div>
+  </div>
+</div>
+
+<script src="zp-page-loader.js"></script>
+<script>
+function replayLoader() {
+  const old = document.getElementById('zp-page-loader');
+  if (old) old.remove();
+  const s = document.createElement('script');
+  s.src = 'zp-page-loader.js?' + Date.now();
+  document.body.appendChild(s);
+}
+</script>
+</body>
+</html>
