@@ -5,403 +5,205 @@
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/favicon.svg">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
-<meta name="theme-color" content="#0a0612">
+<meta name="theme-color" content="#07030f">
 <link rel="stylesheet" href="theme.css">
 <link rel="stylesheet" href="/zp-loader.css">
-<title>ZapPlay &mdash; Imposteur</title>
-<style>
-:root{
-  --imp-card:rgba(18,18,31,.92);
-  --imp-border:rgba(255,255,255,.1);
-  --imp-glow:rgba(255,77,109,.15);
-  --bg:#030312;--bg2:#0a0a1a;--card:#12121f;--border:rgba(255,77,109,.14);--primary:#FF4D6D;--primary2:#c73d58;--text:#ECECF4;--muted:#8b92a8;--r:16px;
-}
-*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-html,body{height:100%;color:var(--text);font-family:'Exo 2',system-ui,sans-serif;overflow:hidden;-webkit-font-smoothing:antialiased}
-body.imp-body{overscroll-behavior:none}
-
-/* Conteneur principal : cadrage + encoches iOS */
-#wrap{
-  min-height:100dvh;min-height:-webkit-fill-available;
-  display:flex;flex-direction:column;
-  width:100%;max-width:min(480px,100vw);
-  margin:0 auto;
-  padding:
-    calc(48px + env(safe-area-inset-top, 0px))
-    max(14px, env(safe-area-inset-right, 0px))
-    max(12px, env(safe-area-inset-bottom, 0px))
-    max(14px, env(safe-area-inset-left, 0px));
-  gap:12px;
-}
-.screen{
-  display:none;flex-direction:column;flex:1;min-height:0;gap:12px;
-  padding:4px 0 8px;
-  overflow-x:hidden;overflow-y:auto;
-  -webkit-overflow-scrolling:touch;
-  overscroll-behavior:contain;
-}
-.screen.active{display:flex}
-
-.imp-card{
-  background:linear-gradient(165deg,rgba(255,255,255,.06) 0%,rgba(255,255,255,.02) 50%,rgba(0,0,0,.12) 100%);
-  border:1px solid var(--imp-border);
-  border-radius:var(--r);
-  box-shadow:0 0 0 1px rgba(255,255,255,.03),0 12px 40px rgba(0,0,0,.35);
-  backdrop-filter:blur(12px);
-  -webkit-backdrop-filter:blur(12px);
-}
-
-.btn{
-  width:100%;padding:14px 16px;border:none;border-radius:12px;font-size:1rem;font-weight:700;cursor:pointer;
-  touch-action:manipulation;transition:transform .12s,opacity .12s,box-shadow .15s;letter-spacing:.01em;
-}
-.btn:active{transform:scale(.98)}
-.btn-primary{
-  background:linear-gradient(135deg,var(--primary),#e11d58);
-  color:#fff;box-shadow:0 4px 20px rgba(255,77,109,.25);
-}
-.btn-secondary{background:rgba(255,255,255,.07);color:var(--text);border:1px solid var(--imp-border)}
-.btn-success{background:#15803d;color:#fff}
-.btn-opt{
-  flex:1;min-height:48px;padding:12px;border:1px solid var(--imp-border);border-radius:12px;
-  background:rgba(0,0,0,.2);color:var(--muted);cursor:pointer;font-size:.95rem;font-weight:600;
-  transition:border-color .15s,background .15s,color .15s;touch-action:manipulation;
-}
-.btn-opt.sel{border-color:rgba(255,77,109,.45);color:var(--primary);background:rgba(255,77,109,.1);box-shadow:inset 0 0 0 1px rgba(255,77,109,.12)}
-input[type=text]{
-  background:rgba(0,0,0,.25);border:1px solid var(--imp-border);border-radius:12px;
-  padding:14px 16px;font-size:16px;color:var(--text);width:100%;outline:none;transition:border-color .15s,box-shadow .15s;
-}
-input[type=text]:focus{border-color:rgba(255,77,109,.45);box-shadow:0 0 0 3px rgba(255,77,109,.12)}
-input[type=text]::placeholder{color:var(--muted)}
-.card{background:var(--imp-card);border:1px solid var(--imp-border);border-radius:var(--r);padding:18px;display:flex;flex-direction:column;gap:12px}
-.card-label{font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;font-weight:600}
-#err{color:#fca5a5;font-size:.85rem;text-align:center;min-height:18px}
-#spectate-strip{display:none;margin:0 0 10px;padding:8px 12px;text-align:center;font-size:.74rem;font-weight:700;letter-spacing:.04em;color:#fecdd3;background:rgba(255,77,109,.1);border:1px solid rgba(255,77,109,.28);border-radius:12px}
-#spectate-strip.on{display:block}
-
-/* HOME */
-#s-home{justify-content:flex-start;padding-top:clamp(4px,2vh,20px)}
-.logo h1{
-  font-family:'Orbitron',system-ui,sans-serif;font-size:clamp(1.5rem,5.5vw,1.85rem);font-weight:800;
-  letter-spacing:.04em;text-align:center;
-  background:linear-gradient(135deg,#fff 0%,var(--primary) 100%);
-  -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
-}
-.logo p{color:var(--muted);text-align:center;font-size:.88rem;margin-top:8px;line-height:1.45;max-width:36ch;margin-left:auto;margin-right:auto}
-
-/* DOT + retour */
-#dot{
-  position:fixed;top:max(10px, env(safe-area-inset-top));right:max(14px, env(safe-area-inset-right));
-  width:9px;height:9px;border-radius:50%;background:#ef4444;transition:background .25s;z-index:100;
-  box-shadow:0 0 0 2px rgba(0,0,0,.3);
-}
-#dot.ok{background:#22c55e}
-#back-btn{
-  position:fixed;top:max(8px, env(safe-area-inset-top));left:max(10px, env(safe-area-inset-left));
-  background:rgba(255,255,255,.07);border:1px solid var(--imp-border);color:var(--muted);
-  font-size:.78rem;cursor:pointer;padding:8px 12px;border-radius:10px;z-index:100;touch-action:manipulation;
-}
-#back-btn:hover{color:var(--text)}
-
-/* WAIT */
-#s-wait{align-items:stretch;text-align:center}
-#wait-code,.wait-code-big{font-size:clamp(2rem,10vw,2.75rem)!important;font-weight:800;letter-spacing:.14em!important;color:var(--primary)!important;
-  font-family:'Orbitron',monospace,sans-serif!important;text-shadow:0 0 24px rgba(255,77,109,.35)!important}
-.code-box{
-  background:rgba(255,77,109,.06);border:1px solid rgba(255,77,109,.28);border-radius:14px;
-  padding:16px 18px;cursor:pointer;text-align:center;
-}
-#wait-players{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin:8px 0}
-.player-chip{
-  background:rgba(0,0,0,.25);border:1px solid var(--imp-border);border-radius:999px;
-  padding:8px 14px;font-size:.82rem;font-weight:600;
-}
-.player-chip.host{border-color:#f59e0b;color:#fbbf24}
-#start-btn{display:none;width:100%;max-width:320px;align-self:center}
-
-/* SETUP */
-#s-setup{align-items:stretch}
-.opt-row{display:flex;gap:10px;width:100%}
-
-/* DESCRIBE */
-.word-card{
-  border:1px solid rgba(255,77,109,.35);border-radius:16px;
-  background:linear-gradient(180deg,rgba(255,77,109,.12),rgba(0,0,0,.15));
-  padding:18px 16px;text-align:center;
-  box-shadow:0 8px 32px rgba(0,0,0,.35);
-}
-@media (prefers-reduced-motion:no-preference){
-  .word-card{animation:imp-glow 4s ease-in-out infinite}
-}
-@keyframes imp-glow{
-  0%,100%{box-shadow:0 8px 28px rgba(0,0,0,.35),0 0 0 1px rgba(255,77,109,.2)}
-  50%{box-shadow:0 12px 36px rgba(255,77,109,.12),0 0 0 1px rgba(255,77,109,.35)}
-}
-.word-label{font-size:.68rem;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.12em}
-.word-val{font-size:clamp(1.35rem,6vw,1.85rem);font-weight:900;color:var(--primary);letter-spacing:.03em;line-height:1.15;word-break:break-word}
-.word-val.unk{color:#5c5c70;font-style:italic;font-size:1.25rem}
-.turn-pill{
-  background:rgba(0,0,0,.22);border:1px solid var(--imp-border);border-radius:10px;
-  padding:10px 14px;font-size:.88rem;color:var(--muted);text-align:center;line-height:1.35;
-}
-.turn-pill b{color:var(--primary);font-weight:800}
-.desc-list{display:flex;flex-direction:column;gap:8px;max-height:min(42vh,320px);overflow-y:auto;-webkit-overflow-scrolling:touch}
-.desc-item{
-  background:rgba(0,0,0,.22);border:1px solid var(--imp-border);border-radius:12px;padding:12px 14px;
-  animation:slideup .25s ease;
-}
-@keyframes slideup{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
-.desc-name{font-size:.7rem;color:var(--primary);margin-bottom:4px;font-weight:700;letter-spacing:.04em}
-.desc-text{color:var(--text);font-size:.92rem;line-height:1.45;word-break:break-word}
-.input-row{display:flex;flex-direction:row;flex-wrap:nowrap;gap:8px;align-items:stretch}
-.input-row input{flex:1;min-width:0}
-.input-row .btn{width:auto;min-width:96px;padding:13px 14px;flex-shrink:0}
-@media (max-width:380px){
-  .input-row{flex-direction:column}
-  .input-row .btn{width:100%}
-}
-.muted-pill{color:var(--muted);font-size:.85rem;text-align:center;padding:10px;line-height:1.4}
-
-/* VOTE */
-.imp-h2{font-family:'Orbitron',monospace;font-size:clamp(1rem,4.2vw,1.15rem);font-weight:800;color:var(--primary);text-align:center;letter-spacing:.06em}
-.vote-count{color:var(--muted);font-size:.82rem;text-align:center}
-.vote-descs{display:flex;flex-direction:column;gap:8px;max-height:min(28vh,240px);overflow-y:auto}
-.vd-item{background:rgba(0,0,0,.22);border:1px solid var(--imp-border);border-radius:12px;padding:12px 14px}
-.vd-name{font-size:.68rem;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.06em}
-.vd-text{color:var(--text);font-size:.9rem;line-height:1.45}
-.vote-btns{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;justify-content:stretch}
-.vote-btn{
-  padding:12px 14px;border:1px solid var(--imp-border);border-radius:12px;
-  background:rgba(0,0,0,.2);color:var(--text);cursor:pointer;display:flex;align-items:center;gap:10px;
-  transition:border-color .15s,background .15s;font-size:.86rem;font-weight:600;touch-action:manipulation;justify-content:flex-start;
-}
-.vote-btn .av{width:28px;height:28px;border-radius:50%;background:rgba(91,159,255,.15);border:1px solid rgba(91,159,255,.25);
-  display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:800;color:#93c5fd;flex-shrink:0}
-.vote-btn:hover:not(:disabled){border-color:rgba(255,77,109,.4);background:rgba(255,77,109,.08)}
-.vote-btn.voted{border-color:rgba(255,77,109,.5);background:rgba(255,77,109,.1);color:#fecdd3}
-.vote-btn:disabled{opacity:.45;cursor:not-allowed}
-
-/* REVEAL */
-.rv-list{display:flex;flex-direction:column;gap:8px}
-.rv-row{
-  display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 14px;
-  background:rgba(0,0,0,.22);border:1px solid var(--imp-border);border-radius:12px;
-}
-.rv-row.top{border-color:rgba(255,77,109,.4);box-shadow:0 0 0 1px rgba(255,77,109,.15)}
-.rv-name{color:var(--text);font-weight:600;font-size:.92rem}
-.rv-dots{display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end}
-.rv-dot{width:24px;height:24px;border-radius:50%;background:rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;font-size:.65rem;border:1px solid var(--imp-border)}
-.elim-box{
-  border:1px solid rgba(255,77,109,.4);border-radius:16px;padding:20px 18px;text-align:center;
-  background:linear-gradient(180deg,rgba(255,77,109,.1),rgba(0,0,0,.2));
-  animation:popin .4s cubic-bezier(.34,1.56,.64,1);
-}
-@keyframes popin{from{opacity:0;transform:scale(.96)}to{opacity:1;transform:scale(1)}}
-.elim-label{font-size:.68rem;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:.1em}
-.elim-name{font-size:clamp(1.35rem,5vw,1.65rem);font-weight:900;color:var(--primary);line-height:1.2}
-.elim-role{font-size:.95rem;margin-top:8px;font-weight:700}
-.elim-role.imp{color:#fbbf24}
-.elim-role.civ{color:#34d399}
-.no-elim{border:1px solid var(--imp-border);border-radius:12px;padding:16px;text-align:center;color:var(--muted);font-size:.9rem;line-height:1.45}
-
-/* GUESS */
-.guess-box{border:1px solid var(--imp-border);border-radius:16px;padding:20px 16px;background:rgba(0,0,0,.25);text-align:center}
-.guess-box h3{color:var(--primary);margin-bottom:8px;font-size:1.05rem;font-weight:800}
-.guess-box p{color:var(--muted);font-size:.88rem;margin-bottom:14px;line-height:1.45}
-.guess-result{font-size:1rem;font-weight:700;padding:12px 16px;border-radius:12px;text-align:center}
-.guess-result.ok{color:#34d399;border:1px solid rgba(52,211,153,.4);background:rgba(52,211,153,.08)}
-.guess-result.ko{color:#f87171;border:1px solid rgba(248,113,113,.4);background:rgba(248,113,113,.08)}
-
-/* SCORES */
-.score-list{display:flex;flex-direction:column;gap:8px}
-.score-row{
-  display:flex;align-items:center;gap:12px;padding:12px 14px;
-  background:rgba(0,0,0,.22);border:1px solid var(--imp-border);border-radius:12px;
-}
-.score-row.me{border-color:rgba(255,77,109,.45);background:rgba(255,77,109,.08)}
-.sr-rank{font-size:.95rem;font-weight:900;width:26px;text-align:center;color:var(--muted)}
-.sr-av{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,rgba(91,159,255,.3),rgba(255,77,109,.2));
-  display:flex;align-items:center;justify-content:center;font-weight:800;flex-shrink:0;font-size:.85rem}
-.sr-name{flex:1;min-width:0;color:var(--text);font-weight:600;font-size:.92rem}
-.sr-pts{font-weight:800;color:var(--primary);font-size:.95rem;flex-shrink:0}
-
-/* GAMEOVER */
-.podium{display:flex;align-items:flex-end;gap:10px;justify-content:center;margin:12px 0;flex-wrap:wrap}
-.pcol{display:flex;flex-direction:column;align-items:center;gap:6px}
-.pav{border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900;background:rgba(0,0,0,.35);border:2px solid var(--imp-border)}
-.pcol.r1 .pav{width:64px;height:64px;font-size:1.2rem;border-color:#fbbf24;box-shadow:0 0 20px rgba(251,191,36,.25)}
-.pcol.r2 .pav{width:52px;height:52px;font-size:1rem;border-color:#94a3b8}
-.pcol.r3 .pav{width:44px;height:44px;border-color:#b45309}
-.pmed{font-size:1.35rem;line-height:1}
-.pname{font-size:.75rem;color:var(--muted);text-align:center;max-width:88px;overflow:hidden;text-overflow:ellipsis}
-.ppts{font-size:.82rem;font-weight:800;color:var(--primary)}
-#confetti-canvas{position:fixed;inset:0;pointer-events:none;z-index:999;contain:strict}
-
-/* TIMER */
-.timer-wrap{width:100%;height:6px;background:rgba(255,255,255,.08);border-radius:6px;overflow:hidden}
-.timer-fill{
-  height:100%;background:linear-gradient(90deg,var(--primary),#fb7185);border-radius:6px;
-  transition:width .85s linear;will-change:width;
-}
-
-.sec-label{font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;font-weight:600;margin-top:4px}
-.word-reveal{color:var(--muted);font-size:.86rem;text-align:center;line-height:1.45;padding:4px 0}
-
-@media (prefers-reduced-motion:reduce){
-  .word-card{animation:none!important}
-  .desc-item{animation:none!important}
-  .elim-box{animation:none!important}
-}
-</style>
+<link rel="stylesheet" href="/imposteur-page.css">
+<title>ZapPlay — Imposteur</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;600;700;800&family=Orbitron:wght@700;800&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;600;700;800&family=Orbitron:wght@700;800;900&display=swap" rel="stylesheet">
 </head>
-<body class="imp-body">
-<div class="zp-space-bg" style="contain:strict"><div class="zp-neb1" style="background:radial-gradient(ellipse at 30% 40%,rgba(255,77,109,.1) 0%,transparent 65%)"></div><div class="zp-neb2" style="background:radial-gradient(ellipse at 70% 60%,rgba(255,77,109,.06) 0%,transparent 60%)"></div><div class="zp-stars" id="zp-stars-imp"></div><div class="zp-sgrid" style="opacity:.35"></div></div>
+<body>
+<div class="imp-bg"></div>
+<div class="zp-space-bg"><div class="zp-neb1"></div><div class="zp-neb2"></div><div class="zp-stars" id="zp-stars-imp"></div><div class="zp-sgrid"></div><div class="zp-comet"></div></div>
 <div id="dot"></div>
-<button id="back-btn" onclick="location.href='index.html'">&#8592; Accueil</button>
-<canvas id="confetti-canvas"></canvas>
+<button type="button" id="back-btn">← Accueil</button>
+<canvas id="confetti-canvas" aria-hidden="true"></canvas>
 
 <div id="wrap">
 <div id="spectate-strip"></div>
 
-<!-- HOME -->
 <div id="s-home" class="screen active">
   <div style="flex:1"></div>
-  <div class="logo"><h1>&#x1F575;&#xFE0F; Imposteur</h1><p>Un mot secret, un tra&icirc;tre parmi vous.</p></div>
-  <div class="card">
-    <div class="card-label">Ton pr&eacute;nom</div>
-    <input id="inp-name" type="text" placeholder="Ex: Marie" maxlength="20" autocomplete="off">
-    <div style="display:flex;gap:8px">
-      <button class="btn btn-primary" style="flex:1" onclick="doCreate()">Cr&eacute;er une salle</button>
-      <button class="btn btn-secondary" style="flex:1" onclick="showJoin()">Rejoindre</button>
+  <div class="home-hero">
+    <div class="home-icon">
+      <div class="home-icon-ring"></div>
+      <div class="home-icon-ring2"></div>
+      <div class="home-icon-core">🕵️</div>
     </div>
-    <div id="join-area" style="display:none;flex-direction:column;gap:8px">
-      <input id="inp-code" type="text" placeholder="Code (ex: ABCD)" maxlength="4" autocomplete="off" style="text-transform:uppercase;letter-spacing:.1em;text-align:center;font-size:1.1rem;font-weight:700">
-      <button class="btn btn-success" onclick="doJoin()">Rejoindre</button>
-      <button type="button" class="btn btn-secondary" onclick="doJoinSpectate()">Regarder en spectateur</button>
+    <div class="home-title">IMPOSTEUR</div>
+    <div class="home-sub">Un mot secret. Un traître parmi vous. Trouvez-le avant qu'il se cache.</div>
+  </div>
+  <div class="home-form">
+    <div class="home-form-label">Identification</div>
+    <input id="inp-name" type="text" placeholder="Ton prénom" maxlength="20" autocomplete="off">
+    <div class="home-actions">
+      <button type="button" class="btn btn-primary" style="flex:1" id="btn-create">Créer une salle</button>
+      <button type="button" class="btn btn-secondary" style="flex:1" id="btn-show-join">Rejoindre</button>
+    </div>
+    <div id="join-area">
+      <input id="inp-code" type="text" placeholder="CODE" maxlength="4" autocomplete="off"
+        style="text-transform:uppercase;letter-spacing:.18em;text-align:center;font-size:1.3rem;font-weight:800;font-family:'Orbitron',monospace">
+      <button type="button" class="btn btn-success" id="btn-join-room">Rejoindre la salle</button>
+      <button type="button" class="btn btn-secondary" id="btn-spectate" style="font-size:.82rem">👁 Regarder en spectateur</button>
     </div>
     <div id="err"></div>
   </div>
   <div style="flex:2"></div>
 </div>
 
-<!-- WAIT -->
 <div id="s-wait" class="screen">
   <div style="flex:1"></div>
-  <div class="code-box" onclick="copyCode()">
-    <div style="font-size:.75rem;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.06em">Code de la salle</div>
-    <div id="wait-code" class="wait-code-big">----</div>
-    <div id="copy-hint" style="font-size:.7rem;color:var(--muted);margin-top:2px">Appuyer pour copier</div>
+  <div class="code-display" id="code-display">
+    <div class="code-eyebrow">Code de la salle</div>
+    <div class="code-val" id="wait-code">----</div>
+    <div class="code-hint" id="copy-hint">Appuyer pour copier</div>
   </div>
-  <div id="wait-msg" style="color:var(--muted);font-size:.85rem;text-align:center">En attente des joueurs (3&ndash;8)&hellip;</div>
+  <div class="wait-info" id="wait-msg">En attente des joueurs (3–8)…</div>
   <div id="wait-players"></div>
-  <button id="start-btn" class="btn btn-primary" onclick="doSetup()">Configurer la partie</button>
-  <div id="wait-err" style="color:#fca5a5;font-size:.85rem;min-height:16px;text-align:center"></div>
+  <button type="button" id="start-btn" class="btn btn-primary">Configurer la partie →</button>
+  <div id="wait-err"></div>
   <div style="flex:2"></div>
 </div>
 
-<!-- SETUP (host only) -->
 <div id="s-setup" class="screen">
   <div style="flex:1"></div>
-  <div class="card">
-    <div class="card-label">Nombre de manches</div>
+  <div class="setup-card">
+    <div class="setup-card-title">Nombre de manches</div>
     <div class="opt-row" id="rounds-opts">
-      <button class="btn-opt" data-v="3" onclick="selOpt('rounds',3,this)">3</button>
-      <button class="btn-opt sel" data-v="5" onclick="selOpt('rounds',5,this)">5</button>
-      <button class="btn-opt" data-v="7" onclick="selOpt('rounds',7,this)">7</button>
+      <button type="button" class="btn-opt" data-v="3">3</button>
+      <button type="button" class="btn-opt sel" data-v="5">5</button>
+      <button type="button" class="btn-opt" data-v="7">7</button>
     </div>
   </div>
-  <div class="card" id="imp-card">
-    <div class="card-label">Nombre d&apos;imposteurs</div>
+  <div class="setup-card">
+    <div class="setup-card-title">Nombre d'imposteurs</div>
     <div class="opt-row" id="imp-opts">
-      <button class="btn-opt sel" data-v="1" onclick="selOpt('imp',1,this)">1</button>
-      <button class="btn-opt" data-v="2" onclick="selOpt('imp',2,this)">2</button>
+      <button type="button" class="btn-opt sel" data-v="1">1</button>
+      <button type="button" class="btn-opt" data-v="2">2</button>
     </div>
   </div>
-  <button class="btn btn-primary" onclick="doLaunch()">Lancer la partie !</button>
+  <button type="button" class="btn btn-primary" id="btn-launch">Lancer la partie !</button>
   <div style="flex:2"></div>
 </div>
 
-<!-- DESCRIBE -->
 <div id="s-describe" class="screen">
-  <div class="word-card">
-    <div class="word-label" id="d-role">Ton rôle</div>
-    <div class="word-label">Ton mot secret</div>
-    <div id="d-word" class="word-val">---</div>
+  <div id="d-role-banner" class="role-banner civil">
+    <div class="role-icon">👤</div>
+    <div class="role-text">
+      <div class="role-name" id="d-role-label">Rôle</div>
+      <div class="role-label" id="d-role-value">Civil</div>
+    </div>
+  </div>
+  <div class="word-reveal-card" id="d-word-card">
+    <div class="wrc-lbl">Ton mot secret</div>
+    <div id="d-word" class="wrc-word">---</div>
   </div>
   <div class="timer-wrap"><div class="timer-fill" id="d-timer" style="width:100%"></div></div>
   <div class="turn-pill" id="d-turn">Tour de <b>---</b></div>
-  <div class="sec-label">Descriptions</div>
+  <div class="sec-lbl">Descriptions</div>
   <div class="desc-list" id="d-list"></div>
   <div class="input-row" id="d-input-row" style="display:none">
-    <input id="d-inp" type="text" maxlength="120" placeholder="D&eacute;cris le mot en 1 phrase&hellip;">
-    <button class="btn btn-primary" onclick="doDescribe()">Envoyer</button>
+    <input id="d-inp" type="text" maxlength="120" placeholder="Décris le mot en 1 phrase…">
+    <button type="button" class="btn btn-primary" id="btn-describe">→</button>
   </div>
-  <div class="muted-pill" id="d-waiting" style="display:none">En attente des autres joueurs&hellip;</div>
+  <div class="muted-pill" id="d-waiting" style="display:none">En attente des autres joueurs…</div>
 </div>
 
-<!-- VOTE -->
 <div id="s-vote" class="screen">
-  <div class="imp-h2">Vote</div>
+  <div class="vote-header">
+    <div class="screen-title">Vote</div>
+    <div class="vote-count-badge" id="v-count">0 / 0</div>
+  </div>
   <div class="timer-wrap"><div class="timer-fill" id="v-timer" style="width:100%"></div></div>
-  <div class="vote-count" id="v-count">0 / 0 votes</div>
-  <div class="sec-label">Descriptions</div>
+  <div class="sec-lbl">Descriptions</div>
   <div class="vote-descs" id="v-descs"></div>
-  <div class="sec-label">Qui est l&apos;imposteur ?</div>
-  <div class="vote-btns" id="v-btns"></div>
+  <div class="sec-lbl">Qui est l'imposteur ?</div>
+  <div class="vote-grid" id="v-btns"></div>
 </div>
 
-<!-- REVEAL -->
 <div id="s-reveal" class="screen">
-  <div class="imp-h2">R&eacute;v&eacute;lation</div>
-  <div id="r-msg" class="turn-pill" style="margin-top:-6px">—</div>
+  <div class="screen-title">Révélation</div>
+  <div id="r-msg" class="reveal-verdict draw">—</div>
+  <div class="sec-lbl">Votes</div>
   <div class="rv-list" id="r-list"></div>
   <div id="r-elim"></div>
 </div>
 
-<!-- GUESS -->
 <div id="s-guess" class="screen">
-  <div class="imp-h2">Devinette</div>
+  <div class="screen-title">Devinette</div>
   <div class="timer-wrap"><div class="timer-fill" id="g-timer" style="width:100%"></div></div>
   <div id="g-content"></div>
 </div>
 
-<!-- SCORES -->
 <div id="s-scores" class="screen">
-  <div class="imp-h2">Scores</div>
-  <div id="sc-round" style="color:var(--muted);font-size:.85rem;text-align:center"></div>
+  <div class="scores-header">
+    <div class="screen-title">Scores</div>
+    <div class="scores-round" id="sc-round"></div>
+  </div>
   <div class="score-list" id="sc-list"></div>
-  <div class="word-reveal" id="sc-word"></div>
-  <button id="sc-next" class="btn btn-primary" style="display:none;max-width:280px;align-self:center" onclick="send({type:'next_round'})">Manche suivante &rarr;</button>
-  <div class="muted-pill" id="sc-wait" style="display:none">En attente de l&apos;h&ocirc;te&hellip;</div>
+  <div class="word-reveal-info" id="sc-word"></div>
+  <button type="button" id="sc-next" class="btn btn-primary" style="display:none;max-width:280px;align-self:center">Manche suivante →</button>
+  <div class="muted-pill" id="sc-wait" style="display:none">En attente de l'hôte…</div>
   <div id="sc-end-actions" style="display:none;gap:10px;max-width:340px;align-self:center;width:100%">
-    <button class="btn btn-secondary" style="flex:1" onclick="doReplay()">Rejouer</button>
-    <button class="btn btn-secondary" style="flex:1" onclick="location.href='index.html'">Quitter</button>
+    <button type="button" class="btn btn-secondary" style="flex:1" id="sc-replay">Rejouer</button>
+    <button type="button" class="btn btn-secondary" style="flex:1" id="sc-quit">Quitter</button>
   </div>
 </div>
 
-<!-- GAME OVER -->
 <div id="s-gameover" class="screen">
-  <div class="imp-h2" style="font-size:clamp(1.25rem,5vw,1.5rem);margin-top:4px">Fin de partie !</div>
+  <div class="go-header">
+    <div class="go-title">FIN DE PARTIE</div>
+  </div>
   <div class="podium" id="go-podium"></div>
-  <div style="text-align:center;color:var(--muted);font-size:.78rem;text-transform:uppercase;letter-spacing:.08em;margin-top:4px">Classement</div>
+  <div class="sec-lbl">Classement final</div>
   <div class="score-list" id="go-list"></div>
-  <div style="display:flex;gap:10px;max-width:340px;align-self:center;width:100%">
-    <button class="btn btn-secondary" style="flex:1" onclick="doReplay()">Rejouer</button>
-    <button class="btn btn-secondary" style="flex:1" onclick="location.href='index.html'">Quitter</button>
+  <div class="go-actions">
+    <button type="button" class="btn btn-secondary" style="flex:1" id="go-replay">Rejouer</button>
+    <button type="button" class="btn btn-secondary" style="flex:1" id="go-quit">Quitter</button>
   </div>
 </div>
-
-</div><!-- #wrap -->
+</div>
 
 <script src="fx.js"></script>
 <script src="shared.js"></script>
 <script src="zp-shell.js"></script>
 <script src="chat.js"></script>
 <script>
-const WS_URL = (location.protocol==='https:'?'wss':'ws')+'://'+location.host+'/ws/imposteur';
+(function () {
+  const home = document.getElementById('back-btn');
+  if (home) home.addEventListener('click', function () { location.href = 'index.html'; });
+  document.getElementById('btn-create').onclick = doCreate;
+  document.getElementById('btn-show-join').onclick = showJoin;
+  document.getElementById('btn-join-room').onclick = doJoin;
+  document.getElementById('btn-spectate').onclick = doJoinSpectate;
+  document.getElementById('start-btn').onclick = doSetup;
+  document.getElementById('btn-launch').onclick = doLaunch;
+  document.getElementById('btn-describe').onclick = doDescribe;
+  document.getElementById('sc-next').onclick = function () { send({ type: 'next_round' }); };
+  document.getElementById('sc-replay').onclick = doReplay;
+  document.getElementById('sc-quit').onclick = function () { location.href = 'index.html'; };
+  document.getElementById('go-replay').onclick = doReplay;
+  document.getElementById('go-quit').onclick = function () { location.href = 'index.html'; };
+  document.getElementById('code-display').onclick = copyCode;
+
+  function bindOptRow(id, key) {
+    const row = document.getElementById(id);
+    if (!row) return;
+    row.querySelectorAll('.btn-opt').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        cfg[key] = Number(btn.getAttribute('data-v'));
+        row.querySelectorAll('.btn-opt').forEach(function (b) { b.classList.remove('sel'); });
+        btn.classList.add('sel');
+      });
+    });
+  }
+  bindOptRow('rounds-opts', 'rounds');
+  bindOptRow('imp-opts', 'imp');
+})();
+
+const WS_URL = (location.protocol === 'https:' ? 'wss' : 'ws') + '://' + location.host + '/ws/imposteur';
 const dot = document.getElementById('dot');
 let ws = null;
 let mySlot = -1;
@@ -409,573 +211,897 @@ let myName = '';
 let isHost = false;
 let myCode = null;
 let timerInt = null;
-let cfg = {rounds:5, imp:1};
+let cfg = { rounds: 5, imp: 1 };
 let reconnectAction = null;
 let isSpectator = false;
 
-// ── ZapPlay loader (comme les autres jeux) ─────────────────────
-if (window.ZapPlay && ZapPlay.showLoader) {
-  ZapPlay.showLoader();
-}
+if (window.ZapPlay && ZapPlay.showLoader) ZapPlay.showLoader();
 
-// ── Sons (simple beep, non intrusif) ───────────────────────────
-const SND = (() => {
+const SND = (function () {
   let ctx = null;
-  function init(){
-    if(ctx) return;
-    try{ ctx = new (window.AudioContext||window.webkitAudioContext)(); }catch{}
+  function init() {
+    if (ctx) return;
+    try {
+      ctx = new (window.AudioContext || window.webkitAudioContext)();
+    } catch (_) {}
   }
-  function beep(freq, dur, type='sine', vol=0.08){
-    if(!ctx) return;
+  function beep(freq, dur, type, vol) {
+    type = type || 'sine';
+    vol = vol == null ? 0.08 : vol;
+    if (!ctx) return;
     const o = ctx.createOscillator();
     const g = ctx.createGain();
     o.type = type;
     o.frequency.value = freq;
     g.gain.value = vol;
-    o.connect(g); g.connect(ctx.destination);
+    o.connect(g);
+    g.connect(ctx.destination);
     const t = ctx.currentTime;
     o.start(t);
     g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
     o.stop(t + dur + 0.01);
   }
   return {
-    init,
-    vote(){ init(); beep(520, 0.08, 'square', 0.06); },
-    revealGood(){ init(); beep(740, 0.10, 'sine', 0.09); setTimeout(()=>beep(990,0.14,'sine',0.09), 120); },
-    revealBad(){ init(); beep(220, 0.14, 'sawtooth', 0.08); },
-    end(){ init(); [0,140,280].forEach((d,i)=>setTimeout(()=>beep([659,784,988][i],0.12,'sine',0.08), d)); }
+    init: init,
+    vote: function () {
+      init();
+      beep(520, 0.08, 'square', 0.06);
+    },
+    revealGood: function () {
+      init();
+      beep(740, 0.1, 'sine', 0.09);
+      setTimeout(function () {
+        beep(990, 0.14, 'sine', 0.09);
+      }, 120);
+    },
+    revealBad: function () {
+      init();
+      beep(220, 0.14, 'sawtooth', 0.08);
+    },
+    end: function () {
+      init();
+      [0, 140, 280].forEach(function (d, i) {
+        setTimeout(function () {
+          beep([659, 784, 988][i], 0.12, 'sine', 0.08);
+        }, d);
+      });
+    }
   };
 })();
 
-// ── Stars (moins sur mobile = meilleur FPS) ────────────────────
-(function(){
-  var sc=document.getElementById('zp-stars-imp');
-  if(!sc)return;
-  var n=typeof innerWidth!=='undefined'&&innerWidth<640?28:48;
-  if(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches)n=0;
-  for(var i=0;i<n;i++){
-    var s=document.createElement('div');
-    s.className='zp-star';
-    var sz=(.4+Math.random()*1.4).toFixed(1);
-    s.style.cssText='left:'+Math.random()*100+'%;top:'+Math.random()*100+'%;width:'+sz+'px;height:'+sz+'px;opacity:'+((.2+Math.random()*.75).toFixed(2))+';animation-duration:'+(2.5+Math.random()*3.5).toFixed(1)+'s;animation-delay:'+(Math.random()*4).toFixed(1)+'s';
+(function () {
+  var sc = document.getElementById('zp-stars-imp');
+  if (!sc) return;
+  var n = typeof innerWidth !== 'undefined' && innerWidth < 640 ? 28 : 48;
+  if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) n = 0;
+  for (var i = 0; i < n; i++) {
+    var s = document.createElement('div');
+    s.className = 'zp-star';
+    var sz = (0.4 + Math.random() * 1.4).toFixed(1);
+    s.style.cssText =
+      'left:' +
+      Math.random() * 100 +
+      '%;top:' +
+      Math.random() * 100 +
+      '%;width:' +
+      sz +
+      'px;height:' +
+      sz +
+      'px;opacity:' +
+      (0.2 + Math.random() * 0.75).toFixed(2) +
+      ';animation-duration:' +
+      (2.5 + Math.random() * 3.5).toFixed(1) +
+      's;animation-delay:' +
+      (Math.random() * 4).toFixed(1) +
+      's';
     sc.appendChild(s);
   }
 })();
 
-// ── Lounge chat ────────────────────────────────────────────────
-function bindLounge(){
-  if(window.ZapPlay) ZapPlay.setLoungeSender(function(text){ send({type:'lounge_chat',text:text}); });
+function bindLounge() {
+  if (window.ZapPlay) ZapPlay.setLoungeSender(function (text) { send({ type: 'lounge_chat', text: text }); });
   else setTimeout(bindLounge, 120);
 }
 bindLounge();
 
-// ── WebSocket ──────────────────────────────────────────────────
-function connect(){
+function connect() {
   ws = new WebSocket(WS_URL);
-  ws.onopen = function(){
+  ws.onopen = function () {
     dot.classList.add('ok');
-    if(window.ZapPlay) ZapPlay.hideLoader();
-    if(reconnectAction){ const fn=reconnectAction; reconnectAction=null; fn(); }
+    if (window.ZapPlay) ZapPlay.hideLoader();
+    if (window.ZPLoader) window.ZPLoader.hide();
+    if (reconnectAction) {
+      var fn = reconnectAction;
+      reconnectAction = null;
+      fn();
+    }
   };
-  ws.onclose = function(){
+  ws.onclose = function () {
     dot.classList.remove('ok');
-    // Reconnect so lobby deep-links still work after refresh
     setTimeout(connect, 2000);
   };
-  ws.onerror = function(){
-    if(window.ZapPlay && ZapPlay.hideLoader) ZapPlay.hideLoader();
-    try{ ws.close(); }catch{}
+  ws.onerror = function () {
+    if (window.ZapPlay && ZapPlay.hideLoader) ZapPlay.hideLoader();
+    try {
+      ws.close();
+    } catch (_) {}
   };
-  ws.onmessage = function(e){ try{ handle(JSON.parse(e.data)); }catch(ex){ console.error(ex); } };
+  ws.onmessage = function (e) {
+    try {
+      handle(JSON.parse(e.data));
+    } catch (ex) {
+      console.error(ex);
+    }
+  };
 }
-function send(obj){ if(ws && ws.readyState===1) ws.send(JSON.stringify(obj)); }
-
-// Always connect (auto-actions depend on it)
+function send(obj) {
+  if (ws && ws.readyState === 1) ws.send(JSON.stringify(obj));
+}
 connect();
 
-// ── URL params auto-action ─────────────────────────────────────
-(function(){
-  var p=new URLSearchParams(location.search);
-  if(p.get('name')) el('inp-name').value = p.get('name');
-  if(p.get('code')){
+(function () {
+  var p = new URLSearchParams(location.search);
+  if (p.get('name')) el('inp-name').value = p.get('name');
+  if (p.get('code')) {
     el('inp-code').value = String(p.get('code')).toUpperCase();
-    // show join UI
-    var a=el('join-area');
-    a.style.display='flex'; a.style.flexDirection='column';
+    var a = el('join-area');
+    a.style.display = 'flex';
+    a.style.flexDirection = 'column';
+    a.style.gap = '10px';
   }
-  // Auto-create (from lobby.html create flow)
-  if(p.get('create')==='1' && p.get('name')){
-    var name=String(p.get('name')||'').trim();
-    if(name){
-      myName=name;
-      if(window.ZapPlay) ZapPlay.savePseudo(name);
-      var tryCreate=function(){
-        if(ws && ws.readyState===1) send({type:'create', name:name});
-        else reconnectAction=tryCreate;
+  if (p.get('create') === '1' && p.get('name')) {
+    var name = String(p.get('name') || '').trim();
+    if (name) {
+      myName = name;
+      if (window.ZapPlay) ZapPlay.savePseudo(name);
+      var tryCreate = function () {
+        if (ws && ws.readyState === 1) send({ type: 'create', name: name });
+        else reconnectAction = tryCreate;
       };
       setTimeout(tryCreate, 300);
     }
   }
-  // Auto-join when code + name are provided (from lobby.html join flow)
-  if(p.get('code') && p.get('name') && p.get('create')!=='1' && p.get('spectate')!=='1'){
-    var nm=String(p.get('name')||'').trim();
-    var code=String(p.get('code')||'').trim().toUpperCase();
-    if(nm && code){
-      myName=nm;
-      if(window.ZapPlay) ZapPlay.savePseudo(nm);
-      var tryJoin=function(){
-        if(ws && ws.readyState===1) send({type:'join', name:nm, code:code});
-        else reconnectAction=tryJoin;
+  if (p.get('code') && p.get('name') && p.get('create') !== '1' && p.get('spectate') !== '1') {
+    var nm = String(p.get('name') || '').trim();
+    var code = String(p.get('code') || '').trim().toUpperCase();
+    if (nm && code) {
+      myName = nm;
+      if (window.ZapPlay) ZapPlay.savePseudo(nm);
+      var tryJoin = function () {
+        if (ws && ws.readyState === 1) send({ type: 'join', name: nm, code: code });
+        else reconnectAction = tryJoin;
       };
       setTimeout(tryJoin, 300);
     }
   }
-  if(p.get('spectate')==='1' && p.get('code')){
-    if(p.get('name')) el('inp-name').value = p.get('name');
-    var ja=el('join-area'); ja.style.display='flex'; ja.style.flexDirection='column';
+  if (p.get('spectate') === '1' && p.get('code')) {
+    if (p.get('name')) el('inp-name').value = p.get('name');
+    var ja = el('join-area');
+    ja.style.display = 'flex';
+    ja.style.flexDirection = 'column';
+    ja.style.gap = '10px';
     setTimeout(doJoinSpectate, 400);
   }
 })();
 
-// ── Screen helpers ─────────────────────────────────────────────
-function show(id){
-  document.querySelectorAll('.screen').forEach(function(s){ s.classList.remove('active'); });
+function show(id) {
+  document.querySelectorAll('.screen').forEach(function (s) {
+    s.classList.remove('active');
+  });
   document.getElementById(id).classList.add('active');
 }
-function setErr(msg){ document.getElementById('err').textContent = msg; }
-function el(id){ return document.getElementById(id); }
+function setErr(msg) {
+  el('err').textContent = msg;
+}
+function el(id) {
+  return document.getElementById(id);
+}
 
-// ── Home actions ───────────────────────────────────────────────
-function showJoin(){
-  var a=el('join-area');
-  var isHidden = (a.style.display==='none' || !a.style.display);
-  if(isHidden){
+function showJoin() {
+  var a = el('join-area');
+  var hidden = !a.style.display || a.style.display === 'none';
+  if (hidden) {
     a.style.display = 'flex';
     a.style.flexDirection = 'column';
-    setTimeout(function(){ var c=el('inp-code'); if(c) c.focus(); }, 50);
+    a.style.gap = '10px';
+    setTimeout(function () {
+      var c = el('inp-code');
+      if (c) c.focus();
+    }, 50);
+  } else {
+    doJoin();
+  }
+}
+
+function syncSpectateStrip() {
+  var s = el('spectate-strip');
+  if (!s) return;
+  s.classList.toggle('on', !!isSpectator);
+  s.textContent = isSpectator
+    ? 'Mode spectateur — tu suis la partie et le chat, sans jouer ni voter.'
+    : '';
+}
+
+function doCreate() {
+  var name = el('inp-name').value.trim();
+  if (window.ZapPlay) ZapPlay.savePseudo(name);
+  if (!name) {
+    setErr('Entre ton prénom !');
     return;
   }
-  // Si la zone est déjà ouverte, on rejoint directement avec le pseudo saisi/sauvegardé.
-  doJoin();
+  myName = name;
+  setErr('');
+  isSpectator = false;
+  syncSpectateStrip();
+  if (ws && ws.readyState === 1) send({ type: 'create', name: name });
+  else reconnectAction = function () { send({ type: 'create', name: name }); };
 }
 
-function syncSpectateStrip(){
-  var strip=el('spectate-strip'); if(!strip) return;
-  strip.classList.toggle('on', !!isSpectator);
-  strip.textContent = isSpectator ? 'Mode spectateur — tu suis la partie et le chat, sans jouer ni voter.' : '';
-}
-
-function doCreate(){
-  var name=el('inp-name').value.trim();
-  if(window.ZapPlay) ZapPlay.savePseudo(name);
-  if(!name){ setErr('Entre ton pr&eacute;nom !'); return; }
-  myName=name; setErr('');
-  isSpectator=false; syncSpectateStrip();
-  if(ws && ws.readyState===1) send({type:'create', name:name});
-  else reconnectAction=function(){ send({type:'create', name:name}); };
-}
-
-function doJoin(){
-  var name=el('inp-name').value.trim();
-  if(!name && window.ZapPlay && ZapPlay.getSavedPseudo){
-    name = (ZapPlay.getSavedPseudo()||'').trim();
-    if(name) el('inp-name').value = name;
+function doJoin() {
+  var name = el('inp-name').value.trim();
+  if (!name && window.ZapPlay && ZapPlay.getSavedPseudo) {
+    name = (ZapPlay.getSavedPseudo() || '').trim();
+    if (name) el('inp-name').value = name;
   }
-  var code=el('inp-code').value.trim().toUpperCase();
-  if(window.ZapPlay) ZapPlay.savePseudo(name);
-  if(!name){ setErr('Entre ton pr&eacute;nom !'); return; }
-  if(!code){ setErr('Entre le code de la salle !'); return; }
-  myName=name; setErr('');
-  isSpectator=false; syncSpectateStrip();
-  if(ws && ws.readyState===1) send({type:'join', name:name, code:code});
-  else reconnectAction=function(){ send({type:'join', name:name, code:code}); };
-}
-
-function doJoinSpectate(){
-  var name=el('inp-name').value.trim();
-  if(!name && window.ZapPlay && ZapPlay.getSavedPseudo){
-    name = (ZapPlay.getSavedPseudo()||'').trim();
-    if(name) el('inp-name').value = name;
+  var code = el('inp-code').value.trim().toUpperCase();
+  if (window.ZapPlay) ZapPlay.savePseudo(name);
+  if (!name) {
+    setErr('Entre ton prénom !');
+    return;
   }
-  var code=el('inp-code').value.trim().toUpperCase();
-  if(window.ZapPlay) ZapPlay.savePseudo(name);
-  if(!name||!code){ setErr('Pr&eacute;nom et code requis pour le spectateur.'); return; }
-  myName=name; mySlot=-1; setErr('');
-  isSpectator=true; syncSpectateStrip();
-  if(ws && ws.readyState===1) send({type:'join_imposteur_spectate', name:name, code:code});
-  else reconnectAction=function(){ send({type:'join_imposteur_spectate', name:name, code:code}); };
+  if (!code) {
+    setErr('Entre le code !');
+    return;
+  }
+  myName = name;
+  setErr('');
+  isSpectator = false;
+  syncSpectateStrip();
+  if (ws && ws.readyState === 1) send({ type: 'join', name: name, code: code });
+  else reconnectAction = function () { send({ type: 'join', name: name, code: code }); };
 }
 
-// ── Setup ──────────────────────────────────────────────────────
-function doSetup(){ if(isSpectator)return; send({type:'start_setup'}); }
-function doLaunch(){ if(isSpectator)return; send({type:'configure', totalRounds:cfg.rounds, nbImposteurs:cfg.imp}); }
-
-function selOpt(key, val, btn){
-  cfg[key]=val;
-  btn.parentElement.querySelectorAll('.btn-opt').forEach(function(b){ b.classList.remove('sel'); });
-  btn.classList.add('sel');
+function doJoinSpectate() {
+  var name = el('inp-name').value.trim();
+  if (!name && window.ZapPlay && ZapPlay.getSavedPseudo) {
+    name = (ZapPlay.getSavedPseudo() || '').trim();
+    if (name) el('inp-name').value = name;
+  }
+  var code = el('inp-code').value.trim().toUpperCase();
+  if (window.ZapPlay) ZapPlay.savePseudo(name);
+  if (!name || !code) {
+    setErr('Prénom et code requis.');
+    return;
+  }
+  myName = name;
+  mySlot = -1;
+  setErr('');
+  isSpectator = true;
+  syncSpectateStrip();
+  if (ws && ws.readyState === 1) send({ type: 'join_imposteur_spectate', name: name, code: code });
+  else reconnectAction = function () { send({ type: 'join_imposteur_spectate', name: name, code: code }); };
 }
 
-// ── Timer bar ──────────────────────────────────────────────────
-function startTimer(fillId, dur){
+function doSetup() {
+  if (isSpectator) return;
+  send({ type: 'start_setup' });
+}
+
+function doLaunch() {
+  if (isSpectator) return;
+  send({ type: 'configure', totalRounds: cfg.rounds, nbImposteurs: cfg.imp });
+}
+
+function startTimer(fillId, dur) {
   clearInterval(timerInt);
-  var fill=el(fillId); if(!fill) return;
-  fill.style.transition='none'; fill.style.width='100%';
-  var start=Date.now(), ms=dur*1000;
-  setTimeout(function(){ fill.style.transition='width .9s linear'; }, 30);
-  timerInt=setInterval(function(){
-    var pct=Math.max(0, 1-(Date.now()-start)/ms);
-    fill.style.width=(pct*100)+'%';
-    if(pct<=0) clearInterval(timerInt);
+  var fill = el(fillId);
+  if (!fill) return;
+  fill.style.transition = 'none';
+  fill.style.width = '100%';
+  var start = Date.now();
+  var ms = dur * 1000;
+  setTimeout(function () {
+    fill.style.transition = 'width .9s linear';
+  }, 30);
+  timerInt = setInterval(function () {
+    var pct = Math.max(0, 1 - (Date.now() - start) / ms);
+    fill.style.width = pct * 100 + '%';
+    if (pct <= 0) clearInterval(timerInt);
   }, 250);
 }
 
-// ── Copy code ──────────────────────────────────────────────────
-function copyCode(){
-  if(!myCode) return;
-  navigator.clipboard.writeText(myCode).then(function(){
-    var h=el('copy-hint'); if(h){ h.textContent='Copi&eacute; !'; h.style.color='#22c55e'; setTimeout(function(){ h.textContent='Appuyer pour copier'; h.style.color=''; },1500); }
-  }).catch(function(){});
-}
-
-// ── Main handler ───────────────────────────────────────────────
-function handle(m){
-  if(m.type==='error'){ el('wait-err').textContent=m.msg; setErr(m.msg); return; }
-  if(m.type==='welcome_imposteur_spectate'){ isSpectator=true; syncSpectateStrip(); return; }
-  if(m.type==='lounge_chat'){ if(window.ZapPlay) ZapPlay.addLoungeMessage(m); return; }
-  if(m.type!=='imposteur_state') return;
-  var s=m;
-  if(!window.__imp_lastPhase) window.__imp_lastPhase = null;
-  var prev = window.__imp_lastPhase;
-  if(prev !== s.phase){
-    if(s.phase==='VOTE') SND.vote();
-    if(s.phase==='REVEAL'){
-      if(s.eliminated && s.eliminated.isImposteur) SND.revealGood();
-      else if(s.eliminated && !s.eliminated.isImposteur) SND.revealBad();
-      else SND.vote();
+function copyCode() {
+  if (!myCode) return;
+  navigator.clipboard.writeText(myCode).then(function () {
+    var h = el('copy-hint');
+    if (h) {
+      h.textContent = '✓ Copié !';
+      h.style.color = 'var(--green)';
+      setTimeout(function () {
+        h.textContent = 'Appuyer pour copier';
+        h.style.color = '';
+      }, 1500);
     }
-    if(s.phase==='GAME_OVER') SND.end();
-    window.__imp_lastPhase = s.phase;
-  }
-  // resolve mySlot
-  if(!isSpectator && mySlot<0){
-    var me=s.players.find(function(p){ return p.name===myName; });
-    if(me) mySlot=me.slot;
-  }
-  isHost = !isSpectator && (s.host===myName);
-  myCode = s.code;
-
-  if(s.phase==='WAITING')   { renderWait(s);     show('s-wait'); }
-  else if(s.phase==='SETUP')     { renderSetup(s);    show('s-setup'); }
-  else if(s.phase==='DESCRIBE')  { renderDescribe(s); show('s-describe'); }
-  else if(s.phase==='VOTE')      { renderVote(s);     show('s-vote'); }
-  else if(s.phase==='REVEAL')    { renderReveal(s);   show('s-reveal'); }
-  else if(s.phase==='GUESS')     { renderGuess(s);    show('s-guess'); }
-  else if(s.phase==='SCORES')    { renderScores(s);   show('s-scores'); }
-  else if(s.phase==='GAME_OVER') { renderGameOver(s); show('s-gameover'); }
-
-  if(s.phase!=='WAITING' && window.ZapPlay) ZapPlay.hideLounge();
+  }).catch(function () {});
 }
 
-// ── WAIT ───────────────────────────────────────────────────────
-function renderWait(s){
-  el('wait-code').textContent = s.code;
-  var pg=el('wait-players'); pg.textContent='';
-  s.players.forEach(function(p){
-    var chip=document.createElement('div');
-    chip.className='player-chip'+(p.name===s.host?' host':'');
-    chip.textContent=(p.name===s.host?'\u2605 ':'')+p.name;
-    pg.appendChild(chip);
-  });
-  el('start-btn').style.display = (isHost && !isSpectator) ? 'block' : 'none';
-  el('wait-err').textContent='';
-  if(window.ZapPlay) ZapPlay.showLounge({players:s.players,mySlot:isSpectator?-1:mySlot,roomCode:s.code||myCode,gameName:'Imposteur'});
-}
-
-// ── SETUP ──────────────────────────────────────────────────────
-function renderSetup(s){
-  var imp2=el('imp-opts').querySelector('[data-v="2"]');
-  if(s.players.length<5){
-    imp2.disabled=true; imp2.classList.remove('sel');
-    if(cfg.imp===2){ cfg.imp=1; el('imp-opts').querySelector('[data-v="1"]').classList.add('sel'); }
-  } else { imp2.disabled=false; }
-}
-
-// ── DESCRIBE ───────────────────────────────────────────────────
-function renderDescribe(s){
-  var roleEl = el('d-role');
-  if(roleEl){
-    if(isSpectator){ roleEl.textContent = '👀 Spectateur'; roleEl.style.color = 'var(--muted)'; }
-    else if(s.myRole==='imposteur') { roleEl.textContent = '🕵️ Tu es l’imposteur'; roleEl.style.color = '#f59e0b'; }
-    else if(s.myRole==='civil') { roleEl.textContent = '👤 Tu es civil'; roleEl.style.color = 'var(--muted)'; }
-    else { roleEl.textContent = 'Ton rôle'; roleEl.style.color = 'var(--muted)'; }
-  }
-  var wv=el('d-word');
-  if(s.word){ wv.textContent=s.word; wv.className='word-val'; }
-  else { wv.textContent='???'; wv.className='word-val unk'; }
-
-  var activeSlot=s.descOrder ? s.descOrder[s.descIndex] : -1;
-  var ap=s.players.find(function(p){ return p.slot===activeSlot; });
-  var tp=el('d-turn'); tp.textContent='Tour de ';
-  var b=document.createElement('b'); b.textContent=ap?ap.name:'?'; tp.appendChild(b);
-
-  startTimer('d-timer', 20);
-
-  var dl=el('d-list'); dl.textContent='';
-  if(s.descOrder) s.descOrder.slice(0, s.descIndex).forEach(function(slot){
-    var dp=s.players.find(function(p){ return p.slot===slot; });
-    var desc=s.descriptions ? s.descriptions.find(function(d){ return d.slot===slot; }) : null;
-    var div=document.createElement('div'); div.className='desc-item';
-    var dn=document.createElement('div'); dn.className='desc-name'; dn.textContent=dp?dp.name:'?';
-    var dt=document.createElement('div'); dt.className='desc-text'; dt.textContent=desc?desc.text:'...';
-    div.appendChild(dn); div.appendChild(dt); dl.appendChild(div);
-  });
-
-  var isMine=!isSpectator && (activeSlot===mySlot);
-  el('d-input-row').style.display=isMine?'flex':'none';
-  el('d-waiting').style.display=isMine?'none':'block';
-  if(isSpectator){
-    el('d-waiting').style.display='block';
-    el('d-waiting').textContent='Les joueurs décrivent le mot — tu observes.';
-  }
-  if(isMine) setTimeout(function(){ var inp=el('d-inp'); if(inp) inp.focus(); }, 50);
-}
-
-function doDescribe(){
-  if(isSpectator)return;
-  var txt=el('d-inp').value.trim(); if(!txt) return;
-  send({type:'describe', text:txt}); el('d-inp').value='';
-}
-
-// ── VOTE ───────────────────────────────────────────────────────
-function renderVote(s){
-  startTimer('v-timer', 30);
-  if(isSpectator){
-    el('v-count').textContent='Spectateur';
-    el('v-btns').innerHTML='<p style="text-align:center;color:var(--muted);font-size:.9rem;padding:12px">Tu observes le vote.</p>';
+function handle(m) {
+  if (m.type === 'error') {
+    el('wait-err').textContent = m.msg;
+    setErr(m.msg);
     return;
   }
+  if (m.type === 'welcome_imposteur_spectate') {
+    isSpectator = true;
+    syncSpectateStrip();
+    return;
+  }
+  if (m.type === 'lounge_chat') {
+    if (window.ZapPlay) ZapPlay.addLoungeMessage(m);
+    return;
+  }
+  if (m.type !== 'imposteur_state') return;
+  var s = m;
+  if (!window.__imp_lastPhase) window.__imp_lastPhase = null;
+  var prev = window.__imp_lastPhase;
+  if (prev !== s.phase) {
+    if (s.phase === 'VOTE') SND.vote();
+    if (s.phase === 'REVEAL') {
+      if (s.eliminated && s.eliminated.isImposteur) SND.revealGood();
+      else if (s.eliminated && !s.eliminated.isImposteur) SND.revealBad();
+      else SND.vote();
+    }
+    if (s.phase === 'GAME_OVER') SND.end();
+    window.__imp_lastPhase = s.phase;
+  }
+  if (!isSpectator && mySlot < 0) {
+    var me = s.players.find(function (p) { return p.name === myName; });
+    if (me) mySlot = me.slot;
+  }
+  isHost = !isSpectator && s.host === myName;
+  myCode = s.code;
+  if (s.phase === 'WAITING') {
+    renderWait(s);
+    show('s-wait');
+  } else if (s.phase === 'SETUP') {
+    renderSetup(s);
+    show('s-setup');
+  } else if (s.phase === 'DESCRIBE') {
+    renderDescribe(s);
+    show('s-describe');
+  } else if (s.phase === 'VOTE') {
+    renderVote(s);
+    show('s-vote');
+  } else if (s.phase === 'REVEAL') {
+    renderReveal(s);
+    show('s-reveal');
+  } else if (s.phase === 'GUESS') {
+    renderGuess(s);
+    show('s-guess');
+  } else if (s.phase === 'SCORES') {
+    renderScores(s);
+    show('s-scores');
+  } else if (s.phase === 'GAME_OVER') {
+    renderGameOver(s);
+    show('s-gameover');
+  }
+  if (s.phase !== 'WAITING' && window.ZapPlay) ZapPlay.hideLounge();
+}
 
-  var vd=el('v-descs'); vd.textContent='';
-  if(s.descriptions) s.descriptions.forEach(function(d){
-    var div=document.createElement('div'); div.className='vd-item';
-    var nm=document.createElement('div'); nm.className='vd-name'; nm.textContent=d.name;
-    var tx=document.createElement('div'); tx.className='vd-text'; tx.textContent=d.text;
-    div.appendChild(nm); div.appendChild(tx); vd.appendChild(div);
+function renderWait(s) {
+  el('wait-code').textContent = s.code;
+  var pg = el('wait-players');
+  pg.textContent = '';
+  s.players.forEach(function (p) {
+    var chip = document.createElement('div');
+    chip.className = 'player-chip' + (p.name === s.host ? ' host' : '');
+    chip.textContent = p.name;
+    pg.appendChild(chip);
   });
+  el('start-btn').style.display = isHost && !isSpectator ? 'block' : 'none';
+  el('wait-err').textContent = '';
+  if (window.ZapPlay) {
+    ZapPlay.showLounge({
+      players: s.players,
+      mySlot: isSpectator ? -1 : mySlot,
+      roomCode: s.code || myCode,
+      gameName: 'Imposteur'
+    });
+  }
+}
 
-  var voteCount=s.votes ? Object.keys(s.votes).length : 0;
-  el('v-count').textContent=voteCount+' / '+s.players.length+' votes';
+function renderSetup(s) {
+  var imp2 = el('imp-opts').querySelector('[data-v="2"]');
+  if (s.players.length < 5) {
+    imp2.disabled = true;
+    imp2.classList.remove('sel');
+    if (cfg.imp === 2) {
+      cfg.imp = 1;
+      el('imp-opts').querySelector('[data-v="1"]').classList.add('sel');
+    }
+  } else {
+    imp2.disabled = false;
+  }
+}
 
-  var alreadyVoted=s.votes && s.votes[mySlot]!==undefined;
-  var vb=el('v-btns'); vb.textContent='';
-  s.players.forEach(function(p){
-    if(p.slot===mySlot) return;
-    var btn=document.createElement('button');
-    btn.className='vote-btn'+(alreadyVoted&&s.votes[mySlot]===p.slot?' voted':'');
-    btn.disabled=alreadyVoted;
-    var av=document.createElement('div'); av.className='av'; av.textContent=p.name[0].toUpperCase();
-    var nm=document.createElement('span'); nm.textContent=p.name;
-    btn.appendChild(av); btn.appendChild(nm);
-    (function(sl){ btn.onclick=function(){ send({type:'vote', targetSlot:sl}); }; })(p.slot);
+function renderDescribe(s) {
+  var banner = el('d-role-banner');
+  var roleLabel = el('d-role-label');
+  var roleValue = el('d-role-value');
+  var wordCard = el('d-word-card');
+  if (isSpectator) {
+    banner.className = 'role-banner spectator';
+    if (roleLabel) roleLabel.textContent = 'Statut';
+    if (roleValue) roleValue.textContent = 'Spectateur 👀';
+  } else if (s.myRole === 'imposteur') {
+    banner.className = 'role-banner imposteur';
+    if (roleLabel) roleLabel.textContent = '⚠ Rôle secret';
+    if (roleValue) roleValue.textContent = "Tu es l'Imposteur";
+  } else {
+    banner.className = 'role-banner civil';
+    if (roleLabel) roleLabel.textContent = 'Rôle';
+    if (roleValue) roleValue.textContent = 'Tu es Civil';
+  }
+  var wv = el('d-word');
+  if (s.word) {
+    wv.textContent = s.word;
+    wv.className = 'wrc-word' + (s.myRole === 'civil' ? ' civil-word' : '');
+    if (wordCard) wordCard.className = 'word-reveal-card' + (s.myRole === 'civil' ? ' civil' : '');
+  } else {
+    wv.textContent = '???';
+    wv.className = 'wrc-word unk';
+    if (wordCard) wordCard.className = 'word-reveal-card';
+  }
+  var activeSlot = s.descOrder ? s.descOrder[s.descIndex] : -1;
+  var ap = s.players.find(function (p) { return p.slot === activeSlot; });
+  var tp = el('d-turn');
+  var isMine = !isSpectator && activeSlot === mySlot;
+  tp.className = 'turn-pill' + (isMine ? ' my-turn' : '');
+  tp.innerHTML = isMine
+    ? "C'est <b>ton tour</b> de décrire !"
+    : 'Tour de <b>' + (ap ? ap.name : '?') + '</b>';
+  startTimer('d-timer', 20);
+  var dl = el('d-list');
+  dl.textContent = '';
+  if (s.descOrder) {
+    s.descOrder.slice(0, s.descIndex).forEach(function (slot) {
+      var dp = s.players.find(function (p) { return p.slot === slot; });
+      var desc = s.descriptions ? s.descriptions.find(function (d) { return d.slot === slot; }) : null;
+      var div = document.createElement('div');
+      div.className = 'desc-item';
+      var meta = document.createElement('div');
+      meta.className = 'desc-meta';
+      var av = document.createElement('div');
+      av.className = 'desc-av';
+      av.textContent = (dp ? dp.name[0] : '?').toUpperCase();
+      var nm = document.createElement('div');
+      nm.className = 'desc-name';
+      nm.textContent = dp ? dp.name : '?';
+      meta.appendChild(av);
+      meta.appendChild(nm);
+      var dt = document.createElement('div');
+      dt.className = 'desc-text';
+      dt.textContent = desc ? desc.text : '...';
+      div.appendChild(meta);
+      div.appendChild(dt);
+      dl.appendChild(div);
+    });
+  }
+  el('d-input-row').style.display = isMine ? 'flex' : 'none';
+  el('d-waiting').style.display = isMine ? 'none' : 'block';
+  if (isSpectator) {
+    el('d-waiting').style.display = 'block';
+    el('d-waiting').textContent = 'Les joueurs décrivent — tu observes.';
+  }
+  if (isMine) {
+    setTimeout(function () {
+      var inp = el('d-inp');
+      if (inp) inp.focus();
+    }, 50);
+  }
+}
+
+function doDescribe() {
+  if (isSpectator) return;
+  var txt = el('d-inp').value.trim();
+  if (!txt) return;
+  send({ type: 'describe', text: txt });
+  el('d-inp').value = '';
+}
+
+function renderVote(s) {
+  startTimer('v-timer', 30);
+  if (isSpectator) {
+    el('v-count').textContent = 'Spectateur';
+    el('v-btns').innerHTML =
+      '<p style="text-align:center;color:var(--muted);font-size:.88rem;padding:16px">Tu observes le vote.</p>';
+    return;
+  }
+  var vd = el('v-descs');
+  vd.textContent = '';
+  if (s.descriptions) {
+    s.descriptions.forEach(function (d) {
+      var div = document.createElement('div');
+      div.className = 'vd-item';
+      var nm = document.createElement('div');
+      nm.className = 'vd-name';
+      nm.textContent = d.name;
+      var tx = document.createElement('div');
+      tx.className = 'vd-text';
+      tx.textContent = d.text;
+      div.appendChild(nm);
+      div.appendChild(tx);
+      vd.appendChild(div);
+    });
+  }
+  var voteCount = s.votes ? Object.keys(s.votes).length : 0;
+  el('v-count').textContent = voteCount + ' / ' + s.players.length;
+  var alreadyVoted = s.votes && s.votes[mySlot] !== undefined;
+  var vb = el('v-btns');
+  vb.textContent = '';
+  s.players.forEach(function (p) {
+    if (p.slot === mySlot) return;
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'vote-btn' + (alreadyVoted && s.votes[mySlot] === p.slot ? ' voted' : '');
+    btn.disabled = alreadyVoted;
+    var av = document.createElement('div');
+    av.className = 'v-av';
+    av.textContent = p.name[0].toUpperCase();
+    var nm = document.createElement('span');
+    nm.className = 'v-name';
+    nm.textContent = p.name;
+    btn.appendChild(av);
+    btn.appendChild(nm);
+    (function (sl) {
+      btn.onclick = function () {
+        send({ type: 'vote', targetSlot: sl });
+      };
+    })(p.slot);
     vb.appendChild(btn);
   });
 }
 
-// ── REVEAL ─────────────────────────────────────────────────────
-function renderReveal(s){
+function renderReveal(s) {
   clearInterval(timerInt);
   var msgEl = el('r-msg');
-  if(msgEl){
-    if(s.eliminated){
-      msgEl.innerHTML = s.eliminated.isImposteur
-        ? '✅ <b>Imposteur trouvé !</b>'
-        : '❌ <b>Mauvais choix…</b> Ce n’était pas un imposteur.';
+  if (msgEl) {
+    if (s.eliminated) {
+      if (s.eliminated.isImposteur) {
+        msgEl.className = 'reveal-verdict found';
+        msgEl.innerHTML = '✅ <b>Imposteur trouvé !</b> Bien joué les civils.';
+      } else {
+        msgEl.className = 'reveal-verdict missed';
+        msgEl.innerHTML = "❌ <b>Raté…</b> Ce n'était pas un imposteur.";
+      }
     } else {
-      msgEl.textContent = 'Égalité — personne n’est éliminé';
+      msgEl.className = 'reveal-verdict draw';
+      msgEl.textContent = "Égalité — personne n'est éliminé";
     }
   }
-  var rl=el('r-list'); rl.textContent='';
-  var tally={};
-  if(s.votes) Object.values(s.votes).forEach(function(v){ tally[v]=(tally[v]||0)+1; });
-  var vals=Object.values(tally); var maxV=vals.length ? Math.max.apply(null,vals) : 0;
-
-  s.players.forEach(function(p){
-    var votes=tally[p.slot]||0;
-    var row=document.createElement('div'); row.className='rv-row'+(votes===maxV&&votes>0?' top':'');
-    var nm=document.createElement('span'); nm.className='rv-name'; nm.textContent=p.name;
-    var dots=document.createElement('div'); dots.className='rv-dots';
-    if(s.votes) Object.entries(s.votes).filter(function(e){ return e[1]===p.slot; }).forEach(function(e){
-      var vp=s.players.find(function(x){ return String(x.slot)===String(e[0]); });
-      var dot=document.createElement('div'); dot.className='rv-dot'; dot.textContent=vp?vp.name[0].toUpperCase():'?';
-      dots.appendChild(dot);
-    });
-    row.appendChild(nm); row.appendChild(dots); rl.appendChild(row);
+  var rl = el('r-list');
+  rl.textContent = '';
+  var tally = {};
+  if (s.votes) Object.values(s.votes).forEach(function (v) { tally[v] = (tally[v] || 0) + 1; });
+  var vals = Object.values(tally);
+  var maxV = vals.length ? Math.max.apply(null, vals) : 0;
+  s.players.forEach(function (p) {
+    var votes = tally[p.slot] || 0;
+    var row = document.createElement('div');
+    row.className = 'rv-row' + (votes === maxV && votes > 0 ? ' top' : '');
+    var nm = document.createElement('span');
+    nm.className = 'rv-name';
+    nm.textContent = p.name;
+    var dots = document.createElement('div');
+    dots.className = 'rv-votes';
+    if (s.votes) {
+      Object.entries(s.votes)
+        .filter(function (e) { return e[1] === p.slot; })
+        .forEach(function (e) {
+          var vp = s.players.find(function (x) { return String(x.slot) === String(e[0]); });
+          var dot = document.createElement('div');
+          dot.className = 'rv-dot';
+          dot.textContent = vp ? vp.name[0].toUpperCase() : '?';
+          dots.appendChild(dot);
+        });
+    }
+    row.appendChild(nm);
+    row.appendChild(dots);
+    rl.appendChild(row);
   });
-
-  var re=el('r-elim'); re.textContent='';
-  if(s.eliminated){
-    var isImp=!!s.eliminated.isImposteur;
-    var box=document.createElement('div'); box.className='elim-box';
-    var lbl=document.createElement('div'); lbl.className='elim-label'; lbl.textContent='Elimin\xe9(e)';
-    var enm=document.createElement('div'); enm.className='elim-name'; enm.textContent=s.eliminated.name;
-    var erl=document.createElement('div'); erl.className='elim-role '+(isImp?'imp':'civ');
-    erl.textContent=isImp?'\uD83D\uDD75\uFE0F IMPOSTEUR':'\uD83D\uDC64 Civil';
-    box.appendChild(lbl); box.appendChild(enm); box.appendChild(erl); re.appendChild(box);
+  var re = el('r-elim');
+  re.textContent = '';
+  if (s.eliminated) {
+    var isImp = !!s.eliminated.isImposteur;
+    var box = document.createElement('div');
+    box.className = 'elim-card';
+    var lbl = document.createElement('div');
+    lbl.className = 'elim-lbl';
+    lbl.textContent = 'Éliminé(e)';
+    var enm = document.createElement('div');
+    enm.className = 'elim-name';
+    enm.textContent = s.eliminated.name;
+    var erl = document.createElement('div');
+    erl.className = 'elim-role ' + (isImp ? 'imp' : 'civ');
+    erl.textContent = isImp ? '🕵️ IMPOSTEUR' : '👤 Civil';
+    box.appendChild(lbl);
+    box.appendChild(enm);
+    box.appendChild(erl);
+    re.appendChild(box);
   } else {
-    var nb=document.createElement('div'); nb.className='no-elim'; nb.textContent="Egalit\xe9 \u2014 personne n'est \xe9limin\xe9";
+    var nb = document.createElement('div');
+    nb.className = 'no-elim';
+    nb.textContent = "Égalité — personne n'est éliminé";
     re.appendChild(nb);
   }
 }
 
-// ── GUESS ──────────────────────────────────────────────────────
-function renderGuess(s){
+function renderGuess(s) {
   startTimer('g-timer', 20);
-  var gc=el('g-content'); gc.textContent='';
-  if(isSpectator){
-    var w=document.createElement('div');
-    w.style.cssText='color:var(--muted);font-size:.9rem;text-align:center;padding:16px';
-    w.textContent='L’imposteur peut tenter de deviner le mot — tu observes.';
+  var gc = el('g-content');
+  gc.textContent = '';
+  if (isSpectator) {
+    var w = document.createElement('div');
+    w.style.cssText = 'color:var(--muted);font-size:.88rem;text-align:center;padding:20px;line-height:1.6';
+    w.textContent = "L'imposteur tente de deviner le mot secret — tu observes.";
     gc.appendChild(w);
     return;
   }
-  var me=s.players.find(function(p){ return p.slot===mySlot; });
-  var amImp=me&&me.isImposteur;
-
-  if(s.guessResult){
+  var me = s.players.find(function (p) { return p.slot === mySlot; });
+  var amImp = me && me.isImposteur;
+  if (s.guessResult) {
     clearInterval(timerInt);
-    var res=document.createElement('div');
-    res.className='guess-result '+(s.guessResult==='correct'?'ok':'ko');
-    res.textContent=s.guessResult==='correct'?'Bonne r\xe9ponse ! +1 bonus':'Mauvaise r\xe9ponse';
+    var res = document.createElement('div');
+    res.className = 'guess-result ' + (s.guessResult === 'correct' ? 'ok' : 'ko');
+    res.textContent =
+      s.guessResult === 'correct' ? '✓ Bonne réponse ! +1 bonus' : '✗ Mauvaise réponse';
     gc.appendChild(res);
     return;
   }
-  if(amImp){
-    var box=document.createElement('div'); box.className='guess-box';
-    var h3=document.createElement('h3'); h3.textContent='Devine le mot secret !';
-    var p=document.createElement('p'); p.textContent='Un essai, 20 secondes. Bonne r\xe9ponse = +1 point bonus.';
-    var row=document.createElement('div'); row.style.cssText='display:flex;gap:8px';
-    var inp=document.createElement('input'); inp.id='g-inp'; inp.type='text'; inp.maxLength=40; inp.placeholder='Le mot secret...'; inp.style.cssText='flex:1;background:rgba(255,255,255,.06);border:1.5px solid var(--primary);border-radius:10px;padding:12px;font-size:1rem;color:var(--text);outline:none';
-    var btn=document.createElement('button'); btn.className='btn btn-primary'; btn.style.width='auto'; btn.style.padding='12px 18px'; btn.textContent='OK'; btn.onclick=doGuess;
-    row.appendChild(inp); row.appendChild(btn);
-    box.appendChild(h3); box.appendChild(p); box.appendChild(row);
+  if (amImp) {
+    var box = document.createElement('div');
+    box.className = 'guess-card';
+    var h3 = document.createElement('div');
+    h3.className = 'guess-title';
+    h3.textContent = '🎯 Devine le mot secret !';
+    var p2 = document.createElement('div');
+    p2.className = 'guess-desc';
+    p2.textContent = 'Un essai, 20 secondes. Bonne réponse = +1 point bonus.';
+    var row = document.createElement('div');
+    row.className = 'input-row';
+    var inp = document.createElement('input');
+    inp.id = 'g-inp';
+    inp.type = 'text';
+    inp.maxLength = 40;
+    inp.placeholder = 'Le mot secret...';
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'btn btn-primary';
+    btn.style.cssText = 'width:auto;padding:13px 18px';
+    btn.textContent = 'OK';
+    btn.onclick = doGuess;
+    row.appendChild(inp);
+    row.appendChild(btn);
+    box.appendChild(h3);
+    box.appendChild(p2);
+    box.appendChild(row);
     gc.appendChild(box);
-    setTimeout(function(){ var gi=el('g-inp'); if(gi) gi.focus(); }, 50);
+    setTimeout(function () {
+      var gi = el('g-inp');
+      if (gi) gi.focus();
+    }, 50);
   } else {
-    var wait=document.createElement('div'); wait.style.cssText='color:var(--muted);font-size:.9rem;text-align:center;padding:20px';
-    wait.textContent="L'imposteur tente de deviner le mot secret\u2026";
+    var wait = document.createElement('div');
+    wait.style.cssText =
+      'color:var(--muted);font-size:.88rem;text-align:center;padding:24px;line-height:1.6;font-family:Orbitron,monospace;font-size:.72rem;letter-spacing:.06em';
+    wait.textContent = "L'imposteur tente de deviner le mot secret…";
     gc.appendChild(wait);
   }
 }
 
-function doGuess(){
-  if(isSpectator)return;
-  var gi=el('g-inp'); if(!gi) return;
-  var w=gi.value.trim(); if(!w) return;
-  send({type:'guess', word:w}); gi.disabled=true;
+function doGuess() {
+  if (isSpectator) return;
+  var gi = el('g-inp');
+  if (!gi) return;
+  var w = gi.value.trim();
+  if (!w) return;
+  send({ type: 'guess', word: w });
+  gi.disabled = true;
 }
 
-// ── SCORES ─────────────────────────────────────────────────────
-function renderScores(s){
+function renderScores(s) {
   clearInterval(timerInt);
-  el('sc-round').textContent='Manche '+s.round+' / '+s.totalRounds;
-  var sorted=s.players.slice().sort(function(a,b){ return (s.scores[b.slot]||0)-(s.scores[a.slot]||0); });
-  var sl=el('sc-list'); sl.textContent='';
-  sorted.forEach(function(p,i){
-    var row=document.createElement('div'); row.className='score-row'+(p.slot===mySlot?' me':'');
-    var rk=document.createElement('div'); rk.className='sr-rank'; rk.textContent=i===0?'1':i===1?'2':i===2?'3':i+1;
-    var av=document.createElement('div'); av.className='sr-av'; av.textContent=p.name[0].toUpperCase();
-    var nm=document.createElement('div'); nm.className='sr-name'; nm.textContent=p.name;
-    var pt=document.createElement('div'); pt.className='sr-pts'; pt.textContent=(s.scores[p.slot]||0)+' pts';
-    row.appendChild(rk); row.appendChild(av); row.appendChild(nm); row.appendChild(pt);
+  el('sc-round').textContent = 'Manche ' + s.round + ' / ' + s.totalRounds;
+  var sorted = s.players.slice().sort(function (a, b) {
+    return (s.scores[b.slot] || 0) - (s.scores[a.slot] || 0);
+  });
+  var sl = el('sc-list');
+  sl.textContent = '';
+  sorted.forEach(function (p, i) {
+    var row = document.createElement('div');
+    row.className = 'score-row' + (p.slot === mySlot ? ' me' : '');
+    row.style.animationDelay = i * 0.06 + 's';
+    var rk = document.createElement('div');
+    rk.className = 'sr-rank';
+    rk.textContent = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : i + 1;
+    var av = document.createElement('div');
+    av.className = 'sr-av';
+    av.textContent = p.name[0].toUpperCase();
+    var nm = document.createElement('div');
+    nm.className = 'sr-name';
+    nm.textContent = p.name;
+    var pt = document.createElement('div');
+    pt.className = 'sr-pts';
+    pt.textContent = (s.scores[p.slot] || 0) + ' pts';
+    row.appendChild(rk);
+    row.appendChild(av);
+    row.appendChild(nm);
+    row.appendChild(pt);
     sl.appendChild(row);
   });
-  el('sc-word').textContent=s.word?'Le mot \xe9tait : '+s.word:'';
-  var isLast=s.round>=s.totalRounds;
-  var endActions=el('sc-end-actions');
-  el('sc-next').style.display=isHost&&!isLast?'block':'none';
-  el('sc-wait').style.display=isHost||isLast?'none':'block';
-  if(endActions) endActions.style.display=isLast?'flex':'none';
+  var wi = el('sc-word');
+  wi.textContent = '';
+  if (s.word) {
+    wi.appendChild(document.createTextNode('Le mot secret était : '));
+    var b = document.createElement('b');
+    b.textContent = s.word;
+    wi.appendChild(b);
+  }
+  var isLast = s.round >= s.totalRounds;
+  var endActions = el('sc-end-actions');
+  el('sc-next').style.display = isHost && !isLast ? 'block' : 'none';
+  el('sc-wait').style.display = isHost || isLast ? 'none' : 'block';
+  if (endActions) endActions.style.display = isLast ? 'flex' : 'none';
 }
 
-// ── GAME OVER ──────────────────────────────────────────────────
-function renderGameOver(s){
+function renderGameOver(s) {
   clearInterval(timerInt);
-  var sorted=s.players.slice().sort(function(a,b){ return (s.scores[b.slot]||0)-(s.scores[a.slot]||0); });
-  var pod=el('go-podium'); pod.textContent='';
-  [1,0,2].forEach(function(idx){
-    var p=sorted[idx]; if(!p) return;
-    var col=document.createElement('div'); col.className='pcol r'+(idx+1);
-    var med=document.createElement('div'); med.className='pmed'; med.textContent=['\uD83E\uDD47','\uD83E\uDD48','\uD83E\uDD49'][idx];
-    var av=document.createElement('div'); av.className='pav'; av.textContent=p.name[0].toUpperCase();
-    var nm=document.createElement('div'); nm.className='pname'; nm.textContent=p.name;
-    var pt=document.createElement('div'); pt.className='ppts'; pt.textContent=(s.scores[p.slot]||0)+' pts';
-    col.appendChild(med); col.appendChild(av); col.appendChild(nm); col.appendChild(pt);
+  var sorted = s.players.slice().sort(function (a, b) {
+    return (s.scores[b.slot] || 0) - (s.scores[a.slot] || 0);
+  });
+  var pod = el('go-podium');
+  pod.textContent = '';
+  [1, 0, 2].forEach(function (idx) {
+    var p = sorted[idx];
+    if (!p) return;
+    var col = document.createElement('div');
+    col.className = 'pcol r' + (idx + 1);
+    var med = document.createElement('div');
+    med.className = 'p-medal';
+    med.textContent = ['🥈', '🥇', '🥉'][idx];
+    var av = document.createElement('div');
+    av.className = 'p-av';
+    av.textContent = p.name[0].toUpperCase();
+    var nm = document.createElement('div');
+    nm.className = 'p-name';
+    nm.textContent = p.name;
+    var pt = document.createElement('div');
+    pt.className = 'p-pts';
+    pt.textContent = (s.scores[p.slot] || 0) + ' pts';
+    col.appendChild(med);
+    col.appendChild(av);
+    col.appendChild(nm);
+    col.appendChild(pt);
     pod.appendChild(col);
   });
-  var gl=el('go-list'); gl.textContent='';
-  sorted.forEach(function(p,i){
-    var row=document.createElement('div'); row.className='score-row'+(p.slot===mySlot?' me':'');
-    var rk=document.createElement('div'); rk.className='sr-rank'; rk.textContent=i===0?'\uD83E\uDD47':i===1?'\uD83E\uDD48':i===2?'\uD83E\uDD49':i+1;
-    var av=document.createElement('div'); av.className='sr-av'; av.textContent=p.name[0].toUpperCase();
-    var nm=document.createElement('div'); nm.className='sr-name'; nm.textContent=p.name;
-    var pt=document.createElement('div'); pt.className='sr-pts'; pt.textContent=(s.scores[p.slot]||0)+' pts';
-    row.appendChild(rk); row.appendChild(av); row.appendChild(nm); row.appendChild(pt);
+  var gl = el('go-list');
+  gl.textContent = '';
+  sorted.forEach(function (p, i) {
+    var row = document.createElement('div');
+    row.className = 'score-row' + (p.slot === mySlot ? ' me' : '');
+    row.style.animationDelay = i * 0.07 + 's';
+    var rk = document.createElement('div');
+    rk.className = 'sr-rank';
+    rk.textContent = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : i + 1;
+    var av = document.createElement('div');
+    av.className = 'sr-av';
+    av.textContent = p.name[0].toUpperCase();
+    var nm = document.createElement('div');
+    nm.className = 'sr-name';
+    nm.textContent = p.name;
+    var pt = document.createElement('div');
+    pt.className = 'sr-pts';
+    pt.textContent = (s.scores[p.slot] || 0) + ' pts';
+    row.appendChild(rk);
+    row.appendChild(av);
+    row.appendChild(nm);
+    row.appendChild(pt);
     gl.appendChild(row);
   });
   launchConfetti();
-}
-
-function doReplay(){
-  if(isSpectator)return;
-  if(ws && ws.readyState===1) send({type:'restart_imposteur'});
-}
-
-// ── Confetti ───────────────────────────────────────────────────
-var _confettiRaf=null;
-function launchConfetti(){
-  var canvas=el('confetti-canvas'); if(!canvas) return;
-  if(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches)return;
-  if(_confettiRaf){cancelAnimationFrame(_confettiRaf);_confettiRaf=null;}
-  var dpr=Math.min(window.devicePixelRatio||1,2);
-  var w=window.innerWidth,h=window.innerHeight;
-  canvas.width=Math.floor(w*dpr);canvas.height=Math.floor(h*dpr);
-  canvas.style.width=w+'px';canvas.style.height=h+'px';
-  var ctx=canvas.getContext('2d',{alpha:true});
-  ctx.setTransform(dpr,0,0,dpr,0,0);
-  var colors=['#FF4D6D','#fb923c','#34d399','#5B9FFF','#A78BFA','#fbbf24'];
-  var n=innerWidth<640?48:88;
-  var parts=[];
-  for(var i=0;i<n;i++) parts.push({x:Math.random()*w,y:-20-Math.random()*120,vx:(Math.random()-.5)*3,vy:1.5+Math.random()*3.5,r:3+Math.random()*5,c:colors[i%colors.length],rot:Math.random()*360,rv:(Math.random()-.5)*6});
-  var fr=0,maxFr=110;
-  function draw(){
-    ctx.clearRect(0,0,w,h);
-    parts.forEach(function(p){
-      ctx.save();ctx.translate(p.x,p.y);ctx.rotate(p.rot*Math.PI/180);
-      ctx.fillStyle=p.c;ctx.globalAlpha=.92;ctx.fillRect(-p.r/2,-p.r/2,p.r,p.r*.55);ctx.restore();
-      p.x+=p.vx;p.y+=p.vy;p.rot+=p.rv;
+  if (window.ZapPlay && !isSpectator && typeof ZapPlay.saveGameResult === 'function') {
+    var wsSlot = s.winnerSlot != null ? s.winnerSlot : -1;
+    ZapPlay.saveGameResult({
+      game: 'imposteur',
+      gameName: 'Imposteur',
+      players: s.players.map(function (p) { return p.name; }),
+      winner: wsSlot >= 0 ? (s.players[wsSlot] && s.players[wsSlot].name) || '?' : 'Égalité',
+      myName: myName,
+      myScore: s.scores[mySlot] || 0,
+      isWinner: wsSlot === mySlot
     });
-    if(++fr<maxFr) _confettiRaf=requestAnimationFrame(draw);
-    else{ctx.clearRect(0,0,w,h);_confettiRaf=null;}
+  }
+}
+
+function doReplay() {
+  if (isSpectator) return;
+  if (ws && ws.readyState === 1) send({ type: 'restart_imposteur' });
+}
+
+var _confettiRaf = null;
+function launchConfetti() {
+  var canvas = el('confetti-canvas');
+  if (!canvas) return;
+  if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  if (_confettiRaf) {
+    cancelAnimationFrame(_confettiRaf);
+    _confettiRaf = null;
+  }
+  var dpr = Math.min(window.devicePixelRatio || 1, 2);
+  var w = window.innerWidth;
+  var h = window.innerHeight;
+  canvas.width = Math.floor(w * dpr);
+  canvas.height = Math.floor(h * dpr);
+  canvas.style.width = w + 'px';
+  canvas.style.height = h + 'px';
+  var ctx = canvas.getContext('2d', { alpha: true });
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  var colors = ['#FF4D6D', '#fb923c', '#34d399', '#5B9FFF', '#A78BFA', '#fbbf24'];
+  var n = innerWidth < 640 ? 48 : 88;
+  var parts = [];
+  var i;
+  for (i = 0; i < n; i++) {
+    parts.push({
+      x: Math.random() * w,
+      y: -20 - Math.random() * 120,
+      vx: (Math.random() - 0.5) * 3,
+      vy: 1.5 + Math.random() * 3.5,
+      r: 3 + Math.random() * 5,
+      c: colors[i % colors.length],
+      rot: Math.random() * 360,
+      rv: (Math.random() - 0.5) * 6
+    });
+  }
+  var fr = 0;
+  var maxFr = 110;
+  function draw() {
+    ctx.clearRect(0, 0, w, h);
+    parts.forEach(function (p) {
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate((p.rot * Math.PI) / 180);
+      ctx.fillStyle = p.c;
+      ctx.globalAlpha = 0.92;
+      ctx.fillRect(-p.r / 2, -p.r / 2, p.r, p.r * 0.55);
+      ctx.restore();
+      p.x += p.vx;
+      p.y += p.vy;
+      p.rot += p.rv;
+    });
+    if (++fr < maxFr) _confettiRaf = requestAnimationFrame(draw);
+    else {
+      ctx.clearRect(0, 0, w, h);
+      _confettiRaf = null;
+    }
   }
   draw();
 }
 
-// ── Enter key ──────────────────────────────────────────────────
-document.addEventListener('keydown', function(e){
-  if(e.key!=='Enter') return;
-  var active=document.querySelector('.screen.active');
-  if(!active) return;
-  var id=active.id;
-  if(id==='s-home') doCreate();
-  else if(id==='s-describe' && el('d-input-row').style.display!=='none') doDescribe();
-  else if(id==='s-guess' && el('g-inp')) doGuess();
+document.addEventListener('keydown', function (e) {
+  if (e.key !== 'Enter') return;
+  var active = document.querySelector('.screen.active');
+  if (!active) return;
+  if (active.id === 's-home') doCreate();
+  else if (active.id === 's-describe' && el('d-input-row').style.display !== 'none') doDescribe();
+  else if (active.id === 's-guess' && el('g-inp')) doGuess();
 });
 
-// Auto-join quand le code est complet (UX identique aux autres jeux)
-el('inp-code').addEventListener('input', function(e){
-  e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,4);
-  if(e.target.value.length===4) doJoin();
+el('inp-code').addEventListener('input', function (e) {
+  e.target.value = e.target.value
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, '')
+    .slice(0, 4);
+  if (e.target.value.length === 4) doJoin();
 });
 </script>
 <script src="zp-page-loader.js"></script>

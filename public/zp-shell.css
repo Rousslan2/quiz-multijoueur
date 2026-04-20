@@ -160,6 +160,11 @@ html[data-zp-game="lobby"] body.zp-has-shell .hero .back-btn {
   display: none !important;
 }
 
+/* Imposteur : « ← Accueil » en doublon avec la barre globale */
+html[data-zp-game="imposteur"] body.zp-has-shell #back-btn {
+  display: none !important;
+}
+
 body.zp-has-shell .header,
 body.zp-has-shell .hero {
   padding-top: 10px;
