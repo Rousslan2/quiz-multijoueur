@@ -116,6 +116,12 @@ const GAME_NAMES = {
   skyline:'Skyline'
 };
 
+/** Phases « en attente / pas encore en match » pour le lobby (filtre « En attente », badge). */
+function lobbyRoomIsWaiting(game, room) {
+  const p = String(room.phase || '');
+  return ['WAITING', 'SETUP', 'READY', 'PLACING', 'COUNTDOWN'].includes(p);
+}
+
 function getRoomsSnapshot() {
   const all = [];
   const maps = { quiz:quizRooms, draw:drawRooms, p4:p4Rooms, morpion:morpionRooms, taboo:tabooRooms, emoji:emojiRooms, loup:loupRooms, uno:unoRooms, bomb:bombRooms, sumo:sumoRooms, paint:paintRooms, naval:navalRooms, typer:typerRooms, anagramme:anagrammeRooms, justeprix:justeprixRooms, timeline:timelineRooms, memo:memoRooms, imposteur:imposteurRooms, debat:debatRooms, skyline:skylineRooms };
@@ -131,7 +137,7 @@ function getRoomsSnapshot() {
         host: room.host,
         players: playerNames,
         maxPlayers: game==='loup'?10:game==='bomb'?6:game==='sumo'?4:game==='uno'?4:game==='paint'?4:game==='naval'?4:game==='imposteur'?8:game==='debat'?6:game==='skyline'?8:4,
-        status: ['WAITING','SETUP','PLACING','COUNTDOWN'].includes(room.phase) ? 'waiting' : 'playing'
+        status: lobbyRoomIsWaiting(game, room) ? 'waiting' : 'playing'
       });
     }
   }

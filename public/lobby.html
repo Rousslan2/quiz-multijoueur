@@ -647,16 +647,18 @@ function connectLobby(){
   lobbyWs.onclose=()=>{if(pingTimer){clearInterval(pingTimer);pingTimer=null;}setTimeout(connectLobby,2000);};
 }
 connectLobby();
-fetch('/api/rooms').then(r=>r.json()).then(data=>{
-  const rooms=Array.isArray(data)?data:(data.rooms||[]);
-  const ts=Array.isArray(data)?Date.now():data.ts;
-  applyLobbyRoomsPayload(rooms,ts);
-}).catch(()=>{});
-setInterval(()=>{fetch('/api/rooms').then(r=>r.json()).then(data=>{
-  const rooms=Array.isArray(data)?data:(data.rooms||[]);
-  const ts=Array.isArray(data)?Date.now():data.ts;
-  applyLobbyRoomsPayload(rooms,ts);
-}).catch(()=>{});},45000);
+function fetchRoomsFromApi(){
+  fetch('/api/rooms').then(r=>r.json()).then(data=>{
+    const rooms=Array.isArray(data)?data:(data.rooms||[]);
+    const ts=Array.isArray(data)?Date.now():data.ts;
+    applyLobbyRoomsPayload(rooms,ts);
+  }).catch(()=>{});
+}
+fetchRoomsFromApi();
+/* Secours si le WS lobby est lent ou bloqué (liste à jour même sans push temps réel). */
+setInterval(fetchRoomsFromApi,5000);
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')fetchRoomsFromApi();});
+window.addEventListener('pageshow',e=>{if(e.persisted)fetchRoomsFromApi();});
 
 function getFilteredRooms(){
   let list=allRooms.slice();
