@@ -388,6 +388,21 @@ bindLoungeSender();
     };
     setTimeout(tryCreate,300);
   }
+  /* Depuis lobby : ?code=XXXX&name=… (sans create) — rejoindre automatiquement */
+  if(p.get('code')&&p.get('name')&&p.get('create')!=='1'&&!p.get('rejoin')){
+    const jn=String(p.get('name')||'').trim().slice(0,20);
+    const jc=String(p.get('code')||'').trim().toUpperCase();
+    if(jn&&jc){
+      document.getElementById('inp-name').value=jn;
+      if(window.ZapPlay)ZapPlay.savePseudo(jn);
+      myName=jn;
+      const tryJoin=()=>{
+        if(ws&&ws.readyState===WebSocket.OPEN){SND.init();send({type:'join_quiz',name:jn,code:jc});}
+        else reconnectAction=tryJoin;
+      };
+      setTimeout(tryJoin,320);
+    }
+  }
   const rj=p.get('rejoin');
   if(rj){
     fetch('/api/quiz/rejoin-token',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:rj})})

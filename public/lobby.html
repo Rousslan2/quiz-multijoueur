@@ -617,9 +617,9 @@ function sendLobbyPing(){
   try{lobbyWs.send(JSON.stringify({type:'ping',t:lobbyWs._pingStart}));}catch(e){}
 }
 function applyLobbyRoomsPayload(rooms,ts){
-  if(ts!=null&&ts<lobbyRoomsTs)return;
-  if(ts!=null)lobbyRoomsTs=ts;
-  allRooms=rooms||[];
+  /* Pas de rejet « ts vieux » : horloges / cache / WS peuvent désordonner ; on affiche toujours la dernière livraison. */
+  if(ts!=null&&!Number.isNaN(Number(ts)))lobbyRoomsTs=Math.max(lobbyRoomsTs,Number(ts));
+  allRooms=Array.isArray(rooms)?rooms:[];
   updateStats();
   renderRoomsFiltered();
 }
@@ -648,15 +648,21 @@ function connectLobby(){
 }
 connectLobby();
 function fetchRoomsFromApi(){
-  fetch('/api/rooms').then(r=>r.json()).then(data=>{
+  fetch('/api/rooms?_='+Date.now(),{cache:'no-store'}).then(r=>{
+    if(!r.ok)throw new Error('rooms http '+r.status);
+    return r.json();
+  }).then(data=>{
     const rooms=Array.isArray(data)?data:(data.rooms||[]);
     const ts=Array.isArray(data)?Date.now():data.ts;
     applyLobbyRoomsPayload(rooms,ts);
-  }).catch(()=>{});
+  }).catch(()=>{
+    /* Réseau / offline : éviter le spinner infini */
+    applyLobbyRoomsPayload(allRooms.length?allRooms:[],Date.now());
+  });
 }
 fetchRoomsFromApi();
 /* Secours si le WS lobby est lent ou bloqué (liste à jour même sans push temps réel). */
-setInterval(fetchRoomsFromApi,5000);
+setInterval(fetchRoomsFromApi,8000);
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')fetchRoomsFromApi();});
 window.addEventListener('pageshow',e=>{if(e.persisted)fetchRoomsFromApi();});
 
@@ -735,7 +741,10 @@ function doJoinCode(){
   const statusEl=document.getElementById('join-status');
   if(!code||code.length<2){showStatus(statusEl,'Entre le code de la salle !','err');return;}
   if(!name){showStatus(statusEl,'Entre ton prénom !','err');return;}
-  fetch('/api/rooms').then(r=>r.json()).then(data=>{
+  fetch('/api/rooms?_='+Date.now(),{cache:'no-store'}).then(r=>{
+    if(!r.ok)throw new Error('http');
+    return r.json();
+  }).then(data=>{
     const rooms=Array.isArray(data)?data:(data.rooms||[]);
     const room=rooms.find(r=>r.code===code);
     if(!room){showStatus(statusEl,'Salle introuvable. Vérifie le code.','err');return;}

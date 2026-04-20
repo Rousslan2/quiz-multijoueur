@@ -144,10 +144,15 @@ function getRoomsSnapshot() {
   return all;
 }
 
-app.get('/api/rooms', (_, res) => res.json({ rooms: getRoomsSnapshot(), ts: Date.now() }));
+app.get('/api/rooms', (_, res) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.json({ rooms: getRoomsSnapshot(), ts: Date.now() });
+});
 
 /** Liste des jeux masqués (menu / lobby) — lecture seule, sans secret */
 app.get('/api/public/config', (_, res) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
   res.json({ hiddenGames: adminConfig.hiddenGames || [] });
 });
 
