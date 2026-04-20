@@ -155,11 +155,13 @@ body.zp-has-shell {
 }
 
 /* Lobby : le CTA « Accueil » doublonne avec Accueil/Salons dans #zp-nav-global */
-html[data-zp-game="lobby"] body.zp-has-shell .header .back-btn {
+html[data-zp-game="lobby"] body.zp-has-shell .header .back-btn,
+html[data-zp-game="lobby"] body.zp-has-shell .hero .back-btn {
   display: none !important;
 }
 
-body.zp-has-shell .header {
+body.zp-has-shell .header,
+body.zp-has-shell .hero {
   padding-top: 10px;
 }
 
