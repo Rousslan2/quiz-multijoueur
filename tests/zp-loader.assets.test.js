@@ -40,6 +40,12 @@ test('pages jeu incluent zp-loader.css dans le head (après theme.css)', () => {
   assert.ok(quiz.indexOf('theme.css') < quiz.indexOf('zp-loader.css'), 'ordre theme puis zp-loader');
 });
 
+test('pages jeu incluent zp-page-loader.js avant </body>', () => {
+  const quiz = read(path.join(root, 'public', 'quiz.html'));
+  assert.ok(quiz.includes('zp-page-loader.js'), 'quiz.html inclut zp-page-loader.js');
+  assert.ok(quiz.indexOf('zp-page-loader.js') < quiz.lastIndexOf('</body>'), 'script avant </body>');
+});
+
 test('shared.js charge zp-loader.css et ne réinjecte plus le gros bloc CSS inline loader', () => {
   const js = read(sharedPath);
   assert.ok(js.includes('zp-loader.css'), 'href zp-loader.css');
