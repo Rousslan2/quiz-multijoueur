@@ -527,6 +527,10 @@ select option{background:#0a0a1a;color:var(--text)}
     <div class="rooms-body" id="rooms-list">
       <div class="spinner"></div>
     </div>
+    <div id="rooms-conn-banner" style="display:none;padding:10px 18px;border-top:1px solid var(--border);background:rgba(255,77,109,.06);color:#FCA5A5;font-size:.72rem;font-family:'Orbitron',monospace;letter-spacing:.08em;text-align:center">
+      <span id="rooms-conn-msg">Connexion perdue — vérifie ton réseau.</span>
+      <button type="button" id="rooms-retry-btn" style="margin-left:8px;background:rgba(91,159,255,.14);border:1px solid rgba(91,159,255,.35);color:var(--blue);border-radius:6px;padding:4px 10px;font-size:.62rem;font-family:'Orbitron',monospace;font-weight:700;letter-spacing:.08em;cursor:pointer">Actualiser</button>
+    </div>
   </div>
 
 </div><!-- /main -->
@@ -549,7 +553,21 @@ const GAME_ICONS = {
 
 let createdCode=null,lobbyWs=null,allRooms=[],pingTimer=null;
 var lobbyRoomsTs = 0;
+var lastRoomsReceivedAt = 0;
+var lobbyBootAt = Date.now();
 const urlParams=new URLSearchParams(location.search);
+
+function setRoomsConnBanner(show,msg){
+  const b=document.getElementById('rooms-conn-banner');
+  const m=document.getElementById('rooms-conn-msg');
+  if(!b)return;
+  if(show){
+    if(msg&&m)m.textContent=msg;
+    b.style.display='block';
+  }else{
+    b.style.display='none';
+  }
+}
 
 function buildLobbyInviteUrl(code,game){
   const u=new URL(location.href);u.search='';
@@ -630,6 +648,8 @@ function applyLobbyRoomsPayload(rooms,ts){
   /* Pas de rejet « ts vieux » : horloges / cache / WS peuvent désordonner ; on affiche toujours la dernière livraison. */
   if(ts!=null&&!Number.isNaN(Number(ts)))lobbyRoomsTs=Math.max(lobbyRoomsTs,Number(ts));
   allRooms=Array.isArray(rooms)?rooms:[];
+  lastRoomsReceivedAt=Date.now();
+  setRoomsConnBanner(false);
   updateStats();
   renderRoomsFiltered();
 }
@@ -660,17 +680,34 @@ connectLobby();
 function fetchRoomsFromApi(){
   const roomsUrl=new URL('/api/rooms',location.origin);
   roomsUrl.searchParams.set('_',String(Date.now()));
-  fetch(roomsUrl.toString(),{cache:'no-store',credentials:'same-origin'}).then(r=>{
+  return fetch(roomsUrl.toString(),{cache:'no-store',credentials:'same-origin'}).then(r=>{
     if(!r.ok)throw new Error('rooms http '+r.status);
     return r.json();
   }).then(data=>{
     const rooms=Array.isArray(data)?data:(data.rooms||[]);
     const ts=Array.isArray(data)?Date.now():data.ts;
     applyLobbyRoomsPayload(rooms,ts);
+    return true;
   }).catch(err=>{
     console.warn('[lobby] /api/rooms',err);
-    applyLobbyRoomsPayload(allRooms.length?allRooms:[],Date.now());
+    /* Pas d'écrasement de allRooms ; on révèle juste la bannière si rien n'arrive. */
+    if(!lastRoomsReceivedAt&&Date.now()-lobbyBootAt>3000){
+      stopInitialSpinner('Connexion au lobby impossible. Vérifie ta connexion puis clique Actualiser.');
+    }
+    return false;
   });
+}
+function stopInitialSpinner(msg){
+  const list=document.getElementById('rooms-list');
+  if(list&&list.querySelector('.spinner')){
+    list.textContent='';
+    const empty=document.createElement('div');empty.className='empty-state';
+    const icon=document.createElement('div');icon.className='empty-icon';icon.textContent='📡';
+    const title=document.createElement('div');title.className='empty-title';title.textContent='Hors ligne';
+    const desc=document.createElement('div');desc.className='empty-desc';desc.textContent=msg||'Impossible de charger les salles.';
+    [icon,title,desc].forEach(el=>empty.appendChild(el));list.appendChild(empty);
+  }
+  setRoomsConnBanner(true,msg||'Connexion perdue — vérifie ton réseau.');
 }
 fetchRoomsFromApi();
 /* Secours si le WS lobby est lent ou bloqué (liste à jour même sans push temps réel). */
@@ -678,8 +715,30 @@ setInterval(fetchRoomsFromApi,4000);
 /* Petit burst au démarrage : rafraîchir vite si une salle vient d’être créée ailleurs. */
 setTimeout(fetchRoomsFromApi,800);
 setTimeout(fetchRoomsFromApi,1800);
+/* Surveillance : si aucune donnée reçue depuis 5 s, afficher la bannière et arrêter le spinner. */
+setInterval(()=>{
+  const now=Date.now();
+  const wsOk=lobbyWs&&lobbyWs.readyState===WebSocket.OPEN;
+  const stale=lastRoomsReceivedAt===0?(now-lobbyBootAt>5000):(now-lastRoomsReceivedAt>8000);
+  if(stale&&!wsOk){
+    stopInitialSpinner('Connexion instable — clique Actualiser pour recharger.');
+  }else if(lastRoomsReceivedAt){
+    setRoomsConnBanner(false);
+  }
+},1500);
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')fetchRoomsFromApi();});
 window.addEventListener('pageshow',e=>{if(e.persisted)fetchRoomsFromApi();});
+/* Bouton Actualiser de la bannière : forcer un cycle complet (fetch + reconnect WS). */
+(function(){
+  const btn=document.getElementById('rooms-retry-btn');
+  if(!btn)return;
+  btn.addEventListener('click',()=>{
+    btn.disabled=true;btn.textContent='…';
+    try{if(lobbyWs&&lobbyWs.readyState!==WebSocket.CLOSED)lobbyWs.close();}catch(e){}
+    try{connectLobby();}catch(e){}
+    fetchRoomsFromApi().finally(()=>{btn.disabled=false;btn.textContent='Actualiser';});
+  });
+})();
 
 function getFilteredRooms(){
   let list=allRooms.slice();
@@ -702,7 +761,7 @@ function renderRooms(rooms){
   const list=document.getElementById('rooms-list');
   const cnt=document.getElementById('rooms-count');
   const total=allRooms.length,shown=rooms.length;
-  cnt.textContent=total&&shown!==total?shown+' / '+total+' salle'+(total!==1?'s'):shown+' salle'+(shown!==1?'s':'');
+  cnt.textContent=total&&shown!==total?shown+' / '+total+' salle'+(total!==1?'s':''):shown+' salle'+(shown!==1?'s':'');
   if(!rooms.length){
     list.textContent='';
     const empty=document.createElement('div');empty.className='empty-state';
@@ -750,35 +809,63 @@ function joinRoom(code,game){
   try{const room=allRooms.find(r=>r.code===code&&r.game===game);localStorage.setItem('zapplay_last_room',JSON.stringify({code,game,gameName:room?room.gameName:game,at:Date.now()}));}catch(e){}
   location.href=GAME_URLS[game]+'?code='+code+'&name='+encodeURIComponent(name);
 }
+function tryJoinFromLocalList(code,name,statusEl){
+  const room=allRooms.find(r=>String(r.code||'').toUpperCase()===code);
+  if(!room)return false;
+  const gameKey=room.game;
+  if(!GAME_URLS[gameKey]){showStatus(statusEl,'Jeu inconnu pour ce code.','err');return true;}
+  try{localStorage.setItem('zapplay_last_room',JSON.stringify({code:room.code,game:room.game,gameName:room.gameName,at:Date.now()}));}catch(e){}
+  location.href=GAME_URLS[gameKey]+'?code='+encodeURIComponent(room.code)+'&name='+encodeURIComponent(name);
+  return true;
+}
+function forceJoinWithSelectedGame(code,name,statusEl){
+  const sel=document.getElementById('sel-game');
+  const gameKey=sel?sel.value:null;
+  if(!gameKey||!GAME_URLS[gameKey]){
+    showStatus(statusEl,'Salle introuvable. Choisis le jeu et réessaie.','err');
+    return;
+  }
+  try{localStorage.setItem('zapplay_last_room',JSON.stringify({code,game:gameKey,gameName:gameKey,at:Date.now()}));}catch(e){}
+  location.href=GAME_URLS[gameKey]+'?code='+encodeURIComponent(code)+'&name='+encodeURIComponent(name);
+}
 function doJoinCode(){
   const code=document.getElementById('inp-join-code').value.trim().toUpperCase().replace(/[^A-Z0-9]/g,'');
   const name=document.getElementById('inp-join-name').value.trim();
   const statusEl=document.getElementById('join-status');
   if(!code||code.length<2){showStatus(statusEl,'Entre le code de la salle !','err');return;}
   if(!name){showStatus(statusEl,'Entre ton prénom !','err');return;}
+  /* 1) Tentative instantanée depuis la liste locale (WS/polling), évite un round-trip. */
+  if(tryJoinFromLocalList(code,name,statusEl))return;
+  /* 2) Sinon, résolution par l'API (plus fiable que le cache local). */
   const u=new URL('/api/room/'+encodeURIComponent(code),location.origin);
   u.searchParams.set('_',String(Date.now()));
+  showStatus(statusEl,'Recherche…','ok');
   fetch(u.toString(),{cache:'no-store',credentials:'same-origin'})
-    .then(r=>r.json().then(j=>({ok:r.ok,status:r.status,j})))
+    .then(r=>r.json().then(j=>({ok:r.ok,status:r.status,j})).catch(()=>({ok:false,status:r.status,j:{}})))
     .then(({ok,j})=>{
-      if(!ok||!j.ok||!j.room){
-        showStatus(statusEl,j.error==='not_found'||!ok?'Salle introuvable. Vérifie le code.':'Salle introuvable.','err');
+      if(ok&&j&&j.ok&&j.room){
+        const room=j.room;
+        var pl=(room.players&&room.players.length)||0;
+        var maxP=room.maxPlayers!=null?room.maxPlayers:8;
+        if(!room.status||room.status!=='waiting'){showStatus(statusEl,'Cette salle est déjà en partie.','err');return;}
+        if(pl>=maxP){showStatus(statusEl,'Cette salle est pleine !','err');return;}
+        const gameKey=room.game;
+        if(!GAME_URLS[gameKey]){showStatus(statusEl,'Jeu inconnu pour ce code.','err');return;}
+        try{localStorage.setItem('zapplay_last_room',JSON.stringify({code:room.code,game:room.game,gameName:room.gameName,at:Date.now()}));}catch(e){}
+        location.href=GAME_URLS[gameKey]+'?code='+encodeURIComponent(room.code)+'&name='+encodeURIComponent(name);
         return;
       }
-      const room=j.room;
-      var pl=(room.players&&room.players.length)||0;
-      var maxP=room.maxPlayers!=null?room.maxPlayers:8;
-      if(!room.status||room.status!=='waiting'){
-        showStatus(statusEl,'Cette salle est déjà en partie.','err');
+      /* 3) API renvoie not_found / erreur : fallback « forcer avec le jeu sélectionné ». */
+      if(j&&j.error==='not_found'){
+        showStatus(statusEl,'Salle introuvable. Vérifie le code.','err');
         return;
       }
-      if(pl>=maxP){showStatus(statusEl,'Cette salle est pleine !','err');return;}
-      const gameKey=room.game;
-      if(!GAME_URLS[gameKey]){showStatus(statusEl,'Jeu inconnu pour ce code.','err');return;}
-      try{localStorage.setItem('zapplay_last_room',JSON.stringify({code:room.code,game:room.game,gameName:room.gameName,at:Date.now()}));}catch(e){}
-      location.href=GAME_URLS[gameKey]+'?code='+encodeURIComponent(room.code)+'&name='+encodeURIComponent(name);
+      forceJoinWithSelectedGame(code,name,statusEl);
     })
-    .catch(()=>showStatus(statusEl,'Erreur réseau. Réessaie.','err'));
+    .catch(()=>{
+      /* Erreur réseau (API bloquée / offline) : forcer avec le jeu sélectionné plutôt que de rester muet. */
+      forceJoinWithSelectedGame(code,name,statusEl);
+    });
 }
 function copyCode(){
   if(!createdCode)return;
