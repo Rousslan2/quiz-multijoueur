@@ -9,10 +9,12 @@
   if (window.__ZP_MAIN_LOADER__) return;
   window.__ZP_MAIN_LOADER__ = true;
 
+  const Z_INDEX = 2147483646;
   const LOADER_ID = 'loader';
   const STYLE_ID = 'zp-main-loader-style';
   const FONT_ID = 'zp-main-loader-font';
-  const MIN_MS = 900;
+  /** Aligné sur shared.js / accueil : visible au moins 1,5 s */
+  const MIN_MS = 1500;
   const SAFETY_MS = 9000;
 
   let shownAt = 0;
@@ -22,6 +24,45 @@
   let progress = 0;
   let target = 0;
   let stepIdx = 0;
+
+  /** Plein viewport — au-dessus du reste, même avant que tout le CSS soit prêt */
+  function lockMainLoaderFullscreen(el) {
+    if (!el) return;
+    if (el.parentNode !== document.documentElement) {
+      try {
+        document.documentElement.appendChild(el);
+      } catch (_) {}
+    }
+    el.style.setProperty('z-index', String(Z_INDEX), 'important');
+    el.style.setProperty('position', 'fixed', 'important');
+    el.style.setProperty('top', '0', 'important');
+    el.style.setProperty('right', '0', 'important');
+    el.style.setProperty('bottom', '0', 'important');
+    el.style.setProperty('left', '0', 'important');
+    el.style.setProperty('width', '100%', 'important');
+    el.style.setProperty('max-width', '100%', 'important');
+    el.style.setProperty('box-sizing', 'border-box', 'important');
+    try {
+      el.style.minHeight = '100vh';
+    } catch (_) {}
+    try {
+      el.style.minHeight = '100dvh';
+    } catch (_) {}
+  }
+
+  function applyScrollLock() {
+    try {
+      document.documentElement.classList.add('zp-page-loading');
+      document.body.style.setProperty('overflow', 'hidden', 'important');
+    } catch (_) {}
+  }
+
+  function releaseScrollLock() {
+    try {
+      document.documentElement.classList.remove('zp-page-loading');
+      document.body.style.removeProperty('overflow');
+    } catch (_) {}
+  }
 
   const CSS = `
 #loader.zp-ml {
@@ -199,13 +240,17 @@
   function ensureFonts() {
     if (document.getElementById(FONT_ID)) return;
     const pc1 = document.createElement('link');
-    pc1.rel = 'preconnect'; pc1.href = 'https://fonts.googleapis.com';
+    pc1.rel = 'preconnect';
+    pc1.href = 'https://fonts.googleapis.com';
     const pc2 = document.createElement('link');
-    pc2.rel = 'preconnect'; pc2.href = 'https://fonts.gstatic.com';
+    pc2.rel = 'preconnect';
+    pc2.href = 'https://fonts.gstatic.com';
     pc2.crossOrigin = 'anonymous';
     const link = document.createElement('link');
-    link.id = FONT_ID; link.rel = 'stylesheet';
-    link.href = 'https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500&display=swap';
+    link.id = FONT_ID;
+    link.rel = 'stylesheet';
+    link.href =
+      'https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500&display=swap';
     document.head.appendChild(pc1);
     document.head.appendChild(pc2);
     document.head.appendChild(link);
@@ -232,13 +277,17 @@
     if (el) {
       el.classList.add('zp-ml');
       el.classList.remove('is-hidden');
+      lockMainLoaderFullscreen(el);
+      applyScrollLock();
       return el;
     }
     el = document.createElement('div');
     el.id = LOADER_ID;
     el.className = 'zp-ml';
     el.innerHTML = HTML;
-    (document.body || document.documentElement).appendChild(el);
+    document.documentElement.appendChild(el);
+    lockMainLoaderFullscreen(el);
+    applyScrollLock();
     return el;
   }
 
@@ -254,9 +303,14 @@
     const pct = el.querySelector('[data-zp-pct]');
     const status = el.querySelector('[data-zp-status]');
     if (!fill || !pct) return;
-    progress = 0; target = 15; stepIdx = 0;
+    progress = 0;
+    target = 15;
+    stepIdx = 0;
     const stepTick = setInterval(() => {
-      if (hideScheduled) { clearInterval(stepTick); return; }
+      if (hideScheduled) {
+        clearInterval(stepTick);
+        return;
+      }
       if (stepIdx < STEPS.length) {
         target = STEPS[stepIdx].t;
         if (status) status.textContent = STEPS[stepIdx].msg;
@@ -290,6 +344,7 @@
     shownAt = Date.now();
     hideScheduled = false;
     el.classList.remove('is-hidden');
+    lockMainLoaderFullscreen(el);
     if (!progressRAF) startProgress(el);
     if (safetyTimer) clearTimeout(safetyTimer);
     safetyTimer = setTimeout(() => {
@@ -303,15 +358,27 @@
     if (!el) return;
     if (hideScheduled) return;
     hideScheduled = true;
-    if (safetyTimer) { clearTimeout(safetyTimer); safetyTimer = null; }
-    if (el._stepTick) { clearInterval(el._stepTick); el._stepTick = null; }
+    if (safetyTimer) {
+      clearTimeout(safetyTimer);
+      safetyTimer = null;
+    }
+    if (el._stepTick) {
+      clearInterval(el._stepTick);
+      el._stepTick = null;
+    }
     const elapsed = Date.now() - shownAt;
     const remaining = Math.max(0, MIN_MS - elapsed);
     setTimeout(() => {
       el.classList.add('is-hidden');
       setTimeout(() => {
-        if (progressRAF) { cancelAnimationFrame(progressRAF); progressRAF = null; }
-        try { el.remove(); } catch (_) {}
+        if (progressRAF) {
+          cancelAnimationFrame(progressRAF);
+          progressRAF = null;
+        }
+        try {
+          el.remove();
+        } catch (_) {}
+        releaseScrollLock();
       }, 850);
     }, remaining);
   }
@@ -326,12 +393,10 @@
     return true;
   }
   if (!hookZapPlay()) {
-    // shared.js pas encore chargé — on retente au tick suivant puis sur DOMContentLoaded.
     setTimeout(hookZapPlay, 0);
     document.addEventListener('DOMContentLoaded', hookZapPlay, { once: true });
   }
 
-  // Mode auto : on affiche, puis on masque au « load » si personne n'appelle hide() manuellement.
   show();
   if (document.readyState === 'complete') {
     setTimeout(hide, MIN_MS);

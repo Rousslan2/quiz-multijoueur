@@ -59,6 +59,38 @@ function hookPseudoInputs(){
 /** Au-dessus de la barre globale (#zp-nav-global) et du chat — plein écran garanti */
 const ZP_LOADER_Z = 2147483646;
 
+function lockZpLoaderFullscreen(el){
+  if(!el)return;
+  if(el.parentNode!==document.documentElement){
+    try{ document.documentElement.appendChild(el); }catch(_){}
+  }
+  el.style.setProperty('z-index',String(ZP_LOADER_Z),'important');
+  el.style.setProperty('position','fixed','important');
+  el.style.setProperty('top','0','important');
+  el.style.setProperty('right','0','important');
+  el.style.setProperty('bottom','0','important');
+  el.style.setProperty('left','0','important');
+  el.style.setProperty('width','100%','important');
+  el.style.setProperty('max-width','100%','important');
+  el.style.setProperty('box-sizing','border-box','important');
+  try{ el.style.minHeight='100vh'; }catch(_){ }
+  try{ el.style.minHeight='100dvh'; }catch(_){ }
+}
+
+function applyLoaderScrollLock(){
+  try{
+    document.documentElement.classList.add('zp-page-loading');
+    document.body.style.setProperty('overflow','hidden','important');
+  }catch(_){}
+}
+
+function releaseLoaderScrollLock(){
+  try{
+    document.documentElement.classList.remove('zp-page-loading');
+    document.body.style.removeProperty('overflow');
+  }catch(_){}
+}
+
 function ensureZPLoaderStylesheet(){
   if(document.querySelector('link[href*="zp-loader.css"]'))return;
   const sheets = Array.from(document.styleSheets || []);
@@ -77,13 +109,9 @@ function ensureZPLoaderStylesheet(){
 function injectLoader(){
   const existing=document.getElementById('zp-loader');
   if(existing){
-    existing.style.setProperty('z-index',String(ZP_LOADER_Z),'important');
-    existing.style.setProperty('position','fixed','important');
-    existing.style.setProperty('inset','0','important');
-    existing.style.setProperty('width','100%','important');
-    existing.style.setProperty('min-height','100dvh','important');
-    if(existing.parentNode!==document.documentElement) document.documentElement.appendChild(existing);
     ensureZPLoaderStylesheet();
+    lockZpLoaderFullscreen(existing);
+    applyLoaderScrollLock();
     return;
   }
   if(!document.querySelector('link[href*="Orbitron"]')){
@@ -145,6 +173,8 @@ function injectLoader(){
   loader._cycleId=cycleId;
 
   document.documentElement.appendChild(loader);
+  lockZpLoaderFullscreen(loader);
+  applyLoaderScrollLock();
 }
 
 const MIN_LOADER_MS=1500;
@@ -165,7 +195,10 @@ function hideLoader(){
   const remaining=Math.max(0,MIN_LOADER_MS-elapsed);
   setTimeout(()=>{
     el.classList.add('hide');
-    setTimeout(()=>el.remove(),650);
+    setTimeout(()=>{
+      try{ el.remove(); }catch(_){ }
+      releaseLoaderScrollLock();
+    },650);
   },remaining);
 }
 

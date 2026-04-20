@@ -40,6 +40,12 @@
   pointer-events: none;
 }
 
+/* Pendant le chargement : pas de scroll derrière (fallback aux styles inline shared.js / zp-page-loader.js) */
+html.zp-page-loading,
+html.zp-page-loading body {
+  overflow: hidden !important;
+}
+
 /* Grille perspective + dérive */
 #zp-loader::before {
   content: '';
