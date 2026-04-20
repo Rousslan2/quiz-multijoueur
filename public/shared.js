@@ -59,6 +59,19 @@ function hookPseudoInputs(){
 /** Au-dessus de la barre globale (#zp-nav-global) et du chat — plein écran garanti */
 const ZP_LOADER_Z = 2147483646;
 
+/** Encoche + barre d’état iOS / Android — shared.js + meta viewport existante */
+function ensureViewportFitCover(){
+  try{
+    const m=document.querySelector('meta[name="viewport"]');
+    if(!m)return;
+    let c=String(m.getAttribute('content')||'');
+    if(/\bviewport-fit\s*=\s*cover\b/i.test(c))return;
+    c=c.replace(/\s+/g,' ').trim();
+    if(c)c+=', ';
+    m.setAttribute('content',c+'viewport-fit=cover');
+  }catch(_){}
+}
+
 function lockZpLoaderFullscreen(el){
   if(!el)return;
   if(el.parentNode!==document.documentElement){
@@ -72,9 +85,15 @@ function lockZpLoaderFullscreen(el){
   el.style.setProperty('left','0','important');
   el.style.setProperty('width','100%','important');
   el.style.setProperty('max-width','100%','important');
+  el.style.setProperty('height','100%','important');
   el.style.setProperty('box-sizing','border-box','important');
+  el.style.setProperty('padding-top','env(safe-area-inset-top)','important');
+  el.style.setProperty('padding-right','env(safe-area-inset-right)','important');
+  el.style.setProperty('padding-bottom','env(safe-area-inset-bottom)','important');
+  el.style.setProperty('padding-left','env(safe-area-inset-left)','important');
   try{ el.style.minHeight='100vh'; }catch(_){ }
   try{ el.style.minHeight='100dvh'; }catch(_){ }
+  try{ el.style.minHeight='-webkit-fill-available'; }catch(_){ }
 }
 
 function applyLoaderScrollLock(){
@@ -1494,6 +1513,7 @@ if(document.readyState==='loading'){
 }
 
 function init(){
+  ensureViewportFitCover();
   const isIndex=location.pathname.endsWith('index.html')||location.pathname.endsWith('/');
   // Loader : géré par zp-page-loader.js (style menu principal). Fallback si absent.
   if(!isIndex && !window.ZPLoader && !loaderHideScheduled){injectLoader();loaderShownAt=Date.now();}

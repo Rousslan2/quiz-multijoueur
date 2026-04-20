@@ -3,6 +3,18 @@
    Partagé par tous les jeux + lobby + index
    ───────────────────────────────────────────── */
 
+/* Hauteur réelle sur mobile / Safari (barre d’adresse) + PWA — complété par viewport-fit=cover (shared.js) */
+html {
+  min-height: 100%;
+  min-height: 100dvh;
+  min-height: -webkit-fill-available;
+}
+body {
+  min-height: 100%;
+  min-height: 100dvh;
+  min-height: -webkit-fill-available;
+}
+
 /* Loader global : inclure <link rel="stylesheet" href="/zp-loader.css"> dans le <head>
    de chaque page (après theme.css) — évite le flash « sans style » vs @import async. */
 
