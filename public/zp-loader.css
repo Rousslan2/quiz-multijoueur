@@ -22,8 +22,10 @@
   width: 100% !important;
   box-sizing: border-box !important;
   min-height: 100vh !important;
+  min-height: 100svh !important;
   min-height: 100dvh !important;
   min-height: -webkit-fill-available !important;
+  min-height: 100lvh !important;
   height: 100% !important;
   padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left) !important;
   display: flex;
@@ -432,8 +434,10 @@ html.zp-page-loading body {
   width: 100% !important;
   box-sizing: border-box !important;
   min-height: 100vh !important;
+  min-height: 100svh !important;
   min-height: 100dvh !important;
   min-height: -webkit-fill-available !important;
+  min-height: 100lvh !important;
   height: 100% !important;
   padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left) !important;
   display: flex;

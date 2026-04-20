@@ -96,8 +96,10 @@
   box-sizing: border-box;
   width: 100%;
   min-height: 100vh;
+  min-height: 100svh;
   min-height: 100dvh;
   min-height: -webkit-fill-available;
+  min-height: 100lvh;
   height: 100%;
   padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
   display: flex; align-items: center; justify-content: center;

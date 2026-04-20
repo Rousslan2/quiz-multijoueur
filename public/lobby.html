@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/favicon.svg">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <link rel="stylesheet" href="theme.css">
 <link rel="stylesheet" href="/zp-loader.css">
 <title>ZapPlay — Salles en ligne</title>
@@ -23,7 +23,8 @@ html{height:100%}
 
 body{
   min-height:100%;
-  color:var(--text);font-family:'Exo 2',sans-serif;padding-bottom:64px;
+  color:var(--text);font-family:'Exo 2',sans-serif;
+  padding-bottom:calc(64px + env(safe-area-inset-bottom, 0px));
   overflow-x:hidden;
 }
 

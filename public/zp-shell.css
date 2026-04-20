@@ -149,14 +149,18 @@
   opacity: 0.55;
 }
 
-/* Espace sous la barre (hauteur variable si la barre wrap sur 2 lignes — mobile) */
+/* Espace sous la barre — assez grand pour 2 rangées + icônes sur mobile (évite chevauchement avec le header page) */
 body.zp-has-shell {
-  padding-top: calc(env(safe-area-inset-top, 0px) + clamp(72px, 22vw, 96px));
+  padding-top: calc(env(safe-area-inset-top, 0px) + clamp(100px, 28vw, 120px));
 }
 
-/* Lobby : éviter double marge avec l’ancien header */
+/* Lobby : le CTA « Accueil » doublonne avec Accueil/Salons dans #zp-nav-global */
+html[data-zp-game="lobby"] body.zp-has-shell .header .back-btn {
+  display: none !important;
+}
+
 body.zp-has-shell .header {
-  padding-top: 12px;
+  padding-top: 10px;
 }
 
 @media (max-width: 520px) {
@@ -208,11 +212,15 @@ body.zp-has-shell .header {
     font-size: 0.7rem;
     padding: 6px 10px;
   }
+  body.zp-has-shell {
+    /* Barre sur 2+ lignes — réserve large (évite chevauchement header lobby / jeux) */
+    padding-top: calc(env(safe-area-inset-top, 0px) + clamp(140px, 42vw, 200px));
+  }
 }
 
 @media (max-width: 380px) {
   body.zp-has-shell {
-    padding-top: calc(env(safe-area-inset-top, 0px) + clamp(100px, 30vw, 128px));
+    padding-top: calc(env(safe-area-inset-top, 0px) + clamp(150px, 45vw, 210px));
   }
   .zp-nav-global-icon {
     width: 36px;
