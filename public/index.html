@@ -2212,10 +2212,9 @@ function confirmDeliver(){
   var arr = getOrders();
   var o = arr.find(function(x){ return x.id === deliverOrderId; });
   if(!o) return;
-  o.status = 'delivered'; o.note = note; o.deliveredAt = Date.now();
-  if(code) o.barcode = code;
-  if(deliverImageData) o.barcodeImage = deliverImageData;
-  localStorage.setItem('miam_orders', JSON.stringify(arr));
+  var patch = {status:'delivered', note:note, deliveredAt:Date.now()};
+  if(code) patch.barcode = code;
+  if(deliverImageData) patch.barcodeImage = deliverImageData;
   var finalEl = document.getElementById('deliver-final-code');
   if(deliverImageData){
     finalEl.innerHTML = '<img src="'+deliverImageData+'" style="max-width:200px;max-height:120px;object-fit:contain;border-radius:8px;margin-top:4px">';
@@ -2224,7 +2223,7 @@ function confirmDeliver(){
   }
   document.querySelector('.deliver-step1').classList.remove('is-on');
   document.querySelector('.deliver-step2').classList.add('is-on');
-  renderAdmin(); refreshOrders();
+  patchOrder(deliverOrderId, patch).then(function(){ renderAdmin(); refreshOrders(); });
   toast('Code envoyé au client ✓');
 }
 
@@ -2251,7 +2250,8 @@ function notifyAdmin(count){
     Notification.requestPermission();
   }
 }
-function updateNotifBadge(){
+async function updateNotifBadge(){
+  await loadOrders();
   const pending = getOrders().filter(o => (o.status||'pending')==='pending').length;
   const dot = document.getElementById('ad-notif-dot');
   const btn = document.getElementById('ad-notif-btn');
@@ -2323,7 +2323,8 @@ function adminTab(name, el){
   ['orders','products','settings'].forEach(k => document.getElementById('ad-pane-'+k).style.display = k===name?'block':'none');
   if(name==='products') renderAdminProducts();
 }
-function renderAdmin(){
+async function renderAdmin(){
+  await loadOrders();
   const orders = getOrders();
   const pending = orders.filter(o => (o.status||'pending')==='pending');
   const delivered = orders.filter(o => o.status==='delivered');
@@ -2356,12 +2357,7 @@ function renderAdmin(){
   }).join('');
 }
 function setOrderStatus(id, status){
-  const arr = getOrders();
-  const o = arr.find(x => x.id === id);
-  if(!o) return;
-  o.status = status;
-  localStorage.setItem('miam_orders', JSON.stringify(arr));
-  renderAdmin();
+  patchOrder(id, {status:status}).then(function(){ renderAdmin(); });
   toast(status==='delivered' ? 'Commande livrée ✓' : status==='refused' ? 'Commande refusée' : 'Commande réouverte');
 }
 function renderAdminProducts(){
@@ -2373,21 +2369,51 @@ function renderAdminProducts(){
 }
 function adminReset(){
   if(!confirm('Supprimer toutes les commandes ?')) return;
-  localStorage.removeItem('miam_orders');
-  renderAdmin();
-  toast('Commandes effacées');
+  fetch('/api/orders',{method:'DELETE'}).then(function(){
+    _ordersCache=[];
+    localStorage.removeItem('miam_orders');
+    renderAdmin();
+    toast('Commandes effacées');
+  });
 }
 
-/* ============ ORDERS ============ */
-function getOrders(){ try{ return JSON.parse(localStorage.getItem('miam_orders') || '[]'); }catch(e){ return []; } }
-function saveOrder(o){
+/* ============ ORDERS (API + cache local) ============ */
+var _ordersCache = [];
+function getOrders(){ return _ordersCache; }
+async function loadOrders(){
+  try {
+    const r = await fetch('/api/orders');
+    _ordersCache = await r.json();
+  } catch(e) {
+    try { _ordersCache = JSON.parse(localStorage.getItem('miam_orders')||'[]'); } catch(_){}
+  }
+}
+async function saveOrder(o){
   if(!o.status) o.status = 'pending';
   if(currentUser && !o.user) o.user = currentUser.email;
-  const arr = getOrders(); arr.unshift(o);
-  localStorage.setItem('miam_orders', JSON.stringify(arr));
+  try {
+    await fetch('/api/orders', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(o)});
+  } catch(e) {
+    const arr = JSON.parse(localStorage.getItem('miam_orders')||'[]');
+    arr.unshift(o);
+    localStorage.setItem('miam_orders', JSON.stringify(arr));
+  }
+  await loadOrders();
   refreshOrders();
 }
-function refreshOrders(){
+async function patchOrder(id, patch){
+  try {
+    await fetch('/api/orders/'+id, {method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(patch)});
+  } catch(e) {
+    const arr = JSON.parse(localStorage.getItem('miam_orders')||'[]');
+    const o = arr.find(x=>x.id===id);
+    if(o) Object.assign(o, patch);
+    localStorage.setItem('miam_orders', JSON.stringify(arr));
+  }
+  await loadOrders();
+}
+async function refreshOrders(){
+  await loadOrders();
   const orders = getOrders();
   const list = document.getElementById('ac-orders-list');
   if(!list) return;
