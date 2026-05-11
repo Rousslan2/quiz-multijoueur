@@ -2135,7 +2135,9 @@ function openDeliver(id){
   document.querySelector('.deliver-step1').classList.add('is-on');
   document.querySelector('.deliver-step2').classList.remove('is-on');
   updateBarcodePreview();
-  document.getElementById('deliver-overlay').classList.add('is-open');
+  const ov = document.getElementById('deliver-overlay');
+  ov.style.zIndex = '100000';
+  ov.classList.add('is-open');
 }
 function closeDeliver(){ document.getElementById('deliver-overlay').classList.remove('is-open') }
 function genBarcode(){
