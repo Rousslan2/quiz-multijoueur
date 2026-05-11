@@ -1,11 +1,11 @@
 {
-  "name": "ZapPlay",
-  "short_name": "ZapPlay",
-  "description": "Arcade multijoueur en temps réel",
-  "start_url": "/index.html",
+  "name": "MiamShop",
+  "short_name": "MiamShop",
+  "description": "Points & récompenses — boutique",
+  "start_url": "/",
   "display": "standalone",
-  "background_color": "#030312",
-  "theme_color": "#030312",
+  "background_color": "#F5EFE6",
+  "theme_color": "#F2A93B",
   "icons": [
     {
       "src": "/favicon.svg",

@@ -1,12 +1,9 @@
-# Render — Web service Node à la RACINE du dépôt (où se trouvent package.json et server.js).
-#
-# Si le build affiche encore : open '/opt/render/project/src/package.json' ENOENT
-# → Dashboard Render → ton service → Settings → Root Directory : laisse VIDE (ou ".")
-#    et non "src".
+# MiamShop — site statique servi par Node (Express).
+# Racine du dépôt : package.json et server.js ici.
 
 services:
   - type: web
-    name: quiz-multijoueur
+    name: miamshop
     runtime: node
     rootDir: .
     buildCommand: npm install && npm run build

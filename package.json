@@ -1,20 +1,18 @@
 {
-  "name": "quiz-multijoueur",
-  "version": "2.0.0",
-  "description": "Jeu de quiz multijoueur 2 joueurs - edition complete",
+  "name": "miamshop",
+  "version": "1.0.0",
+  "private": true,
+  "description": "MiamShop — site vitrine et vente",
   "main": "server.js",
   "scripts": {
-    "build": "echo 'No build step'",
+    "build": "node -e \"console.log('build ok')\"",
     "start": "node server.js",
-    "check": "node --check server.js && node --check lib/admin.js && node --check lib/profile.js && node --check lib/account.js && node --check lib/quizSession.js && node --check lib/skylineGame.js",
-    "test:unit": "node tests/skyline.unit.test.js && node tests/skyline.assets.test.js && node tests/zp-loader.assets.test.js",
-    "test:ws": "node tests/skyline.ws.test.js",
-    "test": "npm run check && npm run test:unit && npm run test:ws"
+    "check": "node --check server.js"
+  },
+  "engines": {
+    "node": ">=18"
   },
   "dependencies": {
-    "an-array-of-french-words": "^2.0.0",
-    "express": "^4.18.2",
-    "qrcode": "^1.5.3",
-    "ws": "^8.18.0"
+    "express": "^4.21.2"
   }
 }
