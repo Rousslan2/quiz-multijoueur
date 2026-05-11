@@ -1,6 +1,0 @@
-node_modules/
-.env
-*.log
-data/admin-config.json
-data/profiles.json
-data/accounts.json
