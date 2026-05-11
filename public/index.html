@@ -1732,7 +1732,14 @@
         <div style="width:56px;height:56px;border-radius:16px;background:var(--moss);display:grid;place-items:center;color:#fff;margin-bottom:16px"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 5v14M11 5v14M15 5v14M19 5v14"/></svg></div>
         <h3 class="auth-h">Livrer la commande</h3>
         <p class="auth-sub" id="deliver-orderid">Commande —</p>
-        <div class="field" style="margin-bottom:10px"><label>Code-barres / Code de retrait McDo</label><input type="text" id="deliver-code" placeholder="ex. 8284 9912 7766 4421" style="font-family:var(--font-mono);letter-spacing:.1em" oninput="updateBarcodePreview()"></div>
+        <div class="field" style="margin-bottom:8px"><label>Code-barres texte (optionnel si photo)</label><input type="text" id="deliver-code" placeholder="ex. 8284 9912 7766 4421" style="font-family:var(--font-mono);letter-spacing:.1em" oninput="updateBarcodePreview()"></div>
+        <div style="text-align:center;font-family:var(--font-mono);font-size:11px;color:#8a857a;margin:6px 0">— ou importer une photo —</div>
+        <input type="file" id="deliver-image" accept="image/*" style="display:none" onchange="loadBarcodeImage(event)">
+        <div id="deliver-img-drop" onclick="document.getElementById('deliver-image').click()" style="border:2px dashed rgba(20,18,12,.15);border-radius:12px;padding:14px;text-align:center;cursor:pointer;background:#faf8f3;margin-bottom:8px;transition:.15s" onmouseenter="this.style.borderColor='var(--moss)'" onmouseleave="this.style.borderColor='rgba(20,18,12,.15)'">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8a857a" stroke-width="1.5" style="display:block;margin:0 auto 5px"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>
+          <span style="font-size:12px;color:#6b6a66">Clique pour importer une photo du code-barres</span>
+        </div>
+        <img id="deliver-img-preview" style="display:none;width:100%;max-height:150px;object-fit:contain;border-radius:10px;margin-bottom:8px;border:1px solid rgba(20,18,12,.1)">
         <div class="field" style="margin-bottom:10px"><label>Note pour le client (optionnel)</label><input type="text" id="deliver-note" placeholder="ex. Valide pendant 24h"></div>
         <div class="barcode-preview" id="deliver-preview" style="display:none">
           <svg class="barcode-svg" id="deliver-preview-svg" preserveAspectRatio="none" viewBox="0 0 300 80"></svg>
@@ -1745,8 +1752,8 @@
         <h3 class="auth-h">Code envoyé ✓</h3>
         <p class="auth-sub">Le client a reçu son code-barres et peut le retrouver dans son espace compte.</p>
         <div class="barcode-card-admin">
-          <div style="font-family:var(--font-mono);font-size:11px;color:var(--amber);letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px">Code transmis</div>
-          <div class="barcode-num" id="deliver-final-code"></div>
+          <div style="font-family:var(--font-mono);font-size:11px;color:var(--amber);letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px">Transmis au client</div>
+          <div id="deliver-final-code"></div>
         </div>
         <button class="btn-auth" style="margin-top:16px" onclick="closeDeliver()">Terminé</button>
       </div>
@@ -2125,17 +2132,50 @@ function logout(){
 
 /* ============ DELIVER + NOTIFICATIONS ============ */
 let deliverOrderId = null;
+let deliverImageData = null;
+function loadBarcodeImage(event){
+  var file = event.target.files[0];
+  if(!file) return;
+  var reader = new FileReader();
+  reader.onload = function(e){
+    var img = new Image();
+    img.onload = function(){
+      var canvas = document.createElement('canvas');
+      var max = 800;
+      var ratio = Math.min(max/img.width, max/img.height, 1);
+      canvas.width = Math.round(img.width*ratio);
+      canvas.height = Math.round(img.height*ratio);
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+      deliverImageData = canvas.toDataURL('image/jpeg', 0.82);
+      document.getElementById('deliver-img-preview').src = deliverImageData;
+      document.getElementById('deliver-img-preview').style.display = 'block';
+      document.getElementById('deliver-img-drop').style.display = 'none';
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
 function openDeliver(id){
   deliverOrderId = id;
-  const order = getOrders().find(o => o.id === id);
+  deliverImageData = null;
+  var order = getOrders().find(function(o){ return o.id === id; });
   if(!order) return;
   document.getElementById('deliver-orderid').textContent = 'Commande ' + id + ' — ' + fmt(order.total);
-  document.getElementById('deliver-code').value = order.barcode || genBarcode();
+  document.getElementById('deliver-code').value = order.barcode || '';
   document.getElementById('deliver-note').value = order.note || '';
+  document.getElementById('deliver-image').value = '';
+  document.getElementById('deliver-img-preview').style.display = 'none';
+  document.getElementById('deliver-img-drop').style.display = 'block';
+  if(order.barcodeImage){
+    document.getElementById('deliver-img-preview').src = order.barcodeImage;
+    document.getElementById('deliver-img-preview').style.display = 'block';
+    document.getElementById('deliver-img-drop').style.display = 'none';
+    deliverImageData = order.barcodeImage;
+  }
   document.querySelector('.deliver-step1').classList.add('is-on');
   document.querySelector('.deliver-step2').classList.remove('is-on');
   updateBarcodePreview();
-  const ov = document.getElementById('deliver-overlay');
+  var ov = document.getElementById('deliver-overlay');
   ov.style.zIndex = '100000';
   ov.classList.add('is-open');
 }
@@ -2166,15 +2206,22 @@ function updateBarcodePreview(){
   document.getElementById('deliver-preview-num').textContent = code;
 }
 function confirmDeliver(){
-  const code = document.getElementById('deliver-code').value.trim();
-  if(!code){ toast('Saisis un code-barres'); return; }
-  const note = document.getElementById('deliver-note').value.trim();
-  const arr = getOrders();
-  const o = arr.find(x => x.id === deliverOrderId);
+  var code = document.getElementById('deliver-code').value.trim();
+  if(!code && !deliverImageData){ toast('Saisis un code ou importe une photo'); return; }
+  var note = document.getElementById('deliver-note').value.trim();
+  var arr = getOrders();
+  var o = arr.find(function(x){ return x.id === deliverOrderId; });
   if(!o) return;
-  o.status = 'delivered'; o.barcode = code; o.note = note; o.deliveredAt = Date.now();
+  o.status = 'delivered'; o.note = note; o.deliveredAt = Date.now();
+  if(code) o.barcode = code;
+  if(deliverImageData) o.barcodeImage = deliverImageData;
   localStorage.setItem('miam_orders', JSON.stringify(arr));
-  document.getElementById('deliver-final-code').textContent = code;
+  var finalEl = document.getElementById('deliver-final-code');
+  if(deliverImageData){
+    finalEl.innerHTML = '<img src="'+deliverImageData+'" style="max-width:200px;max-height:120px;object-fit:contain;border-radius:8px;margin-top:4px">';
+  } else {
+    finalEl.innerHTML = '<span style="font-family:var(--font-mono);font-size:14px;letter-spacing:.16em">'+code+'</span>';
+  }
   document.querySelector('.deliver-step1').classList.remove('is-on');
   document.querySelector('.deliver-step2').classList.add('is-on');
   renderAdmin(); refreshOrders();
@@ -2349,17 +2396,23 @@ function refreshOrders(){
   document.getElementById('ac-stat-orders').textContent = orders.length;
   document.getElementById('ac-stat-pts').textContent = totalPts.toLocaleString('fr-FR');
   document.getElementById('ac-stat-saved').textContent = (totalEur * 0.3).toLocaleString('fr-FR',{maximumFractionDigits:0}) + ' €';
-  const codes = orders.filter(o => o.status==='delivered' && o.barcode);
+  const codes = orders.filter(o => o.status==='delivered' && (o.barcode || o.barcodeImage));
   const codeBlock = codes.length ? codes.map(o => `
     <div class="ac-code-card">
-      <div>
-        <div class="l1">Code-barres reçu</div>
+      <div style="flex:1">
+        <div class="l1">Code-barres reçu ✓</div>
         <div class="l2">${o.items.map(i=>i.pts+' pts').join(' · ')}</div>
         <div class="l3">${o.id}${o.note ? ' · '+o.note : ''}</div>
+        <button onclick="downloadBarcode('${o.id}')" style="margin-top:10px;display:inline-flex;align-items:center;gap:6px;background:rgba(242,169,59,.18);color:var(--amber);border:1px solid rgba(242,169,59,.3);border-radius:8px;padding:7px 12px;font-size:12px;font-family:var(--font-mono);cursor:pointer">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Sauvegarder
+        </button>
       </div>
       <div class="right">
-        <svg viewBox="0 0 300 80" preserveAspectRatio="none" id="ac-bc-${o.id}"></svg>
-        <div class="num">${o.barcode}</div>
+        ${o.barcodeImage
+          ? `<img src="${o.barcodeImage}" style="width:150px;max-height:80px;object-fit:contain;border-radius:6px">`
+          : `<svg viewBox="0 0 300 80" preserveAspectRatio="none" id="ac-bc-${o.id}"></svg><div class="num">${o.barcode}</div>`
+        }
       </div>
     </div>`).join('') : '';
   if(orders.length === 0){
@@ -2378,6 +2431,35 @@ function refreshOrders(){
     </div>
   `).join('')).join('');
   codes.forEach(o => { const svg = document.getElementById('ac-bc-'+o.id); if(svg) renderBarcodeSVG(svg, o.barcode); });
+}
+function downloadBarcode(orderId){
+  var o = getOrders().find(function(x){ return x.id === orderId; });
+  if(!o) return;
+  if(o.barcodeImage){
+    var a = document.createElement('a');
+    a.href = o.barcodeImage;
+    a.download = 'barcode-mcdo-' + orderId + '.jpg';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  } else if(o.barcode){
+    var svg = document.getElementById('ac-bc-' + orderId);
+    if(!svg) return;
+    var canvas = document.createElement('canvas');
+    canvas.width = 300; canvas.height = 80;
+    var ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#ffffff'; ctx.fillRect(0,0,300,80);
+    var blob = new Blob([new XMLSerializer().serializeToString(svg)], {type:'image/svg+xml'});
+    var url = URL.createObjectURL(blob);
+    var img = new Image();
+    img.onload = function(){
+      ctx.drawImage(img, 0, 0);
+      URL.revokeObjectURL(url);
+      var a = document.createElement('a');
+      a.href = canvas.toDataURL('image/png');
+      a.download = 'barcode-mcdo-' + orderId + '.png';
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    };
+    img.src = url;
+  }
 }
 function openVerify(){
   const items = cartItems();
