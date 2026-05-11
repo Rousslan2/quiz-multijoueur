@@ -2245,7 +2245,7 @@ function adminLogout(){
   toast('Déconnecté de l’admin');
 }
 function showAdmin(){
-  document.querySelectorAll('section').forEach(s => s.classList.remove('is-active'));
+  document.querySelectorAll('.home-screen,.checkout-screen,.success-screen,.account-screen').forEach(el => el.classList.remove('is-active'));
   document.getElementById('admin-screen').classList.add('is-active');
   window.scrollTo(0,0);
   renderAdmin();
