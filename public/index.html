@@ -855,8 +855,9 @@
   .ac-order-status.pending{background:rgba(242,169,59,.18);color:var(--amber-2)}
   .ac-order-price{font-family:var(--font-display);font-weight:700;font-size:16px}
   /* ============ ADMIN ============ */
-  .admin-screen{display:none;background:#0E0F12;color:#F5EFE6}
-  .admin-screen.is-active{display:block;position:fixed;inset:0;overflow-y:auto;z-index:200}
+  .admin-screen{display:none}
+  .admin-screen.is-active{display:block;position:fixed;top:0;left:0;right:0;bottom:0;width:100vw;height:100vh;height:100dvh;background:#0E0F12;color:#F5EFE6;overflow-y:auto;z-index:9999;-webkit-overflow-scrolling:touch}
+  body.admin-open{overflow:hidden}
   .ad-top{display:flex;justify-content:space-between;align-items:center;padding:20px 36px;border-bottom:1px solid rgba(245,239,230,.08);position:sticky;top:0;background:rgba(14,15,18,.95);backdrop-filter:blur(14px);z-index:5}
   .ad-brand{display:flex;align-items:center;gap:12px;font-family:var(--font-display);font-weight:700;font-size:20px;letter-spacing:-.01em}
   .ad-brand .badge{font-family:var(--font-mono);font-size:10px;padding:3px 8px;border-radius:999px;background:rgba(242,169,59,.2);color:var(--amber);letter-spacing:.08em;text-transform:uppercase}
@@ -2245,12 +2246,15 @@ function adminLogout(){
   toast('Déconnecté de l’admin');
 }
 function showAdmin(){
-  document.getElementById('admin-screen').classList.add('is-active');
-  document.getElementById('admin-screen').scrollTop = 0;
+  const el = document.getElementById('admin-screen');
+  el.classList.add('is-active');
+  document.body.classList.add('admin-open');
+  el.scrollTop = 0;
   renderAdmin();
 }
 function closeAdmin(){
   document.getElementById('admin-screen').classList.remove('is-active');
+  document.body.classList.remove('admin-open');
 }
 function adminTab(name, el){
   document.querySelectorAll('.ad-tab').forEach(t => t.classList.remove('is-active'));
