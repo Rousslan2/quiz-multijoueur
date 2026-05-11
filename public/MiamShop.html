@@ -1,0 +1,2160 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>MiamShop — Points & Récompenses</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0E0F12;
+    --ink-2:#17181C;
+    --ink-3:#22242A;
+    --line:#2A2C33;
+    --line-soft:#E7E0D4;
+    --cream:#F5EFE6;
+    --cream-2:#EFE7D8;
+    --paper:#FBF7EF;
+    --amber:#F2A93B;
+    --amber-2:#E08F1F;
+    --ruby:#E14B3A;
+    --moss:#3E7A5C;
+    --plum:#5A3FA8;
+    --muted:#6B6A66;
+    --shadow-lg: 0 30px 60px -20px rgba(20,18,12,.35), 0 18px 36px -18px rgba(20,18,12,.2);
+    --shadow-md: 0 12px 24px -12px rgba(20,18,12,.25);
+    --r-xs: 10px; --r-sm: 14px; --r-md: 20px; --r-lg: 28px; --r-xl: 40px;
+    --font-display: 'Bricolage Grotesque', ui-serif, Georgia, serif;
+    --font-ui: 'Inter', system-ui, -apple-system, sans-serif;
+    --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    font-family:var(--font-ui);
+    color:var(--ink);
+    background:var(--cream);
+    -webkit-font-smoothing:antialiased;
+    text-rendering:optimizeLegibility;
+    overflow-x:hidden;
+  }
+  button{font-family:inherit;cursor:pointer;border:0;background:none;color:inherit}
+  a{color:inherit;text-decoration:none}
+  input,select,textarea{font-family:inherit;color:inherit}
+
+  /* ============ NAV ============ */
+  .nav{
+    position:sticky;top:0;z-index:50;
+    backdrop-filter:saturate(140%) blur(14px);
+    -webkit-backdrop-filter:saturate(140%) blur(14px);
+    background:rgba(245,239,230,.78);
+    border-bottom:1px solid rgba(20,18,12,.07);
+  }
+  .nav-inner{
+    max-width:1320px;margin:0 auto;padding:18px 36px;
+    display:flex;align-items:center;gap:36px;
+  }
+  .logo{display:flex;align-items:center;gap:10px;font-family:var(--font-display);font-weight:700;font-size:22px;letter-spacing:-.01em}
+  .logo-mark{
+    width:34px;height:34px;border-radius:11px;
+    background:
+      radial-gradient(circle at 30% 25%, #fff 0%, rgba(255,255,255,0) 35%),
+      radial-gradient(circle at 65% 70%, #C9601A 0%, #F2A93B 55%, #F8C46C 100%);
+    box-shadow: inset 0 -3px 6px rgba(0,0,0,.18), 0 6px 14px -6px rgba(242,169,59,.6);
+    position:relative;
+  }
+  .logo-mark::after{
+    content:"";position:absolute;inset:0;border-radius:11px;
+    background: radial-gradient(60% 60% at 30% 25%, rgba(255,255,255,.6) 0%, rgba(255,255,255,0) 60%);
+  }
+  .nav-links{display:flex;gap:28px;font-weight:500;color:#3a3a36;font-size:14.5px}
+  .nav-links a{padding:6px 0;position:relative}
+  .nav-links a:hover{color:var(--ink)}
+  .nav-spacer{flex:1}
+  .nav-cart{
+    display:flex;align-items:center;gap:10px;
+    padding:9px 14px;border-radius:999px;
+    background:var(--ink);color:var(--cream);
+    font-size:14px;font-weight:600;
+    transition: transform .15s ease;
+  }
+  .nav-login{
+    display:flex;align-items:center;gap:8px;
+    padding:9px 14px;border-radius:999px;
+    background:transparent;color:var(--ink);
+    font-size:14px;font-weight:500;
+    border:1px solid rgba(20,18,12,.16);
+    transition:all .15s ease;
+  }
+  .nav-login:hover{background:rgba(20,18,12,.05)}
+  .nav-login.is-logged{background:var(--paper);border-color:#e3dccd}
+  .nav-login .avatar{width:22px;height:22px;border-radius:50%;background:linear-gradient(135deg,#F2A93B,#E14B3A);display:grid;place-items:center;color:#fff;font-size:11px;font-weight:700;font-family:var(--font-display)}
+  .nav-cart:hover{transform:translateY(-1px)}
+  .cart-pill{
+    background:var(--amber);color:var(--ink);
+    font-family:var(--font-mono);font-size:11px;font-weight:600;
+    padding:2px 7px;border-radius:999px;min-width:20px;text-align:center
+  }
+  .nav-search{
+    display:flex;align-items:center;gap:8px;
+    background:rgba(20,18,12,.05);
+    border:1px solid rgba(20,18,12,.06);
+    padding:8px 14px;border-radius:999px;font-size:13.5px;color:#5a5a55;
+    min-width:240px
+  }
+  .nav-search kbd{
+    margin-left:auto;font-family:var(--font-mono);font-size:11px;
+    background:#fff;border:1px solid #e3dccd;padding:1px 6px;border-radius:5px;color:#5a5a55
+  }
+
+  /* ============ HERO ============ */
+  .hero{
+    position:relative;
+    padding:80px 36px 110px;
+    overflow:hidden;
+  }
+  .hero-inner{max-width:1320px;margin:0 auto;display:grid;grid-template-columns:1.05fr .95fr;gap:60px;align-items:center}
+  .eyebrow{
+    display:inline-flex;align-items:center;gap:10px;
+    font-family:var(--font-mono);font-size:12px;font-weight:500;
+    color:var(--ink);background:rgba(20,18,12,.06);
+    padding:8px 14px;border-radius:999px;letter-spacing:.04em;text-transform:uppercase
+  }
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--moss);box-shadow:0 0 0 4px rgba(62,122,92,.18)}
+  h1.hero-title{
+    font-family:var(--font-display);
+    font-weight:700;
+    font-size:clamp(48px, 6.4vw, 92px);
+    line-height:.95;
+    letter-spacing:-.025em;
+    margin:22px 0 22px;
+  }
+  h1.hero-title .accent{
+    background: linear-gradient(95deg, #F2A93B 0%, #E14B3A 60%, #C73826 100%);
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+    font-style:italic;font-weight:600;
+  }
+  h1.hero-title em{font-style:italic;font-weight:600}
+  .hero-sub{
+    font-size:18px;line-height:1.55;color:#46443f;max-width:520px;
+    text-wrap:pretty;
+  }
+  .hero-cta{display:flex;gap:14px;margin-top:36px;flex-wrap:wrap}
+  .btn{
+    display:inline-flex;align-items:center;gap:10px;
+    padding:16px 24px;border-radius:999px;font-weight:600;font-size:15px;
+    transition: transform .15s ease, box-shadow .2s ease, background .2s ease;
+    cursor:pointer;
+  }
+  .btn-primary{
+    background:var(--ink);color:var(--cream);
+    box-shadow: 0 14px 30px -12px rgba(20,18,12,.5), inset 0 1px 0 rgba(255,255,255,.08);
+  }
+  .btn-primary:hover{transform:translateY(-2px)}
+  .btn-ghost{
+    background:transparent;color:var(--ink);
+    border:1px solid rgba(20,18,12,.16);
+  }
+  .btn-ghost:hover{background:rgba(20,18,12,.04)}
+
+  .hero-stats{
+    display:flex;gap:36px;margin-top:48px;padding-top:32px;
+    border-top:1px solid rgba(20,18,12,.1);
+    max-width:520px;
+  }
+  .stat-num{font-family:var(--font-display);font-weight:700;font-size:32px;letter-spacing:-.02em}
+  .stat-lbl{font-size:12.5px;color:#6b6a66;margin-top:2px;font-family:var(--font-mono);text-transform:uppercase;letter-spacing:.05em}
+
+  /* ============ HERO 3D SCENE ============ */
+  .hero-scene{
+    position:relative;
+    aspect-ratio: 1/1;
+    perspective: 1400px;
+    transform-style: preserve-3d;
+  }
+  .scene-stage{
+    position:absolute;inset:0;
+    transform-style:preserve-3d;
+    animation: stage-float 9s ease-in-out infinite;
+  }
+  @keyframes stage-float{
+    0%,100%{transform: rotateX(8deg) rotateY(-12deg) translateZ(0)}
+    50%{transform: rotateX(10deg) rotateY(-6deg) translateZ(20px)}
+  }
+  .blob{
+    position:absolute;border-radius:50%;filter:blur(60px);opacity:.7;pointer-events:none
+  }
+  .blob.b1{width:480px;height:480px;background:#F2A93B;top:-60px;right:-90px}
+  .blob.b2{width:380px;height:380px;background:#E14B3A;bottom:-40px;left:-30px;opacity:.45}
+
+  .coin{
+    position:absolute;
+    border-radius:50%;
+    transform-style:preserve-3d;
+    box-shadow:
+      inset 0 -14px 24px rgba(120,60,0,.35),
+      inset 0 12px 22px rgba(255,255,255,.55),
+      0 30px 50px -20px rgba(120,60,0,.55);
+  }
+  .coin::before{
+    content:"";position:absolute;inset:8%;border-radius:50%;
+    background:
+      radial-gradient(circle at 30% 25%, rgba(255,255,255,.75), rgba(255,255,255,0) 45%),
+      radial-gradient(circle at 70% 80%, #b86618 0%, #E08F1F 35%, #F8C46C 80%);
+    box-shadow: inset 0 -8px 14px rgba(120,60,0,.3);
+  }
+  .coin::after{
+    content:"M";position:absolute;inset:0;display:grid;place-items:center;
+    font-family:var(--font-display);font-weight:800;color:#7a3d0a;
+    font-size:42%;letter-spacing:-.02em;
+    text-shadow: 0 1px 0 rgba(255,255,255,.4);
+  }
+  .coin.c1{width:260px;height:260px;top:18%;left:22%;animation: float1 7s ease-in-out infinite}
+  .coin.c2{width:140px;height:140px;top:8%;right:14%;animation: float2 5.5s ease-in-out infinite}
+  .coin.c3{width:110px;height:110px;bottom:14%;left:12%;animation: float3 6.5s ease-in-out infinite}
+  .coin.c4{width:90px;height:90px;bottom:22%;right:22%;animation: float2 7.5s ease-in-out infinite reverse}
+  @keyframes float1{0%,100%{transform:translate3d(0,0,40px) rotate(-6deg)}50%{transform:translate3d(0,-18px,80px) rotate(6deg)}}
+  @keyframes float2{0%,100%{transform:translate3d(0,0,20px) rotate(8deg)}50%{transform:translate3d(0,-12px,60px) rotate(-8deg)}}
+  @keyframes float3{0%,100%{transform:translate3d(0,0,30px) rotate(0deg)}50%{transform:translate3d(0,-22px,70px) rotate(12deg)}}
+
+  .receipt{
+    position:absolute;
+    width:200px;
+    background:#fff;
+    border-radius:14px;
+    padding:18px 16px;
+    box-shadow: 0 30px 50px -20px rgba(0,0,0,.35);
+    font-family:var(--font-mono);font-size:11px;color:#333;
+    transform: rotate(-8deg) translateZ(50px);
+    bottom:8%;right:6%;
+  }
+  .receipt-row{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px dashed #ddd}
+  .receipt-row:last-child{border-bottom:0;font-weight:700;color:var(--ruby)}
+  .receipt-title{font-family:var(--font-display);font-weight:700;font-size:15px;color:var(--ink);margin-bottom:8px}
+
+  .badge-3d{
+    position:absolute;top:6%;left:4%;
+    background:var(--ink);color:var(--cream);
+    padding:10px 14px;border-radius:14px;font-size:12px;font-weight:600;
+    transform: rotate(-6deg) translateZ(60px);
+    box-shadow: 0 16px 30px -10px rgba(0,0,0,.4);
+    display:flex;align-items:center;gap:8px;
+  }
+  .badge-3d .pulse{width:8px;height:8px;border-radius:50%;background:#3eb375;box-shadow:0 0 0 4px rgba(62,179,117,.3)}
+
+  /* ============ MARQUEE ============ */
+  .marquee{
+    background:var(--ink);color:var(--cream);
+    padding:18px 0;overflow:hidden;border-top:1px solid #1d1f24;border-bottom:1px solid #1d1f24;
+  }
+  .marquee-track{display:flex;gap:48px;white-space:nowrap;animation: scroll 36s linear infinite;width:max-content}
+  .marquee-item{display:flex;align-items:center;gap:14px;font-family:var(--font-display);font-size:22px;font-weight:600;letter-spacing:-.01em}
+  .marquee-item .star{color:var(--amber);font-size:18px}
+  @keyframes scroll{to{transform:translateX(-50%)}}
+
+  /* ============ CATALOG ============ */
+  .section{padding:96px 36px;max-width:1320px;margin:0 auto}
+  .section-head{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:40px;gap:30px;flex-wrap:wrap}
+  .section-head h2{font-family:var(--font-display);font-weight:700;font-size:clamp(36px,4.4vw,56px);line-height:1;letter-spacing:-.02em;margin:0}
+  .section-head h2 em{font-style:italic;font-weight:600;color:var(--amber-2)}
+  .section-sub{color:#5a5a55;max-width:480px;font-size:15.5px;line-height:1.5;text-wrap:pretty}
+
+  .filters{
+    display:flex;gap:8px;margin-bottom:30px;flex-wrap:wrap;
+  }
+  .chip{
+    padding:9px 16px;border-radius:999px;
+    background:rgba(20,18,12,.05);
+    border:1px solid transparent;
+    font-size:13.5px;font-weight:500;color:#4a4a45;
+    transition:all .15s ease;
+  }
+  .chip:hover{background:rgba(20,18,12,.09)}
+  .chip.is-active{background:var(--ink);color:var(--cream);border-color:var(--ink)}
+  .chip .cnt{font-family:var(--font-mono);font-size:11px;opacity:.6;margin-left:6px}
+
+  .grid{
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:22px;
+  }
+  @media (max-width:1080px){.grid{grid-template-columns:repeat(3,1fr)}}
+  @media (max-width:780px){.grid{grid-template-columns:repeat(2,1fr)}.hero-inner{grid-template-columns:1fr}}
+  @media (max-width:520px){.grid{grid-template-columns:1fr}}
+
+  .card{
+    background:var(--paper);
+    border-radius:var(--r-md);
+    padding:22px;
+    border:1px solid rgba(20,18,12,.06);
+    position:relative;
+    overflow:hidden;
+    transition: transform .25s cubic-bezier(.2,.7,.2,1), box-shadow .25s ease;
+    display:flex;flex-direction:column;gap:14px;
+    min-height: 280px;
+  }
+  .card:hover{transform:translateY(-6px);box-shadow: var(--shadow-lg)}
+  .card-art{
+    position:relative;height:130px;border-radius:var(--r-sm);
+    background:
+      radial-gradient(120% 90% at 70% 20%, #F8C46C 0%, #E08F1F 55%, #B86618 100%);
+    overflow:hidden;
+    box-shadow: inset 0 -8px 18px rgba(120,60,0,.35);
+  }
+  .card-art::before{
+    content:"";position:absolute;width:200%;height:80px;left:-50%;top:-40px;
+    background:radial-gradient(50% 100% at 50% 100%, rgba(255,255,255,.7), rgba(255,255,255,0));
+    transform: rotate(-8deg);
+  }
+  .card-coin{
+    position:absolute;width:96px;height:96px;border-radius:50%;
+    right:-14px;bottom:-18px;
+    background:
+      radial-gradient(circle at 30% 25%, rgba(255,255,255,.6), rgba(255,255,255,0) 50%),
+      radial-gradient(circle at 70% 80%, #8a4a0e 0%, #C9601A 40%, #F2A93B 80%);
+    box-shadow:
+      inset 0 -8px 14px rgba(120,60,0,.4),
+      inset 0 6px 12px rgba(255,255,255,.4),
+      0 12px 24px -8px rgba(120,60,0,.5);
+    display:grid;place-items:center;
+    font-family:var(--font-display);font-weight:800;color:#5d2c05;font-size:30px;
+  }
+  .card-coin.small{width:54px;height:54px;left:18px;top:18px;right:auto;bottom:auto;font-size:18px;opacity:.85}
+  .card-tag{
+    position:absolute;top:14px;right:14px;
+    font-family:var(--font-mono);font-size:10.5px;
+    background:rgba(20,18,12,.85);color:var(--cream);
+    padding:5px 9px;border-radius:6px;
+    letter-spacing:.04em;
+  }
+  .card-tag.hot{background:var(--ruby)}
+  .card-tag.best{background:var(--moss)}
+  .card-name{font-family:var(--font-display);font-weight:600;font-size:19px;line-height:1.15;letter-spacing:-.01em}
+  .card-pts{font-family:var(--font-mono);font-size:12px;color:#6b6a66;letter-spacing:.03em}
+  .card-foot{margin-top:auto;display:flex;justify-content:space-between;align-items:center}
+  .card-price{font-family:var(--font-display);font-weight:700;font-size:26px;letter-spacing:-.02em}
+  .card-price small{font-size:14px;font-weight:500;color:#6b6a66;margin-left:2px}
+  .card-add{
+    width:38px;height:38px;border-radius:50%;
+    background:var(--ink);color:var(--cream);
+    display:grid;place-items:center;
+    transition: transform .15s ease, background .2s ease;
+  }
+  .card-add:hover{transform:scale(1.08) rotate(90deg);background:var(--amber-2);color:var(--ink)}
+
+  /* ============ FEATURES ============ */
+  .features{
+    background:var(--ink);color:var(--cream);
+    padding:90px 36px;border-radius:var(--r-xl);
+    margin:0 36px;
+    position:relative;overflow:hidden;
+  }
+  .features::before{
+    content:"";position:absolute;width:600px;height:600px;border-radius:50%;
+    background:radial-gradient(circle, rgba(242,169,59,.18), transparent 60%);
+    top:-200px;right:-200px;
+  }
+  .features-inner{max-width:1280px;margin:0 auto;position:relative}
+  .features-head{margin-bottom:60px}
+  .features-head h2{font-family:var(--font-display);font-size:clamp(36px,4.4vw,56px);font-weight:700;letter-spacing:-.02em;line-height:1;margin:0 0 16px}
+  .features-head p{color:#b8b4ac;max-width:560px;font-size:16.5px;line-height:1.55}
+  .feat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px}
+  @media (max-width:880px){.feat-grid{grid-template-columns:1fr}}
+  .feat-card{
+    background:#17181C;border:1px solid #24262C;
+    padding:28px;border-radius:var(--r-md);
+    display:flex;flex-direction:column;gap:14px;
+  }
+  .feat-icon{
+    width:54px;height:54px;border-radius:14px;
+    background: linear-gradient(135deg, #F2A93B, #E08F1F);
+    display:grid;place-items:center;
+    box-shadow: 0 12px 24px -10px rgba(242,169,59,.5);
+  }
+  .feat-icon svg{width:26px;height:26px;color:#3a1d04}
+  .feat-card h3{font-family:var(--font-display);font-size:22px;font-weight:600;margin:0;letter-spacing:-.01em}
+  .feat-card p{color:#b8b4ac;font-size:14.5px;line-height:1.55;margin:0}
+  .feat-stat{font-family:var(--font-mono);font-size:11px;color:#F2A93B;letter-spacing:.05em;text-transform:uppercase}
+
+  /* ============ HOW IT WORKS ============ */
+  .how{padding:120px 36px;max-width:1320px;margin:0 auto}
+  .how-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:24px;margin-top:50px}
+  @media (max-width:880px){.how-grid{grid-template-columns:repeat(2,1fr)}}
+  @media (max-width:520px){.how-grid{grid-template-columns:1fr}}
+  .step{position:relative}
+  .step-num{
+    font-family:var(--font-display);font-size:84px;font-weight:700;
+    background: linear-gradient(180deg, #F2A93B, rgba(242,169,59,0));
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+    line-height:.85;letter-spacing:-.04em;
+  }
+  .step h3{font-family:var(--font-display);font-size:22px;font-weight:600;letter-spacing:-.01em;margin:12px 0 8px}
+  .step p{color:#5a5a55;font-size:14.5px;line-height:1.55;margin:0}
+
+  /* ============ FOOTER ============ */
+  footer{
+    background:#0A0B0E;color:#a8a59f;padding:80px 36px 32px;margin-top:80px;
+  }
+  .foot-inner{max-width:1320px;margin:0 auto;display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr;gap:48px}
+  @media (max-width:880px){.foot-inner{grid-template-columns:1fr 1fr}}
+  .foot h4{color:#F5EFE6;font-family:var(--font-display);font-size:16px;font-weight:600;margin:0 0 16px}
+  .foot ul{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:10px;font-size:14px}
+  .foot ul a:hover{color:var(--amber)}
+  .foot-bot{
+    max-width:1320px;margin:60px auto 0;padding-top:24px;
+    border-top:1px solid #1d1f24;
+    display:flex;justify-content:space-between;flex-wrap:wrap;gap:14px;
+    font-size:13px;color:#666;font-family:var(--font-mono)
+  }
+  .foot-newsl{
+    display:flex;gap:8px;margin-top:18px;
+    background:#15171A;padding:6px;border-radius:999px;max-width:340px
+  }
+  .foot-newsl input{flex:1;background:transparent;border:0;outline:0;padding:0 14px;color:#F5EFE6;font-size:14px}
+  .foot-newsl button{background:var(--amber);color:#3a1d04;padding:10px 16px;border-radius:999px;font-weight:600;font-size:13.5px}
+
+  /* ============ MODALS ============ */
+  .overlay{
+    position:fixed;inset:0;z-index:100;
+    background:rgba(14,15,18,.55);
+    backdrop-filter: blur(8px);
+    display:none;align-items:flex-start;justify-content:flex-end;
+    opacity:0;transition:opacity .25s ease;
+  }
+  .overlay.is-open{display:flex;opacity:1}
+  .cart-panel{
+    width:min(460px, 100vw);height:100vh;
+    background:var(--cream);
+    display:flex;flex-direction:column;
+    transform:translateX(20px);transition:transform .3s cubic-bezier(.2,.7,.2,1)
+  }
+  .overlay.is-open .cart-panel{transform:translateX(0)}
+  .cart-head{
+    padding:24px;display:flex;justify-content:space-between;align-items:center;
+    border-bottom:1px solid var(--line-soft)
+  }
+  .cart-head h3{font-family:var(--font-display);font-size:24px;font-weight:700;letter-spacing:-.02em;margin:0}
+  .icon-btn{
+    width:36px;height:36px;border-radius:10px;
+    background:rgba(20,18,12,.06);display:grid;place-items:center;
+    transition:background .15s ease
+  }
+  .icon-btn:hover{background:rgba(20,18,12,.12)}
+  .cart-body{flex:1;overflow-y:auto;padding:18px 24px;display:flex;flex-direction:column;gap:14px}
+  .cart-empty{
+    text-align:center;color:#6b6a66;padding:60px 20px;
+    font-family:var(--font-display);font-size:18px
+  }
+  .cart-item{
+    display:grid;grid-template-columns:60px 1fr auto;gap:14px;align-items:center;
+    padding:14px;background:var(--paper);border-radius:var(--r-sm);
+    border:1px solid rgba(20,18,12,.05)
+  }
+  .cart-item-art{
+    width:60px;height:60px;border-radius:12px;
+    background:
+      radial-gradient(circle at 30% 25%, rgba(255,255,255,.5), rgba(255,255,255,0) 50%),
+      radial-gradient(circle at 70% 80%, #8a4a0e 0%, #C9601A 40%, #F2A93B 80%);
+    display:grid;place-items:center;
+    font-family:var(--font-display);font-weight:800;color:#5d2c05;font-size:18px;
+    box-shadow: inset 0 -3px 6px rgba(120,60,0,.3);
+  }
+  .cart-item-name{font-family:var(--font-display);font-size:15px;font-weight:600;letter-spacing:-.01em}
+  .cart-item-meta{font-family:var(--font-mono);font-size:11px;color:#6b6a66;margin-top:2px}
+  .qty{display:flex;align-items:center;gap:6px;margin-top:8px}
+  .qty button{
+    width:24px;height:24px;border-radius:6px;background:rgba(20,18,12,.08);
+    display:grid;place-items:center;font-size:13px;font-weight:600
+  }
+  .qty button:hover{background:rgba(20,18,12,.14)}
+  .qty span{font-family:var(--font-mono);font-size:13px;min-width:18px;text-align:center}
+  .cart-item-price{font-family:var(--font-display);font-weight:700;font-size:16px}
+  .cart-item-remove{
+    font-size:11px;color:#a35248;margin-top:4px;font-family:var(--font-mono);
+    text-decoration:underline;cursor:pointer
+  }
+  .cart-foot{padding:20px 24px;border-top:1px solid var(--line-soft);background:var(--paper)}
+  .cart-row{display:flex;justify-content:space-between;padding:6px 0;font-size:14px}
+  .cart-row.total{font-family:var(--font-display);font-size:22px;font-weight:700;border-top:1px dashed #c8c0b0;margin-top:8px;padding-top:14px}
+  .btn-checkout{
+    width:100%;margin-top:14px;justify-content:center;
+    background:var(--ink);color:var(--cream);padding:18px;border-radius:14px;
+    font-size:15px;font-weight:600;display:flex;align-items:center;gap:10px;
+    transition: transform .15s ease;
+  }
+  .btn-checkout:hover{transform:translateY(-2px)}
+
+  /* ============ CHECKOUT ============ */
+  .checkout-screen, .home-screen, .success-screen{display:none}
+  .checkout-screen.is-active, .home-screen.is-active, .success-screen.is-active{display:block}
+
+  .co-head{
+    padding:24px 36px;display:flex;align-items:center;gap:20px;
+    border-bottom:1px solid rgba(20,18,12,.08)
+  }
+  .co-back{display:flex;align-items:center;gap:8px;font-weight:500;font-size:14.5px;color:#3a3a36}
+  .co-back:hover{color:var(--ink)}
+  .co-steps{display:flex;gap:6px;margin-left:auto;font-family:var(--font-mono);font-size:12px;color:#6b6a66}
+  .co-step{display:flex;align-items:center;gap:8px}
+  .co-step .num{
+    width:22px;height:22px;border-radius:50%;background:rgba(20,18,12,.06);
+    display:grid;place-items:center;font-size:11px
+  }
+  .co-step.active .num{background:var(--ink);color:var(--cream)}
+  .co-step.done .num{background:var(--moss);color:#fff}
+  .co-sep{color:#bbb6ac;font-family:var(--font-mono)}
+
+  .co-wrap{max-width:1280px;margin:0 auto;padding:48px 36px;display:grid;grid-template-columns:1.4fr .9fr;gap:48px}
+  @media (max-width:880px){.co-wrap{grid-template-columns:1fr}}
+  .co-h2{font-family:var(--font-display);font-size:32px;font-weight:700;letter-spacing:-.02em;margin:0 0 8px}
+  .co-sub{color:#5a5a55;font-size:14.5px;margin-bottom:24px}
+
+  .panel{
+    background:var(--paper);border:1px solid rgba(20,18,12,.06);
+    border-radius:var(--r-md);padding:26px;margin-bottom:18px
+  }
+  .panel-title{font-family:var(--font-display);font-size:18px;font-weight:600;margin:0 0 14px;display:flex;align-items:center;gap:10px;letter-spacing:-.01em}
+  .panel-title .pn{font-family:var(--font-mono);font-size:11px;background:rgba(20,18,12,.07);padding:3px 7px;border-radius:6px;color:#6b6a66}
+
+  .field{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}
+  .field label{font-size:12.5px;font-weight:500;color:#5a5a55;font-family:var(--font-mono);text-transform:uppercase;letter-spacing:.04em}
+  .field input, .field select{
+    background:#fff;border:1px solid #e3dccd;border-radius:10px;
+    padding:13px 14px;font-size:15px;outline:none;transition:border-color .15s ease, box-shadow .15s ease;
+  }
+  .field input:focus, .field select:focus{border-color:var(--ink);box-shadow:0 0 0 4px rgba(20,18,12,.08)}
+  .row-2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .row-3{display:grid;grid-template-columns:2fr 1fr 1fr;gap:12px}
+
+  .pay-methods{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:18px}
+  .pay-opt{
+    padding:14px 12px;border-radius:12px;border:1.5px solid #e3dccd;background:#fff;
+    cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:8px;
+    transition: all .15s ease;font-size:12.5px;font-weight:500
+  }
+  .pay-opt:hover{border-color:#b5ac99}
+  .pay-opt.is-active{border-color:var(--ink);background:#fff;box-shadow:0 0 0 3px rgba(20,18,12,.06)}
+  .pay-opt svg{width:28px;height:18px}
+  .pay-opt .card-brand{font-family:var(--font-mono);font-weight:600;font-size:11px;letter-spacing:.06em}
+
+  .summary{
+    position:sticky;top:90px;
+    background:var(--ink);color:var(--cream);border-radius:var(--r-md);padding:26px;
+    box-shadow: var(--shadow-lg);
+  }
+  .summary h3{font-family:var(--font-display);font-size:20px;font-weight:600;margin:0 0 16px;letter-spacing:-.01em}
+  .summary-items{display:flex;flex-direction:column;gap:10px;padding-bottom:14px;border-bottom:1px solid #2A2C33}
+  .si{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;font-size:13.5px}
+  .si .si-name{color:#d8d3c8;line-height:1.35}
+  .si .si-qty{font-family:var(--font-mono);color:#8a8780;font-size:11px}
+  .si .si-price{font-family:var(--font-mono);color:#fff}
+  .summary-row{display:flex;justify-content:space-between;padding:8px 0;font-size:14px;color:#c8c4b9}
+  .summary-row.total{font-family:var(--font-display);font-size:24px;font-weight:700;color:#fff;border-top:1px dashed #3A3C42;margin-top:10px;padding-top:14px}
+  .summary-promo{
+    display:flex;gap:6px;margin-top:14px;
+    background:#15171A;padding:6px;border-radius:10px;border:1px solid #24262C
+  }
+  .summary-promo input{flex:1;background:transparent;border:0;outline:0;padding:0 10px;color:#fff;font-size:13.5px;font-family:var(--font-mono)}
+  .summary-promo button{background:var(--amber);color:#3a1d04;padding:8px 14px;border-radius:7px;font-weight:600;font-size:12.5px}
+  .secure-lock{display:flex;align-items:center;gap:8px;font-size:12px;color:#8a8780;margin-top:16px;font-family:var(--font-mono)}
+
+  /* ============ HOW MINI / REVOLUT ============ */
+  .how-mini{display:flex;flex-direction:column;gap:14px}
+  .hm-step{display:grid;grid-template-columns:36px 1fr;gap:14px;align-items:flex-start}
+  .hm-num{
+    width:36px;height:36px;border-radius:50%;
+    background:var(--ink);color:var(--cream);
+    display:grid;place-items:center;
+    font-family:var(--font-display);font-weight:700;font-size:16px;
+    flex-shrink:0;
+  }
+  .hm-step strong{font-family:var(--font-display);font-size:16px;font-weight:600;letter-spacing:-.01em;display:block;margin-top:6px}
+  .hm-desc{color:#5a5a55;font-size:13.5px;line-height:1.5;margin-top:4px;text-wrap:pretty}
+
+  .revolut-card{
+    background:linear-gradient(135deg, #0E0F12 0%, #1A1C24 100%);
+    color:var(--cream);
+    border-radius:var(--r-md);
+    overflow:hidden;
+    position:relative;
+    box-shadow: 0 24px 50px -20px rgba(20,18,12,.4);
+  }
+  .revolut-card::before{
+    content:"";position:absolute;width:280px;height:280px;border-radius:50%;
+    background: radial-gradient(circle, rgba(0,113,255,.4), transparent 60%);
+    top:-100px;right:-100px;pointer-events:none;
+  }
+  .revolut-head{
+    display:flex;align-items:center;gap:14px;
+    padding:18px 22px;
+    border-bottom:1px solid rgba(255,255,255,.06);
+    position:relative;
+  }
+  .revolut-logo{
+    width:44px;height:44px;border-radius:12px;
+    background:linear-gradient(135deg, #0071FF, #1A8FFF);
+    display:grid;place-items:center;color:#fff;
+    box-shadow: 0 6px 14px -4px rgba(0,113,255,.5);
+  }
+  .revolut-logo svg{width:24px;height:24px}
+  .revolut-name{font-family:var(--font-display);font-size:16px;font-weight:600;letter-spacing:-.01em}
+  .revolut-handle{font-family:var(--font-mono);font-size:12px;color:#9ca0a8;margin-top:2px}
+  .revolut-badge{
+    margin-left:auto;
+    font-family:var(--font-mono);font-size:10.5px;
+    background:rgba(62,179,117,.18);color:#6BBA89;
+    padding:5px 10px;border-radius:6px;letter-spacing:.05em;text-transform:uppercase;font-weight:600;
+  }
+  .revolut-body{padding:22px;position:relative}
+  .revolut-amount{
+    display:flex;justify-content:space-between;align-items:baseline;
+    padding:14px 16px;border-radius:12px;
+    background:rgba(255,255,255,.04);
+    border:1px dashed rgba(255,255,255,.12);
+    margin-bottom:14px;
+  }
+  .ra-lbl{font-family:var(--font-mono);font-size:11px;color:#9ca0a8;letter-spacing:.05em;text-transform:uppercase}
+  .ra-val{font-family:var(--font-display);font-size:28px;font-weight:700;letter-spacing:-.02em;color:#fff}
+  .btn-revolut{
+    display:flex;align-items:center;justify-content:center;gap:10px;
+    width:100%;padding:15px;border-radius:12px;
+    background:linear-gradient(135deg, #0071FF, #1A8FFF);
+    color:#fff;font-weight:600;font-size:14.5px;
+    transition:transform .15s ease, box-shadow .2s ease;
+    box-shadow: 0 10px 24px -8px rgba(0,113,255,.5);
+    cursor:pointer;
+  }
+  .btn-revolut:hover{transform:translateY(-1px)}
+  .revolut-note{
+    display:flex;align-items:flex-start;gap:8px;
+    margin-top:14px;padding:10px 12px;
+    background:rgba(242,169,59,.1);border-radius:10px;
+    font-size:12.5px;color:#d8d3c8;line-height:1.5;
+  }
+  .revolut-note svg{color:var(--amber);flex-shrink:0;margin-top:2px}
+  .revolut-note strong{color:#fff}
+  .v-drop{display:flex;align-items:center;gap:14px;padding:16px;border-radius:12px;background:#fff;border:1.5px dashed #c8c0b0;cursor:pointer;transition:all .15s ease}
+  .v-drop:hover{border-color:var(--ink);background:var(--paper)}
+  .v-drop svg{color:#6b6a66;flex-shrink:0}
+  .v-drop-t{font-size:14px;font-weight:600;color:var(--ink)}
+  .v-drop-s{font-family:var(--font-mono);font-size:11px;color:#8a8780;margin-top:2px}
+  .v-spinner{width:56px;height:56px;border-radius:50%;margin:0 auto;border:4px solid rgba(20,18,12,.08);border-top-color:var(--ink);animation:spin 1s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .v-checks{display:flex;flex-direction:column;gap:8px;margin-top:24px;text-align:left;max-width:280px;margin:24px auto 0}
+  .v-check{display:flex;align-items:center;gap:10px;font-size:13.5px;color:#8a8780;font-family:var(--font-mono);opacity:.5;transition:all .3s ease}
+  .v-check.done{opacity:1;color:var(--ink)}
+  .vc-ic{width:18px;height:18px;border-radius:50%;background:#e3dccd;display:grid;place-items:center;flex-shrink:0;transition:background .3s ease;font-size:11px;color:#fff;font-weight:700}
+  .v-check.done .vc-ic{background:var(--moss)}
+  .v-check.done .vc-ic::after{content:"✓"}
+
+  .btn-pay{
+    width:100%;margin-top:22px;justify-content:center;
+    background:var(--amber);color:#3a1d04;padding:18px;border-radius:14px;
+    font-size:15.5px;font-weight:700;display:flex;align-items:center;gap:10px;
+    transition: transform .15s ease, box-shadow .2s ease;
+    box-shadow: 0 12px 26px -10px rgba(242,169,59,.5);
+  }
+  .btn-pay:hover{transform:translateY(-2px)}
+
+  /* ============ SUCCESS ============ */
+  .success-wrap{max-width:640px;margin:0 auto;padding:80px 36px;text-align:center}
+  .success-art{
+    width:140px;height:140px;border-radius:50%;margin:0 auto 28px;
+    background:
+      radial-gradient(circle at 30% 25%, rgba(255,255,255,.7), rgba(255,255,255,0) 50%),
+      radial-gradient(circle at 70% 80%, #2a6a48 0%, #3E7A5C 50%, #6BB791 100%);
+    display:grid;place-items:center;color:#fff;
+    box-shadow:
+      inset 0 -10px 18px rgba(20,60,40,.5),
+      inset 0 8px 14px rgba(255,255,255,.4),
+      0 24px 50px -16px rgba(62,122,92,.6);
+    animation: pop .5s cubic-bezier(.2,.9,.4,1.3);
+  }
+  @keyframes pop{from{transform:scale(.4);opacity:0}to{transform:scale(1);opacity:1}}
+  .success-art svg{width:64px;height:64px}
+  .success-wrap h1{font-family:var(--font-display);font-size:48px;font-weight:700;letter-spacing:-.025em;line-height:1;margin:0 0 16px}
+  .success-wrap p{color:#5a5a55;font-size:16px;line-height:1.55;margin:0 auto 32px;max-width:440px;text-wrap:pretty}
+  .order-receipt{
+    background:var(--paper);border:1px solid rgba(20,18,12,.08);
+    border-radius:var(--r-md);padding:24px;text-align:left;margin-bottom:24px
+  }
+  .order-receipt .rr{display:flex;justify-content:space-between;padding:8px 0;font-size:14px}
+  .order-receipt .rr.b{font-family:var(--font-display);font-weight:700;font-size:18px;border-top:1px dashed #c8c0b0;margin-top:8px;padding-top:14px}
+  .order-num{font-family:var(--font-mono);font-size:13px;color:#6b6a66;margin-bottom:24px}
+
+  .toast{
+    position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);
+    background:var(--ink);color:var(--cream);padding:14px 22px;border-radius:999px;
+    font-size:14px;font-weight:500;display:flex;align-items:center;gap:10px;
+    box-shadow: var(--shadow-lg);
+    opacity:0;pointer-events:none;transition: all .25s ease;z-index:200;
+  }
+  .toast.is-on{opacity:1;transform:translateX(-50%) translateY(0)}
+  .toast-dot{width:8px;height:8px;border-radius:50%;background:var(--amber)}
+
+  /* ============ AUTH MODAL ============ */
+  .auth-overlay{
+    position:fixed;inset:0;z-index:120;
+    background:rgba(14,15,18,.55);
+    backdrop-filter: blur(10px);
+    display:none;align-items:center;justify-content:center;
+    opacity:0;transition:opacity .25s ease;
+    padding:24px;
+  }
+  .auth-overlay.is-open{display:flex;opacity:1}
+  .auth-card{
+    width:100%;max-width:980px;
+    background:var(--cream);
+    border-radius:var(--r-lg);
+    overflow:hidden;
+    display:grid;grid-template-columns:.85fr 1fr;
+    box-shadow: 0 60px 120px -40px rgba(0,0,0,.6);
+    transform:translateY(20px) scale(.98);transition:transform .3s cubic-bezier(.2,.7,.2,1);
+    max-height:92vh;
+  }
+  .auth-overlay.is-open .auth-card{transform:translateY(0) scale(1)}
+  .auth-side{
+    background:var(--ink);color:var(--cream);
+    padding:48px 36px;
+    position:relative;overflow:hidden;
+    display:flex;flex-direction:column;justify-content:space-between;
+    min-height:560px;
+  }
+  .auth-side::before{
+    content:"";position:absolute;width:420px;height:420px;border-radius:50%;
+    background: radial-gradient(circle, rgba(242,169,59,.32), transparent 60%);
+    top:-160px;right:-160px;
+  }
+  .auth-side::after{
+    content:"";position:absolute;width:300px;height:300px;border-radius:50%;
+    background: radial-gradient(circle, rgba(225,75,58,.25), transparent 60%);
+    bottom:-120px;left:-100px;
+  }
+  .auth-side-content{position:relative;z-index:1}
+  .auth-side .logo{color:var(--cream);font-size:24px}
+  .auth-side h2{font-family:var(--font-display);font-size:36px;font-weight:700;letter-spacing:-.025em;line-height:1;margin:36px 0 14px}
+  .auth-side p{color:#b8b4ac;font-size:14.5px;line-height:1.55;margin:0;max-width:300px;text-wrap:pretty}
+  .auth-perks{display:flex;flex-direction:column;gap:14px;margin-top:32px;position:relative;z-index:1}
+  .auth-perk{display:flex;align-items:center;gap:12px;font-size:14px;color:#d8d3c8}
+  .auth-perk .check{width:24px;height:24px;border-radius:50%;background:rgba(242,169,59,.18);display:grid;place-items:center;color:var(--amber);flex-shrink:0}
+  .auth-coin-art{
+    position:absolute;width:120px;height:120px;border-radius:50%;
+    background:
+      radial-gradient(circle at 30% 25%, rgba(255,255,255,.6), rgba(255,255,255,0) 50%),
+      radial-gradient(circle at 70% 80%, #8a4a0e 0%, #C9601A 40%, #F2A93B 80%);
+    bottom:36px;right:32px;
+    box-shadow: inset 0 -10px 18px rgba(120,60,0,.4), 0 24px 40px -16px rgba(0,0,0,.5);
+    transform: rotate(-12deg);
+    display:grid;place-items:center;color:#5d2c05;font-family:var(--font-display);font-weight:800;font-size:34px;
+    z-index:1;
+  }
+  .auth-main{
+    padding:48px 44px;overflow-y:auto;
+    display:flex;flex-direction:column;
+  }
+  .auth-close{
+    position:absolute;top:18px;right:18px;z-index:3;
+  }
+  .auth-tabs{
+    display:flex;gap:4px;background:rgba(20,18,12,.05);padding:4px;border-radius:12px;
+    margin-bottom:28px;
+  }
+  .auth-tab{
+    flex:1;padding:11px;text-align:center;border-radius:9px;
+    font-size:14px;font-weight:600;color:#6b6a66;
+    transition:all .15s ease;
+  }
+  .auth-tab.is-active{background:var(--ink);color:var(--cream);box-shadow:0 4px 10px -4px rgba(0,0,0,.2)}
+  .auth-h{font-family:var(--font-display);font-size:28px;font-weight:700;letter-spacing:-.02em;margin:0 0 6px;line-height:1.1}
+  .auth-sub{color:#5a5a55;font-size:14px;margin:0 0 22px}
+  .auth-form{display:flex;flex-direction:column;gap:14px}
+  .auth-form .field{margin-bottom:0}
+  .auth-pwd-hint{font-family:var(--font-mono);font-size:11px;color:#8a8780;display:flex;gap:6px;align-items:center;margin-top:2px}
+  .auth-pwd-bar{height:4px;background:#e3dccd;border-radius:99px;overflow:hidden;margin-top:6px}
+  .auth-pwd-bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--ruby),var(--amber),var(--moss));transition:width .25s ease}
+  .auth-row{display:flex;justify-content:space-between;align-items:center;font-size:13.5px;margin:6px 0 4px}
+  .auth-row label{display:flex;align-items:center;gap:8px;color:#46443f;cursor:pointer}
+  .auth-row label input{accent-color:var(--ink)}
+  .auth-row a{color:var(--ink);text-decoration:underline;text-underline-offset:3px}
+  .btn-auth{
+    width:100%;justify-content:center;
+    background:var(--ink);color:var(--cream);padding:15px;border-radius:12px;
+    font-size:15px;font-weight:600;display:flex;align-items:center;gap:10px;
+    transition: transform .15s ease;margin-top:4px;cursor:pointer;
+  }
+  .btn-auth:hover{transform:translateY(-1px)}
+  .auth-or{
+    display:flex;align-items:center;gap:14px;margin:20px 0;
+    color:#8a8780;font-family:var(--font-mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;
+  }
+  .auth-or::before, .auth-or::after{content:"";flex:1;height:1px;background:#e3dccd}
+  .auth-social{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .auth-social button{
+    display:flex;align-items:center;justify-content:center;gap:10px;
+    padding:13px;border-radius:10px;
+    background:#fff;border:1px solid #e3dccd;
+    font-size:13.5px;font-weight:500;color:var(--ink);
+    transition:all .15s ease;cursor:pointer;
+  }
+  .auth-social button:hover{background:var(--paper);border-color:#cdc3b0}
+  .auth-foot{margin-top:auto;padding-top:24px;font-size:13px;color:#6b6a66;text-align:center}
+  .auth-foot a{color:var(--ink);text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+  @media (max-width:760px){
+    .auth-card{grid-template-columns:1fr;max-height:96vh}
+    .auth-side{min-height:auto;padding:32px 28px;display:none}
+    .auth-main{padding:36px 28px}
+  }
+
+  /* ============ ACCOUNT SCREEN ============ */
+  .account-screen{display:none}
+  .account-screen.is-active{display:block}
+  .ac-wrap{max-width:1280px;margin:0 auto;padding:48px 36px;display:grid;grid-template-columns:280px 1fr;gap:36px}
+  @media (max-width:880px){.ac-wrap{grid-template-columns:1fr}}
+  .ac-side{
+    background:var(--paper);border:1px solid rgba(20,18,12,.06);
+    border-radius:var(--r-md);padding:24px;height:fit-content;
+    position:sticky;top:90px;
+  }
+  .ac-user{display:flex;align-items:center;gap:12px;padding-bottom:20px;border-bottom:1px solid var(--line-soft);margin-bottom:16px}
+  .ac-avatar{width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#F2A93B,#E14B3A);display:grid;place-items:center;color:#fff;font-family:var(--font-display);font-weight:700;font-size:20px}
+  .ac-user-name{font-family:var(--font-display);font-weight:600;font-size:16px;letter-spacing:-.01em}
+  .ac-user-mail{font-family:var(--font-mono);font-size:11px;color:#6b6a66;margin-top:2px}
+  .ac-menu{display:flex;flex-direction:column;gap:2px}
+  .ac-menu button{display:flex;align-items:center;gap:11px;padding:11px 12px;border-radius:9px;font-size:14px;font-weight:500;color:#3a3a36;text-align:left;transition:background .15s ease}
+  .ac-menu button:hover{background:rgba(20,18,12,.05)}
+  .ac-menu button.is-active{background:var(--ink);color:var(--cream)}
+  .ac-menu button svg{width:16px;height:16px}
+  .ac-menu .logout{margin-top:14px;padding-top:14px;border-top:1px solid var(--line-soft);color:#a35248}
+  .ac-main h1{font-family:var(--font-display);font-size:36px;font-weight:700;letter-spacing:-.025em;margin:0 0 6px;line-height:1}
+  .ac-main .ac-greet{color:#5a5a55;font-size:15px;margin:0 0 28px}
+  .ac-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:28px}
+  @media (max-width:560px){.ac-stats{grid-template-columns:1fr}}
+  .ac-stat{
+    background:var(--paper);border:1px solid rgba(20,18,12,.06);
+    border-radius:var(--r-sm);padding:20px;
+    display:flex;flex-direction:column;gap:6px;
+  }
+  .ac-stat .ic{width:36px;height:36px;border-radius:10px;background:rgba(242,169,59,.15);display:grid;place-items:center;color:var(--amber-2);margin-bottom:6px}
+  .ac-stat .lbl{font-family:var(--font-mono);font-size:11px;color:#6b6a66;text-transform:uppercase;letter-spacing:.04em}
+  .ac-stat .val{font-family:var(--font-display);font-size:26px;font-weight:700;letter-spacing:-.02em}
+  .ac-orders{background:var(--paper);border:1px solid rgba(20,18,12,.06);border-radius:var(--r-md);overflow:hidden}
+  .ac-orders-head{padding:18px 22px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--line-soft)}
+  .ac-orders-head h3{font-family:var(--font-display);font-size:18px;font-weight:600;letter-spacing:-.01em;margin:0}
+  .ac-order{display:grid;grid-template-columns:auto 1fr auto auto;gap:16px;padding:16px 22px;border-bottom:1px solid var(--line-soft);align-items:center}
+  .ac-order:last-child{border-bottom:0}
+  .ac-order-coin{width:42px;height:42px;border-radius:50%;background:radial-gradient(circle at 30% 25%, rgba(255,255,255,.5), rgba(255,255,255,0) 50%),radial-gradient(circle at 70% 80%, #8a4a0e 0%, #C9601A 40%, #F2A93B 80%);display:grid;place-items:center;color:#5d2c05;font-family:var(--font-display);font-weight:700;font-size:13px;box-shadow: inset 0 -3px 5px rgba(120,60,0,.3)}
+  .ac-order-name{font-family:var(--font-display);font-size:15px;font-weight:600;letter-spacing:-.01em}
+  .ac-order-meta{font-family:var(--font-mono);font-size:11px;color:#6b6a66;margin-top:2px}
+  .ac-order-status{font-family:var(--font-mono);font-size:11px;padding:4px 8px;border-radius:6px;background:rgba(62,122,92,.13);color:var(--moss);letter-spacing:.04em}
+  .ac-order-status.pending{background:rgba(242,169,59,.18);color:var(--amber-2)}
+  .ac-order-price{font-family:var(--font-display);font-weight:700;font-size:16px}
+  /* ============ ADMIN ============ */
+  .admin-screen{display:none;background:#0E0F12;color:#F5EFE6;min-height:100vh}
+  .admin-screen.is-active{display:block}
+  .ad-top{display:flex;justify-content:space-between;align-items:center;padding:20px 36px;border-bottom:1px solid rgba(245,239,230,.08);position:sticky;top:0;background:rgba(14,15,18,.85);backdrop-filter:blur(14px);z-index:5}
+  .ad-brand{display:flex;align-items:center;gap:12px;font-family:var(--font-display);font-weight:700;font-size:20px;letter-spacing:-.01em}
+  .ad-brand .badge{font-family:var(--font-mono);font-size:10px;padding:3px 8px;border-radius:999px;background:rgba(242,169,59,.2);color:var(--amber);letter-spacing:.08em;text-transform:uppercase}
+  .ad-back{font-family:var(--font-mono);font-size:12px;color:#a9a39a;display:flex;align-items:center;gap:8px;cursor:pointer}
+  .ad-back:hover{color:#fff}
+  .ad-wrap{padding:36px;max-width:1400px;margin:0 auto}
+  .ad-h{font-family:var(--font-display);font-size:36px;font-weight:700;letter-spacing:-.025em;margin:0 0 6px}
+  .ad-sub{color:#a9a39a;font-size:14.5px;margin:0 0 28px}
+  .ad-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:32px}
+  @media (max-width:880px){.ad-stats{grid-template-columns:repeat(2,1fr)}}
+  .ad-stat{background:#191B20;border:1px solid rgba(245,239,230,.06);border-radius:16px;padding:20px;position:relative;overflow:hidden}
+  .ad-stat .lbl{font-family:var(--font-mono);font-size:10.5px;color:#8a857a;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px}
+  .ad-stat .val{font-family:var(--font-display);font-size:30px;font-weight:700;letter-spacing:-.02em}
+  .ad-stat .delta{font-family:var(--font-mono);font-size:11px;color:var(--moss);margin-top:6px}
+  .ad-stat.warn .val{color:var(--amber)}
+  .ad-stat.warn .lbl{color:var(--amber);opacity:.7}
+  .ad-tabs{display:flex;gap:4px;background:#191B20;padding:4px;border-radius:12px;width:fit-content;margin-bottom:20px;border:1px solid rgba(245,239,230,.06)}
+  .ad-tab{padding:10px 16px;border-radius:9px;font-size:13.5px;font-weight:500;color:#a9a39a;cursor:pointer;transition:all .15s ease}
+  .ad-tab.is-active{background:var(--amber);color:#0E0F12;font-weight:600}
+  .ad-card{background:#191B20;border:1px solid rgba(245,239,230,.06);border-radius:16px;overflow:hidden}
+  .ad-thead{display:grid;grid-template-columns:1.5fr 1.6fr .8fr .9fr .8fr 1fr;gap:14px;padding:14px 22px;font-family:var(--font-mono);font-size:11px;color:#6b6a66;text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid rgba(245,239,230,.06)}
+  .ad-row{display:grid;grid-template-columns:1.5fr 1.6fr .8fr .9fr .8fr 1fr;gap:14px;padding:16px 22px;border-bottom:1px solid rgba(245,239,230,.04);align-items:center;font-size:13.5px}
+  .ad-row:last-child{border-bottom:0}
+  .ad-row:hover{background:rgba(245,239,230,.02)}
+  .ad-oid{font-family:var(--font-mono);font-size:12.5px;color:#fff}
+  .ad-od{font-family:var(--font-mono);font-size:11px;color:#8a857a;margin-top:2px}
+  .ad-cust{font-weight:500}
+  .ad-cust-r{font-family:var(--font-mono);font-size:11px;color:#8a857a;margin-top:2px}
+  .ad-amt{font-family:var(--font-display);font-weight:700;font-size:15px;color:var(--amber)}
+  .ad-status{font-family:var(--font-mono);font-size:10.5px;padding:5px 9px;border-radius:6px;letter-spacing:.06em;text-transform:uppercase;text-align:center;width:fit-content}
+  .ad-status.pending{background:rgba(242,169,59,.18);color:var(--amber)}
+  .ad-status.delivered{background:rgba(62,122,92,.22);color:#7BC79F}
+  .ad-status.refused{background:rgba(225,75,58,.18);color:#FF8775}
+  .ad-actions{display:flex;gap:6px;flex-wrap:wrap}
+  .ad-btn{padding:7px 11px;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;transition:all .12s ease;display:flex;align-items:center;gap:5px;font-family:var(--font-ui)}
+  .ad-btn.ok{background:var(--moss);color:#fff}
+  .ad-btn.ok:hover{background:#4d9a72}
+  .ad-btn.no{background:rgba(225,75,58,.18);color:#FF8775}
+  .ad-btn.no:hover{background:var(--ruby);color:#fff}
+  .ad-btn.ghost{background:transparent;border:1px solid rgba(245,239,230,.12);color:#a9a39a}
+  .ad-btn.ghost:hover{border-color:rgba(245,239,230,.3);color:#fff}
+  .ad-empty{padding:60px;text-align:center;color:#6b6a66;font-family:var(--font-display);font-size:16px}
+  .ad-prod{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+  @media (max-width:880px){.ad-prod{grid-template-columns:1fr}}
+  .ad-prod-card{background:#191B20;border:1px solid rgba(245,239,230,.06);border-radius:14px;padding:18px;display:flex;justify-content:space-between;align-items:center;gap:10px}
+  .ad-prod-name{font-family:var(--font-display);font-weight:600;font-size:15px}
+  .ad-prod-meta{font-family:var(--font-mono);font-size:11px;color:#8a857a;margin-top:3px}
+  .ad-prod-price{font-family:var(--font-display);font-weight:700;font-size:18px;color:var(--amber)}
+  .ad-notif{position:relative;display:flex;align-items:center;justify-content:center;width:38px;height:38px;border-radius:10px;background:#191B20;border:1px solid rgba(245,239,230,.08);color:#a9a39a;cursor:pointer;transition:all .15s ease}
+  .ad-notif:hover{color:#fff;border-color:rgba(245,239,230,.2)}
+  .ad-notif.alert{color:var(--amber);border-color:rgba(242,169,59,.4);background:rgba(242,169,59,.08);animation: pulse-glow 1.8s ease-in-out infinite}
+  @keyframes pulse-glow{0%,100%{box-shadow:0 0 0 0 rgba(242,169,59,.4)}50%{box-shadow:0 0 0 8px rgba(242,169,59,0)}}
+  .ad-notif-dot{position:absolute;top:6px;right:6px;min-width:16px;height:16px;padding:0 4px;border-radius:99px;background:var(--ruby);color:#fff;font-family:var(--font-mono);font-size:10px;font-weight:700;display:grid;place-items:center;line-height:1;border:2px solid #0E0F12}
+  .ad-notif-dot.hidden{display:none}
+  .deliver-step1, .deliver-step2{display:none}
+  .deliver-step1.is-on, .deliver-step2.is-on{display:block}
+  .barcode-preview{background:#fff;border-radius:14px;padding:24px;margin:14px 0;display:flex;flex-direction:column;align-items:center;gap:10px;border:1px solid #e3dccd}
+  .barcode-svg{width:100%;max-width:300px;height:80px}
+  .barcode-num{font-family:var(--font-mono);font-size:14px;letter-spacing:.16em;color:#0E0F12;font-weight:600}
+  .barcode-card-admin{background:#0E0F12;color:#F5EFE6;border-radius:14px;padding:18px;margin-top:14px}
+  .barcode-card-admin .barcode-num{color:#F5EFE6}
+  .footer-admin-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--ruby);margin-left:6px;vertical-align:middle;animation:pulse-glow 1.6s ease-in-out infinite}
+  .ac-code-card{background:linear-gradient(135deg,#0E0F12,#1f1d18);color:var(--cream);border-radius:18px;padding:22px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center;gap:18px;border:1px solid rgba(242,169,59,.3);box-shadow:0 14px 30px -16px rgba(242,169,59,.5)}
+  .ac-code-card .l1{font-family:var(--font-mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--amber);margin-bottom:6px}
+  .ac-code-card .l2{font-family:var(--font-display);font-size:18px;font-weight:700;letter-spacing:-.01em;margin-bottom:4px}
+  .ac-code-card .l3{font-family:var(--font-mono);font-size:12px;color:#a9a39a;letter-spacing:.12em}
+  .ac-code-card .right{background:#fff;border-radius:12px;padding:12px;display:flex;flex-direction:column;align-items:center;gap:6px;min-width:170px}
+  .ac-code-card .right svg{width:150px;height:54px}
+  .ac-code-card .right .num{font-family:var(--font-mono);font-size:11px;color:#0E0F12;letter-spacing:.14em;font-weight:600}
+  @media (max-width:880px){
+    .ad-thead, .ad-row{grid-template-columns:1fr 1fr;font-size:12px}
+    .ad-thead{display:none}
+    .ad-row{padding:14px;border-radius:10px;margin:8px;border:1px solid rgba(245,239,230,.06)}
+  }
+  @keyframes ring{0%,100%{box-shadow:0 0 0 0 rgba(62,179,117,.6)}50%{box-shadow:0 0 0 10px rgba(62,179,117,0)}}
+</style>
+</head>
+<body>
+
+<!-- ============ NAV ============ -->
+<nav class="nav">
+  <div class="nav-inner">
+    <a class="logo" href="#" onclick="goHome(event)">
+      <div class="logo-mark"></div>
+      <span>MiamShop</span>
+    </a>
+    <div class="nav-links">
+      <a href="#catalog">Catalogue</a>
+      <a href="#how">Comment ça marche</a>
+      <a href="#faq">FAQ</a>
+      <a href="#contact">Contact</a>
+    </div>
+    <div class="nav-spacer"></div>
+    <div class="nav-search">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+      <span>Rechercher un pack…</span>
+      <kbd>⌘ K</kbd>
+    </div>
+    <button class="nav-login" id="nav-account-btn" onclick="openAuth('login')">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      <span id="nav-account-label">Se connecter</span>
+    </button>
+    <button class="nav-cart" onclick="openCart()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+      <span>Panier</span>
+      <span class="cart-pill" id="cart-count">0</span>
+    </button>
+  </div>
+</nav>
+
+<!-- ============ HOME ============ -->
+<main class="home-screen is-active">
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="hero-inner">
+      <div>
+        <span class="eyebrow"><span class="dot"></span>Livraison 2 min · Garantie compte 15 min · Revolut</span>
+        <h1 class="hero-title">Tes <span class="accent">Points McDo</span>,<br/>livrés <em>en 2 minutes.</em></h1>
+        <p class="hero-sub">MiamShop est la marketplace n°1 en France pour acheter des points de fidélité McDo à prix imbattable. Commande directement <strong>depuis ton McDo préféré</strong>, paie en Revolut, points reçus en <strong>2 min</strong> avec <strong>15 min de garantie compte</strong>.</p>
+        <div class="hero-cta">
+          <a class="btn btn-primary" href="#catalog">
+            Voir les packs
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+          </a>
+          <a class="btn btn-ghost" href="#how">Comment ça marche</a>
+        </div>
+        <div class="hero-stats">
+          <div>
+            <div class="stat-num">12 480+</div>
+            <div class="stat-lbl">Commandes livrées</div>
+          </div>
+          <div>
+            <div class="stat-num">4.9 ★</div>
+            <div class="stat-lbl">Avis Trustpilot</div>
+          </div>
+          <div>
+            <div class="stat-num">2 min</div>
+            <div class="stat-lbl">Livraison</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="hero-scene">
+        <div class="blob b1"></div>
+        <div class="blob b2"></div>
+        <div class="scene-stage">
+          <div class="coin c1"></div>
+          <div class="coin c2"></div>
+          <div class="coin c3"></div>
+          <div class="coin c4"></div>
+          <div class="badge-3d"><span class="pulse"></span>Stock en direct</div>
+          <div class="receipt">
+            <div class="receipt-title">Reçu MiamShop</div>
+            <div class="receipt-row"><span>Pack 300 pts McDo</span><span>×1</span></div>
+            <div class="receipt-row"><span>Sous-total</span><span>13,00 €</span></div>
+            <div class="receipt-row"><span>TVA</span><span>incluse</span></div>
+            <div class="receipt-row"><span>Total</span><span>13,00 €</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- MARQUEE -->
+  <div class="marquee">
+    <div class="marquee-track">
+      <span class="marquee-item">Livraison en 2 minutes <span class="star">✦</span></span>
+      <span class="marquee-item">Garantie compte 15 min <span class="star">✦</span></span>
+      <span class="marquee-item">Paiement Revolut instantané <span class="star">✦</span></span>
+      <span class="marquee-item">Commande depuis ton McDo <span class="star">✦</span></span>
+      <span class="marquee-item">+100 clients satisfaits <span class="star">✦</span></span>
+      <span class="marquee-item">Livraison en 2 minutes <span class="star">✦</span></span>
+      <span class="marquee-item">Garantie compte 15 min <span class="star">✦</span></span>
+      <span class="marquee-item">Paiement Revolut instantané <span class="star">✦</span></span>
+      <span class="marquee-item">Commande depuis ton McDo <span class="star">✦</span></span>
+      <span class="marquee-item">+100 clients satisfaits <span class="star">✦</span></span>
+    </div>
+  </div>
+
+  <!-- CATALOG -->
+  <section class="section" id="catalog">
+    <div class="section-head">
+      <div>
+        <h2>Nos packs de <em>Points McDo</em></h2>
+      </div>
+      <p class="section-sub">22 packs disponibles, du starter au pack pro. Tous livrés directement sur ton compte McDo+ en moins d'une minute.</p>
+    </div>
+
+    <div class="filters" id="filters"></div>
+    <div class="grid" id="grid"></div>
+  </section>
+
+  <!-- FEATURES -->
+  <section class="features">
+    <div class="features-inner">
+      <div class="features-head">
+        <h2>Une expérience d'achat<br/>pensée pour <em style="color:var(--amber)">aller vite</em>.</h2>
+        <p>Le service de revente le plus rapide et le plus fiable du marché. Conçu en France, opéré 24/7.</p>
+      </div>
+      <div class="feat-grid">
+        <div class="feat-card">
+          <div class="feat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="m13 2-3 11h6l-3 9"/></svg></div>
+          <div class="feat-stat">01 — Vitesse</div>
+          <h3>2 minutes chrono</h3>
+          <p>Dès ton paiement Revolut reçu, je crédite tes points sur ton compte McDo en moins de 2 minutes. Place-toi au McDo pour les utiliser direct.</p>
+        </div>
+        <div class="feat-card">
+          <div class="feat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+          <div class="feat-stat">02 — Sécurité</div>
+          <h3>Paiement Revolut</h3>
+          <p>Aucune carte renseignée, aucune donnée bancaire stockée. Tu paies directement via mon lien Revolut sécurisé : <strong>revolut.me/rousslan</strong>.</p>
+        </div>
+        <div class="feat-card">
+          <div class="feat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 11.5a8.4 8.4 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.4 8.4 0 0 1 3.8-.9h.5a8.5 8.5 0 0 1 8 8z"/></svg></div>
+          <div class="feat-stat">03 — Garantie</div>
+          <h3>Compte garanti 15 min</h3>
+          <p>Une fois tes points livrés, le compte est <strong>garanti 15 minutes</strong>. Tu as largement le temps de passer ta commande au McDo sans aucun risque.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- HOW -->
+  <section class="how" id="how">
+    <div class="section-head">
+      <div>
+        <h2>Trois étapes,<br/><em>zero stress.</em></h2>
+      </div>
+      <p class="section-sub">Le mieux : place-toi devant ton McDo avant de commander, comme ça tu profites de tes points immédiatement.</p>
+    </div>
+    <div class="how-grid">
+      <div class="step">
+        <div class="step-num">01</div>
+        <h3>Choisis ton pack</h3>
+        <p>Sélectionne la quantité de points qui te convient parmi nos 22 packs.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">02</div>
+        <h3>Place-toi au McDo</h3>
+        <p>Va dans le McDo de ton choix pour pouvoir utiliser tes points immédiatement.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">03</div>
+        <h3>Paie via Revolut</h3>
+        <p>Envoie le montant sur <strong>revolut.me/rousslan</strong>. Instantané et sécurisé.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">04</div>
+        <h3>Reçois tes points</h3>
+        <p>Livrés en 2 min sur ton compte McDo. <strong>Compte garanti 15 min</strong> pour commander.</p>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- ============ CHECKOUT ============ -->
+<section class="checkout-screen">
+  <div class="co-head">
+    <button class="co-back" onclick="goHome()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>
+      Retour à la boutique
+    </button>
+    <div class="co-steps">
+      <div class="co-step done"><span class="num">✓</span>Panier</div>
+      <span class="co-sep">›</span>
+      <div class="co-step active"><span class="num">2</span>Infos & Paiement</div>
+      <span class="co-sep">›</span>
+      <div class="co-step"><span class="num">3</span>Confirmation</div>
+    </div>
+  </div>
+
+  <div class="co-wrap">
+    <div>
+      <h1 class="co-h2">Finaliser ta commande</h1>
+      <p class="co-sub">Place-toi devant ton McDo, paie via Revolut. Points livrés en 2 minutes, compte garanti 15 min.</p>
+
+      <div class="panel">
+        <div class="panel-title"><span class="pn">01</span>Comment ça marche ?</div>
+        <div class="how-mini">
+          <div class="hm-step">
+            <div class="hm-num">1</div>
+            <div><strong>Place-toi devant un McDo</strong><div class="hm-desc">Pour une livraison instantanée de tes points, le mieux est de commander directement à la borne ou à la caisse.</div></div>
+          </div>
+          <div class="hm-step">
+            <div class="hm-num">2</div>
+            <div><strong>Paie via Revolut</strong><div class="hm-desc">Envoie le montant exact sur mon lien Revolut sécurisé. C'est instantané, gratuit et sans inscription.</div></div>
+          </div>
+          <div class="hm-step">
+            <div class="hm-num">3</div>
+            <div><strong>Points livrés en 2 min</strong><div class="hm-desc">Je crédite ton compte McDo à distance. <span style="color:var(--moss);font-weight:600">Livraison 2 minutes · compte garanti 15 min</span> pour passer ta commande sereinement.</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title"><span class="pn">02</span>Tes informations</div>
+        <div class="row-2">
+          <div class="field">
+            <label>Pseudo Telegram / Discord</label>
+            <input type="text" placeholder="@tonpseudo" value="">
+          </div>
+          <div class="field">
+            <label>Numéro de téléphone</label>
+            <input type="tel" placeholder="06 XX XX XX XX" value="">
+          </div>
+        </div>
+        <div class="field">
+          <label>Restaurant McDo où tu te trouves</label>
+          <input type="text" placeholder="ex. McDo Champs-Élysées, Paris" value="">
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title"><span class="pn">03</span>Paiement Revolut</div>
+        <div class="revolut-card">
+          <div class="revolut-head">
+            <div class="revolut-logo">
+              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M5 2h7.5a6 6 0 0 1 1.4 11.83L19 22h-4.6l-4.7-8H9v8H5V2zm4 4v4h3.5a2 2 0 0 0 0-4H9z"/></svg>
+            </div>
+            <div>
+              <div class="revolut-name">Paiement Revolut</div>
+              <div class="revolut-handle">revolut.me/rousslan</div>
+            </div>
+            <span class="revolut-badge">Instantané</span>
+          </div>
+          <div class="revolut-body">
+            <div class="revolut-amount">
+              <span class="ra-lbl">Montant à envoyer</span>
+              <span class="ra-val" id="revolut-amount">0,00 €</span>
+            </div>
+            <a class="btn-revolut" href="https://revolut.me/rousslan" target="_blank" rel="noopener" onclick="openVerify()">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M7 17 17 7"/><path d="M7 7h10v10"/></svg>
+              Payer avec Revolut
+            </a>
+            <div class="revolut-note">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+              <span>Indique <strong>ton pseudo Telegram/Discord</strong> en référence du paiement pour qu'on te retrouve.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <aside>
+      <div class="summary">
+        <h3>Récapitulatif</h3>
+        <div class="summary-items" id="summary-items"></div>
+        <div style="padding-top:14px">
+          <div class="summary-row"><span>Sous-total</span><span id="sum-sub">0,00 €</span></div>
+          <div class="summary-row"><span>Frais de service</span><span style="color:var(--moss)">Gratuit</span></div>
+          <div class="summary-row"><span>Livraison numérique</span><span style="color:var(--moss)">Instantanée</span></div>
+          <div class="summary-row total"><span>Total</span><span id="sum-total">0,00 €</span></div>
+        </div>
+        <div class="summary-promo">
+          <input placeholder="Code promo">
+          <button>Appliquer</button>
+        </div>
+        <div class="secure-lock">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          Paiement Revolut sécurisé · Livraison 2 min · Compte garanti 15 min
+        </div>
+        <a class="btn-pay" href="https://revolut.me/rousslan" target="_blank" rel="noopener" onclick="openVerify()">
+          J'ai payé via Revolut
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M7 17 17 7"/><path d="M7 7h10v10"/></svg>
+        </a>
+      </div>
+    </aside>
+  </div>
+</section>
+
+<!-- ============ SUCCESS ============ -->
+<section class="success-screen">
+  <div class="success-wrap">
+    <div class="success-art">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+    </div>
+    <h1>Commande confirmée.</h1>
+    <p>Tes points seront crédités sur ton compte McDo <strong>en 2 minutes</strong> après réception du paiement Revolut. <strong>Compte garanti 15 minutes</strong> pour passer ta commande au McDo sereinement.</p>
+    <div class="order-num">N° commande : <strong id="order-id">MIAM-2026-00000</strong></div>
+    <div class="order-receipt" id="success-receipt"></div>
+    <button class="btn btn-primary" onclick="goHome()" style="margin:0 auto">Retour à la boutique
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+    </button>
+  </div>
+</section>
+
+<!-- ============ ACCOUNT SCREEN ============ -->
+<section class="account-screen">
+  <div class="ac-wrap">
+    <aside class="ac-side">
+      <div class="ac-user">
+        <div class="ac-avatar" id="ac-avatar">JD</div>
+        <div>
+          <div class="ac-user-name" id="ac-user-name">Jean Dupont</div>
+          <div class="ac-user-mail" id="ac-user-mail">jean@example.com</div>
+        </div>
+      </div>
+      <div class="ac-menu">
+        <button class="is-active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>Tableau de bord</button>
+        <button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/></svg>Mes commandes</button>
+        <button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>Historique points</button>
+        <button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M2 10h20"/></svg>Moyens de paiement</button>
+        <button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>Paramètres</button>
+        <button class="logout" onclick="logout()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg>Se déconnecter</button>
+      </div>
+    </aside>
+
+    <div class="ac-main">
+      <h1>Bonjour <span id="ac-firstname">Jean</span> 👋</h1>
+      <p class="ac-greet">Voici un récapitulatif de ton compte MiamShop.</p>
+
+      <div class="ac-stats">
+        <div class="ac-stat">
+          <div class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/></svg></div>
+          <div class="lbl">Commandes</div>
+          <div class="val" id="ac-stat-orders">0</div>
+        </div>
+        <div class="ac-stat">
+          <div class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg></div>
+          <div class="lbl">Points livrés</div>
+          <div class="val" id="ac-stat-pts">0</div>
+        </div>
+        <div class="ac-stat">
+          <div class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
+          <div class="lbl">Économies</div>
+          <div class="val" id="ac-stat-saved">0 €</div>
+        </div>
+      </div>
+
+      <div class="ac-orders">
+        <div class="ac-orders-head">
+          <h3>Commandes récentes</h3>
+          <button class="chip" onclick="goHome()">Faire un achat →</button>
+        </div>
+        <div id="ac-orders-list">
+          <div class="ac-empty">Aucune commande pour le moment.<br/><span style="font-family:var(--font-ui);font-size:13px;font-weight:400">Tes prochaines commandes apparaîtront ici.</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ AUTH MODAL ============ -->
+<div class="auth-overlay" id="auth-overlay" onclick="closeAuthBg(event)">
+  <div class="auth-card">
+    <div class="auth-side">
+      <div class="auth-side-content">
+        <a class="logo"><div class="logo-mark"></div><span>MiamShop</span></a>
+        <h2>Tes Points McDo<br/>en un clin d'œil.</h2>
+        <p>Crée ton compte gratuit en 20 secondes et accède à tes commandes, ton historique et tes points livrés.</p>
+        <div class="auth-perks">
+          <div class="auth-perk"><span class="check"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>Suivi en temps réel</div>
+          <div class="auth-perk"><span class="check"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>Réachat en un clic</div>
+          <div class="auth-perk"><span class="check"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>−10 % sur ta 1ʳᵉ commande</div>
+          <div class="auth-perk"><span class="check"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>Support prioritaire</div>
+        </div>
+      </div>
+      <div class="auth-coin-art">M</div>
+    </div>
+
+    <div class="auth-main" style="position:relative">
+      <button class="icon-btn auth-close" onclick="closeAuth()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+      </button>
+      <div class="auth-tabs">
+        <button class="auth-tab is-active" id="tab-login" onclick="switchAuth('login')">Connexion</button>
+        <button class="auth-tab" id="tab-signup" onclick="switchAuth('signup')">Créer un compte</button>
+      </div>
+
+      <!-- LOGIN -->
+      <div id="form-login">
+        <h3 class="auth-h">Bon retour 👋</h3>
+        <p class="auth-sub">Connecte-toi pour accéder à tes commandes.</p>
+        <form class="auth-form" onsubmit="event.preventDefault();doLogin()">
+          <div class="field">
+            <label>E-mail</label>
+            <input type="email" id="login-email" placeholder="toi@example.com" required>
+          </div>
+          <div class="field">
+            <label>Mot de passe</label>
+            <input type="password" id="login-pwd" placeholder="••••••••" required>
+          </div>
+          <div class="auth-row">
+            <label><input type="checkbox" checked> Se souvenir de moi</label>
+            <a>Mot de passe oublié ?</a>
+          </div>
+          <button type="submit" class="btn-auth">Se connecter
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+          </button>
+        </form>
+        <div class="auth-or">ou continuer avec</div>
+        <div class="auth-social">
+          <button onclick="socialLogin('Google')"><svg width="16" height="16" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h5.9c-.3 1.4-1 2.6-2.2 3.4v2.8h3.6c2.1-2 3.2-4.9 3.2-8.4z"/><path fill="#34A853" d="M12 23c2.9 0 5.4-1 7.2-2.6l-3.6-2.8c-1 .7-2.3 1.1-3.6 1.1-2.8 0-5.2-1.9-6-4.4H2.3v2.9C4.1 20.6 7.8 23 12 23z"/><path fill="#FBBC04" d="M6 14.2c-.2-.7-.4-1.4-.4-2.2s.1-1.5.4-2.2V6.9H2.3C1.5 8.4 1 10.2 1 12s.5 3.6 1.3 5.1L6 14.2z"/><path fill="#EA4335" d="M12 5.4c1.6 0 3 .5 4.1 1.6l3.1-3.1C17.4 2.2 14.9 1 12 1 7.8 1 4.1 3.4 2.3 6.9L6 9.8c.9-2.5 3.2-4.4 6-4.4z"/></svg>Google</button>
+          <button onclick="socialLogin('Apple')"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17.05 12.04c-.03-3.05 2.49-4.51 2.6-4.59-1.42-2.07-3.62-2.35-4.4-2.38-1.87-.19-3.66 1.1-4.61 1.1-.95 0-2.42-1.07-3.98-1.04-2.05.03-3.94 1.19-5 3.02-2.13 3.69-.55 9.16 1.53 12.16 1.02 1.47 2.23 3.12 3.82 3.06 1.53-.06 2.11-.99 3.96-.99s2.37.99 3.99.96c1.65-.03 2.69-1.5 3.7-2.97 1.17-1.7 1.65-3.35 1.68-3.44-.04-.02-3.22-1.23-3.25-4.89zM14.04 3.55c.84-1.02 1.41-2.43 1.25-3.85-1.21.05-2.69.81-3.56 1.83-.78.9-1.46 2.35-1.28 3.73 1.35.1 2.74-.69 3.59-1.71z"/></svg>Apple</button>
+        </div>
+        <div class="auth-foot">Pas encore de compte ? <a onclick="switchAuth('signup')">Créer un compte</a></div>
+      </div>
+
+      <!-- SIGNUP -->
+      <div id="form-signup" style="display:none">
+        <h3 class="auth-h">Crée ton compte</h3>
+        <p class="auth-sub">Gratuit, sans engagement. −10 % offert.</p>
+        <form class="auth-form" onsubmit="event.preventDefault();doSignup()">
+          <div class="row-2">
+            <div class="field">
+              <label>Prénom</label>
+              <input type="text" id="su-first" placeholder="Jean" required>
+            </div>
+            <div class="field">
+              <label>Nom</label>
+              <input type="text" id="su-last" placeholder="Dupont" required>
+            </div>
+          </div>
+          <div class="field">
+            <label>E-mail</label>
+            <input type="email" id="su-email" placeholder="toi@example.com" required>
+          </div>
+          <div class="field">
+            <label>Mot de passe</label>
+            <input type="password" id="su-pwd" placeholder="8 caractères min." required oninput="pwdMeter(this.value)">
+            <div class="auth-pwd-bar"><i id="pwd-bar"></i></div>
+            <div class="auth-pwd-hint" id="pwd-hint">8 caractères, 1 chiffre, 1 majuscule recommandés</div>
+          </div>
+          <div class="auth-row">
+            <label><input type="checkbox" id="su-terms" required> J'accepte les <a>CGU</a> et la <a>politique</a></label>
+          </div>
+          <button type="submit" class="btn-auth">Créer mon compte
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+          </button>
+        </form>
+        <div class="auth-or">ou s'inscrire avec</div>
+        <div class="auth-social">
+          <button onclick="socialLogin('Google')"><svg width="16" height="16" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h5.9c-.3 1.4-1 2.6-2.2 3.4v2.8h3.6c2.1-2 3.2-4.9 3.2-8.4z"/><path fill="#34A853" d="M12 23c2.9 0 5.4-1 7.2-2.6l-3.6-2.8c-1 .7-2.3 1.1-3.6 1.1-2.8 0-5.2-1.9-6-4.4H2.3v2.9C4.1 20.6 7.8 23 12 23z"/><path fill="#FBBC04" d="M6 14.2c-.2-.7-.4-1.4-.4-2.2s.1-1.5.4-2.2V6.9H2.3C1.5 8.4 1 10.2 1 12s.5 3.6 1.3 5.1L6 14.2z"/><path fill="#EA4335" d="M12 5.4c1.6 0 3 .5 4.1 1.6l3.1-3.1C17.4 2.2 14.9 1 12 1 7.8 1 4.1 3.4 2.3 6.9L6 9.8c.9-2.5 3.2-4.4 6-4.4z"/></svg>Google</button>
+          <button onclick="socialLogin('Apple')"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17.05 12.04c-.03-3.05 2.49-4.51 2.6-4.59-1.42-2.07-3.62-2.35-4.4-2.38-1.87-.19-3.66 1.1-4.61 1.1-.95 0-2.42-1.07-3.98-1.04-2.05.03-3.94 1.19-5 3.02-2.13 3.69-.55 9.16 1.53 12.16 1.02 1.47 2.23 3.12 3.82 3.06 1.53-.06 2.11-.99 3.96-.99s2.37.99 3.99.96c1.65-.03 2.69-1.5 3.7-2.97 1.17-1.7 1.65-3.35 1.68-3.44-.04-.02-3.22-1.23-3.25-4.89zM14.04 3.55c.84-1.02 1.41-2.43 1.25-3.85-1.21.05-2.69.81-3.56 1.83-.78.9-1.46 2.35-1.28 3.73 1.35.1 2.74-.69 3.59-1.71z"/></svg>Apple</button>
+        </div>
+        <div class="auth-foot">Déjà un compte ? <a onclick="switchAuth('login')">Se connecter</a></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ VERIFY OVERLAY ============ -->
+<div class="auth-overlay" id="verify-overlay" onclick="if(event.target.id==='verify-overlay')closeVerify()">
+  <div class="auth-card" style="grid-template-columns:1fr;max-width:520px">
+    <div class="auth-main" style="position:relative;padding:40px 36px">
+      <button class="icon-btn auth-close" onclick="closeVerify()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
+      <div id="verify-step1">
+        <div style="width:64px;height:64px;border-radius:18px;background:linear-gradient(135deg,#0071FF,#1A8FFF);display:grid;place-items:center;color:#fff;margin-bottom:18px;box-shadow:0 14px 28px -10px rgba(0,113,255,.5)"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></div>
+        <h3 class="auth-h">Vérification du paiement</h3>
+        <p class="auth-sub">Pour confirmer ta commande, prouve que le paiement Revolut a bien été envoyé à <strong>revolut.me/rousslan</strong>.</p>
+        <div class="field" style="margin-bottom:12px"><label>Référence Revolut (ID transaction)</label><input type="text" id="v-ref" placeholder="ex. RVLT-9F2A-882X-7K"></div>
+        <div class="field" style="margin-bottom:14px"><label>Capture d'écran du paiement</label><label for="v-file" class="v-drop"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg><div><div class="v-drop-t" id="v-drop-name">Cliquer pour téléverser</div><div class="v-drop-s">PNG, JPG, max 5 Mo</div></div></label><input type="file" id="v-file" accept="image/*" style="display:none" onchange="document.getElementById('v-drop-name').textContent=this.files[0]?.name||'Cliquer pour téléverser'"></div>
+        <div class="revolut-note" style="background:rgba(242,169,59,.12);color:#3a1d04"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg><span>Aucune commande n'est validée tant que le paiement n'est pas vérifié.</span></div>
+        <button class="btn-auth" style="margin-top:16px" onclick="submitVerify()">Vérifier mon paiement<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></button>
+      </div>
+      <div id="verify-step2" style="display:none;text-align:center;padding:20px 0">
+        <div class="v-spinner"></div>
+        <h3 class="auth-h" style="margin-top:20px">Vérification en cours…</h3>
+        <p class="auth-sub">On vérifie la réception du paiement sur Revolut.</p>
+        <div class="v-checks"><div class="v-check" id="vc1"><span class="vc-ic"></span>Connexion à Revolut</div><div class="v-check" id="vc2"><span class="vc-ic"></span>Récupération de la transaction</div><div class="v-check" id="vc3"><span class="vc-ic"></span>Vérification du montant</div><div class="v-check" id="vc4"><span class="vc-ic"></span>Confirmation finale</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ ADMIN SCREEN ============ -->
+<section class="admin-screen" id="admin-screen">
+  <header class="ad-top">
+    <div class="ad-brand">
+      <div class="logo-mark" style="width:28px;height:28px"></div>
+      MiamShop <span class="badge">Admin</span>
+    </div>
+    <div style="display:flex;gap:14px;align-items:center">
+      <button class="ad-notif" id="ad-notif-btn" onclick="adminScrollToPending()" title="Notifications">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+        <span class="ad-notif-dot hidden" id="ad-notif-dot">0</span>
+      </button>
+      <span class="ad-back" onclick="closeAdmin()">← Retour au site</span>
+      <button class="ad-btn ghost" onclick="adminLogout()">Déconnexion</button>
+    </div>
+  </header>
+  <div class="ad-wrap">
+    <h1 class="ad-h">Tableau de bord</h1>
+    <p class="ad-sub">Vue d'ensemble des commandes, paiements Revolut à vérifier et livraisons.</p>
+
+    <div class="ad-stats">
+      <div class="ad-stat warn">
+        <div class="lbl">à vérifier</div>
+        <div class="val" id="ad-s-pending">0</div>
+        <div class="delta" style="color:var(--amber);opacity:.85">paiements en attente</div>
+      </div>
+      <div class="ad-stat">
+        <div class="lbl">commandes livrées</div>
+        <div class="val" id="ad-s-delivered">0</div>
+        <div class="delta">total traité</div>
+      </div>
+      <div class="ad-stat">
+        <div class="lbl">CA du jour</div>
+        <div class="val" id="ad-s-rev-day">0 €</div>
+        <div class="delta" id="ad-s-rev-day-pct">·24h</div>
+      </div>
+      <div class="ad-stat">
+        <div class="lbl">CA total</div>
+        <div class="val" id="ad-s-rev">0 €</div>
+        <div class="delta">depuis le lancement</div>
+      </div>
+    </div>
+
+    <div class="ad-tabs">
+      <div class="ad-tab is-active" onclick="adminTab('orders',this)">Commandes</div>
+      <div class="ad-tab" onclick="adminTab('products',this)">Produits</div>
+      <div class="ad-tab" onclick="adminTab('settings',this)">Réglages</div>
+    </div>
+
+    <div id="ad-pane-orders">
+      <div class="ad-card">
+        <div class="ad-thead"><span>Commande</span><span>Client / Revolut</span><span>Pack</span><span>Montant</span><span>Statut</span><span>Actions</span></div>
+        <div id="ad-orders-list"></div>
+      </div>
+    </div>
+
+    <div id="ad-pane-products" style="display:none">
+      <div class="ad-prod" id="ad-prod-list"></div>
+    </div>
+
+    <div id="ad-pane-settings" style="display:none">
+      <div class="ad-card" style="padding:24px">
+        <h3 style="font-family:var(--font-display);margin:0 0 14px;font-size:18px">Mes infos paiement</h3>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+          <div class="field"><label style="color:#a9a39a">Lien Revolut</label><input type="text" value="https://revolut.me/rousslan" style="background:#0E0F12;color:#fff;border-color:rgba(245,239,230,.1)"></div>
+          <div class="field"><label style="color:#a9a39a">E-mail support</label><input type="email" value="contact@miamshop.fr" style="background:#0E0F12;color:#fff;border-color:rgba(245,239,230,.1)"></div>
+        </div>
+        <div style="margin-top:18px;padding-top:18px;border-top:1px solid rgba(245,239,230,.06);display:flex;justify-content:space-between;align-items:center">
+          <div>
+            <div style="font-family:var(--font-display);font-weight:600;font-size:15px">Réinitialiser les commandes</div>
+            <div style="font-family:var(--font-mono);font-size:11px;color:#8a857a;margin-top:4px">Supprime toutes les commandes stockées localement.</div>
+          </div>
+          <button class="ad-btn no" onclick="adminReset()">Tout effacer</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ DELIVER MODAL ============ -->
+<div class="auth-overlay" id="deliver-overlay" onclick="if(event.target.id==='deliver-overlay')closeDeliver()">
+  <div class="auth-card" style="grid-template-columns:1fr;max-width:520px">
+    <div class="auth-main" style="position:relative;padding:40px 36px">
+      <button class="icon-btn auth-close" onclick="closeDeliver()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
+      <div class="deliver-step1 is-on">
+        <div style="width:56px;height:56px;border-radius:16px;background:var(--moss);display:grid;place-items:center;color:#fff;margin-bottom:16px"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 5v14M11 5v14M15 5v14M19 5v14"/></svg></div>
+        <h3 class="auth-h">Livrer la commande</h3>
+        <p class="auth-sub" id="deliver-orderid">Commande —</p>
+        <div class="field" style="margin-bottom:10px"><label>Code-barres / Code de retrait McDo</label><input type="text" id="deliver-code" placeholder="ex. 8284 9912 7766 4421" style="font-family:var(--font-mono);letter-spacing:.1em" oninput="updateBarcodePreview()"></div>
+        <div class="field" style="margin-bottom:10px"><label>Note pour le client (optionnel)</label><input type="text" id="deliver-note" placeholder="ex. Valide pendant 24h"></div>
+        <div class="barcode-preview" id="deliver-preview" style="display:none">
+          <svg class="barcode-svg" id="deliver-preview-svg" preserveAspectRatio="none" viewBox="0 0 300 80"></svg>
+          <div class="barcode-num" id="deliver-preview-num"></div>
+        </div>
+        <button class="btn-auth" style="margin-top:14px;background:var(--moss)" onclick="confirmDeliver()">Envoyer le code au client<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></button>
+      </div>
+      <div class="deliver-step2" style="text-align:center">
+        <div style="width:64px;height:64px;border-radius:50%;background:var(--moss);display:grid;place-items:center;color:#fff;margin:8px auto 14px"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg></div>
+        <h3 class="auth-h">Code envoyé ✓</h3>
+        <p class="auth-sub">Le client a reçu son code-barres et peut le retrouver dans son espace compte.</p>
+        <div class="barcode-card-admin">
+          <div style="font-family:var(--font-mono);font-size:11px;color:var(--amber);letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px">Code transmis</div>
+          <div class="barcode-num" id="deliver-final-code"></div>
+        </div>
+        <button class="btn-auth" style="margin-top:16px" onclick="closeDeliver()">Terminé</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ ADMIN LOGIN ============ -->
+<div class="auth-overlay" id="admin-overlay" onclick="if(event.target.id==='admin-overlay')closeAdminLogin()">
+  <div class="auth-card" style="grid-template-columns:1fr;max-width:440px">
+    <div class="auth-main" style="position:relative;padding:40px 36px">
+      <button class="icon-btn auth-close" onclick="closeAdminLogin()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
+      <div style="width:56px;height:56px;border-radius:16px;background:var(--ink);display:grid;place-items:center;color:var(--amber);margin-bottom:16px"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
+      <h3 class="auth-h">Accès administrateur</h3>
+      <p class="auth-sub">Réservé au gérant de MiamShop.</p>
+      <div class="field" style="margin-bottom:12px"><label>Mot de passe</label><input type="password" id="ad-pwd" placeholder="••••••••" onkeydown="if(event.key==='Enter')adminLogin()"></div>
+      <button class="btn-auth" onclick="adminLogin()">Se connecter<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></button>
+      <p style="font-family:var(--font-mono);font-size:11px;color:#8a8780;margin-top:14px;text-align:center">Astuce demo : <strong>admin2026</strong></p>
+    </div>
+  </div>
+</div>
+
+<!-- ============ CART OVERLAY ============ -->
+<div class="overlay" id="cart-overlay" onclick="closeCartBg(event)">
+  <div class="cart-panel" id="cart-panel">
+    <div class="cart-head">
+      <h3>Ton panier</h3>
+      <button class="icon-btn" onclick="closeCart()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+      </button>
+    </div>
+    <div class="cart-body" id="cart-body"></div>
+    <div class="cart-foot" id="cart-foot" style="display:none">
+      <div class="cart-row"><span>Sous-total</span><span id="c-sub">0,00 €</span></div>
+      <div class="cart-row"><span>Livraison</span><span style="color:var(--moss)">Instantanée</span></div>
+      <div class="cart-row total"><span>Total</span><span id="c-total">0,00 €</span></div>
+      <button class="btn-checkout" onclick="goCheckout()">
+        Passer au paiement
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ FOOTER ============ -->
+<footer id="contact">
+  <div class="foot-inner">
+    <div class="foot">
+      <div class="logo" style="color:#F5EFE6"><div class="logo-mark"></div><span>MiamShop</span></div>
+      <p style="margin:16px 0 0;font-size:14px;line-height:1.55;max-width:320px">La marketplace française de référence pour acheter des points de fidélité fast-food. Livraison instantanée, paiement sécurisé.</p>
+      <form class="foot-newsl" onsubmit="event.preventDefault();toast('Inscription confirmée')">
+        <input type="email" placeholder="ton@email.com" required>
+        <button type="submit">S'abonner</button>
+      </form>
+    </div>
+    <div class="foot">
+      <h4>Boutique</h4>
+      <ul>
+        <li><a href="#catalog">Tous les packs</a></li>
+        <li><a href="#catalog">Packs starter</a></li>
+        <li><a href="#catalog">Packs pro</a></li>
+        <li><a href="#catalog">Cartes cadeaux</a></li>
+      </ul>
+    </div>
+    <div class="foot">
+      <h4>Aide</h4>
+      <ul>
+        <li><a href="#">Centre d'aide</a></li>
+        <li><a href="#">Suivre ma commande</a></li>
+        <li><a href="#">Remboursement</a></li>
+        <li><a href="#">Contact</a></li>
+      </ul>
+    </div>
+    <div class="foot">
+      <h4>Légal</h4>
+      <ul>
+        <li><a href="#">CGV</a></li>
+        <li><a href="#">Politique de confidentialité</a></li>
+        <li><a href="#">Cookies</a></li>
+        <li><a href="#">Mentions légales</a></li>
+        <li><a href="#" onclick="event.preventDefault();openAdmin()" style="opacity:.55">Espace admin<span id="foot-admin-dot" class="footer-admin-dot" style="display:none"></span></a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="foot-bot">
+    <span>© 2026 MiamShop · SIRET 894 271 002 00018</span>
+    <span>Made with ✦ in Paris</span>
+  </div>
+</footer>
+
+<div class="toast" id="toast"><span class="toast-dot"></span><span id="toast-text">Ajouté au panier</span></div>
+
+<script>
+/* ============ DATA ============ */
+const PRODUCTS = [
+  { id:'p50',   pts:'50–74',    price:2.50,  tier:'starter', tag:null },
+  { id:'p67',   pts:'67',       price:2.67,  tier:'starter', tag:'PROMO' },
+  { id:'p75',   pts:'75–99',    price:4.50,  tier:'starter', tag:null },
+  { id:'p100',  pts:'100–124',  price:5.50,  tier:'starter', tag:null },
+  { id:'p125',  pts:'125–149',  price:6.50,  tier:'classique', tag:null },
+  { id:'p150',  pts:'150–174',  price:7.50,  tier:'classique', tag:null },
+  { id:'p175',  pts:'175–199',  price:9.50,  tier:'classique', tag:null },
+  { id:'p200',  pts:'200–249',  price:10.50, tier:'classique', tag:'POPULAIRE' },
+  { id:'p250',  pts:'250–299',  price:12.00, tier:'classique', tag:null },
+  { id:'p300',  pts:'300–349',  price:13.00, tier:'classique', tag:null },
+  { id:'p325',  pts:'325–349',  price:14.50, tier:'classique', tag:null },
+  { id:'p350',  pts:'350–399',  price:15.00, tier:'classique', tag:null },
+  { id:'p375',  pts:'375–400',  price:16.00, tier:'plus', tag:null },
+  { id:'p400',  pts:'400–499',  price:17.50, tier:'plus', tag:null },
+  { id:'p500',  pts:'500–599',  price:23.00, tier:'plus', tag:'BEST DEAL' },
+  { id:'p600',  pts:'600–699',  price:31.00, tier:'plus', tag:null },
+  { id:'p700',  pts:'700–899',  price:41.00, tier:'pro', tag:null },
+  { id:'p900',  pts:'900–1199', price:53.00, tier:'pro', tag:null },
+  { id:'p1200', pts:'1200–1399',price:60.00, tier:'pro', tag:null },
+  { id:'p1400', pts:'1400–1599',price:71.00, tier:'pro', tag:null },
+  { id:'p1600', pts:'1600–1800',price:77.00, tier:'pro', tag:null },
+  { id:'p1800', pts:'1800–2100',price:96.00, tier:'pro', tag:'PRO' },
+];
+
+const TIERS = [
+  { id:'all',       label:'Tous' },
+  { id:'starter',   label:'Starter' },
+  { id:'classique', label:'Classique' },
+  { id:'plus',      label:'Plus' },
+  { id:'pro',       label:'Pro' },
+];
+
+let activeFilter = 'all';
+let cart = {};
+
+/* ============ FORMATTING ============ */
+const fmt = n => n.toLocaleString('fr-FR', { minimumFractionDigits:2, maximumFractionDigits:2 }) + ' €';
+
+/* ============ FILTERS ============ */
+function renderFilters(){
+  const wrap = document.getElementById('filters');
+  wrap.innerHTML = TIERS.map(t => {
+    const cnt = t.id === 'all' ? PRODUCTS.length : PRODUCTS.filter(p => p.tier === t.id).length;
+    return `<button class="chip ${activeFilter===t.id?'is-active':''}" onclick="setFilter('${t.id}')">${t.label}<span class="cnt">${cnt}</span></button>`;
+  }).join('');
+}
+function setFilter(id){ activeFilter = id; renderFilters(); renderGrid(); }
+
+/* ============ GRID ============ */
+function renderGrid(){
+  const grid = document.getElementById('grid');
+  const list = activeFilter === 'all' ? PRODUCTS : PRODUCTS.filter(p => p.tier === activeFilter);
+  grid.innerHTML = list.map(p => {
+    const headPts = p.pts.split('–')[0].split('+')[0];
+    const tagClass = p.tag === 'PROMO' ? 'hot' : (p.tag === 'BEST DEAL' || p.tag === 'POPULAIRE' ? 'best' : '');
+    return `
+      <article class="card">
+        ${p.tag ? `<span class="card-tag ${tagClass}">${p.tag}</span>` : ''}
+        <div class="card-art">
+          <div class="card-coin small">${headPts}</div>
+          <div class="card-coin">${headPts}</div>
+        </div>
+        <div>
+          <div class="card-name">Pack ${p.pts} points McDo</div>
+          <div class="card-pts">PTS-${p.id.slice(1).padStart(4,'0')} · Tier ${p.tier}</div>
+        </div>
+        <div class="card-foot">
+          <div class="card-price">${p.price.toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2})}<small>€</small></div>
+          <button class="card-add" aria-label="Ajouter" onclick="addToCart('${p.id}')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+          </button>
+        </div>
+      </article>
+    `;
+  }).join('');
+}
+
+/* ============ CART ============ */
+function addToCart(id){
+  cart[id] = (cart[id] || 0) + 1;
+  renderCart();
+  bumpCount();
+  toast('Ajouté au panier');
+}
+function removeItem(id){ delete cart[id]; renderCart(); bumpCount(); }
+function chgQty(id, d){
+  cart[id] = (cart[id] || 0) + d;
+  if(cart[id] <= 0) delete cart[id];
+  renderCart(); bumpCount();
+}
+function cartTotal(){
+  return Object.entries(cart).reduce((s,[id,q]) => s + (PRODUCTS.find(p=>p.id===id).price * q), 0);
+}
+function cartItems(){
+  return Object.entries(cart).map(([id,q]) => ({ ...PRODUCTS.find(p=>p.id===id), qty:q }));
+}
+function bumpCount(){
+  const n = Object.values(cart).reduce((s,q)=>s+q,0);
+  document.getElementById('cart-count').textContent = n;
+}
+function renderCart(){
+  const body = document.getElementById('cart-body');
+  const foot = document.getElementById('cart-foot');
+  const items = cartItems();
+  if(items.length === 0){
+    body.innerHTML = `<div class="cart-empty">Ton panier est vide.<br/><span style="font-family:var(--font-ui);font-size:14px;color:#8a8780;font-weight:400">Ajoute un pack pour commencer.</span></div>`;
+    foot.style.display = 'none';
+    return;
+  }
+  body.innerHTML = items.map(it => `
+    <div class="cart-item">
+      <div class="cart-item-art">${it.pts.split('–')[0]}</div>
+      <div>
+        <div class="cart-item-name">${it.pts} points McDo</div>
+        <div class="cart-item-meta">PTS-${it.id.slice(1).padStart(4,'0')}</div>
+        <div class="qty">
+          <button onclick="chgQty('${it.id}',-1)">−</button>
+          <span>${it.qty}</span>
+          <button onclick="chgQty('${it.id}',1)">+</button>
+          <span class="cart-item-remove" onclick="removeItem('${it.id}')">Retirer</span>
+        </div>
+      </div>
+      <div class="cart-item-price">${fmt(it.price * it.qty)}</div>
+    </div>
+  `).join('');
+  foot.style.display = 'block';
+  const total = cartTotal();
+  document.getElementById('c-sub').textContent = fmt(total);
+  document.getElementById('c-total').textContent = fmt(total);
+}
+function openCart(){ document.getElementById('cart-overlay').classList.add('is-open') }
+function closeCart(){ document.getElementById('cart-overlay').classList.remove('is-open') }
+function closeCartBg(e){ if(e.target.id === 'cart-overlay') closeCart() }
+
+/* ============ NAV BETWEEN SCREENS ============ */
+function showScreen(name){
+  document.querySelectorAll('.home-screen,.checkout-screen,.success-screen,.account-screen').forEach(el => el.classList.remove('is-active'));
+  document.querySelector('.' + name + '-screen').classList.add('is-active');
+  window.scrollTo({top:0,behavior:'instant'});
+}
+function goHome(e){ if(e) e.preventDefault(); showScreen('home'); }
+function goCheckout(){
+  if(Object.keys(cart).length === 0){ toast('Ton panier est vide'); return; }
+  closeCart();
+  renderSummary();
+  showScreen('checkout');
+}
+function renderSummary(){
+  const items = cartItems();
+  document.getElementById('summary-items').innerHTML = items.map(it => `
+    <div class="si">
+      <div>
+        <div class="si-name">Pack ${it.pts} points McDo</div>
+        <div class="si-qty">Qté ${it.qty} · PTS-${it.id.slice(1).padStart(4,'0')}</div>
+      </div>
+      <div class="si-price">${fmt(it.price * it.qty)}</div>
+    </div>
+  `).join('');
+  const total = cartTotal();
+  document.getElementById('sum-sub').textContent = fmt(total);
+  document.getElementById('sum-total').textContent = fmt(total);
+  const ra = document.getElementById('revolut-amount');
+  if(ra) ra.textContent = fmt(total);
+}
+
+function pickPay(el){
+  document.querySelectorAll('.pay-opt').forEach(o => o.classList.remove('is-active'));
+  el.classList.add('is-active');
+}
+
+/* ============ PAY ============ */
+function payNow(){
+  const items = cartItems();
+  if(items.length === 0){ toast('Panier vide'); return; }
+  const total = cartTotal();
+  const orderId = 'MIAM-2026-' + Math.floor(10000 + Math.random()*89999);
+  saveOrder({ id: orderId, date: Date.now(), total, status:'pending', verifRef: window.__lastVerifRef || '', items: items.map(it => ({ id:it.id, pts:it.pts, price:it.price, qty:it.qty })) });
+  document.getElementById('order-id').textContent = orderId;
+  document.getElementById('success-receipt').innerHTML =
+    items.map(it => `<div class="rr"><span>Pack ${it.pts} pts McDo × ${it.qty}</span><span>${fmt(it.price*it.qty)}</span></div>`).join('') +
+    `<div class="rr"><span>Sous-total</span><span>${fmt(total)}</span></div>` +
+    `<div class="rr"><span>Frais</span><span style="color:var(--moss)">Gratuit</span></div>` +
+    `<div class="rr b"><span>Total payé</span><span>${fmt(total)}</span></div>`;
+  cart = {}; bumpCount(); renderCart();
+  showScreen('success');
+}
+
+/* ============ AUTH ============ */
+let currentUser = null;
+function openAuth(mode){
+  switchAuth(mode || 'login');
+  document.getElementById('auth-overlay').classList.add('is-open');
+}
+function closeAuth(){ document.getElementById('auth-overlay').classList.remove('is-open') }
+function closeAuthBg(e){ if(e.target.id === 'auth-overlay') closeAuth() }
+function switchAuth(mode){
+  document.getElementById('tab-login').classList.toggle('is-active', mode==='login');
+  document.getElementById('tab-signup').classList.toggle('is-active', mode==='signup');
+  document.getElementById('form-login').style.display = mode==='login' ? 'block' : 'none';
+  document.getElementById('form-signup').style.display = mode==='signup' ? 'block' : 'none';
+}
+function pwdMeter(v){
+  let score = 0;
+  if(v.length >= 8) score++;
+  if(/[A-Z]/.test(v)) score++;
+  if(/[0-9]/.test(v)) score++;
+  if(/[^A-Za-z0-9]/.test(v)) score++;
+  document.getElementById('pwd-bar').style.width = (score*25) + '%';
+  const labels = ['Trop court','Faible','Correct','Bon','Excellent'];
+  document.getElementById('pwd-hint').textContent = labels[score] || '8 caractères min.';
+}
+function doLogin(){
+  const email = document.getElementById('login-email').value.trim();
+  if(!email) return;
+  const name = email.split('@')[0].replace(/[._-]/g,' ').replace(/\b\w/g, c => c.toUpperCase());
+  setUser({ email, name, first: name.split(' ')[0] });
+  closeAuth();
+  toast('Connexion réussie · Bon retour !');
+}
+function doSignup(){
+  const first = document.getElementById('su-first').value.trim();
+  const last = document.getElementById('su-last').value.trim();
+  const email = document.getElementById('su-email').value.trim();
+  if(!first || !email) return;
+  setUser({ email, name: first + ' ' + last, first });
+  closeAuth();
+  toast('Compte créé · −10 % appliqué !');
+}
+function socialLogin(provider){
+  const email = 'utilisateur@' + provider.toLowerCase() + '.com';
+  setUser({ email, name: 'Utilisateur ' + provider, first: 'Utilisateur' });
+  closeAuth();
+  toast('Connecté avec ' + provider);
+}
+function setUser(u){
+  currentUser = u;
+  localStorage.setItem('miam_user', JSON.stringify(u));
+  const initials = u.name.split(' ').map(s=>s[0]).slice(0,2).join('').toUpperCase();
+  const btn = document.getElementById('nav-account-btn');
+  btn.classList.add('is-logged');
+  btn.innerHTML = `<span class="avatar">${initials}</span><span id="nav-account-label">${u.first}</span>`;
+  btn.onclick = () => showScreen('account');
+  document.getElementById('ac-avatar').textContent = initials;
+  document.getElementById('ac-user-name').textContent = u.name;
+  document.getElementById('ac-user-mail').textContent = u.email;
+  document.getElementById('ac-firstname').textContent = u.first;
+  refreshOrders();
+}
+function logout(){
+  currentUser = null;
+  localStorage.removeItem('miam_user');
+  const btn = document.getElementById('nav-account-btn');
+  btn.classList.remove('is-logged');
+  btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span id="nav-account-label">Se connecter</span>`;
+  btn.onclick = () => openAuth('login');
+  goHome();
+  toast('Déconnecté');
+}
+
+/* ============ DELIVER + NOTIFICATIONS ============ */
+let deliverOrderId = null;
+function openDeliver(id){
+  deliverOrderId = id;
+  const order = getOrders().find(o => o.id === id);
+  if(!order) return;
+  document.getElementById('deliver-orderid').textContent = 'Commande ' + id + ' — ' + fmt(order.total);
+  document.getElementById('deliver-code').value = order.barcode || genBarcode();
+  document.getElementById('deliver-note').value = order.note || '';
+  document.querySelector('.deliver-step1').classList.add('is-on');
+  document.querySelector('.deliver-step2').classList.remove('is-on');
+  updateBarcodePreview();
+  document.getElementById('deliver-overlay').classList.add('is-open');
+}
+function closeDeliver(){ document.getElementById('deliver-overlay').classList.remove('is-open') }
+function genBarcode(){
+  const blocks = []; for(let i=0;i<4;i++) blocks.push(Math.floor(1000 + Math.random()*8999));
+  return blocks.join(' ');
+}
+function renderBarcodeSVG(svg, code){
+  const digits = (code || '').replace(/\D/g,'').padEnd(12,'0').slice(0,16) || '000000000000';
+  const widths = []; let sum = 0;
+  for(let i=0;i<digits.length*4;i++){ const w = 2 + ((digits.charCodeAt(i % digits.length) + i*7) % 5); widths.push(w); sum += w + 1; }
+  const total = 300 - 16, scale = total / sum;
+  let cx = 8; const bars = [];
+  widths.forEach((w,i) => {
+    const ww = w * scale;
+    if(i % 2 === 0) bars.push(`<rect x="${cx.toFixed(1)}" y="6" width="${ww.toFixed(2)}" height="58" fill="#0E0F12"/>`);
+    cx += ww + scale;
+  });
+  svg.innerHTML = bars.join('');
+}
+function updateBarcodePreview(){
+  const code = document.getElementById('deliver-code').value.trim();
+  const wrap = document.getElementById('deliver-preview');
+  if(!code){ wrap.style.display = 'none'; return; }
+  wrap.style.display = 'flex';
+  renderBarcodeSVG(document.getElementById('deliver-preview-svg'), code);
+  document.getElementById('deliver-preview-num').textContent = code;
+}
+function confirmDeliver(){
+  const code = document.getElementById('deliver-code').value.trim();
+  if(!code){ toast('Saisis un code-barres'); return; }
+  const note = document.getElementById('deliver-note').value.trim();
+  const arr = getOrders();
+  const o = arr.find(x => x.id === deliverOrderId);
+  if(!o) return;
+  o.status = 'delivered'; o.barcode = code; o.note = note; o.deliveredAt = Date.now();
+  localStorage.setItem('miam_orders', JSON.stringify(arr));
+  document.getElementById('deliver-final-code').textContent = code;
+  document.querySelector('.deliver-step1').classList.remove('is-on');
+  document.querySelector('.deliver-step2').classList.add('is-on');
+  renderAdmin(); refreshOrders();
+  toast('Code envoyé au client ✓');
+}
+
+let lastPendingCount = 0;
+function beep(){
+  try{
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    [880, 1320].forEach((freq, i) => {
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = 'sine'; o.frequency.value = freq;
+      g.gain.setValueAtTime(0, ctx.currentTime + i*0.2);
+      g.gain.linearRampToValueAtTime(0.18, ctx.currentTime + i*0.2 + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i*0.2 + 0.25);
+      o.connect(g).connect(ctx.destination);
+      o.start(ctx.currentTime + i*0.2); o.stop(ctx.currentTime + i*0.2 + 0.3);
+    });
+  }catch(e){}
+}
+function notifyAdmin(count){
+  if(!('Notification' in window)) return;
+  if(Notification.permission === 'granted'){
+    new Notification('MiamShop — Nouveau paiement', { body: count + ' paiement(s) Revolut en attente de vérification' });
+  } else if(Notification.permission === 'default'){
+    Notification.requestPermission();
+  }
+}
+function updateNotifBadge(){
+  const pending = getOrders().filter(o => (o.status||'pending')==='pending').length;
+  const dot = document.getElementById('ad-notif-dot');
+  const btn = document.getElementById('ad-notif-btn');
+  if(dot && btn){
+    if(pending > 0){ dot.textContent = pending; dot.classList.remove('hidden'); btn.classList.add('alert'); }
+    else { dot.classList.add('hidden'); btn.classList.remove('alert'); }
+  }
+  const footDot = document.getElementById('foot-admin-dot');
+  if(footDot) footDot.style.display = pending > 0 ? 'inline-block' : 'none';
+  if(pending > lastPendingCount && lastPendingCount > 0){
+    beep();
+    if(document.getElementById('admin-screen').classList.contains('is-active')) notifyAdmin(pending);
+  }
+  lastPendingCount = pending;
+}
+function adminScrollToPending(){
+  const first = document.querySelector('.ad-status.pending');
+  if(first){ const row = first.closest('.ad-row'); row.scrollIntoView({block:'center',behavior:'smooth'}); row.style.background = 'rgba(242,169,59,.12)'; setTimeout(()=>{row.style.background=''}, 1500); }
+  else toast('Aucune commande en attente');
+}
+setInterval(updateNotifBadge, 4000);
+window.addEventListener('storage', updateNotifBadge);
+setTimeout(updateNotifBadge, 500);
+
+let adminTab = (function(orig){return orig})(typeof window!=='undefined' ? null : null);
+function openAdmin(){
+  if(localStorage.getItem('miam_admin') === '1'){ showAdmin(); return; }
+  document.getElementById('ad-pwd').value = '';
+  document.getElementById('admin-overlay').classList.add('is-open');
+}
+function closeAdminLogin(){ document.getElementById('admin-overlay').classList.remove('is-open') }
+function adminLogin(){
+  const v = document.getElementById('ad-pwd').value;
+  if(v !== ADMIN_PASS){ toast('Mot de passe incorrect'); return; }
+  localStorage.setItem('miam_admin','1');
+  closeAdminLogin();
+  showAdmin();
+}
+function adminLogout(){
+  localStorage.removeItem('miam_admin');
+  closeAdmin();
+  toast('Déconnecté de l’admin');
+}
+function showAdmin(){
+  document.querySelectorAll('section').forEach(s => s.classList.remove('is-active'));
+  document.getElementById('admin-screen').classList.add('is-active');
+  window.scrollTo(0,0);
+  renderAdmin();
+}
+function closeAdmin(){
+  document.getElementById('admin-screen').classList.remove('is-active');
+  showScreen('home');
+}
+function adminTab(name, el){
+  document.querySelectorAll('.ad-tab').forEach(t => t.classList.remove('is-active'));
+  el.classList.add('is-active');
+  ['orders','products','settings'].forEach(k => document.getElementById('ad-pane-'+k).style.display = k===name?'block':'none');
+  if(name==='products') renderAdminProducts();
+}
+function renderAdmin(){
+  const orders = getOrders();
+  const pending = orders.filter(o => (o.status||'pending')==='pending');
+  const delivered = orders.filter(o => o.status==='delivered');
+  const dayCut = Date.now() - 86400000;
+  const dayRev = orders.filter(o => o.status==='delivered' && o.date > dayCut).reduce((s,o)=>s+o.total,0);
+  const totalRev = delivered.reduce((s,o)=>s+o.total,0);
+  document.getElementById('ad-s-pending').textContent = pending.length;
+  document.getElementById('ad-s-delivered').textContent = delivered.length;
+  document.getElementById('ad-s-rev-day').textContent = fmt(dayRev);
+  document.getElementById('ad-s-rev').textContent = fmt(totalRev);
+  const list = document.getElementById('ad-orders-list');
+  if(orders.length === 0){
+    list.innerHTML = `<div class="ad-empty">Aucune commande pour le moment.</div>`;
+    return;
+  }
+  list.innerHTML = orders.map(o => {
+    const st = o.status || 'pending';
+    const stLbl = {pending:'À vérifier', delivered:'Livrée', refused:'Refusée'}[st];
+    const items = o.items.map(it => `${it.pts} pts × ${it.qty}`).join(' · ');
+    return `<div class="ad-row">
+      <div><div class="ad-oid">${o.id}</div><div class="ad-od">${new Date(o.date).toLocaleString('fr-FR')}</div></div>
+      <div><div class="ad-cust">${o.user || 'Client invité'}</div><div class="ad-cust-r">${o.verifRef ? 'Ref: '+o.verifRef : 'Pas de référence'}</div></div>
+      <div style="font-family:var(--font-mono);font-size:12px;color:#a9a39a">${items}</div>
+      <div class="ad-amt">${fmt(o.total)}</div>
+      <div class="ad-status ${st}">${stLbl}</div>
+      <div class="ad-actions">
+        ${st==='pending' ? `<button class="ad-btn ok" onclick="openDeliver('${o.id}')">✓ Livrer</button><button class="ad-btn no" onclick="setOrderStatus('${o.id}','refused')">✕ Refuser</button>` : st==='delivered' ? `<button class="ad-btn ghost" onclick="openDeliver('${o.id}')">Voir code</button>` : `<button class="ad-btn ghost" onclick="setOrderStatus('${o.id}','pending')">Réouvrir</button>`}
+      </div>
+    </div>`;
+  }).join('');
+}
+function setOrderStatus(id, status){
+  const arr = getOrders();
+  const o = arr.find(x => x.id === id);
+  if(!o) return;
+  o.status = status;
+  localStorage.setItem('miam_orders', JSON.stringify(arr));
+  renderAdmin();
+  toast(status==='delivered' ? 'Commande livrée ✓' : status==='refused' ? 'Commande refusée' : 'Commande réouverte');
+}
+function renderAdminProducts(){
+  document.getElementById('ad-prod-list').innerHTML = PRODUCTS.map(p => `
+    <div class="ad-prod-card">
+      <div><div class="ad-prod-name">Pack ${p.pts} points</div><div class="ad-prod-meta">${p.tier} · ${p.id}</div></div>
+      <div class="ad-prod-price">${fmt(p.price)}</div>
+    </div>`).join('');
+}
+function adminReset(){
+  if(!confirm('Supprimer toutes les commandes ?')) return;
+  localStorage.removeItem('miam_orders');
+  renderAdmin();
+  toast('Commandes effacées');
+}
+
+/* ============ ORDERS ============ */
+function getOrders(){ try{ return JSON.parse(localStorage.getItem('miam_orders') || '[]'); }catch(e){ return []; } }
+function saveOrder(o){
+  if(!o.status) o.status = 'pending';
+  if(currentUser && !o.user) o.user = currentUser.email;
+  const arr = getOrders(); arr.unshift(o);
+  localStorage.setItem('miam_orders', JSON.stringify(arr));
+  refreshOrders();
+}
+function refreshOrders(){
+  const orders = getOrders();
+  const list = document.getElementById('ac-orders-list');
+  if(!list) return;
+  const totalPts = orders.reduce((s,o) => s + o.items.reduce((ss,i) => ss + parseInt(i.pts) * i.qty, 0), 0);
+  const totalEur = orders.reduce((s,o) => s + o.total, 0);
+  document.getElementById('ac-stat-orders').textContent = orders.length;
+  document.getElementById('ac-stat-pts').textContent = totalPts.toLocaleString('fr-FR');
+  document.getElementById('ac-stat-saved').textContent = (totalEur * 0.3).toLocaleString('fr-FR',{maximumFractionDigits:0}) + ' €';
+  const codes = orders.filter(o => o.status==='delivered' && o.barcode);
+  const codeBlock = codes.length ? codes.map(o => `
+    <div class="ac-code-card">
+      <div>
+        <div class="l1">Code-barres reçu</div>
+        <div class="l2">${o.items.map(i=>i.pts+' pts').join(' · ')}</div>
+        <div class="l3">${o.id}${o.note ? ' · '+o.note : ''}</div>
+      </div>
+      <div class="right">
+        <svg viewBox="0 0 300 80" preserveAspectRatio="none" id="ac-bc-${o.id}"></svg>
+        <div class="num">${o.barcode}</div>
+      </div>
+    </div>`).join('') : '';
+  if(orders.length === 0){
+    list.innerHTML = `<div class="ac-empty">Aucune commande pour le moment.<br/><span style="font-family:var(--font-ui);font-size:13px;font-weight:400">Tes prochaines commandes apparaîtront ici.</span></div>`;
+    return;
+  }
+  list.innerHTML = codeBlock + orders.slice(0,5).map(o => o.items.map(it => `
+    <div class="ac-order">
+      <div class="ac-order-coin">${it.pts.split('–')[0]}</div>
+      <div>
+        <div class="ac-order-name">Pack ${it.pts} points McDo</div>
+        <div class="ac-order-meta">${o.id} · ${new Date(o.date).toLocaleDateString('fr-FR')} · Qté ${it.qty}</div>
+      </div>
+      <div class="ac-order-status ${o.status==='pending'?'pending':''}">${o.status==='pending'?'À vérifier':o.status==='refused'?'Refusée':'Livré'}</div>
+      <div class="ac-order-price">${fmt(it.price * it.qty)}</div>
+    </div>
+  `).join('')).join('');
+  codes.forEach(o => { const svg = document.getElementById('ac-bc-'+o.id); if(svg) renderBarcodeSVG(svg, o.barcode); });
+}
+function openVerify(){
+  const items = cartItems();
+  if(items.length === 0){ toast('Panier vide'); return; }
+  document.getElementById('verify-step1').style.display = 'block';
+  document.getElementById('verify-step2').style.display = 'none';
+  document.querySelectorAll('.v-check').forEach(el => el.classList.remove('done'));
+  document.getElementById('verify-overlay').classList.add('is-open');
+}
+function closeVerify(){ document.getElementById('verify-overlay').classList.remove('is-open') }
+function submitVerify(){
+  const ref = document.getElementById('v-ref').value.trim();
+  const file = document.getElementById('v-file').files[0];
+  if(!ref && !file){ toast('Ajoute une référence ou une capture'); return; }
+  window.__lastVerifRef = ref;
+  document.getElementById('verify-step1').style.display = 'none';
+  document.getElementById('verify-step2').style.display = 'block';
+  ['vc1','vc2','vc3','vc4'].forEach((id,i) => setTimeout(() => document.getElementById(id).classList.add('done'), 500 + i*700));
+  setTimeout(() => { closeVerify(); payNow(); toast('Paiement vérifié ✓'); }, 3500);
+}
+let toastTimer;
+function toast(msg){
+  const t = document.getElementById('toast');
+  document.getElementById('toast-text').textContent = msg;
+  t.classList.add('is-on');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=> t.classList.remove('is-on'), 1800);
+}
+
+/* init */
+try{
+  const stored = localStorage.getItem('miam_user');
+  if(stored) setUser(JSON.parse(stored));
+}catch(e){}
+renderFilters();
+renderGrid();
+renderCart();
+</script>
+</body>
+</html>
