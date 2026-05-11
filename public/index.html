@@ -35,6 +35,7 @@
     --font-mono: 'JetBrains Mono', ui-monospace, monospace;
   }
   *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
   html,body{margin:0;padding:0}
   body{
     font-family:var(--font-ui);
@@ -106,8 +107,23 @@
     background:rgba(20,18,12,.05);
     border:1px solid rgba(20,18,12,.06);
     padding:8px 14px;border-radius:999px;font-size:13.5px;color:#5a5a55;
-    min-width:240px
+    min-width:240px;cursor:pointer;transition:background .15s
   }
+  .nav-search:hover{background:rgba(20,18,12,.09)}
+  /* ============ SEARCH OVERLAY ============ */
+  .search-overlay{display:none;position:fixed;inset:0;z-index:88888;background:rgba(14,15,18,.55);backdrop-filter:blur(4px);align-items:flex-start;justify-content:center;padding-top:80px}
+  .search-overlay.is-open{display:flex}
+  .search-box{background:#fff;border-radius:16px;width:100%;max-width:560px;overflow:hidden;box-shadow:0 24px 64px rgba(0,0,0,.22);margin:0 16px}
+  .search-input-wrap{display:flex;align-items:center;gap:12px;padding:16px 20px;border-bottom:1px solid #f0ece4}
+  .search-input-wrap svg{flex-shrink:0;color:#8a8780}
+  .search-input-wrap input{flex:1;border:none;outline:none;font-size:16px;font-family:var(--font-ui);background:transparent;color:var(--ink)}
+  .search-input-wrap kbd{cursor:pointer;font-family:var(--font-mono);font-size:11px;background:#f0ece4;border:1px solid #e3dccd;padding:2px 7px;border-radius:5px;color:#5a5a55;white-space:nowrap}
+  #search-results{max-height:340px;overflow-y:auto}
+  .search-result{display:flex;align-items:center;justify-content:space-between;padding:12px 20px;cursor:pointer;font-size:14px;border-bottom:1px solid #faf7f2}
+  .search-result:hover{background:#faf7f2}
+  .search-result-name{font-weight:500;color:var(--ink)}
+  .search-result-price{color:#8a8780;font-size:13px;flex-shrink:0;margin-left:12px}
+  .search-empty{padding:28px 20px;color:#8a8780;font-size:14px;text-align:center}
   .nav-search kbd{
     margin-left:auto;font-family:var(--font-mono);font-size:11px;
     background:#fff;border:1px solid #e3dccd;padding:1px 6px;border-radius:5px;color:#5a5a55
@@ -1179,7 +1195,7 @@
       <a href="#contact">Contact</a>
     </div>
     <div class="nav-spacer"></div>
-    <div class="nav-search">
+    <div class="nav-search" onclick="openSearch()" role="button" aria-label="Rechercher">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
       <span>Rechercher un pack…</span>
       <kbd>⌘ K</kbd>
@@ -1823,7 +1839,7 @@
         <li><a href="#">Centre d'aide</a></li>
         <li><a href="#">Suivre ma commande</a></li>
         <li><a href="#">Remboursement</a></li>
-        <li><a href="https://t.me/LeRoi211" target="_blank" rel="noopener">Contact · Telegram</a></li>
+        <li><a href="https://www.snapchat.com/add/rousslan.f" target="_blank" rel="noopener">Contact · Snap @rousslan.f</a></li>
       </ul>
     </div>
     <div class="foot">
@@ -1842,6 +1858,17 @@
     <span>Made with ✦ in Paris</span>
   </div>
 </footer>
+
+<div class="search-overlay" id="search-overlay" onclick="if(event.target.id==='search-overlay')closeSearch()">
+  <div class="search-box">
+    <div class="search-input-wrap">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+      <input type="text" id="search-input" placeholder="Rechercher un pack…" oninput="doSearch(this.value)" autocomplete="off" autocorrect="off" spellcheck="false">
+      <kbd onclick="closeSearch()">Esc</kbd>
+    </div>
+    <div id="search-results"></div>
+  </div>
+</div>
 
 <div class="toast" id="toast"><span class="toast-dot"></span><span id="toast-text">Ajouté au panier</span></div>
 
@@ -2527,6 +2554,48 @@ try{
 renderFilters();
 renderGrid();
 renderCart();
+
+/* ============ SEARCH ============ */
+function openSearch(){
+  document.getElementById('search-overlay').classList.add('is-open');
+  var inp = document.getElementById('search-input');
+  inp.value = '';
+  document.getElementById('search-results').innerHTML = renderSearchResults('');
+  setTimeout(function(){ inp.focus(); }, 50);
+}
+function closeSearch(){
+  document.getElementById('search-overlay').classList.remove('is-open');
+}
+function doSearch(q){
+  document.getElementById('search-results').innerHTML = renderSearchResults(q);
+}
+function renderSearchResults(q){
+  var term = q.trim().toLowerCase();
+  var list = term
+    ? PRODUCTS.filter(function(p){
+        return p.pts.toLowerCase().includes(term)
+          || p.tier.toLowerCase().includes(term)
+          || String(p.price).includes(term);
+      })
+    : PRODUCTS.slice(0, 8);
+  if(!list.length) return '<div class="search-empty">Aucun pack trouvé pour "'+q+'"</div>';
+  return list.map(function(p){
+    return '<div class="search-result" onclick="selectSearchResult(\''+p.id+'\')">'
+      +'<span class="search-result-name">Pack '+p.pts+' points McDo</span>'
+      +'<span class="search-result-price">'+p.price.toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2})+' €</span>'
+      +'</div>';
+  }).join('');
+}
+function selectSearchResult(id){
+  closeSearch();
+  var p = PRODUCTS.find(function(x){ return x.id === id; });
+  if(p){ activeFilter = p.tier; renderFilters(); renderGrid(); }
+  document.getElementById('catalog').scrollIntoView({behavior:'smooth'});
+}
+document.addEventListener('keydown', function(e){
+  if((e.metaKey || e.ctrlKey) && e.key === 'k'){ e.preventDefault(); openSearch(); }
+  if(e.key === 'Escape'){ closeSearch(); }
+});
 </script>
 </body>
 </html>
