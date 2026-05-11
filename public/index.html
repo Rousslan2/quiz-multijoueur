@@ -1985,7 +1985,6 @@ setInterval(updateNotifBadge, 4000);
 window.addEventListener('storage', updateNotifBadge);
 setTimeout(updateNotifBadge, 500);
 
-let adminTab = (function(orig){return orig})(typeof window!=='undefined' ? null : null);
 function openAdmin(){
   if(localStorage.getItem('miam_admin') === '1'){ showAdmin(); return; }
   document.getElementById('ad-pwd').value = '';
