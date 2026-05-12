@@ -345,19 +345,37 @@
   }
   .card-art{
     position:relative;height:170px;
-    background:#F8C46C;
     overflow:hidden;
   }
-  .card-art-img{
-    position:absolute;inset:0;
-    background-size:cover;background-position:center;
-    transition: transform .6s cubic-bezier(.2,.7,.2,1);
+  /* Gradient de fond par tier */
+  .card-art[data-tier="starter"]  { background:linear-gradient(145deg,#FFF5CC 0%,#FFD95A 42%,#F2A93B 100%) }
+  .card-art[data-tier="classique"]{ background:linear-gradient(145deg,#FFD166 0%,#F2A93B 45%,#E08F1F 100%) }
+  .card-art[data-tier="plus"]     { background:linear-gradient(145deg,#F2A93B 0%,#E08F1F 42%,#C9601A 100%) }
+  .card-art[data-tier="pro"]      { background:linear-gradient(145deg,#D4621A 0%,#C73826 50%,#821B1B 100%) }
+  /* Halo lumineux derrière la nourriture */
+  .card-art-glow{
+    position:absolute;bottom:-20px;right:-20px;
+    width:160px;height:160px;border-radius:50%;
+    background:rgba(255,255,255,.18);
+    filter:blur(24px);
+    pointer-events:none;
   }
-  .card:hover .card-art-img{transform:scale(1.08)}
+  /* Grande illustration nourriture */
+  .card-art-food{
+    position:absolute;
+    right:-6px;bottom:-14px;
+    font-size:108px;line-height:1;
+    filter: drop-shadow(0 8px 20px rgba(0,0,0,.3)) drop-shadow(0 2px 4px rgba(0,0,0,.2));
+    transform:rotate(-8deg);
+    transition:transform .55s cubic-bezier(.2,.7,.2,1);
+    pointer-events:none;user-select:none;z-index:1;
+  }
+  .card:hover .card-art-food{transform:rotate(-5deg) translateY(-7px) scale(1.07)}
+  /* Vignette en bas pour lisibilité du badge */
   .card-art::after{
     content:"";position:absolute;inset:0;
-    background:linear-gradient(180deg, rgba(20,18,12,0) 40%, rgba(20,18,12,.45) 100%);
-    pointer-events:none;
+    background:linear-gradient(180deg, rgba(0,0,0,0) 50%, rgba(0,0,0,.22) 100%);
+    pointer-events:none;z-index:2;
   }
   .card-coin{
     position:absolute;left:14px;top:14px;
@@ -368,7 +386,7 @@
     font-family:var(--font-display);font-weight:700;font-size:14px;color:var(--ink);
     letter-spacing:-.01em;
     box-shadow:0 6px 16px -4px rgba(20,18,12,.25), inset 0 1px 0 rgba(255,255,255,.6);
-    z-index:2;
+    z-index:3;
   }
   .card-coin::before{
     content:"";display:block;width:14px;height:14px;border-radius:50%;
@@ -385,7 +403,7 @@
     padding:5px 10px;border-radius:6px;
     letter-spacing:.05em;
     backdrop-filter:blur(6px);
-    z-index:2;
+    z-index:3;
   }
   .card-tag.hot{background:linear-gradient(135deg,var(--ruby),#C73826)}
   .card-tag.best{background:linear-gradient(135deg,var(--moss),#2d5d44)}
@@ -1068,7 +1086,7 @@
     .card-price{font-size:18px;letter-spacing:-.01em}
     .card-price small{font-size:12px}
     .card-add{width:32px;height:32px;border-radius:50%}
-    .card-tag{font-size:9px;padding:3px 7px;top:9px;right:9px;z-index:2}
+    .card-tag{font-size:9px;padding:3px 7px;top:9px;right:9px;z-index:3}
 
     /* Features section */
     .features{padding:60px 16px}
@@ -1930,11 +1948,11 @@
 const ADMIN_PASS = 'admin2026';
 
 /* ============ DATA ============ */
-const TIER_IMAGES = {
-  starter:   'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=600&q=80&auto=format', /* Big Mac */
-  classique: 'https://images.unsplash.com/photo-1550547660-d9450f859349?w=600&q=80&auto=format',   /* Cheeseburger plate */
-  plus:      'https://images.unsplash.com/photo-1561758033-d89a9ad46330?w=600&q=80&auto=format',   /* Nuggets + fries */
-  pro:       'https://images.unsplash.com/photo-1571091718767-18b5b1457add?w=600&q=80&auto=format' /* Meal combo */
+const TIER_FOODS = {
+  starter:   '🍟',
+  classique: '🍔',
+  plus:      '🍗',
+  pro:       '🏆'
 };
 const PRODUCTS = [
   { id:'p50',   pts:'50–74',    price:2.50,  tier:'starter', tag:null },
@@ -1994,8 +2012,9 @@ function renderGrid(){
     const tagClass = p.tag === 'PROMO' ? 'hot' : (p.tag === 'BEST DEAL' || p.tag === 'POPULAIRE' ? 'best' : '');
     return `
       <article class="card">
-        <div class="card-art">
-          <div class="card-art-img" style="background-image:url('${TIER_IMAGES[p.tier]||TIER_IMAGES.classique}')"></div>
+        <div class="card-art" data-tier="${p.tier}">
+          <div class="card-art-glow"></div>
+          <div class="card-art-food">${TIER_FOODS[p.tier]||'🍔'}</div>
           <span class="card-coin"><span class="coin-pts">${headPts}</span><span class="coin-lbl">pts</span></span>
           ${p.tag ? `<span class="card-tag ${tagClass}">${p.tag}</span>` : ''}
         </div>
