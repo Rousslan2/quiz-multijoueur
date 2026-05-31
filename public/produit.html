@@ -217,6 +217,7 @@
 <script src="assets/user.js"></script>
 <script>
 (function(){
+  FP_AUTH.init(false); // charge l'user sans rediriger (page publique)
   FP_PRICES.apply();
   const BRANDS = window.FP_CATALOGUE;
   const key=(location.hash.replace('#','').split('-')[0]||'kfc');
@@ -240,23 +241,23 @@
   wrap.addEventListener('click',e=>{ const t=e.target.closest('.tranche'); if(!t)return; sel=+t.dataset.i; rows(); upd(); });
   document.querySelectorAll('.qty button').forEach(b=>b.addEventListener('click',()=>{ qty=Math.max(1,qty+parseInt(b.dataset.q)); upd(); }));
   $('addBtn').addEventListener('click', async function(){
+    if (!FP_AUTH.user) { window.location.href = '/login?next=/produit%23' + key; return; }
     const price = B.tr[sel][1] * qty;
-    const u = FP_USER.get();
-    if(u.balance < price){
+    if ((FP_AUTH.user.balance || 0) < price){
       this.innerHTML = '⚠ Solde insuffisant · <a href="wallet.html" style="color:#fff;text-decoration:underline">Recharger →</a>';
-      setTimeout(()=>{ this.innerHTML='Ajouter au panier · '+fmt(price); },2500);
-      return;
+      setTimeout(()=>{ this.innerHTML='Acheter · '+fmt(price); },2500); return;
     }
     this.textContent='⏳ En cours…'; this.disabled=true;
-    FP_USER.updateBalance(-price, B.name.replace('Points ','') + ' · ' + B.tr[sel][0] + ' pts');
-    FP_USER.addAccount({ brand:key, name:B.name, pts:B.tr[sel][0], date:new Date().toISOString(), status:'ok' });
-    try{
-      await fetch('/api/orders',{ method:'POST', headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({ id:'FP-'+Date.now(), brand:key, items:[{pts:B.tr[sel][0],qty}], user:FP_USER.get().name||'Anonyme', total:price, date:new Date().toISOString(), status:'ok' }) });
-    }catch{}
-    FP_USER.wireNav();
+    const note = B.name.replace('Points ','') + ' · ' + B.tr[sel][0] + ' pts';
+    const ded = await FP_AUTH.deduct(price, note);
+    if (!ded.ok) { this.textContent = ded.error||'Erreur'; this.disabled=false; return; }
+    FP_AUTH.user.balance = ded.wallet.balance;
+    FP_AUTH.wireNav(FP_AUTH.user);
+    await FP_AUTH.addAccount({ brand:key, name:B.name, pts:B.tr[sel][0] });
+    await fetch('/api/orders',{ method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({ id:'FP-'+Date.now(), brand:key, items:[{pts:B.tr[sel][0],qty}], user:FP_AUTH.user.name, total:price, date:new Date().toISOString(), status:'ok' }) });
     this.innerHTML='✓ Acheté · '+fmt(price);
-    setTimeout(()=>{ this.innerHTML='Ajouter au panier · '+fmt(price); this.disabled=false; },3000);
+    setTimeout(()=>{ this.innerHTML='Acheter · '+fmt(price); this.disabled=false; },3000);
   });
   document.querySelector('.ptabs').addEventListener('click',e=>{ const b=e.target.closest('.ptab'); if(!b)return; document.querySelectorAll('.ptab').forEach(x=>x.classList.remove('active')); b.classList.add('active'); document.querySelectorAll('.tabpane').forEach(p=>p.classList.toggle('active',p.dataset.pane===b.dataset.t)); if(window.__fp)window.__fp.scan(); });
   window.addEventListener('hashchange',()=>location.reload());

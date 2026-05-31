@@ -101,6 +101,7 @@
       <a href="wallet.html"><span class="ic">◈</span> Wallet</a>
       <a href="#"><span class="ic">⤳</span> Parrainage</a>
       <a href="#"><span class="ic">⚙</span> Paramètres</a>
+      <a href="#" id="logoutBtn" style="margin-top:8px;color:var(--text-3)"><span class="ic">⏻</span> Déconnexion</a>
     </aside>
 
     <div>
@@ -149,89 +150,88 @@
 <script src="assets/user.js"></script>
 <script>
 (function(){
-  const u = FP_USER.get();
   const fmt = v => Math.abs(v).toFixed(2).replace('.', ',') + ' €';
   const months = ['JAN','FÉV','MAR','AVR','MAI','JUN','JUL','AOÛ','SEP','OCT','NOV','DÉC'];
   const labels = {kfc:'KFC', mcdo:"McDonald's", otacos:"O'Tacos"};
-
-  // Profile
-  document.getElementById('bigAv').textContent = u.initials || 'FP';
-  document.getElementById('userName').textContent = u.name || 'Mon Compte';
-  document.getElementById('tierLabel').textContent = 'MEMBRE ' + (u.tier || 'STANDARD') + ' · ' + (u.points || 0) + ' PTS';
-
-  // Edit name on click
-  document.getElementById('userName').addEventListener('click', function(){
-    const n = prompt('Ton prénom :', this.textContent);
-    if (!n || !n.trim()) return;
-    const name = n.trim();
-    const initials = name.split(' ').filter(Boolean).map(w => w[0].toUpperCase()).join('').slice(0, 2) || 'FP';
-    FP_USER.patch({ name, initials });
-    this.textContent = name;
-    document.getElementById('bigAv').textContent = initials;
-    document.getElementById('refcode').textContent = 'FOODPLUG-' + initials + (FP_USER.get().points || 0);
-    FP_USER.wireNav();
-  });
-
-  // KPIs
-  const accts = FP_USER.getAccounts();
-  document.getElementById('kpiBalance').dataset.count = (u.balance || 0).toFixed(2);
-  document.getElementById('kpiBalance').textContent = fmt(u.balance);
-  document.getElementById('kpiAccts').dataset.count = accts.length;
-  document.getElementById('kpiAccts').textContent = accts.length;
-  document.getElementById('kpiPoints').dataset.count = u.points || 0;
-  document.getElementById('kpiPoints').textContent = u.points || 0;
-  document.getElementById('kpiSaved').dataset.count = (u.saved || 0).toFixed(0);
-  document.getElementById('kpiSaved').textContent = fmt(u.saved);
-
-  // Accounts
-  const acctsList = document.getElementById('acctsList');
-  const initM = {kfc:'K', mcdo:'M', otacos:'O'};
-  const fmtAcExp = d => { const dt = new Date(d); return (dt.getMonth()+1).toString().padStart(2,'0') + '/' + dt.getFullYear().toString().slice(2); };
-  if (accts.length) {
-    acctsList.innerHTML = accts.map((a, i) => `<div class="acct rv${i ? ' rv-d' + Math.min(i, 3) : ''}">
-      <div class="logo ${a.brand || ''}">${initM[a.brand] || '?'}</div>
-      <div><div class="nm">${a.name || labels[a.brand] || a.brand}</div>
-      <div class="meta">${labels[a.brand] || a.brand} · ${a.pts || ''} pts · exp. ${fmtAcExp(a.date)}</div></div>
-      <span class="st on">ACTIF</span></div>`).join('');
-    acctsList.innerHTML += `<div class="acct rv rv-d3" style="border-style:dashed;justify-content:center;color:var(--text-3);cursor:pointer"><a href="boutique.html" style="display:flex;align-items:center;gap:10px;color:inherit"><span style="font-size:22px">+</span> Débloquer un nouveau compte</a></div>`;
-  } else {
-    acctsList.innerHTML = `<div class="acct rv" style="justify-content:center;border-style:dashed;grid-column:1/-1;padding:28px"><a href="boutique.html" style="color:var(--gold-soft);font-size:14px">Aucun compte actif · Parcourir la boutique →</a></div>`;
-  }
-
-  // Orders from API
-  const ordersSection = document.getElementById('ordersSection');
+  const initM  = {kfc:'K', mcdo:'M', otacos:'O'};
   const fmtDate = d => { const dt = new Date(d); return `${dt.getDate()} ${months[dt.getMonth()]} ${dt.getFullYear()}`; };
-  fetch('/api/orders').then(r => r.json()).then(orders => {
-    if (!orders.length) {
-      ordersSection.innerHTML = '<div class="ord" style="justify-content:center;color:var(--text-3);font-family:var(--mono);font-size:13px">Aucune commande · <a href="boutique.html" style="color:var(--gold-soft)">Explorer la boutique →</a></div>';
-      return;
+  const fmtExp  = d => { const dt = new Date(d); return String(dt.getMonth()+1).padStart(2,'0')+'/'+String(dt.getFullYear()).slice(2); };
+
+  FP_AUTH.init().then(async u => {
+    if (!u) return;
+
+    // Profile
+    document.getElementById('bigAv').textContent = u.initials || 'FP';
+    document.getElementById('userName').textContent = u.name;
+    document.getElementById('tierLabel').textContent = 'MEMBRE ' + (u.tier||'STANDARD') + ' · ' + (u.points||0) + ' PTS';
+
+    // Edit name
+    document.getElementById('userName').addEventListener('click', async function(){
+      const n = prompt('Ton prénom :', this.textContent);
+      if (!n || !n.trim()) return;
+      const data = await FP_AUTH.updateName(n.trim());
+      if (data.ok) {
+        this.textContent = data.name;
+        document.getElementById('bigAv').textContent = data.initials;
+        document.getElementById('refcode').textContent = 'FOODPLUG-' + data.initials + (u.points||0);
+        FP_AUTH.wireNav(FP_AUTH.user);
+      }
+    });
+
+    // KPIs
+    function setKpi(id, v, suf) {
+      const el = document.getElementById(id);
+      el.dataset.count = typeof v === 'number' ? v.toFixed(suf?2:0) : v;
+      el.textContent = suf ? fmt(v) : v;
     }
-    const myUser = FP_USER.get().name;
-    const mine = orders.filter(o => !o.user || o.user === myUser);
-    const display = (mine.length ? mine : orders).slice(0, 5);
-    ordersSection.innerHTML = display.map(o => {
-      const brand = labels[o.brand] || o.brand || '';
-      const pts = (o.items || []).map(i => i.pts).filter(Boolean).join(', ');
-      const nm = pts ? `Points ${brand} · ${pts} pts` : brand;
-      return `<div class="ord"><div><div class="nm">${nm}</div><div class="dt">${fmtDate(o.date || Date.now())}</div></div><span class="am">${fmt(o.total || 0)}</span><span class="stt">Livré</span></div>`;
-    }).join('');
-  }).catch(() => {
-    ordersSection.innerHTML = '<div class="ord" style="justify-content:center;color:var(--text-3);font-family:var(--mono);font-size:13px">Impossible de charger les commandes</div>';
-  });
+    setKpi('kpiBalance', u.balance, true);
+    setKpi('kpiPoints',  u.points  || 0);
+    setKpi('kpiSaved',   u.saved   || 0, true);
 
-  // Referral code
-  document.getElementById('refcode').textContent = 'FOODPLUG-' + (u.initials || 'FP') + (u.points || 0);
+    // Accounts
+    const accts = await FP_AUTH.getAccounts();
+    setKpi('kpiAccts', accts.length);
+    const acctsList = document.getElementById('acctsList');
+    if (accts.length) {
+      acctsList.innerHTML = accts.map((a,i) => `<div class="acct rv${i?' rv-d'+Math.min(i,3):''}">
+        <div class="logo ${a.brand||''}">${initM[a.brand]||'?'}</div>
+        <div><div class="nm">${a.name||labels[a.brand]||a.brand}</div>
+        <div class="meta">${labels[a.brand]||a.brand} · ${a.pts||''} pts · exp. ${fmtExp(a.date)}</div></div>
+        <span class="st on">ACTIF</span></div>`).join('');
+      acctsList.innerHTML += `<div class="acct rv rv-d3" style="border-style:dashed;justify-content:center;color:var(--text-3);cursor:pointer"><a href="boutique.html" style="display:flex;align-items:center;gap:10px;color:inherit"><span style="font-size:22px">+</span> Débloquer un nouveau compte</a></div>`;
+    } else {
+      acctsList.innerHTML = `<div class="acct rv" style="justify-content:center;border-style:dashed;grid-column:1/-1;padding:28px"><a href="boutique.html" style="color:var(--gold-soft);font-size:14px">Aucun compte actif · Parcourir la boutique →</a></div>`;
+    }
 
-  // Copy button
-  document.getElementById('copyBtn').addEventListener('click', function(){
-    navigator.clipboard && navigator.clipboard.writeText(document.getElementById('refcode').textContent).catch(() => {});
-    this.textContent = 'Copié ✓'; setTimeout(() => this.textContent = 'Copier', 1500);
-  });
+    // Orders
+    const ordersSection = document.getElementById('ordersSection');
+    try {
+      const orders = await fetch('/api/orders').then(r => r.json());
+      const mine = orders.filter(o => o.user === u.name).slice(0,5);
+      const display = mine.length ? mine : orders.slice(0,5);
+      if (!display.length) {
+        ordersSection.innerHTML = '<div class="ord" style="justify-content:center;color:var(--text-3);font-family:var(--mono);font-size:13px">Aucune commande · <a href="boutique.html" style="color:var(--gold-soft)">Explorer la boutique →</a></div>';
+      } else {
+        ordersSection.innerHTML = display.map(o => {
+          const brand = labels[o.brand]||o.brand||''; const pts = (o.items||[]).map(i=>i.pts).filter(Boolean).join(', ');
+          return `<div class="ord"><div><div class="nm">${pts?`Points ${brand} · ${pts} pts`:brand}</div><div class="dt">${fmtDate(o.date||Date.now())}</div></div><span class="am">${fmt(o.total||0)}</span><span class="stt">Livré</span></div>`;
+        }).join('');
+      }
+    } catch { ordersSection.innerHTML = '<div class="ord" style="justify-content:center;color:var(--text-3);font-family:var(--mono);font-size:13px">Impossible de charger les commandes</div>'; }
 
-  // Sidebar nav
-  document.querySelector('.dnav').addEventListener('click', e => {
-    const a = e.target.closest('a'); if (!a || a.getAttribute('href') !== '#') return; e.preventDefault();
-    document.querySelectorAll('.dnav a').forEach(x => x.classList.remove('active')); a.classList.add('active');
+    // Referral
+    document.getElementById('refcode').textContent = 'FOODPLUG-' + (u.initials||'FP') + (u.points||0);
+    document.getElementById('copyBtn').addEventListener('click', function(){
+      navigator.clipboard && navigator.clipboard.writeText(document.getElementById('refcode').textContent).catch(()=>{});
+      this.textContent='Copié ✓'; setTimeout(()=>this.textContent='Copier',1500);
+    });
+
+    // Sidebar nav
+    document.querySelector('.dnav').addEventListener('click', e => {
+      const a = e.target.closest('a'); if(!a||a.getAttribute('href')!=='#') return; e.preventDefault();
+      if(a.id==='logoutBtn'){ FP_AUTH.logout(); return; }
+      document.querySelectorAll('.dnav a').forEach(x=>x.classList.remove('active')); a.classList.add('active');
+    });
   });
 })();
 </script>

@@ -157,60 +157,56 @@
 <script>
 (function(){
   const fmt = v => Math.abs(v).toFixed(2).replace('.', ',') + ' €';
-
-  // Init display from localStorage
-  const u = FP_USER.get();
-  document.getElementById('cardBal').textContent = fmt(u.balance);
-  document.getElementById('cashbackVal').dataset.count = (u.cashback || 0).toFixed(2);
-  document.getElementById('rechargesVal').dataset.count = u.recharges || 0;
-
-  // Render transaction history
   const months = ['JAN','FÉV','MAR','AVR','MAI','JUN','JUL','AOÛ','SEP','OCT','NOV','DÉC'];
-  function fmtDate(d) {
-    const dt = new Date(d);
-    return `${dt.getDate()} ${months[dt.getMonth()]} ${dt.getFullYear()} · ${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}`;
-  }
-  function renderHist() {
-    const hist = FP_USER.getHistory();
-    const body = document.getElementById('histBody');
-    if (!hist.length) {
-      body.innerHTML = '<div class="htr" style="justify-content:center;color:var(--text-3);font-family:var(--mono);font-size:13px;padding:32px 0">Aucune transaction — recharge ton wallet pour commencer</div>';
-      return;
-    }
-    body.innerHTML = hist.map(t => {
-      const plus = t.amount > 0;
-      return `<div class="htr"><div class="ic">${plus ? '↓' : '↑'}</div><div><div class="nm">${t.note}</div><div class="dt">${fmtDate(t.date)}</div></div><div class="am ${plus ? 'plus' : 'minus'}">${plus ? '+' : '−'}${fmt(t.amount)}</div></div>`;
-    }).join('');
-  }
-  renderHist();
+  function fmtDate(d) { const dt = new Date(d); return `${dt.getDate()} ${months[dt.getMonth()]} ${dt.getFullYear()} · ${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}`; }
 
-  // Recharge UI
-  let amount = 50, bonus = 3;
-  const credit = document.getElementById('credit'), btn = document.getElementById('rechargeBtn'), customAmt = document.getElementById('customAmt');
-  function upd() { credit.textContent = fmt(amount + bonus); btn.textContent = 'Recharger ' + fmt(amount); }
-  document.getElementById('amts').addEventListener('click', e => {
-    const a = e.target.closest('.amt'); if (!a) return;
-    document.querySelectorAll('.amt').forEach(x => x.classList.remove('active')); a.classList.add('active');
-    amount = parseFloat(a.dataset.v); bonus = parseFloat(a.dataset.bonus); customAmt.value = ''; upd();
+  function renderWallet(w) {
+    document.getElementById('cardBal').textContent = fmt(w.balance || 0);
+    document.getElementById('cashbackVal').dataset.count = (w.cashback || 0).toFixed(2);
+    document.getElementById('rechargesVal').dataset.count = w.recharges || 0;
+    const body = document.getElementById('histBody');
+    const hist = w.transactions || [];
+    if (!hist.length) { body.innerHTML = '<div class="htr" style="justify-content:center;color:var(--text-3);font-family:var(--mono);font-size:13px;padding:32px 0">Aucune transaction — recharge ton wallet pour commencer</div>'; return; }
+    body.innerHTML = hist.map(t => { const plus = t.amount > 0; return `<div class="htr"><div class="ic">${plus?'↓':'↑'}</div><div><div class="nm">${t.note}</div><div class="dt">${fmtDate(t.date)}</div></div><div class="am ${plus?'plus':'minus'}">${plus?'+':'−'}${fmt(t.amount)}</div></div>`; }).join('');
+  }
+
+  FP_AUTH.init().then(async u => {
+    if (!u) return;
+    const w = await FP_AUTH.getWallet();
+    if (w) renderWallet(w);
+
+    let amount = 50, bonus = 3;
+    const credit = document.getElementById('credit'), btn = document.getElementById('rechargeBtn'), customAmt = document.getElementById('customAmt');
+    function upd() { credit.textContent = fmt(amount + bonus); btn.textContent = 'Recharger ' + fmt(amount); }
+    document.getElementById('amts').addEventListener('click', e => {
+      const a = e.target.closest('.amt'); if(!a) return;
+      document.querySelectorAll('.amt').forEach(x=>x.classList.remove('active')); a.classList.add('active');
+      amount = parseFloat(a.dataset.v); bonus = parseFloat(a.dataset.bonus); customAmt.value = ''; upd();
+    });
+    customAmt.addEventListener('input', e => {
+      const v = parseFloat(e.target.value)||0; amount=v; bonus=Math.floor(v*0.13);
+      document.querySelectorAll('.amt').forEach(x=>x.classList.remove('active')); upd();
+    });
+    document.getElementById('pms').addEventListener('click', e => {
+      const p = e.target.closest('.pm'); if(!p) return;
+      document.querySelectorAll('.pm').forEach(x=>x.classList.remove('active')); p.classList.add('active');
+    });
+    btn.addEventListener('click', async function() {
+      this.disabled = true; this.textContent = '⏳ En cours…';
+      const pm = document.querySelector('.pm.active')?.textContent?.trim() || 'Carte';
+      const res = await FP_AUTH.recharge(amount, bonus, pm);
+      if (res.ok) {
+        FP_AUTH.user.balance = res.wallet.balance;
+        FP_AUTH.wireNav(FP_AUTH.user);
+        renderWallet(res.wallet);
+        this.textContent = '✓ ' + fmt(amount) + ' rechargés';
+      } else {
+        this.textContent = res.error || 'Erreur';
+      }
+      setTimeout(() => { this.disabled = false; upd(); }, 1800);
+    });
+    upd();
   });
-  customAmt.addEventListener('input', e => {
-    const v = parseFloat(e.target.value) || 0; amount = v; bonus = Math.floor(v * 0.13);
-    document.querySelectorAll('.amt').forEach(x => x.classList.remove('active')); upd();
-  });
-  document.getElementById('pms').addEventListener('click', e => {
-    const p = e.target.closest('.pm'); if (!p) return;
-    document.querySelectorAll('.pm').forEach(x => x.classList.remove('active')); p.classList.add('active');
-  });
-  btn.addEventListener('click', function () {
-    const total = amount + bonus;
-    const updated = FP_USER.updateBalance(total, 'Recharge wallet · Carte');
-    document.getElementById('cardBal').textContent = fmt(updated.balance);
-    FP_USER.wireNav();
-    renderHist();
-    this.textContent = '✓ ' + fmt(amount) + ' rechargés';
-    setTimeout(() => upd(), 1600);
-  });
-  upd();
 })();
 </script>
 <script src="assets/app.js"></script>

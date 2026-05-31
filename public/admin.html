@@ -309,7 +309,7 @@ body{ background:#070708; }
     /* ---- live orders from API ---- */
     const fmt=v=>(v||0).toFixed(2).replace('.',',')+' €';
     let orders=[];
-    try{ orders=await fetch('/api/orders').then(r=>r.json()); }catch{}
+    try{ orders=await fetch('/api/admin/orders',{headers:{'X-Admin-Token':'foodplug'}}).then(r=>r.ok?r.json():[]); }catch{}
 
     // KPIs
     const ca=orders.reduce((s,o)=>s+(o.total||0),0);

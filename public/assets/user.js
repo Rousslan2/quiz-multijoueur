@@ -1,48 +1,90 @@
-/* FP_USER — état utilisateur partagé via localStorage */
-window.FP_USER = (function () {
-  const KEY = 'fp_user';
-  const HIST = 'fp_history';
-  const ACCTS = 'fp_accounts';
-  const DEF = { name: 'Mon Compte', initials: 'FP', balance: 0, tier: 'STANDARD', points: 0, cashback: 0, recharges: 0, saved: 0 };
-
-  function load(k, def) {
-    try { const v = JSON.parse(localStorage.getItem(k)); return v !== null ? v : def; } catch { return def; }
-  }
+/* FP_AUTH — auth + état utilisateur depuis le serveur */
+window.FP_AUTH = (function () {
+  let _user = null;
 
   return {
-    get() { return Object.assign({}, DEF, load(KEY, {})); },
-    save(u) { localStorage.setItem(KEY, JSON.stringify(u)); },
-    patch(delta) { const u = Object.assign(this.get(), delta); this.save(u); return u; },
-    fmt(v) { return Math.abs(v).toFixed(2).replace('.', ',') + ' €'; },
-    updateBalance(amount, note) {
-      const u = this.get();
-      u.balance = Math.round(((u.balance || 0) + amount) * 100) / 100;
-      if (amount > 0) {
-        u.recharges = (u.recharges || 0) + 1;
-        u.cashback = Math.round(((u.cashback || 0) + amount * 0.08) * 100) / 100;
+    user: null,
+
+    /* Initialise la session. redirectIfNotAuth=true → redirige vers /login */
+    async init(redirectIfNotAuth = true) {
+      try {
+        const r = await fetch('/api/me');
+        if (r.status === 401) {
+          if (redirectIfNotAuth) {
+            window.location.href = '/login?next=' + encodeURIComponent(location.pathname);
+          }
+          return null;
+        }
+        const u = await r.json();
+        this.user = u;
+        _user = u;
+        this.wireNav(u);
+        return u;
+      } catch {
+        if (redirectIfNotAuth) window.location.href = '/login';
+        return null;
       }
-      if (amount < 0) {
-        u.saved = Math.round(((u.saved || 0) + Math.abs(amount)) * 100) / 100;
-      }
-      this.save(u);
-      const hist = load(HIST, []);
-      hist.unshift({ date: new Date().toISOString(), note, amount, balance: u.balance });
-      localStorage.setItem(HIST, JSON.stringify(hist.slice(0, 80)));
-      return u;
     },
-    getHistory() { return load(HIST, []); },
-    getAccounts() { return load(ACCTS, []); },
-    addAccount(a) { const list = this.getAccounts(); list.unshift(a); localStorage.setItem(ACCTS, JSON.stringify(list)); },
-    wireNav() {
-      const u = this.get();
+
+    /* Met à jour la nav (balance + avatar) */
+    wireNav(u) {
+      if (!u) u = this.user; if (!u) return;
       const bal = (u.balance || 0).toFixed(2).replace('.', ',') + ' €';
       document.querySelectorAll('.bal b').forEach(el => (el.textContent = bal));
       document.querySelectorAll('a.avatar').forEach(el => (el.textContent = u.initials || 'FP'));
     },
+
+    /* Recharge le wallet */
+    async recharge(amount, bonus, method) {
+      const r = await fetch('/api/me/wallet/recharge', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount, bonus, method }) });
+      return r.json();
+    },
+
+    /* Déduit du wallet (achat) */
+    async deduct(amount, note) {
+      const r = await fetch('/api/me/wallet/deduct', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount, note }) });
+      return r.json();
+    },
+
+    /* Récupère les infos wallet + transactions */
+    async getWallet() {
+      const r = await fetch('/api/me/wallet');
+      if (!r.ok) return null;
+      return r.json();
+    },
+
+    /* Récupère les comptes achetés */
+    async getAccounts() {
+      const r = await fetch('/api/me/accounts');
+      if (!r.ok) return [];
+      return r.json();
+    },
+
+    /* Ajoute un compte acheté */
+    async addAccount(data) {
+      return fetch('/api/me/accounts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+    },
+
+    /* Met à jour le profil */
+    async updateName(name) {
+      const r = await fetch('/api/me', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name }) });
+      const data = await r.json();
+      if (data.ok && this.user) { this.user.name = data.name; this.user.initials = data.initials; }
+      return data;
+    },
+
+    /* Déconnexion */
+    async logout() {
+      await fetch('/api/auth/logout', { method: 'POST' });
+      window.location.href = '/login';
+    },
+
+    /* Formatage montant */
+    fmt(v) { return Math.abs(v).toFixed(2).replace('.', ',') + ' €'; },
   };
 })();
 
-(function () {
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => FP_USER.wireNav());
-  else FP_USER.wireNav();
-})();
+// Backward compat
+window.FP_USER = { get: () => FP_AUTH.user || {}, wireNav: () => FP_AUTH.wireNav(), fmt: v => FP_AUTH.fmt(v) };

@@ -137,65 +137,106 @@
 <script>
 (function(){
   const feed=document.getElementById('feed'), input=document.getElementById('msgInput'), send=document.getElementById('sendBtn');
-  const u = FP_USER.get();
-  const userKey = (u.initials || 'FP').slice(0,2);
-  const colors={M:['var(--kfc)','#fff'],T:['var(--mcdo)','#1a1206'],L:['var(--otacos)','#fff'],K:['#5b6bff','#fff'],FP:['var(--gold)','#1a1206']};
-  if(!colors[userKey]) colors[userKey]=['#2a2a32','var(--text)'];
-  const seed={
-    'les-bons-plans':[
-      ['M','Maya','il y a 4 min','Le Bucket Infinity vaut grave le coup 🔥 rentabilisé en 3 commandes'],
-      ['K','Karim','il y a 3 min','Quelqu\'un a test le McRoyal Pass ? hésite encore'],
-      ['T','Théo','il y a 2 min','@Karim oui nickel, les desserts illimités c\'est cheat'],
-      ['FP','FoodPlug','à l\'instant','⚡ Offre flash McDo Gold débloquée — −40% les 2 prochaines heures'],
-    ],
-    'drops':[
-      ['FP','FoodPlug','il y a 1 min','Drop O\'Tacos ce soir 20h. 200 Gigatacos Pass à −50%.'],
-      ['L','Lina','à l\'instant','je serai là pile à l\'heure 👀'],
-    ],
-    'entraide':[
-      ['K','Karim','il y a 5 min','Comment j\'active mon compte KFC après achat ?'],
-      ['M','Maya','il y a 4 min','Reçu direct dans Mon espace > Mes comptes, activation auto 👌'],
-    ],
-    'kfc':[['M','Maya','il y a 2 min','Le nouveau bucket épicé est dispo avec le compte Premium 🌶️']],
-    'mcdo':[['T','Théo','il y a 6 min','File VIP le midi = game changer']],
-    'otacos':[['L','Lina','il y a 3 min','Night Rush livraison nuit, validé pour les soirées']],
-  };
-  function msgHTML(m,me){
-    const [c,t]=colors[m[0]]||['#2a2a32','#fff'];
-    return `<div class="cmsg ${me?'me':''}"><div class="av" style="background:${c};color:${t}">${m[0]}</div>
-      <div class="body"><div class="line1"><span class="who">${m[1]}</span><span class="when">${m[2]}</span></div><div class="txt">${m[3]}</div></div></div>`;
+  let curCh='les-bons-plans', pollTimer=null, lastId=null;
+
+  // Avatar color palette
+  const palette=['#e4002b','#ffc72c','#ff4133','#5b6bff','#39d98a','#a855f7','#f59e0b','#06b6d4'];
+  const colorCache={};
+  function colorFor(initials) {
+    if(colorCache[initials]) return colorCache[initials];
+    let h=0; for(const c of initials) h=(h*31+c.charCodeAt(0))%palette.length;
+    colorCache[initials]=palette[h]; return colorCache[initials];
   }
-  function load(ch){
-    const pin=feed.querySelector('.pin');
-    feed.innerHTML=''; if(pin)feed.appendChild(pin);
-    (seed[ch]||[]).forEach(m=>feed.insertAdjacentHTML('beforeend',msgHTML(m)));
-    feed.scrollTop=feed.scrollHeight;
+
+  function timeAgo(d){
+    const s=Math.floor((Date.now()-new Date(d))/1000);
+    if(s<60) return 'à l\'instant';
+    if(s<3600) return 'il y a '+(Math.floor(s/60))+' min';
+    if(s<86400) return 'il y a '+(Math.floor(s/3600))+'h';
+    return new Date(d).toLocaleDateString('fr-FR',{day:'numeric',month:'short'});
   }
+
+  function msgHTML(msg, isMe){
+    const c = isMe ? 'var(--gold)' : colorFor(msg.initials||'?');
+    const t = isMe ? '#1a1206' : '#fff';
+    return `<div class="cmsg ${isMe?'me':''}"><div class="av" style="background:${c};color:${t}">${(msg.initials||'?').slice(0,2)}</div>
+      <div class="body"><div class="line1"><span class="who">${msg.name||'Anonyme'}</span><span class="when">${timeAgo(msg.date)}</span></div><div class="txt">${msg.text}</div></div></div>`;
+  }
+
+  async function loadMessages(ch) {
+    try {
+      const msgs = await fetch('/api/messages/'+ch).then(r=>r.ok?r.json():[]);
+      const pin = feed.querySelector('.pin');
+      feed.innerHTML=''; if(pin) feed.appendChild(pin);
+      const sorted = [...msgs].reverse(); // oldest first
+      sorted.forEach(m => feed.insertAdjacentHTML('beforeend', msgHTML(m, FP_AUTH.user && m.userId===FP_AUTH.user.id)));
+      feed.scrollTop=feed.scrollHeight;
+      lastId = msgs[0]?.id || null;
+    } catch {}
+  }
+
+  async function pollMessages() {
+    try {
+      const msgs = await fetch('/api/messages/'+curCh).then(r=>r.ok?r.json():[]);
+      if(!msgs.length || msgs[0]?.id === lastId) return;
+      lastId = msgs[0].id;
+      // Add only new messages
+      const existingIds = new Set([...feed.querySelectorAll('[data-mid]')].map(el=>el.dataset.mid));
+      const newMsgs = msgs.filter(m=>!existingIds.has(m.id));
+      if(!newMsgs.length) return;
+      newMsgs.reverse().forEach(m => {
+        const el = document.createElement('div');
+        el.dataset.mid = m.id;
+        el.innerHTML = msgHTML(m, FP_AUTH.user && m.userId===FP_AUTH.user.id);
+        feed.appendChild(el.firstElementChild || el);
+      });
+      feed.scrollTop=feed.scrollHeight;
+    } catch {}
+  }
+
+  function startPoll() {
+    if(pollTimer) clearInterval(pollTimer);
+    pollTimer = setInterval(pollMessages, 4000);
+  }
+
   document.querySelector('.channels').addEventListener('click',e=>{
     const c=e.target.closest('.ch'); if(!c)return;
     document.querySelectorAll('.ch').forEach(x=>x.classList.remove('active')); c.classList.add('active');
-    const ch=c.dataset.ch;
-    document.getElementById('chName').textContent=ch;
-    input.placeholder='Écris un message à #'+ch+'…';
+    curCh=c.dataset.ch;
+    document.getElementById('chName').textContent=curCh;
+    input.placeholder='Écris un message à #'+curCh+'…';
     const n=c.querySelector('.badge-n'); if(n)n.remove();
-    load(ch);
+    loadMessages(curCh);
   });
-  function sendMsg(){
-    const v=input.value.trim(); if(!v)return;
-    const cur=FP_USER.get();
-    feed.insertAdjacentHTML('beforeend',msgHTML([(cur.initials||'FP').slice(0,2),cur.name||'Moi','à l\'instant',v],true));
-    input.value=''; feed.scrollTop=feed.scrollHeight;
-    const replies=['grave 🔥','validé','je check ça','+1','même avis','bien vu 👌'];
-    setTimeout(()=>{
-      const r=['M','T','L','K'][Math.floor(Math.random()*4)];
-      const nm={M:'Maya',T:'Théo',L:'Lina',K:'Karim'}[r];
-      feed.insertAdjacentHTML('beforeend',msgHTML([r,nm,'à l\'instant',replies[Math.floor(Math.random()*replies.length)]]));
-      feed.scrollTop=feed.scrollHeight;
-    },1100);
+
+  async function sendMsg(){
+    const v=input.value.trim(); if(!v) return;
+    if(!FP_AUTH.user){ window.location.href='/login?next=/communaute'; return; }
+    input.value=''; input.disabled=true;
+    try {
+      const res = await fetch('/api/messages/'+curCh, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({text:v}) });
+      const data = await res.json();
+      if(data.ok) {
+        const el = document.createElement('div');
+        el.dataset.mid = data.msg.id;
+        el.innerHTML = msgHTML(data.msg, true);
+        feed.appendChild(el.firstElementChild || el);
+        feed.scrollTop=feed.scrollHeight;
+        lastId = data.msg.id;
+      }
+    } catch {}
+    input.disabled=false; input.focus();
   }
+
   send.addEventListener('click',sendMsg);
   input.addEventListener('keydown',e=>{ if(e.key==='Enter')sendMsg(); });
-  load('les-bons-plans');
+
+  // Init
+  FP_AUTH.init().then(u => {
+    if(!u) return;
+    loadMessages(curCh);
+    startPoll();
+  });
 })();
 </script>
 <script src="assets/app.js"></script>

@@ -1,13 +1,14 @@
 /**
- * FoodPlug — serveur statique + API commandes partagées.
+ * FoodPlug — auth, wallet, comptes premium, chat communautaire, admin.
  *
  * Persistance :
- *   - Si UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN sont définis → Upstash Redis (survit aux redémarrages)
- *   - Sinon → fichier local data/orders.json (perdu au redémarrage sur Render free tier)
+ *   - Si UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN → Upstash Redis
+ *   - Sinon → fichiers locaux data/*.json
  */
-const path  = require('path');
-const fs    = require('fs');
-const https = require('https');
+const path   = require('path');
+const fs     = require('fs');
+const https  = require('https');
+const crypto = require('crypto');
 const express = require('express');
 
 const app = express();
@@ -15,132 +16,325 @@ const PORT        = Number(process.env.PORT) || 3000;
 const NTFY_TOPIC  = process.env.NTFY_TOPIC  || '';
 const REDIS_URL   = process.env.UPSTASH_REDIS_REST_URL   || '';
 const REDIS_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN || '';
-const REDIS_KEY   = 'fp_orders';
+const ADMIN_TOKEN = process.env.ADMIN_TOKEN || 'foodplug';
 
-const publicDir  = path.join(__dirname, 'public');
-const dataDir    = path.join(__dirname, 'data');
-const ordersFile = path.join(dataDir, 'orders.json');
+const publicDir = path.join(__dirname, 'public');
+const dataDir   = path.join(__dirname, 'data');
+if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
 
-/* ---- file fallback init ---- */
-if (!REDIS_URL) {
-  if (!fs.existsSync(dataDir))    fs.mkdirSync(dataDir, { recursive: true });
-  if (!fs.existsSync(ordersFile)) fs.writeFileSync(ordersFile, '[]', 'utf8');
+/* ================================================================
+   PERSISTENCE (file + Redis)
+   ================================================================ */
+async function redisCmd(...args) {
+  if (!REDIS_URL || !REDIS_TOKEN) return null;
+  try {
+    const r = await fetch(REDIS_URL, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${REDIS_TOKEN}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(args),
+    });
+    return (await r.json()).result;
+  } catch { return null; }
 }
 
-/* ---- persistence helpers ---- */
-async function readOrders() {
+async function dbRead(name, def) {
   if (REDIS_URL && REDIS_TOKEN) {
-    try {
-      const r = await fetch(REDIS_URL, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${REDIS_TOKEN}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify(['GET', REDIS_KEY]),
-      });
-      const { result } = await r.json();
-      return result ? JSON.parse(result) : [];
-    } catch { return []; }
+    const raw = await redisCmd('GET', 'fp_' + name);
+    if (raw) try { return JSON.parse(raw); } catch {}
   }
-  try { return JSON.parse(fs.readFileSync(ordersFile, 'utf8')); }
-  catch { return []; }
+  const f = path.join(dataDir, name + '.json');
+  try { return JSON.parse(fs.readFileSync(f, 'utf8')); }
+  catch { return def; }
 }
 
-async function writeOrders(arr) {
+async function dbWrite(name, data) {
   if (REDIS_URL && REDIS_TOKEN) {
-    try {
-      await fetch(REDIS_URL, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${REDIS_TOKEN}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify(['SET', REDIS_KEY, JSON.stringify(arr)]),
-      });
-    } catch {}
+    await redisCmd('SET', 'fp_' + name, JSON.stringify(data));
     return;
   }
-  fs.writeFileSync(ordersFile, JSON.stringify(arr), 'utf8');
+  fs.writeFileSync(path.join(dataDir, name + '.json'), JSON.stringify(data), 'utf8');
 }
 
-/* ---- ntfy push notification ---- */
+/* ================================================================
+   SESSIONS (in-memory — survive process lifetime)
+   ================================================================ */
+const sessions = new Map(); // token → {userId, exp}
+
+function parseCookies(req) {
+  const out = {};
+  (req.headers.cookie || '').split(';').forEach(c => {
+    const [k, ...v] = c.split('=');
+    if (k && k.trim()) out[k.trim()] = decodeURIComponent(v.join('=').trim());
+  });
+  return out;
+}
+
+function createSession(userId) {
+  for (const [k, v] of sessions) if (v.exp < Date.now()) sessions.delete(k);
+  const token = crypto.randomBytes(32).toString('hex');
+  sessions.set(token, { userId, exp: Date.now() + 30 * 86400 * 1000 });
+  return token;
+}
+
+function sessionUserId(req) {
+  const t = parseCookies(req).fp_sess;
+  if (!t) return null;
+  const s = sessions.get(t);
+  if (!s || s.exp < Date.now()) { if (s) sessions.delete(t); return null; }
+  return s.userId;
+}
+
+/* ================================================================
+   PASSWORD
+   ================================================================ */
+function hashPw(pw, salt = crypto.randomBytes(16).toString('hex')) {
+  return salt + ':' + crypto.pbkdf2Sync(pw, salt, 10000, 32, 'sha256').toString('hex');
+}
+function checkPw(pw, stored) {
+  try { const [s] = stored.split(':'); return hashPw(pw, s) === stored; } catch { return false; }
+}
+
+/* ================================================================
+   AUTH MIDDLEWARE
+   ================================================================ */
+async function requireAuth(req, res, next) {
+  const uid = sessionUserId(req);
+  if (!uid) return res.status(401).json({ error: 'Non connecté' });
+  const users = await dbRead('users', []);
+  req.user = users.find(u => u.id === uid);
+  if (!req.user) return res.status(401).json({ error: 'Compte introuvable' });
+  next();
+}
+
+/* ================================================================
+   NTFY
+   ================================================================ */
 function sendNtfy(title, body) {
   if (!NTFY_TOPIC) return;
   const data = Buffer.from(body, 'utf8');
-  const req = https.request(
-    {
-      hostname: 'ntfy.sh',
-      path: '/' + NTFY_TOPIC,
-      method: 'POST',
-      headers: {
-        'Title':          title,
-        'Priority':       'high',
-        'Tags':           'shopping,bell',
-        'Content-Type':   'text/plain; charset=utf-8',
-        'Content-Length': data.length,
-      },
-    },
-    () => {}
-  );
-  req.on('error', () => {});
-  req.write(data);
-  req.end();
+  const req = https.request({ hostname: 'ntfy.sh', path: '/' + NTFY_TOPIC, method: 'POST',
+    headers: { Title: title, Priority: 'high', Tags: 'shopping,bell', 'Content-Type': 'text/plain; charset=utf-8', 'Content-Length': data.length } }, () => {});
+  req.on('error', () => {}); req.write(data); req.end();
 }
 
-/* ---- middleware ---- */
+/* ================================================================
+   MIDDLEWARE
+   ================================================================ */
 app.disable('x-powered-by');
 app.use(express.json({ limit: '4mb' }));
 
-/* ---- API orders ---- */
-app.get('/api/orders', async (req, res) => {
-  res.json(await readOrders());
+/* ================================================================
+   AUTH ENDPOINTS
+   ================================================================ */
+app.post('/api/auth/register', async (req, res) => {
+  const { email, password, name } = req.body || {};
+  if (!email || !password || !name) return res.status(400).json({ error: 'Tous les champs sont requis' });
+  if (password.length < 6) return res.status(400).json({ error: 'Mot de passe trop court (6 car. min)' });
+  const users = await dbRead('users', []);
+  if (users.find(u => u.email === email.toLowerCase())) return res.status(409).json({ error: 'Email déjà utilisé' });
+  const id = crypto.randomUUID ? crypto.randomUUID() : crypto.randomBytes(16).toString('hex');
+  const initials = name.trim().split(/\s+/).map(w => w[0].toUpperCase()).join('').slice(0, 2) || 'FP';
+  const user = { id, email: email.toLowerCase(), password: hashPw(password), name: name.trim(), initials, tier: 'STANDARD', points: 0, createdAt: new Date().toISOString() };
+  users.push(user);
+  await dbWrite('users', users);
+  const wallets = await dbRead('wallets', {});
+  wallets[id] = { balance: 0, cashback: 0, recharges: 0, saved: 0, transactions: [] };
+  await dbWrite('wallets', wallets);
+  const token = createSession(id);
+  res.cookie('fp_sess', token, { httpOnly: true, sameSite: 'lax', maxAge: 30 * 86400 * 1000, path: '/' });
+  res.json({ ok: true, user: pub(user, wallets[id]) });
 });
 
-app.post('/api/orders', async (req, res) => {
+app.post('/api/auth/login', async (req, res) => {
+  const { email, password } = req.body || {};
+  if (!email || !password) return res.status(400).json({ error: 'Champs manquants' });
+  const users = await dbRead('users', []);
+  const user = users.find(u => u.email === email.toLowerCase());
+  if (!user || !checkPw(password, user.password)) return res.status(401).json({ error: 'Email ou mot de passe incorrect' });
+  const wallets = await dbRead('wallets', {});
+  if (!wallets[user.id]) { wallets[user.id] = { balance: 0, cashback: 0, recharges: 0, saved: 0, transactions: [] }; await dbWrite('wallets', wallets); }
+  const token = createSession(user.id);
+  res.cookie('fp_sess', token, { httpOnly: true, sameSite: 'lax', maxAge: 30 * 86400 * 1000, path: '/' });
+  res.json({ ok: true, user: pub(user, wallets[user.id]) });
+});
+
+app.post('/api/auth/logout', (req, res) => {
+  const t = parseCookies(req).fp_sess; if (t) sessions.delete(t);
+  res.clearCookie('fp_sess', { path: '/' });
+  res.json({ ok: true });
+});
+
+function pub(user, w = {}) {
+  return { id: user.id, email: user.email, name: user.name, initials: user.initials, tier: user.tier, points: user.points,
+           balance: w.balance || 0, cashback: w.cashback || 0, recharges: w.recharges || 0, saved: w.saved || 0 };
+}
+
+/* ================================================================
+   USER PROFILE
+   ================================================================ */
+app.get('/api/me', requireAuth, async (req, res) => {
+  const wallets = await dbRead('wallets', {});
+  res.json(pub(req.user, wallets[req.user.id] || {}));
+});
+
+app.patch('/api/me', requireAuth, async (req, res) => {
+  const { name } = req.body || {};
+  if (!name || !name.trim()) return res.status(400).json({ error: 'Nom requis' });
+  const users = await dbRead('users', []);
+  const idx = users.findIndex(u => u.id === req.user.id);
+  if (idx === -1) return res.status(404).json({ error: 'Introuvable' });
+  users[idx].name = name.trim();
+  users[idx].initials = name.trim().split(/\s+/).map(w => w[0].toUpperCase()).join('').slice(0, 2) || 'FP';
+  await dbWrite('users', users);
+  res.json({ ok: true, name: users[idx].name, initials: users[idx].initials });
+});
+
+/* ================================================================
+   WALLET
+   ================================================================ */
+app.get('/api/me/wallet', requireAuth, async (req, res) => {
+  const wallets = await dbRead('wallets', {});
+  res.json(wallets[req.user.id] || { balance: 0, cashback: 0, recharges: 0, saved: 0, transactions: [] });
+});
+
+app.post('/api/me/wallet/recharge', requireAuth, async (req, res) => {
+  const { amount, bonus = 0, method = 'Carte' } = req.body || {};
+  const amt = Number(amount); const bon = Number(bonus);
+  if (!amt || amt <= 0) return res.status(400).json({ error: 'Montant invalide' });
+  const wallets = await dbRead('wallets', {});
+  const w = wallets[req.user.id] || { balance: 0, cashback: 0, recharges: 0, saved: 0, transactions: [] };
+  const total = Math.round((amt + bon) * 100) / 100;
+  w.balance  = Math.round((w.balance  + total)          * 100) / 100;
+  w.cashback = Math.round((w.cashback + total * 0.08)   * 100) / 100;
+  w.recharges = (w.recharges || 0) + 1;
+  w.transactions = [{ date: new Date().toISOString(), note: `Recharge wallet · ${method}`, amount: total, balance: w.balance }, ...(w.transactions || [])].slice(0, 80);
+  wallets[req.user.id] = w;
+  await dbWrite('wallets', wallets);
+  res.json({ ok: true, wallet: w });
+});
+
+app.post('/api/me/wallet/deduct', requireAuth, async (req, res) => {
+  const { amount, note } = req.body || {};
+  const amt = Number(amount);
+  if (!amt || amt <= 0) return res.status(400).json({ error: 'Montant invalide' });
+  const wallets = await dbRead('wallets', {});
+  const w = wallets[req.user.id] || { balance: 0, cashback: 0, recharges: 0, saved: 0, transactions: [] };
+  if (w.balance < amt) return res.status(400).json({ error: 'Solde insuffisant' });
+  w.balance = Math.round((w.balance - amt) * 100) / 100;
+  w.saved   = Math.round(((w.saved || 0) + amt) * 100) / 100;
+  w.transactions = [{ date: new Date().toISOString(), note: note || 'Achat', amount: -amt, balance: w.balance }, ...(w.transactions || [])].slice(0, 80);
+  wallets[req.user.id] = w;
+  await dbWrite('wallets', wallets);
+  res.json({ ok: true, wallet: w });
+});
+
+/* ================================================================
+   USER ACCOUNTS (purchased)
+   ================================================================ */
+app.get('/api/me/accounts', requireAuth, async (req, res) => {
+  const all = await dbRead('user_accounts', []);
+  res.json(all.filter(a => a.userId === req.user.id));
+});
+
+app.post('/api/me/accounts', requireAuth, async (req, res) => {
+  const { brand, pts, name: aname } = req.body || {};
+  if (!brand || !pts) return res.status(400).json({ error: 'Données manquantes' });
+  const all = await dbRead('user_accounts', []);
+  all.unshift({ userId: req.user.id, brand, pts, name: aname || brand, date: new Date().toISOString() });
+  await dbWrite('user_accounts', all);
+  res.json({ ok: true });
+});
+
+/* ================================================================
+   COMMUNITY MESSAGES
+   ================================================================ */
+const CHANNELS = ['les-bons-plans', 'drops', 'entraide', 'kfc', 'mcdo', 'otacos'];
+
+app.get('/api/messages/:channel', requireAuth, async (req, res) => {
+  const ch = req.params.channel;
+  if (!CHANNELS.includes(ch)) return res.status(400).json({ error: 'Canal invalide' });
+  const all = await dbRead('messages', {});
+  res.json((all[ch] || []).slice(0, 100));
+});
+
+app.post('/api/messages/:channel', requireAuth, async (req, res) => {
+  const ch = req.params.channel;
+  if (!CHANNELS.includes(ch)) return res.status(400).json({ error: 'Canal invalide' });
+  const { text } = req.body || {};
+  if (!text || !text.trim()) return res.status(400).json({ error: 'Message vide' });
+  const all = await dbRead('messages', {});
+  if (!all[ch]) all[ch] = [];
+  const msg = { id: crypto.randomBytes(8).toString('hex'), userId: req.user.id, name: req.user.name, initials: (req.user.initials || 'FP').slice(0, 2), text: text.trim().slice(0, 500), date: new Date().toISOString() };
+  all[ch] = [msg, ...all[ch]].slice(0, 200);
+  await dbWrite('messages', all);
+  res.json({ ok: true, msg });
+});
+
+/* ================================================================
+   ADMIN (read-only, token-based for admin panel)
+   ================================================================ */
+function requireAdmin(req, res, next) {
+  if (req.headers['x-admin-token'] === ADMIN_TOKEN) return next();
+  res.status(401).json({ error: 'Non autorisé' });
+}
+
+app.get('/api/admin/orders', requireAdmin, async (req, res) => {
+  res.json(await dbRead('orders', []));
+});
+
+/* ================================================================
+   ORDERS (admin + purchases)
+   ================================================================ */
+app.get('/api/orders', requireAuth, async (req, res) => {
+  res.json(await dbRead('orders', []));
+});
+
+app.post('/api/orders', requireAuth, async (req, res) => {
   const order = req.body;
-  if (!order || !order.id) return res.status(400).json({ error: 'invalid order' });
-  const arr = await readOrders();
-  const exists = arr.findIndex(o => o.id === order.id);
-  if (exists !== -1) {
-    arr[exists] = order;
-  } else {
+  if (!order || !order.id) return res.status(400).json({ error: 'Commande invalide' });
+  const arr = await dbRead('orders', []);
+  const idx = arr.findIndex(o => o.id === order.id);
+  if (idx !== -1) { arr[idx] = order; }
+  else {
     arr.unshift(order);
     const pts   = (order.items || []).map(i => `${i.pts} pts × ${i.qty}`).join(' · ');
-    const who   = order.user || 'Anonyme';
     const total = typeof order.total === 'number' ? order.total.toFixed(2) + '€' : '';
-    sendNtfy('Nouvelle commande FoodPlug', `${pts} — ${total} — ${who}`);
+    sendNtfy('Nouvelle commande FoodPlug', `${pts} — ${total} — ${req.user.name}`);
   }
-  await writeOrders(arr);
+  await dbWrite('orders', arr);
   res.json({ ok: true });
 });
 
-app.patch('/api/orders/:id', async (req, res) => {
-  const arr = await readOrders();
+app.patch('/api/orders/:id', requireAuth, async (req, res) => {
+  const arr = await dbRead('orders', []);
   const o = arr.find(o => o.id === req.params.id);
-  if (!o) return res.status(404).json({ error: 'not found' });
+  if (!o) return res.status(404).json({ error: 'Introuvable' });
   Object.assign(o, req.body);
-  await writeOrders(arr);
+  await dbWrite('orders', arr);
   res.json({ ok: true });
 });
 
-app.delete('/api/orders', async (req, res) => {
-  await writeOrders([]);
+app.delete('/api/orders', requireAuth, async (req, res) => {
+  await dbWrite('orders', []);
   res.json({ ok: true });
 });
 
-/* ---- fichiers statiques ---- */
-app.use(
-  express.static(publicDir, {
-    extensions: ['html'],
-    etag: true,
-    lastModified: true,
-    maxAge: process.env.NODE_ENV === 'production' ? 7 * 24 * 60 * 60 * 1000 : 0,
-  })
-);
+/* ================================================================
+   STATIC FILES
+   ================================================================ */
+app.use(express.static(publicDir, {
+  extensions: ['html'], etag: true, lastModified: true,
+  maxAge: process.env.NODE_ENV === 'production' ? 7 * 24 * 60 * 60 * 1000 : 0,
+}));
 
 app.get('*', (req, res, next) => {
   if (req.path.includes('.')) return next();
-  res.sendFile(path.join(publicDir, 'index.html'), (err) => { if (err) next(err); });
+  res.sendFile(path.join(publicDir, 'index.html'), err => { if (err) next(err); });
 });
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log('FoodPlug prêt → http://0.0.0.0:%s/', PORT);
-  if (REDIS_URL)      console.log('Persistance → Upstash Redis (commandes sauvegardées)');
-  else                console.log('Persistance → fichier local (perdu au redémarrage)');
-  if (NTFY_TOPIC)     console.log('Notifications ntfy actives → ntfy.sh/%s', NTFY_TOPIC);
+  if (REDIS_URL) console.log('Persistance → Upstash Redis');
+  else           console.log('Persistance → fichier local');
+  if (NTFY_TOPIC) console.log('Notifications ntfy → ntfy.sh/%s', NTFY_TOPIC);
 });
