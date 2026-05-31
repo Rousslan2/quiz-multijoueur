@@ -1,9 +1,8 @@
-# MiamShop — site statique servi par Node (Express).
-# Racine du dépôt : package.json et server.js ici.
+# FoodPlug — serveur statique + API commandes.
 
 services:
   - type: web
-    name: miamshop
+    name: foodplug
     runtime: node
     rootDir: .
     buildCommand: npm install && npm run build
