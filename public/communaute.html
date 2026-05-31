@@ -85,7 +85,7 @@
   <div class="chead rv">
     <div>
       <span class="kicker">La commu</span>
-      <h1 class="h3" style="margin-top:12px">3 042 foodies en ligne. Zéro plan foireux.</h1>
+      <h1 class="h3" style="margin-top:12px">La communauté FoodPlug. Plans, drops et entraide.</h1>
     </div>
     <span class="live-pill"><span class="dot live"></span> EN DIRECT</span>
   </div>
@@ -133,10 +133,14 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="image-slot.js"></script>
 <script src="assets/scene.js"></script>
+<script src="assets/user.js"></script>
 <script>
 (function(){
   const feed=document.getElementById('feed'), input=document.getElementById('msgInput'), send=document.getElementById('sendBtn');
+  const u = FP_USER.get();
+  const userKey = (u.initials || 'FP').slice(0,2);
   const colors={M:['var(--kfc)','#fff'],T:['var(--mcdo)','#1a1206'],L:['var(--otacos)','#fff'],K:['#5b6bff','#fff'],FP:['var(--gold)','#1a1206']};
+  if(!colors[userKey]) colors[userKey]=['#2a2a32','var(--text)'];
   const seed={
     'les-bons-plans':[
       ['M','Maya','il y a 4 min','Le Bucket Infinity vaut grave le coup 🔥 rentabilisé en 3 commandes'],
@@ -158,7 +162,7 @@
   };
   function msgHTML(m,me){
     const [c,t]=colors[m[0]]||['#2a2a32','#fff'];
-    return `<div class="cmsg ${me?'me':''}"><div class="av" style="background:${c};color:${t}">${m[0]==='FP'?'FP':m[0]}</div>
+    return `<div class="cmsg ${me?'me':''}"><div class="av" style="background:${c};color:${t}">${m[0]}</div>
       <div class="body"><div class="line1"><span class="who">${m[1]}</span><span class="when">${m[2]}</span></div><div class="txt">${m[3]}</div></div></div>`;
   }
   function load(ch){
@@ -178,7 +182,8 @@
   });
   function sendMsg(){
     const v=input.value.trim(); if(!v)return;
-    feed.insertAdjacentHTML('beforeend',msgHTML(['YZ','Toi','à l\'instant',v],true));
+    const cur=FP_USER.get();
+    feed.insertAdjacentHTML('beforeend',msgHTML([(cur.initials||'FP').slice(0,2),cur.name||'Moi','à l\'instant',v],true));
     input.value=''; feed.scrollTop=feed.scrollHeight;
     const replies=['grave 🔥','validé','je check ça','+1','même avis','bien vu 👌'];
     setTimeout(()=>{

@@ -145,10 +145,10 @@ body{ background:#070708; }
         <span class="pillbtn"><span class="dot live"></span> Temps réel</span>
       </div>
       <div class="kgrid">
-        <div class="kc gold"><div class="l">Chiffre d'affaires <span class="delta up">+18%</span></div><b class="tnum" data-count="48920.5" data-dec="2" data-suffix=" €">0</b></div>
-        <div class="kc"><div class="l">Commandes <span class="delta up">+12%</span></div><b class="tnum" data-count="2184">0</b></div>
-        <div class="kc"><div class="l">Panier moyen <span class="delta up">+5%</span></div><b class="tnum" data-count="22.4" data-dec="2" data-suffix=" €">0</b></div>
-        <div class="kc"><div class="l">Marge nette <span class="delta down">−2%</span></div><b class="tnum" data-count="61" data-suffix=" %">0</b></div>
+        <div class="kc gold"><div class="l">Chiffre d'affaires</div><b class="tnum" id="kpiCA">—</b></div>
+        <div class="kc"><div class="l">Commandes</div><b class="tnum" id="kpiOrders">—</b></div>
+        <div class="kc"><div class="l">Panier moyen</div><b class="tnum" id="kpiAvg">—</b></div>
+        <div class="kc"><div class="l">Marge nette</div><b class="tnum" id="kpiMargin">—</b></div>
       </div>
 
       <div class="panel">
@@ -158,11 +158,9 @@ body{ background:#070708; }
       </div>
 
       <div class="two">
-        <div class="panel split">
+        <div class="panel split" id="splitPanel">
           <div class="ph"><h3>CA par enseigne</h3></div>
-          <div class="row"><div class="t"><span>KFC</span><b>24 310 €</b></div><div class="track"><i style="width:78%;background:var(--kfc)"></i></div></div>
-          <div class="row"><div class="t"><span>McDonald's</span><b>18 040 €</b></div><div class="track"><i style="width:58%;background:var(--mcdo)"></i></div></div>
-          <div class="row"><div class="t"><span>O'Tacos</span><b>6 570 €</b></div><div class="track"><i style="width:22%;background:var(--otacos)"></i></div></div>
+          <div id="splitBars"><div style="color:var(--text-3);font-size:13px;font-family:var(--mono)">Chargement…</div></div>
         </div>
         <div class="panel">
           <div class="ph"><h3>Top tranches</h3></div>
@@ -205,19 +203,14 @@ body{ background:#070708; }
 
     <!-- CLIENTS -->
     <section class="apage" data-page="clients">
-      <div class="ahead"><div><h1>Clients</h1><div class="sub">2 184 comptes · 312 actifs ce mois</div></div></div>
+      <div class="ahead"><div><h1>Clients</h1><div class="sub" id="clientsSub">—</div></div></div>
       <div class="panel">
         <table class="tbl">
-          <thead><tr><th>Client</th><th>Membre</th><th style="text-align:right">Commandes</th><th style="text-align:right">Dépensé</th></tr></thead>
-          <tbody>
-            <tr><td>Yanis Zerbib</td><td><span class="stt pend">GOLD</span></td><td class="tnum" style="text-align:right">23</td><td class="tnum" style="text-align:right">312,40 €</td></tr>
-            <tr><td>Maya R.</td><td><span class="stt ok">PREMIUM</span></td><td class="tnum" style="text-align:right">41</td><td class="tnum" style="text-align:right">689,10 €</td></tr>
-            <tr><td>Théo B.</td><td><span class="stt ok">ELITE</span></td><td class="tnum" style="text-align:right">58</td><td class="tnum" style="text-align:right">1 204,00 €</td></tr>
-            <tr><td>Lina K.</td><td><span class="stt pend">GOLD</span></td><td class="tnum" style="text-align:right">19</td><td class="tnum" style="text-align:right">248,50 €</td></tr>
-            <tr><td>Karim S.</td><td><span class="stt pend">GOLD</span></td><td class="tnum" style="text-align:right">12</td><td class="tnum" style="text-align:right">156,80 €</td></tr>
-          </tbody>
+          <thead><tr><th>Client</th><th style="text-align:right">Commandes</th><th style="text-align:right">Dépensé</th></tr></thead>
+          <tbody id="clientsBody"><tr><td colspan="3" style="text-align:center;color:var(--text-3);padding:32px;font-family:var(--mono)">Chargement…</td></tr></tbody>
         </table>
       </div>
+    </section>
     <!-- ADMINS -->
     <section class="apage" data-page="admins">
       <div class="ahead"><div><h1>Admins</h1><div class="sub">Comptes autorisés à accéder au back-office</div></div></div>
@@ -259,12 +252,13 @@ body{ background:#070708; }
   [email,pw].forEach(el=>el.addEventListener('keydown',e=>{ if(e.key==='Enter')tryLogin(); }));
   document.getElementById('logout').addEventListener('click',()=>{ sessionStorage.removeItem('fp_admin'); location.reload(); });
 
-  function init(){
+  async function init(){
     if(inited) return; inited=true;
+
+    /* ---- sidebar nav ---- */
     document.querySelectorAll('.anav[data-p]').forEach(n=>n.addEventListener('click',()=>{
       document.querySelectorAll('.anav[data-p]').forEach(x=>x.classList.remove('active')); n.classList.add('active');
       document.querySelectorAll('.apage').forEach(p=>p.classList.toggle('on',p.dataset.page===n.dataset.p));
-      if(window.__fp) window.__fp.scan();
     }));
 
     /* ---- admins management ---- */
@@ -289,45 +283,9 @@ body{ background:#070708; }
     });
     renderAdmins();
 
-    /* ---- revenue chart ---- */
-    const data=[28,31,30,34,38,36,41,39,44,43,47,49]; // k€
-    const goal=42;
-    const months=['J','F','M','A','M','J','J','A','S','O','N','D'];
-    const svg=document.getElementById('revChart'); const W=720,H=240,pad=24,bw=W/data.length;
-    const max=Math.max(...data,goal)*1.12;
-    let s='';
-    // goal line
-    const gy=H-pad-(goal/max)*(H-pad*2);
-    s+=`<line x1="0" y1="${gy}" x2="${W}" y2="${gy}" stroke="rgba(255,255,255,.18)" stroke-width="1" stroke-dasharray="4 5"/>`;
-    data.forEach((v,i)=>{
-      const bh=(v/max)*(H-pad*2); const x=i*bw+bw*0.22; const y=H-pad-bh; const w=bw*0.56;
-      s+=`<rect class="bar" x="${x}" y="${y}" width="${w}" height="${bh}" rx="5" fill="url(#gg)"><title>${months[i]} · ${v} 000 €</title></rect>`;
-      s+=`<text x="${i*bw+bw/2}" y="${H-7}" fill="#6f6e77" font-size="11" font-family="monospace" text-anchor="middle">${months[i]}</text>`;
-    });
-    svg.innerHTML=`<defs><linearGradient id="gg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f8c96e"/><stop offset="1" stop-color="#c87d1c"/></linearGradient></defs>`+s;
-
-    /* ---- orders ---- */
-    const labels={kfc:'KFC',mcdo:"McDonald's",otacos:"O'Tacos"};
-    const orders=[
-      ['#FP-90412','Théo B.','kfc','2000–2399',10.99,'ok'],
-      ['#FP-90411','Maya R.','mcdo','150–174',6.50,'ok'],
-      ['#FP-90410','Lina K.','otacos','109',7.00,'pend'],
-      ['#FP-90409','Karim S.','kfc','1000–1299',5.99,'ok'],
-      ['#FP-90408','Yanis Z.','mcdo','400–499',16.50,'ok'],
-      ['#FP-90407','Sofia M.','kfc','1300–1599',7.49,'ok'],
-      ['#FP-90406','Adam D.','otacos','180',8.00,'pend'],
-      ['#FP-90405','Inès L.','mcdo','700–899',40.00,'ok'],
-    ];
-    const fmt=v=>v.toFixed(2).replace('.',',')+' €';
-    document.getElementById('ordersBody').innerHTML=orders.map(o=>`<tr>
-      <td class="tnum">${o[0]}</td><td>${o[1]}</td>
-      <td><span class="brand-tag ${o[2]}">${labels[o[2]]}</span></td>
-      <td class="tnum">${o[3]} pts</td>
-      <td class="tnum" style="text-align:right;color:var(--gold-soft)">${fmt(o[4])}</td>
-      <td><span class="stt ${o[5]}">${o[5]==='ok'?'LIVRÉ':'EN COURS'}</span></td></tr>`).join('');
-
     /* ---- price editor ---- */
     FP_PRICES.apply();
+    const labels={kfc:'KFC',mcdo:"McDonald's",otacos:"O'Tacos"};
     const cat=window.FP_CATALOGUE; let curB='kfc';
     const draft=JSON.parse(JSON.stringify({kfc:cat.kfc.tr.map(t=>t[1]),mcdo:cat.mcdo.tr.map(t=>t[1]),otacos:cat.otacos.tr.map(t=>t[1])}));
     const btabs=document.getElementById('btabs'), list=document.getElementById('priceList');
@@ -342,14 +300,73 @@ body{ background:#070708; }
     list.addEventListener('input',e=>{ const inp=e.target.closest('input'); if(!inp)return; draft[curB][+inp.dataset.i]=parseFloat(inp.value)||0; });
     document.getElementById('savePrices').addEventListener('click',()=>{
       FP_PRICES.save(draft);
-      // reflect immediately in current catalogue
       for(const b in draft) draft[b].forEach((p,i)=>{ if(cat[b].tr[i]) cat[b].tr[i][1]=p; });
       const m=document.getElementById('savedMsg'); m.classList.add('show'); setTimeout(()=>m.classList.remove('show'),2200);
     });
-    document.getElementById('resetPrices').addEventListener('click',()=>{
-      FP_PRICES.reset(); location.reload();
-    });
+    document.getElementById('resetPrices').addEventListener('click',()=>{ FP_PRICES.reset(); location.reload(); });
     renderPrices();
+
+    /* ---- live orders from API ---- */
+    const fmt=v=>(v||0).toFixed(2).replace('.',',')+' €';
+    let orders=[];
+    try{ orders=await fetch('/api/orders').then(r=>r.json()); }catch{}
+
+    // KPIs
+    const ca=orders.reduce((s,o)=>s+(o.total||0),0);
+    const count=orders.length;
+    const avg=count?ca/count:0;
+    document.getElementById('kpiCA').textContent=fmt(ca);
+    document.getElementById('kpiOrders').textContent=count;
+    document.getElementById('kpiAvg').textContent=fmt(avg);
+    document.getElementById('kpiMargin').textContent='—';
+
+    // Brand split
+    const bca={kfc:0,mcdo:0,otacos:0};
+    orders.forEach(o=>{ if(bca[o.brand]!==undefined) bca[o.brand]+=(o.total||0); });
+    const topCA=Math.max(...Object.values(bca),1);
+    const bclr={kfc:'var(--kfc)',mcdo:'var(--mcdo)',otacos:'var(--otacos)'};
+    document.getElementById('splitBars').innerHTML=Object.keys(bca).map(b=>`<div class="row">
+      <div class="t"><span>${labels[b]}</span><b>${fmt(bca[b])}</b></div>
+      <div class="track"><i style="width:${Math.round(bca[b]/topCA*100)}%;background:${bclr[b]}"></i></div></div>`).join('');
+
+    // Chart — real monthly data (or flat if empty)
+    const monthly=new Array(12).fill(0);
+    orders.forEach(o=>{ if(o.date){ const m=new Date(o.date).getMonth(); monthly[m]+=(o.total||0)/1000; } });
+    const hasData=monthly.some(v=>v>0);
+    const chartData=hasData?monthly:[0,0,0,0,0,0,0,0,0,0,0,0];
+    const goal=hasData?Math.max(...chartData)*0.8:0;
+    const mths=['J','F','M','A','M','J','J','A','S','O','N','D'];
+    const svg=document.getElementById('revChart'); const W=720,H=240,pad=24,bw=W/12;
+    const maxV=Math.max(...chartData,goal||1)*1.12;
+    let s='';
+    if(goal>0){ const gy=H-pad-(goal/maxV)*(H-pad*2); s+=`<line x1="0" y1="${gy}" x2="${W}" y2="${gy}" stroke="rgba(255,255,255,.18)" stroke-width="1" stroke-dasharray="4 5"/>`; }
+    chartData.forEach((v,i)=>{
+      const bh=Math.max((v/maxV)*(H-pad*2),2); const x=i*bw+bw*0.22; const y=H-pad-bh; const w=bw*0.56;
+      s+=`<rect class="bar" x="${x}" y="${y}" width="${w}" height="${bh}" rx="5" fill="url(#gg)"><title>${mths[i]} · ${v.toFixed(1)} k€</title></rect>`;
+      s+=`<text x="${i*bw+bw/2}" y="${H-7}" fill="#6f6e77" font-size="11" font-family="monospace" text-anchor="middle">${mths[i]}</text>`;
+    });
+    svg.innerHTML=`<defs><linearGradient id="gg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f8c96e"/><stop offset="1" stop-color="#c87d1c"/></linearGradient></defs>`+s;
+
+    // Orders table
+    document.getElementById('ordersBody').innerHTML=orders.length
+      ?orders.slice(0,50).map(o=>{
+          const pts=(o.items||[]).map(i=>i.pts).filter(Boolean).join(', ')||'—';
+          return `<tr><td class="tnum">#${o.id}</td><td>${o.user||'—'}</td>
+            <td><span class="brand-tag ${o.brand||''}">${labels[o.brand]||o.brand||'—'}</span></td>
+            <td class="tnum">${pts} pts</td>
+            <td class="tnum" style="text-align:right;color:var(--gold-soft)">${fmt(o.total)}</td>
+            <td><span class="stt ${o.status==='ok'?'ok':'pend'}">${o.status==='ok'?'LIVRÉ':'EN COURS'}</span></td></tr>`;
+        }).join('')
+      :'<tr><td colspan="6" style="text-align:center;color:var(--text-3);padding:32px;font-family:var(--mono)">Aucune commande pour l\'instant</td></tr>';
+
+    // Clients — computed from orders
+    const clients={};
+    orders.forEach(o=>{ const u=o.user||'Anonyme'; if(!clients[u])clients[u]={n:u,c:0,t:0}; clients[u].c++; clients[u].t+=(o.total||0); });
+    const clientsArr=Object.values(clients).sort((a,b)=>b.t-a.t);
+    document.getElementById('clientsSub').textContent=`${clientsArr.length} client${clientsArr.length>1?'s':''} · ${count} commande${count>1?'s':''}`;
+    document.getElementById('clientsBody').innerHTML=clientsArr.length
+      ?clientsArr.map(c=>`<tr><td>${c.n}</td><td class="tnum" style="text-align:right">${c.c}</td><td class="tnum" style="text-align:right">${fmt(c.t)}</td></tr>`).join('')
+      :'<tr><td colspan="3" style="text-align:center;color:var(--text-3);padding:32px;font-family:var(--mono)">Aucun client pour l\'instant</td></tr>';
   }
 })();
 </script>
