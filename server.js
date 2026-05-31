@@ -1,5 +1,5 @@
 /**
- * MiamShop — serveur statique + API commandes partagées.
+ * FoodPlug — serveur statique + API commandes partagées.
  *
  * Persistance :
  *   - Si UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN sont définis → Upstash Redis (survit aux redémarrages)
@@ -15,7 +15,7 @@ const PORT        = Number(process.env.PORT) || 3000;
 const NTFY_TOPIC  = process.env.NTFY_TOPIC  || '';
 const REDIS_URL   = process.env.UPSTASH_REDIS_REST_URL   || '';
 const REDIS_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN || '';
-const REDIS_KEY   = 'miam_orders';
+const REDIS_KEY   = 'fp_orders';
 
 const publicDir  = path.join(__dirname, 'public');
 const dataDir    = path.join(__dirname, 'data');
@@ -103,7 +103,7 @@ app.post('/api/orders', async (req, res) => {
     const pts   = (order.items || []).map(i => `${i.pts} pts × ${i.qty}`).join(' · ');
     const who   = order.user || 'Anonyme';
     const total = typeof order.total === 'number' ? order.total.toFixed(2) + '€' : '';
-    sendNtfy('Nouvelle commande MiamShop', `${pts} — ${total} — ${who}`);
+    sendNtfy('Nouvelle commande FoodPlug', `${pts} — ${total} — ${who}`);
   }
   await writeOrders(arr);
   res.json({ ok: true });
@@ -133,16 +133,13 @@ app.use(
   })
 );
 
-const legacyPaths = ['/MiamShop.html', '/MiamShop'];
-legacyPaths.forEach((p) => app.get(p, (_, res) => res.redirect(301, '/')));
-
 app.get('*', (req, res, next) => {
   if (req.path.includes('.')) return next();
   res.sendFile(path.join(publicDir, 'index.html'), (err) => { if (err) next(err); });
 });
 
 app.listen(PORT, '0.0.0.0', () => {
-  console.log('MiamShop prêt → http://0.0.0.0:%s/', PORT);
+  console.log('FoodPlug prêt → http://0.0.0.0:%s/', PORT);
   if (REDIS_URL)      console.log('Persistance → Upstash Redis (commandes sauvegardées)');
   else                console.log('Persistance → fichier local (perdu au redémarrage)');
   if (NTFY_TOPIC)     console.log('Notifications ntfy actives → ntfy.sh/%s', NTFY_TOPIC);

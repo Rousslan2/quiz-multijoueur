@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>FoodPlug — Wallet</title>
+<script>document.documentElement.classList.add('anim-on');</script>
+<link rel="stylesheet" href="assets/foodplug.css" />
+<style>
+.wwrap{ padding-top:128px; }
+.wtop{ display:grid; grid-template-columns:1fr 1.15fr; gap:clamp(30px,4vw,56px); align-items:start; }
+@media(max-width:920px){ .wtop{ grid-template-columns:1fr; } }
+
+/* big card */
+.bigcard{ position:relative; aspect-ratio:1.6/1; border-radius:26px; padding:32px; color:#1a1206;
+  background:linear-gradient(135deg,#fbe2a6,#f0a93a 52%,#c87d1c);
+  box-shadow:0 50px 100px -40px rgba(240,169,58,.6), inset 0 1px 0 rgba(255,255,255,.5);
+  display:flex; flex-direction:column; justify-content:space-between; }
+.bigcard .shine{ position:absolute; inset:0; border-radius:26px; pointer-events:none;
+  background:linear-gradient(115deg,transparent 42%,rgba(255,255,255,.5) 50%,transparent 58%); opacity:0; transition:opacity .5s; }
+.bigcard:hover .shine{ opacity:.7; }
+.bigcard .top{ display:flex; align-items:center; justify-content:space-between; }
+.bigcard .logo{ font-weight:900; font-size:22px; letter-spacing:-.03em; }
+.bigcard .lab{ font-family:var(--mono); font-size:11px; letter-spacing:.1em; opacity:.7; }
+.bigcard .bal{ font-family:var(--mono); font-size:clamp(38px,6vw,54px); font-weight:700; letter-spacing:-.02em; line-height:1; margin-top:6px; }
+.bigcard .num{ font-family:var(--mono); font-size:18px; letter-spacing:.14em; font-weight:700; }
+.bigcard .chiprow{ display:flex; gap:8px; }
+.bigcard .wc{ background:rgba(26,18,6,.16); padding:6px 12px; border-radius:100px; font-size:11px; font-weight:700; font-family:var(--mono); }
+.wstats{ display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:16px; }
+.wstat{ padding:18px; border:1px solid var(--line); border-radius:16px; background:var(--surface); }
+.wstat b{ font-family:var(--mono); font-size:24px; display:block; }
+.wstat span{ font-size:12.5px; color:var(--text-3); }
+
+/* recharge panel */
+.panel{ border:1px solid var(--line-2); border-radius:24px; padding:28px; background:linear-gradient(180deg,rgba(255,255,255,.03),rgba(255,255,255,.008)); }
+.panel h3{ font-size:22px; margin-bottom:6px; }
+.amts{ display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin:20px 0 14px; }
+.amt{ position:relative; padding:18px 10px; border-radius:14px; border:1px solid var(--line-2); background:rgba(255,255,255,.02);
+  text-align:center; cursor:pointer; transition:border-color .3s, background .3s, transform .4s var(--spring); }
+.amt:hover{ border-color:var(--line-3); transform:translateY(-2px); }
+.amt.active{ border-color:var(--gold); background:rgba(240,169,58,.08); }
+.amt .v{ font-family:var(--mono); font-weight:700; font-size:18px; }
+.amt .b{ font-size:11px; color:#39d98a; margin-top:3px; }
+.custom{ display:flex; align-items:center; gap:10px; border:1px solid var(--line-2); border-radius:14px; padding:4px 4px 4px 16px; margin-bottom:22px; }
+.custom span{ font-family:var(--mono); color:var(--text-3); }
+.custom input{ flex:1; background:none; border:none; color:var(--text); font-family:var(--mono); font-size:18px; font-weight:700; padding:14px 0; outline:none; }
+.pmlabel{ font-family:var(--mono); font-size:12px; letter-spacing:.16em; text-transform:uppercase; color:var(--text-3); margin-bottom:12px; }
+.pms{ display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:24px; }
+.pm{ display:flex; flex-direction:column; align-items:center; gap:8px; padding:16px 8px; border-radius:14px; border:1px solid var(--line-2);
+  background:rgba(255,255,255,.02); cursor:pointer; font-size:13px; font-weight:600; transition:border-color .3s, background .3s; }
+.pm:hover{ border-color:var(--line-3); }
+.pm.active{ border-color:var(--gold); background:rgba(240,169,58,.08); }
+.pm .ic{ font-size:20px; }
+.recap{ display:flex; align-items:center; justify-content:space-between; padding:16px 0; border-top:1px solid var(--line); margin-bottom:18px; }
+.recap .t{ color:var(--text-2); font-size:14px; } .recap .v{ font-family:var(--mono); font-weight:700; font-size:20px; color:var(--gold-soft); }
+
+/* history */
+.hist{ border:1px solid var(--line); border-radius:20px; overflow:hidden; }
+.htr{ display:grid; grid-template-columns:44px 1fr auto; gap:16px; align-items:center; padding:18px 22px; border-bottom:1px solid var(--line); transition:background .3s; }
+.htr:last-child{ border-bottom:none; } .htr:hover{ background:rgba(255,255,255,.02); }
+.htr .ic{ width:44px; height:44px; border-radius:12px; display:grid; place-items:center; font-size:16px; background:var(--surface-2); border:1px solid var(--line-2); }
+.htr .nm{ font-weight:600; font-size:15px; } .htr .dt{ font-family:var(--mono); font-size:12px; color:var(--text-3); }
+.htr .am{ font-family:var(--mono); font-weight:700; font-size:16px; }
+.htr .am.plus{ color:#39d98a; } .htr .am.minus{ color:var(--text-2); }
+</style>
+</head>
+<body>
+<canvas id="bg3d" style="position:fixed;inset:0;width:100%;height:100%;z-index:0;"></canvas>
+<div class="grain"></div>
+
+<header class="nav">
+  <div class="wrap nav-in">
+    <a href="index.html" class="brandmark"><span class="plug">F</span> FoodPlug</a>
+    <nav class="nav-links">
+      <a href="boutique.html">Boutique</a><a href="wallet.html" class="active">Wallet</a>
+      <a href="communaute.html">Communauté</a><a href="compte.html">Compte</a>
+    </nav>
+    <div class="nav-right">
+      <div class="bal"><span class="dot"></span> <b>148,50&nbsp;€</b></div>
+      <a href="compte.html" class="avatar">YZ</a>
+      <button class="burger" aria-label="Menu"><span></span></button>
+    </div>
+  </div>
+</header>
+<nav class="mmenu">
+  <a href="boutique.html">Boutique</a><a href="wallet.html">Wallet</a>
+  <a href="communaute.html">Communauté</a><a href="compte.html">Compte</a>
+</nav>
+
+<section class="wwrap wrap">
+  <span class="kicker rv">FoodPlug Wallet</span>
+  <h1 class="h2 rv rv-d1" style="margin:16px 0 36px">Recharge. Dépense.<br>Encaisse le cashback.</h1>
+
+  <div class="wtop">
+    <div class="rv">
+      <div class="bigcard" data-tilt>
+        <div class="shine"></div>
+        <div class="top"><span class="logo">FoodPlug</span><span class="chip" style="color:#1a1206;border-color:rgba(26,18,6,.25)">PREMIUM</span></div>
+        <div><span class="lab">SOLDE DISPONIBLE</span><div class="bal">148,50 €</div></div>
+        <div class="top"><span class="num">5821 •••• 0042</span><div class="chiprow"><span class="wc">+8% CASHBACK</span></div></div>
+      </div>
+      <div class="wstats">
+        <div class="wstat"><b class="tnum" data-count="42.8" data-dec="1" data-prefix="" data-suffix=" €">0</b><span>Cashback cumulé</span></div>
+        <div class="wstat"><b class="tnum" data-count="23" data-suffix="">0</b><span>Recharges</span></div>
+      </div>
+    </div>
+
+    <div class="panel rv rv-d1">
+      <h3>Recharger mon wallet</h3>
+      <p class="muted" style="font-size:14px">Plus tu recharges, plus le bonus grimpe.</p>
+      <div class="amts" id="amts">
+        <div class="amt" data-v="20" data-bonus="0"><div class="v">20 €</div></div>
+        <div class="amt active" data-v="50" data-bonus="3"><div class="v">50 €</div><div class="b">+3 € offerts</div></div>
+        <div class="amt" data-v="100" data-bonus="10"><div class="v">100 €</div><div class="b">+10 € offerts</div></div>
+        <div class="amt" data-v="150" data-bonus="18"><div class="v">150 €</div><div class="b">+18 € offerts</div></div>
+        <div class="amt" data-v="250" data-bonus="35"><div class="v">250 €</div><div class="b">+35 € offerts</div></div>
+        <div class="amt" data-v="500" data-bonus="85"><div class="v">500 €</div><div class="b">+85 € offerts</div></div>
+      </div>
+      <div class="custom">
+        <span>€</span><input id="customAmt" type="number" placeholder="Autre montant" />
+      </div>
+      <div class="pmlabel">Moyen de paiement</div>
+      <div class="pms" id="pms">
+        <div class="pm active"><span class="ic">💳</span> Carte</div>
+        <div class="pm"><span class="ic"></span> Apple Pay</div>
+        <div class="pm"><span class="ic">₿</span> Crypto</div>
+      </div>
+      <div class="recap"><span class="t">Tu seras crédité de</span><span class="v" id="credit">53,00 €</span></div>
+      <button class="btn btn-gold" style="width:100%;justify-content:center" id="rechargeBtn">Recharger 50,00 €</button>
+    </div>
+  </div>
+</section>
+
+<section class="sec wrap" style="padding-top:clamp(40px,6vw,80px)">
+  <div class="sec-head"><div class="t"><span class="kicker rv">Activité</span><h2 class="h3 rv rv-d1" style="margin-top:14px">Dernières transactions</h2></div></div>
+  <div class="hist rv">
+    <div class="htr"><div class="ic">↓</div><div><div class="nm">Recharge wallet · Carte</div><div class="dt">28 MAI 2026 · 14:32</div></div><div class="am plus">+100,00 €</div></div>
+    <div class="htr"><div class="ic" style="color:var(--kfc)">K</div><div><div class="nm">Bucket Infinity · KFC</div><div class="dt">27 MAI 2026 · 20:11</div></div><div class="am minus">−34,90 €</div></div>
+    <div class="htr"><div class="ic" style="color:#39d98a">✦</div><div><div class="nm">Cashback +8%</div><div class="dt">27 MAI 2026 · 20:11</div></div><div class="am plus">+2,79 €</div></div>
+    <div class="htr"><div class="ic" style="color:var(--otacos)">O</div><div><div class="nm">Gigatacos Pass · O'Tacos</div><div class="dt">24 MAI 2026 · 13:02</div></div><div class="am minus">−24,90 €</div></div>
+    <div class="htr"><div class="ic" style="color:var(--gold)">P</div><div><div class="nm">Bonus parrainage · Théo</div><div class="dt">21 MAI 2026 · 09:47</div></div><div class="am plus">+5,00 €</div></div>
+  </div>
+</section>
+
+<footer class="footer">
+  <div class="wrap">
+    <div class="foot-grid">
+      <div class="foot-col"><a href="index.html" class="brandmark" style="margin-bottom:16px"><span class="plug">F</span> FoodPlug</a><p class="muted" style="font-size:14px;max-width:30ch">L'accès premium au fast-food. Comptes, wallet et communauté en un seul endroit.</p></div>
+      <div class="foot-col"><h5>Boutique</h5><a href="boutique.html">KFC</a><a href="boutique.html">McDonald's</a><a href="boutique.html">O'Tacos</a></div>
+      <div class="foot-col"><h5>Compte</h5><a href="wallet.html">Wallet</a><a href="compte.html">Mes commandes</a><a href="compte.html">Parrainage</a></div>
+      <div class="foot-col"><h5>FoodPlug</h5><a href="communaute.html">Communauté</a><a href="index.html#how">Comment ça marche</a></div>
+    </div>
+    <div class="foot-bottom"><span>© 2026 FoodPlug. Conçu avec faim.</span><span class="mono">CGU · Confidentialité · Contact</span></div>
+  </div>
+</footer>
+
+<template id="__bundler_thumbnail"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#08080a"/><rect x="26" y="34" width="48" height="32" rx="6" fill="#f0a93a"/><text x="50" y="86" font-family="monospace" font-size="11" fill="#f0a93a" text-anchor="middle" font-weight="bold">WALLET</text></svg></template>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="image-slot.js"></script>
+<script src="assets/scene.js"></script>
+<script>
+(function(){
+  let amount=50, bonus=3;
+  const credit=document.getElementById('credit'), btn=document.getElementById('rechargeBtn'), customAmt=document.getElementById('customAmt');
+  const fmt=v=>v.toFixed(2).replace('.',',')+' €';
+  function upd(){ credit.textContent=fmt(amount+bonus); btn.textContent='Recharger '+fmt(amount); }
+  document.getElementById('amts').addEventListener('click',e=>{
+    const a=e.target.closest('.amt'); if(!a)return;
+    document.querySelectorAll('.amt').forEach(x=>x.classList.remove('active')); a.classList.add('active');
+    amount=parseFloat(a.dataset.v); bonus=parseFloat(a.dataset.bonus); customAmt.value=''; upd();
+  });
+  customAmt.addEventListener('input',e=>{
+    const v=parseFloat(e.target.value)||0; amount=v; bonus=Math.floor(v*0.13);
+    document.querySelectorAll('.amt').forEach(x=>x.classList.remove('active')); upd();
+  });
+  document.getElementById('pms').addEventListener('click',e=>{
+    const p=e.target.closest('.pm'); if(!p)return;
+    document.querySelectorAll('.pm').forEach(x=>x.classList.remove('active')); p.classList.add('active');
+  });
+  btn.addEventListener('click',function(){ const t=fmt(amount); this.textContent='✓ '+t+' rechargés'; setTimeout(()=>upd(),1600); });
+  upd();
+})();
+</script>
+<script src="assets/app.js"></script>
+</body>
+</html>

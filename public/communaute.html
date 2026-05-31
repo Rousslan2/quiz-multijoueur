@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>FoodPlug — Communauté</title>
+<script>document.documentElement.classList.add('anim-on');</script>
+<link rel="stylesheet" href="assets/foodplug.css" />
+<style>
+.cwrap{ padding-top:118px; padding-bottom:40px; }
+.chead{ display:flex; align-items:flex-end; justify-content:space-between; gap:20px; flex-wrap:wrap; margin-bottom:26px; }
+.live-pill{ display:inline-flex; align-items:center; gap:9px; padding:8px 14px; border-radius:100px; font-family:var(--mono); font-size:12.5px; font-weight:700;
+  border:1px solid rgba(57,217,138,.3); background:rgba(57,217,138,.07); color:#39d98a; }
+
+.cgrid{ display:grid; grid-template-columns:230px 1fr 250px; gap:16px; height:min(72vh,720px); }
+@media(max-width:1040px){ .cgrid{ grid-template-columns:200px 1fr; } .members{ display:none; } }
+@media(max-width:720px){ .cgrid{ grid-template-columns:1fr; height:auto; } .channels{ display:none; } }
+
+.cpanel{ border:1px solid var(--line); border-radius:20px; background:var(--surface); overflow:hidden; display:flex; flex-direction:column; }
+
+/* channels */
+.channels{ padding:16px; gap:3px; }
+.ch-lbl{ font-family:var(--mono); font-size:11px; letter-spacing:.16em; text-transform:uppercase; color:var(--text-3); padding:10px 12px 8px; }
+.ch{ display:flex; align-items:center; gap:10px; padding:11px 12px; border-radius:11px; color:var(--text-2); cursor:pointer; font-size:14.5px; font-weight:500; transition:background .25s, color .25s; }
+.ch:hover{ background:rgba(255,255,255,.04); color:var(--text); }
+.ch.active{ background:rgba(240,169,58,.1); color:var(--gold-soft); }
+.ch .h{ opacity:.5; font-weight:700; }
+.ch .badge-n{ margin-left:auto; font-family:var(--mono); font-size:10px; background:var(--kfc); color:#fff; padding:2px 7px; border-radius:100px; }
+
+/* chat */
+.chat-head{ display:flex; align-items:center; gap:10px; padding:16px 20px; border-bottom:1px solid var(--line); flex:none; }
+.chat-head .nm{ font-weight:700; } .chat-head .meta{ font-family:var(--mono); font-size:12px; color:var(--text-3); margin-left:auto; }
+.feed{ flex:1; overflow-y:auto; padding:20px; display:flex; flex-direction:column; gap:18px; scroll-behavior:smooth; }
+.feed::-webkit-scrollbar{ width:8px; } .feed::-webkit-scrollbar-thumb{ background:var(--line-2); border-radius:10px; }
+.cmsg{ display:flex; gap:12px; align-items:flex-start; }
+.cmsg .av{ width:38px; height:38px; border-radius:50%; flex:none; display:grid; place-items:center; font-size:13px; font-weight:700; }
+.cmsg .body{ min-width:0; }
+.cmsg .line1{ display:flex; align-items:baseline; gap:9px; }
+.cmsg .who{ font-weight:600; font-size:14.5px; } .cmsg .when{ font-family:var(--mono); font-size:11px; color:var(--text-3); }
+.cmsg .txt{ color:var(--text-2); font-size:14.5px; margin-top:3px; line-height:1.5; }
+.cmsg.me .txt{ color:var(--text); }
+.pin{ background:rgba(240,169,58,.07); border:1px solid rgba(240,169,58,.25); border-radius:14px; padding:12px 14px; display:flex; gap:12px; align-items:center; }
+.pin .tag{ font-family:var(--mono); font-size:10px; font-weight:700; letter-spacing:.1em; color:var(--gold); }
+.composer{ display:flex; gap:10px; padding:14px; border-top:1px solid var(--line); flex:none; }
+.composer input{ flex:1; background:var(--surface-2); border:1px solid var(--line-2); border-radius:100px; padding:13px 18px; color:var(--text); font-family:var(--font); font-size:14.5px; outline:none; transition:border-color .3s; }
+.composer input:focus{ border-color:var(--gold); }
+.composer .send{ width:48px; height:48px; border-radius:50%; display:grid; place-items:center; flex:none;
+  background:linear-gradient(180deg,var(--gold-soft),var(--gold)); color:#1a1206; font-size:18px; transition:transform .4s var(--spring); }
+.composer .send:hover{ transform:scale(1.08); }
+.composer .send:active{ transform:scale(.92); }
+
+/* members */
+.members{ padding:16px; }
+.mem{ display:flex; align-items:center; gap:11px; padding:9px 10px; border-radius:11px; transition:background .25s; }
+.mem:hover{ background:rgba(255,255,255,.03); }
+.mem .av{ width:34px; height:34px; border-radius:50%; display:grid; place-items:center; font-size:12px; font-weight:700; position:relative; }
+.mem .av .on{ position:absolute; right:-1px; bottom:-1px; width:11px; height:11px; border-radius:50%; background:#39d98a; border:2px solid var(--surface); }
+.mem .nm{ font-size:14px; font-weight:500; } .mem .rl{ font-size:11px; color:var(--text-3); font-family:var(--mono); }
+</style>
+</head>
+<body>
+<canvas id="bg3d" style="position:fixed;inset:0;width:100%;height:100%;z-index:0;"></canvas>
+<div class="grain"></div>
+
+<header class="nav">
+  <div class="wrap nav-in">
+    <a href="index.html" class="brandmark"><span class="plug">F</span> FoodPlug</a>
+    <nav class="nav-links">
+      <a href="boutique.html">Boutique</a><a href="wallet.html">Wallet</a>
+      <a href="communaute.html" class="active">Communauté</a><a href="compte.html">Compte</a>
+    </nav>
+    <div class="nav-right">
+      <div class="bal"><span class="dot"></span> <b>148,50&nbsp;€</b></div>
+      <a href="compte.html" class="avatar">YZ</a>
+      <button class="burger" aria-label="Menu"><span></span></button>
+    </div>
+  </div>
+</header>
+<nav class="mmenu">
+  <a href="boutique.html">Boutique</a><a href="wallet.html">Wallet</a>
+  <a href="communaute.html">Communauté</a><a href="compte.html">Compte</a>
+</nav>
+
+<section class="cwrap wrap">
+  <div class="chead rv">
+    <div>
+      <span class="kicker">La commu</span>
+      <h1 class="h3" style="margin-top:12px">3 042 foodies en ligne. Zéro plan foireux.</h1>
+    </div>
+    <span class="live-pill"><span class="dot live"></span> EN DIRECT</span>
+  </div>
+
+  <div class="cgrid rv rv-d1">
+    <!-- CHANNELS -->
+    <div class="cpanel channels">
+      <div class="ch-lbl">Salons</div>
+      <div class="ch active" data-ch="les-bons-plans"><span class="h">#</span> les-bons-plans <span class="badge-n">12</span></div>
+      <div class="ch" data-ch="drops"><span class="h">#</span> drops</div>
+      <div class="ch" data-ch="entraide"><span class="h">#</span> entraide</div>
+      <div class="ch-lbl">Enseignes</div>
+      <div class="ch" data-ch="kfc"><span class="h">#</span> kfc</div>
+      <div class="ch" data-ch="mcdo"><span class="h">#</span> mcdo</div>
+      <div class="ch" data-ch="otacos"><span class="h">#</span> otacos</div>
+    </div>
+
+    <!-- CHAT -->
+    <div class="cpanel">
+      <div class="chat-head"><span class="h" style="color:var(--text-3);font-weight:700">#</span> <span class="nm" id="chName">les-bons-plans</span> <span class="meta" id="chMeta">1 284 membres</span></div>
+      <div class="feed" id="feed">
+        <div class="pin"><div><span class="tag">📌 ÉPINGLÉ</span><div class="txt" style="color:var(--text);margin-top:4px">Drop O'Tacos ce soir 20h — −50% sur le Gigatacos Pass. Préparez vos wallets.</div></div></div>
+      </div>
+      <div class="composer">
+        <input id="msgInput" type="text" placeholder="Écris un message à #les-bons-plans…" />
+        <button class="send" id="sendBtn">↑</button>
+      </div>
+    </div>
+
+    <!-- MEMBERS -->
+    <div class="cpanel members">
+      <div class="ch-lbl">En ligne — 6</div>
+      <div class="mem"><div class="av" style="background:var(--gold);color:#1a1206">FP<span class="on"></span></div><div><div class="nm">FoodPlug</div><div class="rl">BOT · Officiel</div></div></div>
+      <div class="mem"><div class="av" style="background:var(--kfc);color:#fff">M<span class="on"></span></div><div><div class="nm">Maya</div><div class="rl">Gold</div></div></div>
+      <div class="mem"><div class="av" style="background:var(--mcdo);color:#1a1206">T<span class="on"></span></div><div><div class="nm">Théo</div><div class="rl">Elite</div></div></div>
+      <div class="mem"><div class="av" style="background:var(--otacos);color:#fff">L<span class="on"></span></div><div><div class="nm">Lina</div><div class="rl">Premium</div></div></div>
+      <div class="mem"><div class="av" style="background:#5b6bff;color:#fff">K<span class="on"></span></div><div><div class="nm">Karim</div><div class="rl">Gold</div></div></div>
+      <div class="mem"><div class="av" style="background:#2a2a32;color:var(--text-2)">YZ<span class="on"></span></div><div><div class="nm">Toi</div><div class="rl">Gold</div></div></div>
+    </div>
+  </div>
+</section>
+
+<template id="__bundler_thumbnail"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#08080a"/><rect x="24" y="32" width="52" height="34" rx="10" fill="#f0a93a"/><text x="50" y="88" font-family="monospace" font-size="9" fill="#f0a93a" text-anchor="middle" font-weight="bold">COMMU</text></svg></template>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="image-slot.js"></script>
+<script src="assets/scene.js"></script>
+<script>
+(function(){
+  const feed=document.getElementById('feed'), input=document.getElementById('msgInput'), send=document.getElementById('sendBtn');
+  const colors={M:['var(--kfc)','#fff'],T:['var(--mcdo)','#1a1206'],L:['var(--otacos)','#fff'],K:['#5b6bff','#fff'],FP:['var(--gold)','#1a1206']};
+  const seed={
+    'les-bons-plans':[
+      ['M','Maya','il y a 4 min','Le Bucket Infinity vaut grave le coup 🔥 rentabilisé en 3 commandes'],
+      ['K','Karim','il y a 3 min','Quelqu\'un a test le McRoyal Pass ? hésite encore'],
+      ['T','Théo','il y a 2 min','@Karim oui nickel, les desserts illimités c\'est cheat'],
+      ['FP','FoodPlug','à l\'instant','⚡ Offre flash McDo Gold débloquée — −40% les 2 prochaines heures'],
+    ],
+    'drops':[
+      ['FP','FoodPlug','il y a 1 min','Drop O\'Tacos ce soir 20h. 200 Gigatacos Pass à −50%.'],
+      ['L','Lina','à l\'instant','je serai là pile à l\'heure 👀'],
+    ],
+    'entraide':[
+      ['K','Karim','il y a 5 min','Comment j\'active mon compte KFC après achat ?'],
+      ['M','Maya','il y a 4 min','Reçu direct dans Mon espace > Mes comptes, activation auto 👌'],
+    ],
+    'kfc':[['M','Maya','il y a 2 min','Le nouveau bucket épicé est dispo avec le compte Premium 🌶️']],
+    'mcdo':[['T','Théo','il y a 6 min','File VIP le midi = game changer']],
+    'otacos':[['L','Lina','il y a 3 min','Night Rush livraison nuit, validé pour les soirées']],
+  };
+  function msgHTML(m,me){
+    const [c,t]=colors[m[0]]||['#2a2a32','#fff'];
+    return `<div class="cmsg ${me?'me':''}"><div class="av" style="background:${c};color:${t}">${m[0]==='FP'?'FP':m[0]}</div>
+      <div class="body"><div class="line1"><span class="who">${m[1]}</span><span class="when">${m[2]}</span></div><div class="txt">${m[3]}</div></div></div>`;
+  }
+  function load(ch){
+    const pin=feed.querySelector('.pin');
+    feed.innerHTML=''; if(pin)feed.appendChild(pin);
+    (seed[ch]||[]).forEach(m=>feed.insertAdjacentHTML('beforeend',msgHTML(m)));
+    feed.scrollTop=feed.scrollHeight;
+  }
+  document.querySelector('.channels').addEventListener('click',e=>{
+    const c=e.target.closest('.ch'); if(!c)return;
+    document.querySelectorAll('.ch').forEach(x=>x.classList.remove('active')); c.classList.add('active');
+    const ch=c.dataset.ch;
+    document.getElementById('chName').textContent=ch;
+    input.placeholder='Écris un message à #'+ch+'…';
+    const n=c.querySelector('.badge-n'); if(n)n.remove();
+    load(ch);
+  });
+  function sendMsg(){
+    const v=input.value.trim(); if(!v)return;
+    feed.insertAdjacentHTML('beforeend',msgHTML(['YZ','Toi','à l\'instant',v],true));
+    input.value=''; feed.scrollTop=feed.scrollHeight;
+    const replies=['grave 🔥','validé','je check ça','+1','même avis','bien vu 👌'];
+    setTimeout(()=>{
+      const r=['M','T','L','K'][Math.floor(Math.random()*4)];
+      const nm={M:'Maya',T:'Théo',L:'Lina',K:'Karim'}[r];
+      feed.insertAdjacentHTML('beforeend',msgHTML([r,nm,'à l\'instant',replies[Math.floor(Math.random()*replies.length)]]));
+      feed.scrollTop=feed.scrollHeight;
+    },1100);
+  }
+  send.addEventListener('click',sendMsg);
+  input.addEventListener('keydown',e=>{ if(e.key==='Enter')sendMsg(); });
+  load('les-bons-plans');
+})();
+</script>
+<script src="assets/app.js"></script>
+</body>
+</html>
