@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>FoodPlug — Boutique</title>
+<script>document.documentElement.classList.add('anim-on');</script>
+<link rel="stylesheet" href="assets/foodplug.css" />
+<style>
+.shop-head{ padding-top:130px; padding-bottom:30px; }
+.shop-head h1{ max-width:16ch; }
+.toolbar{ position:sticky; top:68px; z-index:30; display:flex; align-items:center; justify-content:space-between;
+  gap:18px; padding:16px 0; margin-bottom:34px; flex-wrap:wrap;
+  background:linear-gradient(180deg,var(--bg) 60%,transparent); }
+.filters{ display:flex; gap:8px; flex-wrap:wrap; }
+.fbtn{ display:inline-flex; align-items:center; gap:8px; padding:10px 16px; border-radius:100px; font-size:14px; font-weight:600;
+  border:1px solid var(--line-2); background:rgba(255,255,255,.03); color:var(--text-2);
+  transition:color .3s, background .3s, border-color .3s, transform .4s var(--spring); }
+.fbtn:hover{ color:var(--text); border-color:var(--line-3); }
+.fbtn.active{ color:#1a1206; background:linear-gradient(180deg,var(--gold-soft),var(--gold)); border-color:transparent; }
+.fbtn .d{ width:8px; height:8px; border-radius:50%; }
+.fbtn .d.kfc{ background:var(--kfc); } .fbtn .d.mcdo{ background:var(--mcdo); } .fbtn .d.otacos{ background:var(--otacos); }
+.sortwrap{ display:flex; align-items:center; gap:10px; font-family:var(--mono); font-size:13px; color:var(--text-3); }
+.sortwrap select{ background:var(--surface-2); border:1px solid var(--line-2); color:var(--text); border-radius:100px;
+  padding:9px 14px; font-family:var(--mono); font-size:13px; }
+.shop-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:22px; }
+@media(max-width:900px){ .shop-grid{ grid-template-columns:1fr 1fr; } }
+@media(max-width:560px){ .shop-grid{ grid-template-columns:1fr; } }
+.prod.hide{ display:none; }
+.badge{ position:absolute; top:14px; left:14px; z-index:2; font-family:var(--mono); font-size:10.5px; font-weight:700;
+  letter-spacing:.1em; padding:5px 10px; border-radius:100px; background:rgba(8,8,10,.6); backdrop-filter:blur(6px);
+  border:1px solid var(--line-2); }
+.badge.hot{ color:var(--gold-soft); border-color:rgba(240,169,58,.4); }
+.badge.new{ color:#39d98a; border-color:rgba(57,217,138,.4); }
+.empty-state{ grid-column:1/-1; text-align:center; padding:80px 0; color:var(--text-3); display:none; }
+</style>
+</head>
+<body>
+<canvas id="bg3d" style="position:fixed;inset:0;width:100%;height:100%;z-index:0;"></canvas>
+<div class="grain"></div>
+
+<header class="nav">
+  <div class="wrap nav-in">
+    <a href="index.html" class="brandmark"><span class="plug">F</span> FoodPlug</a>
+    <nav class="nav-links">
+      <a href="boutique.html" class="active">Boutique</a>
+      <a href="wallet.html">Wallet</a>
+      <a href="communaute.html">Communauté</a>
+      <a href="compte.html">Compte</a>
+    </nav>
+    <div class="nav-right">
+      <div class="bal"><span class="dot"></span> <b>148,50&nbsp;€</b></div>
+      <a href="compte.html" class="avatar">YZ</a>
+      <button class="burger" aria-label="Menu"><span></span></button>
+    </div>
+  </div>
+</header>
+<nav class="mmenu">
+  <a href="boutique.html">Boutique</a><a href="wallet.html">Wallet</a>
+  <a href="communaute.html">Communauté</a><a href="compte.html">Compte</a>
+</nav>
+
+<section class="shop-head wrap">
+  <span class="kicker rv">Boutique</span>
+  <h1 class="h2 rv rv-d1" style="margin-top:16px">Des comptes chargés<br>en points, livrés direct.</h1>
+  <p class="lead rv rv-d2" style="margin-top:18px">Choisis ton enseigne et ta tranche : ton compte arrive déjà chargé en points, livré en moins de 2 minutes.</p>
+</section>
+
+<section class="wrap">
+  <div class="toolbar rv">
+    <div class="filters" id="filters">
+      <button class="fbtn active" data-f="all">Tout</button>
+      <button class="fbtn" data-f="kfc"><span class="d kfc"></span> KFC</button>
+      <button class="fbtn" data-f="mcdo"><span class="d mcdo"></span> McDonald's</button>
+      <button class="fbtn" data-f="otacos"><span class="d otacos"></span> O'Tacos</button>
+    </div>
+  </div>
+
+  <div class="shop-grid" id="grid"></div>
+  <div class="empty-state" id="empty">Aucune enseigne pour ce filtre.</div>
+</section>
+
+<section class="sec wrap">
+  <div class="cta-big-lite rv" style="text-align:center;border:1px solid var(--line);border-radius:var(--radius-l);padding:clamp(48px,7vw,90px);background:radial-gradient(120% 120% at 50% 0%,rgba(240,169,58,.08),transparent 55%)">
+    <h2 class="h3" style="max-width:24ch;margin:0 auto">Tu cherches une enseigne pas encore listée ?</h2>
+    <p class="lead" style="margin:14px auto 26px">Demande-la à la communauté, on l'ajoute souvent en quelques jours.</p>
+    <a href="communaute.html" class="btn btn-ghost">Faire une demande <span class="ar">→</span></a>
+  </div>
+</section>
+
+<footer class="footer">
+  <div class="wrap">
+    <div class="foot-grid">
+      <div class="foot-col">
+        <a href="index.html" class="brandmark" style="margin-bottom:16px"><span class="plug">F</span> FoodPlug</a>
+        <p class="muted" style="font-size:14px;max-width:30ch">L'accès premium au fast-food. Comptes, wallet et communauté en un seul endroit.</p>
+      </div>
+      <div class="foot-col"><h5>Boutique</h5><a href="boutique.html">KFC</a><a href="boutique.html">McDonald's</a><a href="boutique.html">O'Tacos</a></div>
+      <div class="foot-col"><h5>Compte</h5><a href="wallet.html">Wallet</a><a href="compte.html">Mes commandes</a><a href="compte.html">Parrainage</a></div>
+      <div class="foot-col"><h5>FoodPlug</h5><a href="communaute.html">Communauté</a><a href="index.html#how">Comment ça marche</a></div>
+    </div>
+    <div class="foot-bottom"><span>© 2026 FoodPlug. Conçu avec faim.</span><span class="mono">CGU · Confidentialité · Contact</span></div>
+  </div>
+</footer>
+
+<template id="__bundler_thumbnail"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#08080a"/><circle cx="50" cy="46" r="22" fill="#f0a93a"/><text x="50" y="86" font-family="monospace" font-size="11" fill="#f0a93a" text-anchor="middle" font-weight="bold">SHOP</text></svg></template>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="image-slot.js"></script>
+<script src="assets/scene.js"></script>
+<script>
+/* one card per enseigne — la tranche se choisit sur la fiche produit */
+const PRODUCTS = [
+  { id:'kfc', brand:'kfc', tier:'7 tranches', name:'Points KFC', sub:'Compte chargé · 600 → 2 399 pts', price:'dès 3,49 €', tag:'hot', img:'bucket' },
+  { id:'mcdo', brand:'mcdo', tier:'19 tranches', name:"Points McDonald's", sub:'Compte chargé · 50 → 2 100 pts', price:'dès 1,50 €', tag:'hot', img:'combo' },
+  { id:'otacos', brand:'otacos', tier:'3 tranches', name:"Points O'Tacos", sub:'Compte chargé · 74 → 180 pts', price:'dès 5,00 €', tag:'new', img:'tacos' },
+];
+const labels={kfc:'KFC',mcdo:"McDonald's",otacos:"O'Tacos"};
+const grid=document.getElementById('grid');
+function card(p){
+  return `<a href="produit.html#${p.id}" class="card prod rv" data-tilt data-brand="${p.brand}">
+    ${p.tag?`<span class="badge ${p.tag}">${p.tag==='hot'?'POPULAIRE':'NOUVEAU'}</span>`:''}
+    <div class="stage s-${p.brand}"><image-slot id="shop-${p.id}" class="food" shape="rect" fit="contain" src="assets/logos/${p.brand}.png" placeholder="${labels[p.brand]}"></image-slot></div>
+    <div class="meta">
+      <span class="brand-tag ${p.brand}">${labels[p.brand]} · ${p.tier}</span>
+      <div class="row"><span class="name">${p.name}</span><span class="price">${p.price}</span></div>
+      <span class="sub">${p.sub}</span>
+    </div></a>`;
+}
+let curF='all';
+function render(){
+  const list=PRODUCTS.filter(p=>curF==='all'||p.brand===curF);
+  grid.innerHTML=list.map(card).join('');
+  document.getElementById('empty').style.display=list.length?'none':'block';
+  if(window.__fp&&window.__fp.scan)window.__fp.scan();
+}
+document.getElementById('filters').addEventListener('click',e=>{
+  const b=e.target.closest('.fbtn'); if(!b)return;
+  document.querySelectorAll('.fbtn').forEach(x=>x.classList.remove('active'));
+  b.classList.add('active'); curF=b.dataset.f; render();
+});
+render();
+</script>
+<script src="assets/app.js"></script>
+</body>
+</html>

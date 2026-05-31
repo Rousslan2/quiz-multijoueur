@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>FoodPlug — Points KFC</title>
+<script>document.documentElement.classList.add('anim-on');</script>
+<link rel="stylesheet" href="assets/foodplug.css" />
+<style>
+.pwrap{ padding-top:108px; }
+.crumbs{ display:flex; gap:8px; align-items:center; font-family:var(--mono); font-size:12px; color:var(--text-3); margin-bottom:26px; }
+.crumbs a{ color:var(--text-3); } .crumbs a:hover{ color:var(--text-2); }
+.pgrid{ display:grid; grid-template-columns:1.05fr .95fr; gap:clamp(34px,5vw,72px); align-items:start; }
+@media(max-width:900px){ .pgrid{ grid-template-columns:1fr; } }
+
+/* turntable */
+.turntable{ position:relative; aspect-ratio:1/1; border-radius:var(--radius-l); overflow:hidden;
+  border:1px solid var(--line); background:radial-gradient(120% 100% at 50% 30%, rgba(228,0,43,.16), transparent 60%); display:grid; place-items:center; }
+.tt-ring{ position:absolute; left:50%; top:58%; transform:translate(-50%,-50%); width:78%; aspect-ratio:1/1; border-radius:50%;
+  background:conic-gradient(from 0deg, rgba(240,169,58,.0), rgba(240,169,58,.35), rgba(240,169,58,.0) 40%, rgba(228,0,43,.25), rgba(240,169,58,0) 75%);
+  filter:blur(6px); animation:spin 14s linear infinite; }
+.tt-ring.two{ width:96%; opacity:.4; animation-duration:22s; animation-direction:reverse; }
+@keyframes spin{ to{ transform:translate(-50%,-50%) rotate(360deg); } }
+.tt-plate{ position:absolute; left:50%; bottom:14%; transform:translateX(-50%); width:60%; height:26px; border-radius:50%;
+  background:radial-gradient(ellipse, rgba(240,169,58,.5), transparent 70%); filter:blur(10px); }
+.tt-food{ position:relative; z-index:2; width:72%; aspect-ratio:1/1; animation:bob 6s ease-in-out infinite; }
+@keyframes bob{ 0%,100%{transform:translateY(0)} 50%{transform:translateY(-14px)} }
+.tt-hint{ position:absolute; bottom:16px; left:50%; transform:translateX(-50%); z-index:3; font-family:var(--mono);
+  font-size:11px; letter-spacing:.18em; color:var(--text-3); }
+.thumbs{ display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-top:14px; }
+.thumb{ aspect-ratio:1/1; border-radius:14px; overflow:hidden; border:1px solid var(--line); background:var(--surface-2); }
+
+/* details */
+.pdetail .brand-tag{ font-size:12px; }
+.pname{ font-size:clamp(34px,4.4vw,52px); font-weight:800; letter-spacing:-.03em; line-height:1; margin:14px 0 14px; }
+.rating{ display:flex; align-items:center; gap:10px; color:var(--text-2); font-size:14px; margin-bottom:20px; }
+.stars{ color:var(--gold); letter-spacing:2px; }
+.seg{ display:inline-flex; padding:4px; border:1px solid var(--line-2); border-radius:100px; gap:4px; margin-bottom:18px; background:rgba(255,255,255,.02); }
+.seg button{ padding:9px 20px; border-radius:100px; font-weight:600; font-size:13.5px; color:var(--text-2); transition:background .3s, color .3s; }
+.seg button.active{ background:linear-gradient(180deg,var(--gold-soft),var(--gold)); color:#1a1206; }
+.pprice{ display:flex; align-items:baseline; gap:12px; margin:4px 0 22px; flex-wrap:wrap; }
+.pprice .big{ font-family:var(--mono); font-size:40px; font-weight:700; color:var(--gold-soft); letter-spacing:-.02em; }
+.pprice .permode{ font-size:13px; color:var(--text-3); font-family:var(--mono); }
+.pprice .permode b{ color:var(--text-2); }
+.tier-label{ font-family:var(--mono); font-size:12px; letter-spacing:.16em; text-transform:uppercase; color:var(--text-3); margin-bottom:12px; }
+.tranches{ display:flex; flex-direction:column; gap:8px; margin-bottom:26px; }
+.tranche{ display:flex; align-items:center; justify-content:space-between; gap:14px; padding:13px 16px; border-radius:13px;
+  border:1px solid var(--line-2); background:rgba(255,255,255,.02); cursor:pointer; transition:border-color .3s, background .3s, transform .35s var(--spring); }
+.tranche:hover{ border-color:var(--line-3); transform:translateX(3px); }
+.tranche.active{ border-color:var(--gold); background:rgba(240,169,58,.08); }
+.tranche .lft{ display:flex; align-items:center; gap:12px; }
+.tranche .idx{ font-family:var(--mono); font-size:11px; color:var(--text-3); border:1px solid var(--line-2); border-radius:7px; padding:3px 7px; }
+.tranche .pts{ font-weight:600; font-size:15px; }
+.tranche .pr{ display:flex; align-items:baseline; gap:10px; }
+.tranche .pc{ font-family:var(--mono); font-weight:700; font-size:16px; color:var(--gold-soft); }
+.tranche .rs{ font-family:var(--mono); font-size:11.5px; color:var(--text-3); }
+.buyrow{ display:flex; gap:12px; margin-bottom:18px; }
+.qty{ display:flex; align-items:center; border:1px solid var(--line-2); border-radius:100px; overflow:hidden; }
+.qty button{ width:46px; height:52px; font-size:20px; color:var(--text-2); transition:background .2s, color .2s; }
+.qty button:hover{ background:rgba(255,255,255,.06); color:var(--text); }
+.qty span{ min-width:42px; text-align:center; font-family:var(--mono); font-weight:700; }
+.btn-buy{ flex:1; justify-content:center; font-size:16px; }
+.assure{ display:flex; gap:18px; flex-wrap:wrap; margin-top:22px; padding-top:22px; border-top:1px solid var(--line); }
+.assure .a{ display:flex; align-items:center; gap:9px; font-size:13px; color:var(--text-2); }
+.assure .ic{ width:30px; height:30px; border-radius:9px; display:grid; place-items:center; background:var(--surface-2); border:1px solid var(--line-2); color:var(--gold); font-size:14px; }
+
+/* tabs */
+.ptabs{ display:flex; gap:6px; border-bottom:1px solid var(--line); margin-bottom:26px; }
+.ptab{ padding:14px 18px; font-weight:600; font-size:15px; color:var(--text-3); border-bottom:2px solid transparent; margin-bottom:-1px; transition:color .3s, border-color .3s; }
+.ptab.active{ color:var(--text); border-bottom-color:var(--gold); }
+.tabpane{ display:none; } .tabpane.active{ display:block; }
+.incl{ display:grid; grid-template-columns:1fr 1fr; gap:14px 30px; max-width:760px; }
+@media(max-width:600px){ .incl{ grid-template-columns:1fr; } }
+.incl .li{ display:flex; gap:12px; align-items:flex-start; font-size:15px; color:var(--text-2); }
+.incl .ck{ color:var(--gold); flex:none; margin-top:2px; }
+.review{ padding:22px 0; border-bottom:1px solid var(--line); display:flex; gap:16px; }
+.review .av{ width:42px; height:42px; border-radius:50%; flex:none; display:grid; place-items:center; font-weight:700; background:var(--surface-2); border:1px solid var(--line-2); }
+.review .who{ font-weight:600; } .review .when{ font-family:var(--mono); font-size:12px; color:var(--text-3); }
+.review p{ color:var(--text-2); margin-top:8px; font-size:15px; }
+.related-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:22px; }
+@media(max-width:900px){ .related-grid{ grid-template-columns:1fr 1fr; } }
+@media(max-width:560px){ .related-grid{ grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+<canvas id="bg3d" style="position:fixed;inset:0;width:100%;height:100%;z-index:0;"></canvas>
+<div class="grain"></div>
+
+<header class="nav">
+  <div class="wrap nav-in">
+    <a href="index.html" class="brandmark"><span class="plug">F</span> FoodPlug</a>
+    <nav class="nav-links">
+      <a href="boutique.html" class="active">Boutique</a>
+      <a href="wallet.html">Wallet</a>
+      <a href="communaute.html">Communauté</a>
+      <a href="compte.html">Compte</a>
+    </nav>
+    <div class="nav-right">
+      <div class="bal"><span class="dot"></span> <b>148,50&nbsp;€</b></div>
+      <a href="compte.html" class="avatar">YZ</a>
+      <button class="burger" aria-label="Menu"><span></span></button>
+    </div>
+  </div>
+</header>
+<nav class="mmenu">
+  <a href="boutique.html">Boutique</a><a href="wallet.html">Wallet</a>
+  <a href="communaute.html">Communauté</a><a href="compte.html">Compte</a>
+</nav>
+
+<section class="pwrap wrap">
+  <div class="crumbs rv"><a href="boutique.html">Boutique</a> / <a href="boutique.html" id="crumbBrand">KFC</a> / <span style="color:var(--text-2)" id="crumbName">Points KFC</span></div>
+  <div class="pgrid">
+    <!-- TURNTABLE -->
+    <div class="rv">
+      <div class="turntable" id="turntable" data-tilt>
+        <div class="tt-ring"></div>
+        <div class="tt-ring two"></div>
+        <div class="tt-plate"></div>
+        <image-slot id="pp-main" class="tt-food" shape="rect" fit="contain" src="assets/logos/kfc.png" placeholder="Logo KFC"></image-slot>
+        <span class="tt-hint">360° · APERÇU</span>
+      </div>
+    </div>
+
+    <!-- DETAILS -->
+    <div class="pdetail rv rv-d1">
+      <span class="brand-tag kfc" id="ptag">KFC · Points</span>
+      <h1 class="pname" id="pname">Points KFC</h1>
+      <div class="rating"><span class="stars">★★★★★</span> <b style="color:var(--text)">4,9</b> · 1 248 avis · <span style="color:#39d98a">Livraison instantanée</span></div>
+
+      <div class="pprice">
+        <span class="big" id="priceBig">2,50 €</span>
+        <span class="permode">pour <b id="ptsLbl">1000–1299</b> pts</span>
+      </div>
+
+      <p class="lead" id="pdesc" style="margin-bottom:22px">Tu reçois un compte KFC déjà chargé avec les points sélectionnés, livré instantanément. Choisis ta tranche, paie avec ton wallet — le compte arrive prêt à l'emploi en moins de 2 minutes.</p>
+
+      <div class="tier-label">Choisis ta tranche de points</div>
+      <div class="tranches" id="tranches"></div>
+
+      <div class="buyrow">
+        <div class="qty">
+          <button data-q="-1">−</button><span id="qty">1</span><button data-q="1">+</button>
+        </div>
+        <button class="btn btn-gold btn-buy" id="addBtn">Ajouter au panier · <span id="totalLbl">34,90 €</span></button>
+      </div>
+      <a href="wallet.html" class="btn btn-ghost" style="width:100%;justify-content:center">Acheter en 1 clic avec le wallet</a>
+
+      <div class="assure">
+        <div class="a"><span class="ic">⚡</span> Livraison &lt; 2 min</div>
+        <div class="a"><span class="ic">🛡</span> Garantie 30 jours</div>
+        <div class="a"><span class="ic">↺</span> Remboursé si indispo</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- TABS -->
+<section class="sec wrap" style="padding-top:clamp(48px,7vw,90px)">
+  <div class="ptabs rv">
+    <button class="ptab active" data-t="desc">Description</button>
+    <button class="ptab" data-t="incl">Ce qui est inclus</button>
+    <button class="ptab" data-t="avis">Avis (1 248)</button>
+  </div>
+
+  <div class="tabpane active" data-pane="desc">
+    <p class="lead rv" style="max-width:60ch;font-size:18px">Tu choisis la tranche de points qui te va, tu paies avec ton wallet, et tu reçois un compte déjà chargé avec ces points — livré instantanément, prêt à l'emploi sur l'appli de l'enseigne.</p>
+  </div>
+
+  <div class="tabpane" data-pane="incl">
+    <div class="incl rv">
+      <div class="li"><span class="ck">✓</span> Compte livré déjà chargé avec les points choisis</div>
+      <div class="li"><span class="ck">✓</span> Plusieurs tranches au choix</div>
+      <div class="li"><span class="ck">✓</span> Livraison automatique en moins de 2 min</div>
+      <div class="li"><span class="ck">✓</span> Identifiants de connexion fournis</div>
+      <div class="li"><span class="ck">✓</span> Paiement wallet, carte, Apple Pay ou crypto</div>
+      <div class="li"><span class="ck">✓</span> Support FoodPlug 7j/7 · remboursé si indispo</div>
+    </div>
+  </div>
+
+  <div class="tabpane" data-pane="avis">
+    <div class="rv">
+      <div class="review"><div class="av" style="color:var(--kfc)">M</div><div><div style="display:flex;gap:10px;align-items:baseline"><span class="who">Maya R.</span><span class="when">il y a 3 jours</span></div><span class="stars" style="font-size:13px">★★★★★</span><p>Rentabilisé en 3 commandes, sérieux. Activation immédiate, zéro galère. Je recommande à 100%.</p></div></div>
+      <div class="review"><div class="av" style="color:var(--mcdo)">T</div><div><div style="display:flex;gap:10px;align-items:baseline"><span class="who">Théo B.</span><span class="when">il y a 1 semaine</span></div><span class="stars" style="font-size:13px">★★★★★</span><p>La file VIP change la vie le midi. Le support a répondu en 5 min quand j'avais une question.</p></div></div>
+      <div class="review"><div class="av" style="color:var(--gold)">L</div><div><div style="display:flex;gap:10px;align-items:baseline"><span class="who">Lina K.</span><span class="when">il y a 2 semaines</span></div><span class="stars" style="font-size:13px">★★★★☆</span><p>Très bon plan. J'aurais aimé plus de points au départ mais sinon nickel.</p></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- RELATED -->
+<section class="sec wrap">
+  <div class="sec-head"><div class="t"><span class="kicker rv">À voir aussi</span><h2 class="h2 rv rv-d1" style="margin-top:16px">Dans le même mood.</h2></div></div>
+  <div class="related-grid">
+    <a href="produit.html#mcdo" class="card prod rv rv-d1" data-tilt><div class="stage s-mcdo"><image-slot id="rel-1" class="food" shape="rect" fit="contain" src="assets/logos/mcdo.png" placeholder="McDonald's"></image-slot></div><div class="meta"><span class="brand-tag mcdo">McDonald's · Points</span><div class="row"><span class="name">Points McDonald's</span><span class="price">dès 0,50 €</span></div><span class="sub">Recharge par tranche</span></div></a>
+    <a href="produit.html#otacos" class="card prod rv rv-d2" data-tilt><div class="stage s-otacos"><image-slot id="rel-2" class="food" shape="rect" fit="contain" src="assets/logos/otacos.png" placeholder="O'Tacos"></image-slot></div><div class="meta"><span class="brand-tag otacos">O'Tacos · Points</span><div class="row"><span class="name">Points O'Tacos</span><span class="price">dès 0,50 €</span></div><span class="sub">Recharge par tranche</span></div></a>
+    <a href="produit.html#kfc" class="card prod rv rv-d3" data-tilt><div class="stage s-kfc"><image-slot id="rel-3" class="food" shape="rect" fit="contain" src="assets/logos/kfc.png" placeholder="KFC"></image-slot></div><div class="meta"><span class="brand-tag kfc">KFC · Points</span><div class="row"><span class="name">Points KFC · Max</span><span class="price">6,00 €</span></div><span class="sub">2000–2500 pts</span></div></a>
+  </div>
+</section>
+
+<footer class="footer">
+  <div class="wrap">
+    <div class="foot-grid">
+      <div class="foot-col"><a href="index.html" class="brandmark" style="margin-bottom:16px"><span class="plug">F</span> FoodPlug</a><p class="muted" style="font-size:14px;max-width:30ch">L'accès premium au fast-food. Comptes, wallet et communauté en un seul endroit.</p></div>
+      <div class="foot-col"><h5>Boutique</h5><a href="boutique.html">KFC</a><a href="boutique.html">McDonald's</a><a href="boutique.html">O'Tacos</a></div>
+      <div class="foot-col"><h5>Compte</h5><a href="wallet.html">Wallet</a><a href="compte.html">Mes commandes</a><a href="compte.html">Parrainage</a></div>
+      <div class="foot-col"><h5>FoodPlug</h5><a href="communaute.html">Communauté</a><a href="index.html#how">Comment ça marche</a></div>
+    </div>
+    <div class="foot-bottom"><span>© 2026 FoodPlug. Conçu avec faim.</span><span class="mono">CGU · Confidentialité · Contact</span></div>
+  </div>
+</footer>
+
+<template id="__bundler_thumbnail"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#08080a"/><circle cx="50" cy="46" r="22" fill="#e4002b"/><text x="50" y="86" font-family="monospace" font-size="11" fill="#f0a93a" text-anchor="middle" font-weight="bold">PRODUIT</text></svg></template>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="image-slot.js"></script>
+<script src="assets/scene.js"></script>
+<script src="assets/catalogue.js"></script>
+<script>
+(function(){
+  FP_PRICES.apply();
+  const BRANDS = window.FP_CATALOGUE;
+  const key=(location.hash.replace('#','').split('-')[0]||'kfc');
+  const B=BRANDS[key]||BRANDS.kfc;
+  let sel=Math.min(B.def,B.tr.length-1), qty=1;
+  const fmt=v=>v.toFixed(2).replace('.',',')+' €';
+  const $=id=>document.getElementById(id);
+  const ptag=$('ptag'); ptag.textContent=B.tag; ptag.className='brand-tag '+B.cls;
+  $('pname').textContent=B.name; $('pdesc').textContent=B.desc;
+  $('crumbBrand').textContent=B.name.replace('Points ',''); $('crumbName').textContent=B.name;
+  document.title='FoodPlug — '+B.name;
+  $('pp-main').setAttribute('src',B.food);
+  $('turntable').style.background='radial-gradient(120% 100% at 50% 30%, '+B.tint+', transparent 60%)';
+  const wrap=$('tranches'), big=$('priceBig'), totalLbl=$('totalLbl'), qtyEl=$('qty'), ptsLbl=$('ptsLbl');
+  function rows(){
+    wrap.innerHTML=B.tr.map((t,i)=>`<div class="tranche${i===sel?' active':''}" data-i="${i}">
+      <span class="lft"><span class="idx">T${i}</span><span class="pts">${t[0]} pts</span></span>
+      <span class="pr"><span class="pc">${fmt(t[1])}</span></span></div>`).join('');
+  }
+  function upd(){ const t=B.tr[sel]; big.textContent=fmt(t[1]); ptsLbl.textContent=t[0]; totalLbl.textContent=fmt(t[1]*qty); qtyEl.textContent=qty; }
+  wrap.addEventListener('click',e=>{ const t=e.target.closest('.tranche'); if(!t)return; sel=+t.dataset.i; rows(); upd(); });
+  document.querySelectorAll('.qty button').forEach(b=>b.addEventListener('click',()=>{ qty=Math.max(1,qty+parseInt(b.dataset.q)); upd(); }));
+  $('addBtn').addEventListener('click',function(){ const t=$('totalLbl').textContent; this.innerHTML='✓ Ajouté · '+t; this.style.transform='scale(.96)'; setTimeout(()=>{ this.style.transform=''; },150); });
+  document.querySelector('.ptabs').addEventListener('click',e=>{ const b=e.target.closest('.ptab'); if(!b)return; document.querySelectorAll('.ptab').forEach(x=>x.classList.remove('active')); b.classList.add('active'); document.querySelectorAll('.tabpane').forEach(p=>p.classList.toggle('active',p.dataset.pane===b.dataset.t)); if(window.__fp)window.__fp.scan(); });
+  window.addEventListener('hashchange',()=>location.reload());
+  rows(); upd();
+})();
+</script>
+<script src="assets/app.js"></script>
+</body>
+</html>

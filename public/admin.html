@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>FoodPlug — Admin</title>
+<script>document.documentElement.classList.add('anim-on');</script>
+<link rel="stylesheet" href="assets/foodplug.css" />
+<style>
+body{ background:#070708; }
+.awrap{ display:grid; grid-template-columns:248px 1fr; min-height:100vh; }
+@media(max-width:840px){ .awrap{ grid-template-columns:1fr; } }
+
+/* sidebar */
+.aside{ border-right:1px solid var(--line); padding:24px 18px; display:flex; flex-direction:column; gap:4px; position:sticky; top:0; height:100vh; }
+@media(max-width:840px){ .aside{ position:static; height:auto; flex-direction:row; overflow-x:auto; border-right:none; border-bottom:1px solid var(--line); } }
+.abrand{ display:flex; align-items:center; gap:10px; font-weight:800; letter-spacing:-.03em; font-size:18px; margin-bottom:22px; }
+.abrand .plug{ width:30px; height:30px; border-radius:9px; display:grid; place-items:center; background:linear-gradient(150deg,var(--gold-soft),var(--gold-deep)); color:#1a1206; font-weight:900; }
+.abrand small{ display:block; font-family:var(--mono); font-size:10px; letter-spacing:.18em; color:var(--gold); font-weight:700; }
+.anav{ display:flex; align-items:center; gap:11px; padding:11px 14px; border-radius:11px; color:var(--text-2); font-weight:500; font-size:14.5px; cursor:pointer; white-space:nowrap; transition:background .25s, color .25s; }
+.anav:hover{ background:rgba(255,255,255,.04); color:var(--text); }
+.anav.active{ background:rgba(240,169,58,.1); color:var(--gold-soft); }
+.anav .ic{ width:18px; text-align:center; }
+.aside .sp{ flex:1; }
+.alogout{ color:var(--text-3); font-size:13px; padding:11px 14px; }
+.alogout:hover{ color:var(--text); }
+
+/* content */
+.acontent{ padding:clamp(22px,3vw,40px); max-width:1100px; }
+.ahead{ display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:30px; flex-wrap:wrap; }
+.ahead h1{ font-size:clamp(26px,3.4vw,38px); letter-spacing:-.03em; }
+.ahead .sub{ color:var(--text-3); font-family:var(--mono); font-size:12.5px; margin-top:4px; }
+.pillbtn{ display:inline-flex; align-items:center; gap:8px; padding:9px 16px; border-radius:100px; font-weight:600; font-size:13.5px; border:1px solid var(--line-2); background:rgba(255,255,255,.03); color:var(--text-2); }
+.pillbtn:hover{ color:var(--text); border-color:var(--line-3); }
+
+.apage{ display:none; } .apage.on{ display:block; }
+
+/* kpis */
+.kgrid{ display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:26px; }
+@media(max-width:760px){ .kgrid{ grid-template-columns:1fr 1fr; } }
+.kc{ padding:20px; border:1px solid var(--line); border-radius:18px; background:linear-gradient(180deg,rgba(255,255,255,.03),transparent); }
+.kc .l{ font-size:12px; color:var(--text-3); display:flex; align-items:center; justify-content:space-between; }
+.kc b{ font-family:var(--mono); font-size:27px; font-weight:700; letter-spacing:-.02em; display:block; margin-top:10px; }
+.kc.gold b{ color:var(--gold-soft); }
+.kc .delta{ font-family:var(--mono); font-size:11px; font-weight:700; padding:3px 7px; border-radius:100px; }
+.kc .delta.up{ color:#39d98a; background:rgba(57,217,138,.1); }
+.kc .delta.down{ color:#ff6b5e; background:rgba(255,107,94,.1); }
+
+/* panels */
+.panel{ border:1px solid var(--line); border-radius:20px; padding:24px; background:linear-gradient(180deg,rgba(255,255,255,.025),transparent); margin-bottom:22px; }
+.panel h3{ font-size:18px; margin-bottom:4px; }
+.panel .ph{ display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; gap:12px; flex-wrap:wrap; }
+.panel .ph .muted{ font-family:var(--mono); font-size:12px; }
+
+/* chart */
+.chart{ width:100%; height:240px; }
+.bar{ transition:opacity .2s; cursor:pointer; }
+.bar:hover{ opacity:.8; }
+.legend{ display:flex; gap:18px; margin-top:14px; font-size:12.5px; color:var(--text-3); flex-wrap:wrap; }
+.legend span{ display:flex; align-items:center; gap:7px; } .legend i{ width:11px; height:11px; border-radius:3px; display:inline-block; }
+
+.two{ display:grid; grid-template-columns:1fr 1fr; gap:22px; }
+@media(max-width:760px){ .two{ grid-template-columns:1fr; } }
+
+/* brand split bars */
+.split .row{ margin-bottom:16px; }
+.split .row .t{ display:flex; justify-content:space-between; font-size:14px; margin-bottom:7px; }
+.split .row .t b{ font-family:var(--mono); }
+.track{ height:9px; border-radius:100px; background:rgba(255,255,255,.06); overflow:hidden; }
+.track i{ display:block; height:100%; border-radius:100px; }
+
+/* tables */
+.tbl{ width:100%; border-collapse:collapse; }
+.tbl th{ text-align:left; font-family:var(--mono); font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--text-3); padding:10px 12px; border-bottom:1px solid var(--line); font-weight:700; }
+.tbl td{ padding:13px 12px; border-bottom:1px solid var(--line); font-size:14px; }
+.tbl tr:last-child td{ border-bottom:none; }
+.tbl tr:hover td{ background:rgba(255,255,255,.02); }
+.tnum{ font-family:var(--mono); }
+.stt{ font-size:11px; font-family:var(--mono); font-weight:700; padding:4px 10px; border-radius:100px; }
+.stt.ok{ color:#39d98a; background:rgba(57,217,138,.1); }
+.stt.pend{ color:var(--gold-soft); background:rgba(240,169,58,.1); }
+
+/* price editor */
+.btabs{ display:flex; gap:8px; margin-bottom:20px; flex-wrap:wrap; }
+.btab{ padding:9px 16px; border-radius:100px; font-weight:600; font-size:13.5px; border:1px solid var(--line-2); background:rgba(255,255,255,.03); color:var(--text-2); cursor:pointer; transition:.25s; }
+.btab.active{ color:#1a1206; background:linear-gradient(180deg,var(--gold-soft),var(--gold)); border-color:transparent; }
+.prow{ display:grid; grid-template-columns:60px 1fr 150px; gap:14px; align-items:center; padding:11px 12px; border-bottom:1px solid var(--line); }
+.prow .idx{ font-family:var(--mono); font-size:11px; color:var(--text-3); border:1px solid var(--line-2); border-radius:6px; padding:3px 7px; text-align:center; }
+.prow .pts{ font-weight:600; }
+.priceinput{ display:flex; align-items:center; gap:6px; border:1px solid var(--line-2); border-radius:10px; padding:0 12px; background:rgba(0,0,0,.25); }
+.priceinput input{ width:100%; background:none; border:none; color:var(--text); font-family:var(--mono); font-weight:700; font-size:15px; padding:11px 0; outline:none; text-align:right; }
+.priceinput span{ color:var(--text-3); font-family:var(--mono); }
+.saverow{ display:flex; align-items:center; gap:14px; margin-top:20px; }
+.saved{ color:#39d98a; font-size:13px; font-family:var(--mono); opacity:0; transition:opacity .3s; }
+.saved.show{ opacity:1; }
+
+/* login gate */
+.gate{ position:fixed; inset:0; z-index:100; background:#070708; display:grid; place-items:center; padding:24px; }
+.gate.hide{ display:none; }
+.gatecard{ width:min(380px,92vw); border:1px solid var(--line-2); border-radius:22px; padding:34px; background:linear-gradient(180deg,rgba(255,255,255,.03),transparent); text-align:center; }
+.gatecard .plug{ width:48px; height:48px; border-radius:13px; display:grid; place-items:center; margin:0 auto 18px; background:linear-gradient(150deg,var(--gold-soft),var(--gold-deep)); color:#1a1206; font-weight:900; font-size:22px; }
+.gatecard h2{ font-size:22px; letter-spacing:-.02em; } .gatecard p{ color:var(--text-3); font-size:13px; margin-top:6px; }
+.gatecard input{ width:100%; margin-top:22px; background:var(--surface-2); border:1px solid var(--line-2); border-radius:12px; padding:14px 16px; color:var(--text); font-size:15px; outline:none; text-align:center; letter-spacing:.1em; }
+.gatecard input:focus{ border-color:var(--gold); }
+.gatecard .err{ color:#ff6b5e; font-size:12.5px; margin-top:10px; height:16px; }
+.gatecard .hint{ font-family:var(--mono); font-size:11px; color:var(--text-3); margin-top:14px; }
+</style>
+</head>
+<body>
+<div class="grain"></div>
+
+<!-- LOGIN GATE -->
+<div class="gate" id="gate">
+  <div class="gatecard">
+    <div class="plug">F</div>
+    <h2>Espace administrateur</h2>
+    <p>Accès réservé aux administrateurs FoodPlug.</p>
+    <input type="email" id="email" placeholder="Adresse e-mail admin" autocomplete="off" />
+    <input type="password" id="pw" placeholder="Mot de passe" autocomplete="off" style="margin-top:12px" />
+    <div class="err" id="gerr"></div>
+    <button class="btn btn-gold" id="loginBtn" style="width:100%;justify-content:center;margin-top:16px">Se connecter</button>
+  </div>
+</div>
+
+<div class="awrap" id="app" style="display:none">
+  <!-- SIDEBAR -->
+  <aside class="aside">
+    <div class="abrand"><span class="plug">F</span><div>FoodPlug<small>ADMIN</small></div></div>
+    <div class="anav active" data-p="overview"><span class="ic">▦</span> Aperçu</div>
+    <div class="anav" data-p="prices"><span class="ic">€</span> Produits & prix</div>
+    <div class="anav" data-p="orders"><span class="ic">≡</span> Commandes</div>
+    <div class="anav" data-p="clients"><span class="ic">◍</span> Clients</div>
+    <div class="anav" data-p="admins"><span class="ic">◆</span> Admins</div>
+    <div class="sp"></div>
+    <a href="index.html" class="anav"><span class="ic">↗</span> Voir le site</a>
+    <div class="alogout anav" id="logout"><span class="ic">⏻</span> Déconnexion</div>
+  </aside>
+
+  <!-- CONTENT -->
+  <main class="acontent">
+    <!-- OVERVIEW -->
+    <section class="apage on" data-page="overview">
+      <div class="ahead">
+        <div><h1>Aperçu</h1><div class="sub">Vue d'ensemble · 30 derniers jours</div></div>
+        <span class="pillbtn"><span class="dot live"></span> Temps réel</span>
+      </div>
+      <div class="kgrid">
+        <div class="kc gold"><div class="l">Chiffre d'affaires <span class="delta up">+18%</span></div><b class="tnum" data-count="48920.5" data-dec="2" data-suffix=" €">0</b></div>
+        <div class="kc"><div class="l">Commandes <span class="delta up">+12%</span></div><b class="tnum" data-count="2184">0</b></div>
+        <div class="kc"><div class="l">Panier moyen <span class="delta up">+5%</span></div><b class="tnum" data-count="22.4" data-dec="2" data-suffix=" €">0</b></div>
+        <div class="kc"><div class="l">Marge nette <span class="delta down">−2%</span></div><b class="tnum" data-count="61" data-suffix=" %">0</b></div>
+      </div>
+
+      <div class="panel">
+        <div class="ph"><div><h3>Chiffre d'affaires</h3></div><div class="muted">12 derniers mois · € HT</div></div>
+        <svg class="chart" id="revChart" viewBox="0 0 720 240" preserveAspectRatio="none"></svg>
+        <div class="legend"><span><i style="background:var(--gold)"></i> CA mensuel</span><span><i style="background:rgba(255,255,255,.18)"></i> Objectif</span></div>
+      </div>
+
+      <div class="two">
+        <div class="panel split">
+          <div class="ph"><h3>CA par enseigne</h3></div>
+          <div class="row"><div class="t"><span>KFC</span><b>24 310 €</b></div><div class="track"><i style="width:78%;background:var(--kfc)"></i></div></div>
+          <div class="row"><div class="t"><span>McDonald's</span><b>18 040 €</b></div><div class="track"><i style="width:58%;background:var(--mcdo)"></i></div></div>
+          <div class="row"><div class="t"><span>O'Tacos</span><b>6 570 €</b></div><div class="track"><i style="width:22%;background:var(--otacos)"></i></div></div>
+        </div>
+        <div class="panel">
+          <div class="ph"><h3>Top tranches</h3></div>
+          <table class="tbl"><tbody>
+            <tr><td>KFC · 1000–1299</td><td class="tnum" style="text-align:right;color:var(--gold-soft)">412 ventes</td></tr>
+            <tr><td>McDo · 150–174</td><td class="tnum" style="text-align:right;color:var(--gold-soft)">388 ventes</td></tr>
+            <tr><td>KFC · 2000–2399</td><td class="tnum" style="text-align:right;color:var(--gold-soft)">301 ventes</td></tr>
+            <tr><td>O'Tacos · 109</td><td class="tnum" style="text-align:right;color:var(--gold-soft)">256 ventes</td></tr>
+          </tbody></table>
+        </div>
+      </div>
+    </section>
+
+    <!-- PRICES -->
+    <section class="apage" data-page="prices">
+      <div class="ahead">
+        <div><h1>Produits & prix</h1><div class="sub">Édite les prix par tranche · appliqué en direct sur la boutique</div></div>
+      </div>
+      <div class="panel">
+        <div class="btabs" id="btabs"></div>
+        <div id="priceList"></div>
+        <div class="saverow">
+          <button class="btn btn-gold btn-sm" id="savePrices">Enregistrer les prix</button>
+          <button class="pillbtn" id="resetPrices">Réinitialiser</button>
+          <span class="saved" id="savedMsg">✓ Enregistré — appliqué sur la boutique</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ORDERS -->
+    <section class="apage" data-page="orders">
+      <div class="ahead"><div><h1>Commandes</h1><div class="sub">Dernières transactions</div></div></div>
+      <div class="panel">
+        <table class="tbl">
+          <thead><tr><th>Commande</th><th>Client</th><th>Enseigne</th><th>Tranche</th><th style="text-align:right">Montant</th><th>Statut</th></tr></thead>
+          <tbody id="ordersBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- CLIENTS -->
+    <section class="apage" data-page="clients">
+      <div class="ahead"><div><h1>Clients</h1><div class="sub">2 184 comptes · 312 actifs ce mois</div></div></div>
+      <div class="panel">
+        <table class="tbl">
+          <thead><tr><th>Client</th><th>Membre</th><th style="text-align:right">Commandes</th><th style="text-align:right">Dépensé</th></tr></thead>
+          <tbody>
+            <tr><td>Yanis Zerbib</td><td><span class="stt pend">GOLD</span></td><td class="tnum" style="text-align:right">23</td><td class="tnum" style="text-align:right">312,40 €</td></tr>
+            <tr><td>Maya R.</td><td><span class="stt ok">PREMIUM</span></td><td class="tnum" style="text-align:right">41</td><td class="tnum" style="text-align:right">689,10 €</td></tr>
+            <tr><td>Théo B.</td><td><span class="stt ok">ELITE</span></td><td class="tnum" style="text-align:right">58</td><td class="tnum" style="text-align:right">1 204,00 €</td></tr>
+            <tr><td>Lina K.</td><td><span class="stt pend">GOLD</span></td><td class="tnum" style="text-align:right">19</td><td class="tnum" style="text-align:right">248,50 €</td></tr>
+            <tr><td>Karim S.</td><td><span class="stt pend">GOLD</span></td><td class="tnum" style="text-align:right">12</td><td class="tnum" style="text-align:right">156,80 €</td></tr>
+          </tbody>
+        </table>
+      </div>
+    <!-- ADMINS -->
+    <section class="apage" data-page="admins">
+      <div class="ahead"><div><h1>Admins</h1><div class="sub">Comptes autorisés à accéder au back-office</div></div></div>
+      <div class="panel">
+        <div class="ph"><h3>Administrateurs</h3></div>
+        <div id="adminList"></div>
+        <div class="saverow" style="margin-top:18px">
+          <span class="priceinput" style="flex:1;max-width:380px"><input type="email" id="newAdmin" placeholder="nouvel.admin@email.com" style="text-align:left"></span>
+          <button class="btn btn-gold btn-sm" id="addAdmin">Ajouter</button>
+          <span class="saved" id="adminMsg">✓ Mis à jour</span>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script src="assets/catalogue.js"></script>
+<script src="assets/app.js"></script>
+<script>
+(function(){
+  let inited=false;
+  /* ---- admins (allowlist persisted in localStorage) ---- */
+  const OWNER='nrfa29@outlook.fr', ADMINS_KEY='fp_admins', ADMIN_PW='foodplug';
+  function getAdmins(){ try{ const a=JSON.parse(localStorage.getItem(ADMINS_KEY)); return (Array.isArray(a)&&a.length)?a:[OWNER]; }catch(e){ return [OWNER]; } }
+  function setAdmins(a){ try{ localStorage.setItem(ADMINS_KEY, JSON.stringify(a)); }catch(e){} }
+
+  /* ---- login gate ---- */
+  const gate=document.getElementById('gate'), app=document.getElementById('app'), pw=document.getElementById('pw'),
+        email=document.getElementById('email'), gerr=document.getElementById('gerr');
+  function open(){ gate.classList.add('hide'); app.style.display='grid'; init(); }
+  if(sessionStorage.getItem('fp_admin')){ open(); }
+  function tryLogin(){
+    const e=email.value.trim().toLowerCase();
+    const ok=getAdmins().map(x=>x.toLowerCase()).includes(e) && pw.value===ADMIN_PW;
+    if(ok){ sessionStorage.setItem('fp_admin', e); gerr.textContent=''; open(); }
+    else { gerr.textContent='E-mail non autorisé ou mot de passe incorrect.'; pw.value=''; }
+  }
+  document.getElementById('loginBtn').addEventListener('click',tryLogin);
+  [email,pw].forEach(el=>el.addEventListener('keydown',e=>{ if(e.key==='Enter')tryLogin(); }));
+  document.getElementById('logout').addEventListener('click',()=>{ sessionStorage.removeItem('fp_admin'); location.reload(); });
+
+  function init(){
+    if(inited) return; inited=true;
+    document.querySelectorAll('.anav[data-p]').forEach(n=>n.addEventListener('click',()=>{
+      document.querySelectorAll('.anav[data-p]').forEach(x=>x.classList.remove('active')); n.classList.add('active');
+      document.querySelectorAll('.apage').forEach(p=>p.classList.toggle('on',p.dataset.page===n.dataset.p));
+      if(window.__fp) window.__fp.scan();
+    }));
+
+    /* ---- admins management ---- */
+    const adminList=document.getElementById('adminList');
+    function renderAdmins(){
+      adminList.innerHTML=getAdmins().map(e=>{ const own=e.toLowerCase()===OWNER;
+        return `<div class="prow" style="grid-template-columns:1fr auto auto">
+          <span class="pts">${e}</span>
+          <span class="stt ${own?'pend':'ok'}">${own?'PROPRIÉTAIRE':'ADMIN'}</span>
+          ${own?'<span style="width:74px"></span>':`<button class="pillbtn" data-rm="${e}">Retirer</button>`}</div>`;
+      }).join('');
+    }
+    function flash(){ const m=document.getElementById('adminMsg'); m.classList.add('show'); setTimeout(()=>m.classList.remove('show'),1800); }
+    document.getElementById('addAdmin').addEventListener('click',()=>{
+      const inp=document.getElementById('newAdmin'); const v=inp.value.trim().toLowerCase();
+      if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v)){ inp.focus(); return; }
+      const a=getAdmins(); if(!a.map(x=>x.toLowerCase()).includes(v)){ a.push(v); setAdmins(a); }
+      inp.value=''; renderAdmins(); flash();
+    });
+    adminList.addEventListener('click',e=>{ const b=e.target.closest('[data-rm]'); if(!b)return;
+      setAdmins(getAdmins().filter(x=>x.toLowerCase()!==b.dataset.rm.toLowerCase())); renderAdmins(); flash();
+    });
+    renderAdmins();
+
+    /* ---- revenue chart ---- */
+    const data=[28,31,30,34,38,36,41,39,44,43,47,49]; // k€
+    const goal=42;
+    const months=['J','F','M','A','M','J','J','A','S','O','N','D'];
+    const svg=document.getElementById('revChart'); const W=720,H=240,pad=24,bw=W/data.length;
+    const max=Math.max(...data,goal)*1.12;
+    let s='';
+    // goal line
+    const gy=H-pad-(goal/max)*(H-pad*2);
+    s+=`<line x1="0" y1="${gy}" x2="${W}" y2="${gy}" stroke="rgba(255,255,255,.18)" stroke-width="1" stroke-dasharray="4 5"/>`;
+    data.forEach((v,i)=>{
+      const bh=(v/max)*(H-pad*2); const x=i*bw+bw*0.22; const y=H-pad-bh; const w=bw*0.56;
+      s+=`<rect class="bar" x="${x}" y="${y}" width="${w}" height="${bh}" rx="5" fill="url(#gg)"><title>${months[i]} · ${v} 000 €</title></rect>`;
+      s+=`<text x="${i*bw+bw/2}" y="${H-7}" fill="#6f6e77" font-size="11" font-family="monospace" text-anchor="middle">${months[i]}</text>`;
+    });
+    svg.innerHTML=`<defs><linearGradient id="gg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f8c96e"/><stop offset="1" stop-color="#c87d1c"/></linearGradient></defs>`+s;
+
+    /* ---- orders ---- */
+    const labels={kfc:'KFC',mcdo:"McDonald's",otacos:"O'Tacos"};
+    const orders=[
+      ['#FP-90412','Théo B.','kfc','2000–2399',10.99,'ok'],
+      ['#FP-90411','Maya R.','mcdo','150–174',6.50,'ok'],
+      ['#FP-90410','Lina K.','otacos','109',7.00,'pend'],
+      ['#FP-90409','Karim S.','kfc','1000–1299',5.99,'ok'],
+      ['#FP-90408','Yanis Z.','mcdo','400–499',16.50,'ok'],
+      ['#FP-90407','Sofia M.','kfc','1300–1599',7.49,'ok'],
+      ['#FP-90406','Adam D.','otacos','180',8.00,'pend'],
+      ['#FP-90405','Inès L.','mcdo','700–899',40.00,'ok'],
+    ];
+    const fmt=v=>v.toFixed(2).replace('.',',')+' €';
+    document.getElementById('ordersBody').innerHTML=orders.map(o=>`<tr>
+      <td class="tnum">${o[0]}</td><td>${o[1]}</td>
+      <td><span class="brand-tag ${o[2]}">${labels[o[2]]}</span></td>
+      <td class="tnum">${o[3]} pts</td>
+      <td class="tnum" style="text-align:right;color:var(--gold-soft)">${fmt(o[4])}</td>
+      <td><span class="stt ${o[5]}">${o[5]==='ok'?'LIVRÉ':'EN COURS'}</span></td></tr>`).join('');
+
+    /* ---- price editor ---- */
+    FP_PRICES.apply();
+    const cat=window.FP_CATALOGUE; let curB='kfc';
+    const draft=JSON.parse(JSON.stringify({kfc:cat.kfc.tr.map(t=>t[1]),mcdo:cat.mcdo.tr.map(t=>t[1]),otacos:cat.otacos.tr.map(t=>t[1])}));
+    const btabs=document.getElementById('btabs'), list=document.getElementById('priceList');
+    btabs.innerHTML=Object.keys(cat).map(b=>`<button class="btab${b===curB?' active':''}" data-b="${b}">${labels[b]}</button>`).join('');
+    function renderPrices(){
+      list.innerHTML=cat[curB].tr.map((t,i)=>`<div class="prow">
+        <span class="idx">T${i}</span><span class="pts">${t[0]} pts</span>
+        <span class="priceinput"><input type="number" step="0.01" min="0" data-i="${i}" value="${draft[curB][i].toFixed(2)}"><span>€</span></span></div>`).join('');
+    }
+    btabs.addEventListener('click',e=>{ const b=e.target.closest('.btab'); if(!b)return;
+      document.querySelectorAll('.btab').forEach(x=>x.classList.remove('active')); b.classList.add('active'); curB=b.dataset.b; renderPrices(); });
+    list.addEventListener('input',e=>{ const inp=e.target.closest('input'); if(!inp)return; draft[curB][+inp.dataset.i]=parseFloat(inp.value)||0; });
+    document.getElementById('savePrices').addEventListener('click',()=>{
+      FP_PRICES.save(draft);
+      // reflect immediately in current catalogue
+      for(const b in draft) draft[b].forEach((p,i)=>{ if(cat[b].tr[i]) cat[b].tr[i][1]=p; });
+      const m=document.getElementById('savedMsg'); m.classList.add('show'); setTimeout(()=>m.classList.remove('show'),2200);
+    });
+    document.getElementById('resetPrices').addEventListener('click',()=>{
+      FP_PRICES.reset(); location.reload();
+    });
+    renderPrices();
+  }
+})();
+</script>
+</body>
+</html>
