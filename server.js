@@ -250,6 +250,11 @@ app.post('/api/me/accounts', requireAuth, async (req, res) => {
    ================================================================ */
 const CHANNELS = ['les-bons-plans', 'drops', 'entraide', 'kfc', 'mcdo', 'otacos'];
 
+/* État de verrouillage des salons (verrouillé par un admin) */
+app.get('/api/chat/status', requireAuth, async (req, res) => {
+  res.json(await dbRead('chat_locks', {}));
+});
+
 app.get('/api/messages/:channel', requireAuth, async (req, res) => {
   const ch = req.params.channel;
   if (!CHANNELS.includes(ch)) return res.status(400).json({ error: 'Canal invalide' });
@@ -260,6 +265,8 @@ app.get('/api/messages/:channel', requireAuth, async (req, res) => {
 app.post('/api/messages/:channel', requireAuth, async (req, res) => {
   const ch = req.params.channel;
   if (!CHANNELS.includes(ch)) return res.status(400).json({ error: 'Canal invalide' });
+  const locks = await dbRead('chat_locks', {});
+  if (locks[ch]) return res.status(423).json({ error: 'Salon verrouillé par un administrateur' });
   const { text } = req.body || {};
   if (!text || !text.trim()) return res.status(400).json({ error: 'Message vide' });
   const all = await dbRead('messages', {});
@@ -280,6 +287,20 @@ function requireAdmin(req, res, next) {
 
 app.get('/api/admin/orders', requireAdmin, async (req, res) => {
   res.json(await dbRead('orders', []));
+});
+
+/* Gestion du verrouillage des salons de la communauté */
+app.get('/api/admin/chat/locks', requireAdmin, async (req, res) => {
+  res.json(await dbRead('chat_locks', {}));
+});
+
+app.post('/api/admin/chat/lock', requireAdmin, async (req, res) => {
+  const { channel, locked } = req.body || {};
+  if (!CHANNELS.includes(channel)) return res.status(400).json({ error: 'Canal invalide' });
+  const locks = await dbRead('chat_locks', {});
+  locks[channel] = !!locked;
+  await dbWrite('chat_locks', locks);
+  res.json({ ok: true, locks });
 });
 
 /* ================================================================
@@ -323,8 +344,17 @@ app.delete('/api/orders', requireAuth, async (req, res) => {
    STATIC FILES
    ================================================================ */
 app.use(express.static(publicDir, {
-  extensions: ['html'], etag: true, lastModified: true,
-  maxAge: process.env.NODE_ENV === 'production' ? 7 * 24 * 60 * 60 * 1000 : 0,
+  extensions: ['html'], etag: true, lastModified: true, maxAge: 0,
+  setHeaders(res, filePath) {
+    // HTML, JS et CSS : toujours revalider pour que les mises à jour s'appliquent
+    // immédiatement (sinon le navigateur sert une vieille version en cache).
+    if (/\.(html|js|css)$/.test(filePath)) {
+      res.setHeader('Cache-Control', 'no-cache, must-revalidate');
+    } else {
+      // images, polices… : cache court
+      res.setHeader('Cache-Control', 'public, max-age=86400');
+    }
+  },
 }));
 
 app.get('*', (req, res, next) => {

@@ -130,6 +130,7 @@ body{ background:#070708; }
     <div class="anav" data-p="prices"><span class="ic">€</span> Produits & prix</div>
     <div class="anav" data-p="orders"><span class="ic">≡</span> Commandes</div>
     <div class="anav" data-p="clients"><span class="ic">◍</span> Clients</div>
+    <div class="anav" data-p="community"><span class="ic">◈</span> Communauté</div>
     <div class="anav" data-p="admins"><span class="ic">◆</span> Admins</div>
     <div class="sp"></div>
     <a href="index.html" class="anav"><span class="ic">↗</span> Voir le site</a>
@@ -211,6 +212,14 @@ body{ background:#070708; }
         </table>
       </div>
     </section>
+    <!-- COMMUNITY -->
+    <section class="apage" data-page="community">
+      <div class="ahead"><div><h1>Communauté</h1><div class="sub">Verrouille un salon pour empêcher les membres d'y écrire</div></div></div>
+      <div class="panel">
+        <div class="ph"><h3>Salons de discussion</h3></div>
+        <div id="chanLocks"><div style="color:var(--text-3);font-size:13px;font-family:var(--mono)">Chargement…</div></div>
+      </div>
+    </section>
     <!-- ADMINS -->
     <section class="apage" data-page="admins">
       <div class="ahead"><div><h1>Admins</h1><div class="sub">Comptes autorisés à accéder au back-office</div></div></div>
@@ -282,6 +291,33 @@ body{ background:#070708; }
       setAdmins(getAdmins().filter(x=>x.toLowerCase()!==b.dataset.rm.toLowerCase())); renderAdmins(); flash();
     });
     renderAdmins();
+
+    /* ---- community chat locks ---- */
+    const CHANNELS=['les-bons-plans','drops','entraide','kfc','mcdo','otacos'];
+    const chanBox=document.getElementById('chanLocks');
+    const ADMIN_HEADERS={'X-Admin-Token':'foodplug','Content-Type':'application/json'};
+    let chLocks={};
+    function renderLocks(){
+      chanBox.innerHTML=CHANNELS.map(ch=>{ const locked=!!chLocks[ch];
+        return `<div class="prow" style="grid-template-columns:1fr auto auto;align-items:center">
+          <span class="pts">#${ch}</span>
+          <span class="stt ${locked?'pend':'ok'}">${locked?'🔒 VERROUILLÉ':'OUVERT'}</span>
+          <button class="pillbtn" data-lock="${ch}" data-to="${locked?'0':'1'}">${locked?'Déverrouiller':'Verrouiller'}</button></div>`;
+      }).join('');
+    }
+    async function loadLocks(){
+      try{ chLocks=await fetch('/api/admin/chat/locks',{headers:ADMIN_HEADERS}).then(r=>r.ok?r.json():{}); }catch{ chLocks={}; }
+      renderLocks();
+    }
+    chanBox.addEventListener('click',async e=>{
+      const b=e.target.closest('[data-lock]'); if(!b)return;
+      b.disabled=true;
+      try{
+        const r=await fetch('/api/admin/chat/lock',{method:'POST',headers:ADMIN_HEADERS,body:JSON.stringify({channel:b.dataset.lock,locked:b.dataset.to==='1'})});
+        const d=await r.json(); if(d.ok){ chLocks=d.locks; renderLocks(); }
+      }catch{} b.disabled=false;
+    });
+    loadLocks();
 
     /* ---- price editor ---- */
     FP_PRICES.apply();
