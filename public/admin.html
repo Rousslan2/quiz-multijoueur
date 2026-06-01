@@ -104,6 +104,23 @@ body{ background:#070708; }
 .gatecard input:focus{ border-color:var(--gold); }
 .gatecard .err{ color:#ff6b5e; font-size:12.5px; margin-top:10px; height:16px; }
 .gatecard .hint{ font-family:var(--mono); font-size:11px; color:var(--text-3); margin-top:14px; }
+
+/* SAV tickets */
+.tkitem{ border:1px solid var(--line); border-radius:12px; padding:13px 14px; cursor:pointer; transition:border-color .25s,background .25s; }
+.tkitem:hover{ border-color:var(--line-2); background:rgba(255,255,255,.02); }
+.tkitem.active{ border-color:var(--gold); background:rgba(240,169,58,.06); }
+.tkitem .r1{ display:flex; justify-content:space-between; gap:10px; align-items:center; }
+.tkitem .subj{ font-weight:600; font-size:14px; }
+.tkitem .m{ font-family:var(--mono); font-size:11px; color:var(--text-3); margin-top:5px; }
+.cmsgs{ display:flex; flex-direction:column; gap:12px; margin:18px 0; max-height:48vh; overflow-y:auto; padding-right:4px; }
+.cmsg{ max-width:80%; }
+.cmsg.user{ align-self:flex-start; }
+.cmsg.staff{ align-self:flex-end; }
+.cmsg .b{ padding:11px 15px; border-radius:14px; font-size:14px; line-height:1.5; white-space:pre-wrap; word-break:break-word; }
+.cmsg.user .b{ background:var(--surface-2); border:1px solid var(--line-2); border-bottom-left-radius:4px; }
+.cmsg.staff .b{ background:linear-gradient(180deg,var(--gold-soft),var(--gold)); color:#1a1206; border-bottom-right-radius:4px; }
+.cmsg .w{ font-family:var(--mono); font-size:10px; color:var(--text-3); margin:5px 4px 0; }
+.cmsg.staff .w{ text-align:right; }
 </style>
 </head>
 <body>
@@ -131,6 +148,7 @@ body{ background:#070708; }
     <div class="anav" data-p="orders"><span class="ic">≡</span> Commandes</div>
     <div class="anav" data-p="clients"><span class="ic">◍</span> Clients</div>
     <div class="anav" data-p="community"><span class="ic">◈</span> Communauté</div>
+    <div class="anav" data-p="tickets"><span class="ic">✉</span> SAV <span id="tkBadge" class="stt pend" style="display:none;margin-left:auto;padding:2px 8px">0</span></div>
     <div class="anav" data-p="admins"><span class="ic">◆</span> Admins</div>
     <div class="sp"></div>
     <a href="index.html" class="anav"><span class="ic">↗</span> Voir le site</a>
@@ -241,6 +259,27 @@ body{ background:#070708; }
       <div class="panel">
         <div class="ph"><h3>Salons de discussion</h3></div>
         <div id="chanLocks"><div style="color:var(--text-3);font-size:13px;font-family:var(--mono)">Chargement…</div></div>
+      </div>
+    </section>
+    <!-- SAV / TICKETS -->
+    <section class="apage" data-page="tickets">
+      <div class="ahead"><div><h1>SAV — Tickets</h1><div class="sub" id="tkSub">—</div></div>
+        <button class="pillbtn" id="tkRefresh">↻ Rafraîchir</button></div>
+      <div class="two" style="grid-template-columns:360px 1fr;align-items:start">
+        <div class="panel" style="padding:14px">
+          <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap" id="tkFilters">
+            <button class="btab active" data-f="all">Tous</button>
+            <button class="btab" data-f="open">En attente</button>
+            <button class="btab" data-f="answered">Répondu</button>
+            <button class="btab" data-f="closed">Clôturé</button>
+          </div>
+          <div id="tkAdminList" style="display:flex;flex-direction:column;gap:8px;max-height:70vh;overflow-y:auto">
+            <div style="color:var(--text-3);font-size:13px;font-family:var(--mono);padding:20px;text-align:center">Chargement…</div>
+          </div>
+        </div>
+        <div class="panel" id="tkConvo">
+          <div style="color:var(--text-3);font-size:14px;text-align:center;padding:60px 20px">Sélectionne un ticket pour répondre.</div>
+        </div>
       </div>
     </section>
     <!-- ADMINS -->
@@ -504,6 +543,77 @@ body{ background:#070708; }
       }catch{ document.getElementById('creditErr').textContent='Erreur réseau'; }
       this.disabled=false; this.textContent='Confirmer';
     });
+
+    /* ---- SAV / tickets ---- */
+    const TKH={'X-Admin-Token':'foodplug','Content-Type':'application/json'};
+    const TKCATS={commande:'Commande',paiement:'Paiement',compte:'Compte',technique:'Technique',autre:'Autre'};
+    const TKSTT={open:'En attente',answered:'Répondu',closed:'Clôturé'};
+    const tkClass={open:'pend',answered:'ok',closed:''};
+    const esc=s=>String(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+    const tkWhen=d=>{ try{ const dt=new Date(d); return dt.toLocaleDateString('fr-FR',{day:'numeric',month:'short'})+' '+dt.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}); }catch{ return ''; } };
+    let allTickets=[], tkFilter='all', tkCur=null;
+
+    async function loadTickets(){
+      try{ allTickets=await fetch('/api/admin/tickets',{headers:TKH}).then(r=>r.ok?r.json():[]); }catch{ allTickets=[]; }
+      allTickets.sort((a,b)=>new Date(b.updatedAt)-new Date(a.updatedAt));
+      const openN=allTickets.filter(t=>t.status==='open').length;
+      const badge=document.getElementById('tkBadge');
+      if(badge){ badge.style.display=openN?'inline-block':'none'; badge.textContent=openN; }
+      document.getElementById('tkSub').textContent=`${allTickets.length} ticket(s) · ${openN} en attente`;
+      renderTkList();
+    }
+    function renderTkList(){
+      const box=document.getElementById('tkAdminList');
+      const list=allTickets.filter(t=>tkFilter==='all'||t.status===tkFilter);
+      box.innerHTML=list.length?list.map(t=>`<div class="tkitem${t.id===tkCur?' active':''}" data-tk="${t.id}">
+        <div class="r1"><span class="subj">${esc(t.subject)}</span><span class="stt ${tkClass[t.status]}">${TKSTT[t.status]}</span></div>
+        <div class="m">${esc(t.userName)} · ${TKCATS[t.category]||t.category} · ${tkWhen(t.updatedAt)}</div>
+      </div>`).join(''):'<div style="color:var(--text-3);font-size:13px;font-family:var(--mono);padding:20px;text-align:center">Aucun ticket</div>';
+    }
+    function renderConvo(t){
+      const box=document.getElementById('tkConvo');
+      const closed=t.status==='closed';
+      box.innerHTML=`<div class="ph"><div><h3>${esc(t.subject)}</h3>
+          <div class="muted">#${t.id} · ${esc(t.userName)} · ${esc(t.userEmail)} · ${TKCATS[t.category]||t.category}</div></div>
+          <span class="stt ${tkClass[t.status]}">${TKSTT[t.status]}</span></div>
+        <div class="cmsgs" id="cmsgs">${t.messages.map(m=>`<div class="cmsg ${m.from==='staff'?'staff':'user'}">
+          <div class="b">${esc(m.text)}</div><div class="w">${m.from==='staff'?'🛡 '+esc(m.name):esc(m.name)} · ${tkWhen(m.date)}</div></div>`).join('')}</div>
+        ${closed?'':`<div style="display:flex;gap:10px;align-items:flex-end;border-top:1px solid var(--line);padding-top:16px">
+          <textarea id="tkReply" rows="2" placeholder="Réponse du staff…" style="flex:1;background:var(--surface-2);border:1px solid var(--line-2);border-radius:12px;padding:11px 14px;color:var(--text);font-size:14px;outline:none;resize:none;font-family:inherit;line-height:1.5"></textarea>
+          <button class="btn btn-gold btn-sm" id="tkReplyBtn">Répondre</button></div>`}
+        <div style="display:flex;gap:8px;margin-top:14px">
+          ${closed?'<button class="pillbtn" data-st="open">Rouvrir</button>':'<button class="pillbtn" data-st="closed">Clôturer le ticket</button>'}
+        </div>`;
+      const m=document.getElementById('cmsgs'); if(m) m.scrollTop=m.scrollHeight;
+      const rb=document.getElementById('tkReplyBtn');
+      if(rb) rb.addEventListener('click',()=>sendTkReply(t.id));
+      box.querySelectorAll('[data-st]').forEach(b=>b.addEventListener('click',()=>setTkStatus(t.id,b.dataset.st)));
+    }
+    async function openTk(id){
+      tkCur=id; renderTkList();
+      const t=allTickets.find(x=>x.id===id); if(t) renderConvo(t);
+    }
+    async function sendTkReply(id){
+      const ta=document.getElementById('tkReply'), btn=document.getElementById('tkReplyBtn');
+      const text=ta.value.trim(); if(!text) return; btn.disabled=true;
+      try{
+        const r=await fetch(`/api/admin/tickets/${id}/reply`,{method:'POST',headers:TKH,body:JSON.stringify({text})});
+        const d=await r.json();
+        if(d.ok){ const i=allTickets.findIndex(x=>x.id===id); if(i!==-1) allTickets[i]=d.ticket; renderConvo(d.ticket); loadTickets(); }
+      }catch{} btn.disabled=false;
+    }
+    async function setTkStatus(id,status){
+      try{
+        const r=await fetch(`/api/admin/tickets/${id}/status`,{method:'POST',headers:TKH,body:JSON.stringify({status})});
+        const d=await r.json();
+        if(d.ok){ const i=allTickets.findIndex(x=>x.id===id); if(i!==-1) allTickets[i]=d.ticket; renderConvo(d.ticket); loadTickets(); }
+      }catch{}
+    }
+    document.getElementById('tkAdminList').addEventListener('click',e=>{ const c=e.target.closest('[data-tk]'); if(c) openTk(c.dataset.tk); });
+    document.getElementById('tkFilters').addEventListener('click',e=>{ const b=e.target.closest('[data-f]'); if(!b)return;
+      document.querySelectorAll('#tkFilters .btab').forEach(x=>x.classList.remove('active')); b.classList.add('active'); tkFilter=b.dataset.f; renderTkList(); });
+    document.getElementById('tkRefresh').addEventListener('click',loadTickets);
+    loadTickets();
   }
 })();
 </script>

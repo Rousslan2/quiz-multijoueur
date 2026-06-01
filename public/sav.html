@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>FoodPlug — Aide & SAV</title>
+<script>document.documentElement.classList.add('anim-on');</script>
+<link rel="stylesheet" href="assets/foodplug.css" />
+<style>
+.swrap{ padding-top:120px; padding-bottom:60px; }
+.shead{ margin-bottom:34px; }
+.shead h1{ font-size:clamp(30px,4vw,46px); letter-spacing:-.03em; }
+.shead p{ color:var(--text-3); margin-top:10px; max-width:54ch; font-size:15px; }
+
+.slayout{ display:grid; grid-template-columns:380px 1fr; gap:34px; align-items:start; }
+@media(max-width:880px){ .slayout{ grid-template-columns:1fr; } }
+
+.panel{ border:1px solid var(--line); border-radius:20px; padding:26px; background:linear-gradient(180deg,rgba(255,255,255,.03),transparent); }
+.panel h3{ font-size:18px; margin-bottom:4px; }
+.panel .sub{ color:var(--text-3); font-size:13px; margin-bottom:18px; }
+
+.field{ margin-bottom:16px; }
+.field label{ display:block; font-size:12px; font-family:var(--mono); letter-spacing:.12em; text-transform:uppercase; color:var(--text-3); margin-bottom:8px; }
+.field input, .field select, .field textarea{
+  width:100%; background:var(--surface-2); border:1px solid var(--line-2); border-radius:12px;
+  padding:13px 15px; color:var(--text); font-size:14.5px; outline:none; font-family:inherit; transition:border-color .25s; }
+.field input:focus, .field select:focus, .field textarea:focus{ border-color:var(--gold); }
+.field textarea{ resize:vertical; min-height:120px; line-height:1.55; }
+.field select{ appearance:none; cursor:pointer; }
+.formerr{ color:#ff6b5e; font-size:13px; min-height:18px; margin:4px 0 12px; }
+.formok{ color:#39d98a; font-size:13px; min-height:18px; margin:4px 0 12px; }
+
+.tklist{ display:flex; flex-direction:column; gap:12px; }
+.tkempty{ text-align:center; color:var(--text-3); font-family:var(--mono); font-size:13px; padding:40px 16px; border:1px dashed var(--line-2); border-radius:16px; }
+.tkcard{ border:1px solid var(--line); border-radius:16px; padding:18px 20px; cursor:pointer; transition:border-color .3s, background .3s, transform .4s var(--ease-out); }
+.tkcard:hover{ border-color:var(--line-2); transform:translateY(-2px); }
+.tkcard.active{ border-color:var(--gold); background:rgba(240,169,58,.05); }
+.tkcard .top{ display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:7px; }
+.tkcard .subj{ font-weight:600; font-size:15px; }
+.tkcard .meta{ font-family:var(--mono); font-size:11.5px; color:var(--text-3); display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+.tkcard .cat{ text-transform:uppercase; letter-spacing:.08em; }
+
+.stt{ font-size:10.5px; font-family:var(--mono); font-weight:700; padding:4px 9px; border-radius:100px; white-space:nowrap; }
+.stt.open{ color:var(--gold-soft); background:rgba(240,169,58,.1); }
+.stt.answered{ color:#39d98a; background:rgba(57,217,138,.1); }
+.stt.closed{ color:var(--text-3); background:rgba(255,255,255,.05); }
+
+/* conversation */
+.convo{ min-height:300px; display:flex; flex-direction:column; }
+.convo .placeholder{ flex:1; display:grid; place-items:center; text-align:center; color:var(--text-3); font-size:14px; padding:50px 20px; }
+.convo-head{ display:flex; align-items:flex-start; justify-content:space-between; gap:14px; padding-bottom:18px; margin-bottom:18px; border-bottom:1px solid var(--line); }
+.convo-head .subj{ font-size:19px; font-weight:700; }
+.convo-head .meta{ font-family:var(--mono); font-size:11.5px; color:var(--text-3); margin-top:5px; }
+.msgs{ display:flex; flex-direction:column; gap:14px; margin-bottom:20px; max-height:420px; overflow-y:auto; padding-right:4px; }
+.msg{ max-width:82%; }
+.msg.user{ align-self:flex-end; }
+.msg.staff{ align-self:flex-start; }
+.msg .bubble{ padding:12px 16px; border-radius:15px; font-size:14.5px; line-height:1.55; white-space:pre-wrap; word-break:break-word; }
+.msg.user .bubble{ background:linear-gradient(180deg,var(--gold-soft),var(--gold)); color:#1a1206; border-bottom-right-radius:5px; }
+.msg.staff .bubble{ background:var(--surface-2); border:1px solid var(--line-2); border-bottom-left-radius:5px; }
+.msg .who{ font-family:var(--mono); font-size:10.5px; color:var(--text-3); margin:6px 4px 0; }
+.msg.user .who{ text-align:right; }
+.replybox{ display:flex; gap:10px; align-items:flex-end; border-top:1px solid var(--line); padding-top:18px; }
+.replybox textarea{ flex:1; background:var(--surface-2); border:1px solid var(--line-2); border-radius:12px; padding:12px 14px;
+  color:var(--text); font-size:14px; outline:none; resize:none; min-height:48px; font-family:inherit; line-height:1.5; }
+.replybox textarea:focus{ border-color:var(--gold); }
+.closednote{ text-align:center; color:var(--text-3); font-family:var(--mono); font-size:12.5px; padding:16px; border-top:1px solid var(--line); }
+
+.faq{ margin-top:38px; }
+.faq h3{ font-size:20px; margin-bottom:16px; }
+.faq details{ border:1px solid var(--line); border-radius:14px; padding:0 20px; margin-bottom:10px; background:rgba(255,255,255,.02); }
+.faq summary{ padding:16px 0; cursor:pointer; font-weight:600; font-size:15px; list-style:none; display:flex; justify-content:space-between; align-items:center; }
+.faq summary::-webkit-details-marker{ display:none; }
+.faq summary::after{ content:'+'; font-family:var(--mono); color:var(--gold-soft); font-size:20px; }
+.faq details[open] summary::after{ content:'−'; }
+.faq details p{ color:var(--text-2); font-size:14.5px; line-height:1.6; padding:0 0 18px; max-width:64ch; }
+</style>
+</head>
+<body>
+<canvas id="bg3d" style="position:fixed;inset:0;width:100%;height:100%;z-index:0;"></canvas>
+<div class="grain"></div>
+
+<header class="nav">
+  <div class="wrap nav-in">
+    <a href="index.html" class="brandmark"><span class="plug">F</span> FoodPlug</a>
+    <nav class="nav-links">
+      <a href="boutique.html">Boutique</a><a href="wallet.html">Wallet</a>
+      <a href="communaute.html">Communauté</a><a href="compte.html">Compte</a>
+    </nav>
+    <div class="nav-right">
+      <div class="bal"><span class="dot"></span> <b>—</b></div>
+      <a href="compte.html" class="avatar">?</a>
+      <button class="burger" aria-label="Menu"><span></span></button>
+    </div>
+  </div>
+</header>
+<nav class="mmenu">
+  <a href="boutique.html">Boutique</a><a href="wallet.html">Wallet</a>
+  <a href="communaute.html">Communauté</a><a href="compte.html">Compte</a><a href="sav.html">Aide & SAV</a>
+</nav>
+
+<section class="swrap wrap">
+  <div class="shead rv">
+    <span class="eyebrow">Centre d'aide</span>
+    <h1>Aide & SAV</h1>
+    <p>Un problème avec une commande, un paiement ou ton compte ? Ouvre un ticket et notre équipe te répond directement ici.</p>
+  </div>
+
+  <div class="slayout">
+    <!-- LEFT : new ticket + list -->
+    <div>
+      <div class="panel rv">
+        <h3>Ouvrir un ticket</h3>
+        <div class="sub">Décris ton souci, on revient vers toi rapidement.</div>
+        <div class="field">
+          <label for="tkSubject">Sujet</label>
+          <input type="text" id="tkSubject" maxlength="120" placeholder="Ex. Compte KFC non reçu" />
+        </div>
+        <div class="field">
+          <label for="tkCategory">Catégorie</label>
+          <select id="tkCategory">
+            <option value="commande">Commande / Livraison</option>
+            <option value="paiement">Paiement / Wallet</option>
+            <option value="compte">Mon compte</option>
+            <option value="technique">Problème technique</option>
+            <option value="autre">Autre</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="tkMessage">Message</label>
+          <textarea id="tkMessage" maxlength="2000" placeholder="Explique ta situation en détail (n° de commande, ce qui s'est passé…)"></textarea>
+        </div>
+        <div class="formerr" id="tkErr"></div>
+        <button class="btn btn-gold" id="tkSubmit" style="width:100%;justify-content:center">Envoyer le ticket</button>
+      </div>
+
+      <div class="blocktitle" style="display:flex;align-items:center;justify-content:space-between;margin:28px 0 14px">
+        <h3 style="font-size:18px">Mes tickets</h3>
+      </div>
+      <div class="tklist rv" id="tkList">
+        <div class="tkempty">Chargement…</div>
+      </div>
+    </div>
+
+    <!-- RIGHT : conversation -->
+    <div class="panel rv rv-d1 convo" id="convoPanel">
+      <div class="placeholder" id="convoPlaceholder">Sélectionne un ticket à gauche pour voir la conversation, ou ouvre-en un nouveau.</div>
+      <div id="convoBody" style="display:none;flex:1;display:none;flex-direction:column"></div>
+    </div>
+  </div>
+
+  <div class="faq rv">
+    <h3>Questions fréquentes</h3>
+    <details><summary>En combien de temps je reçois mon compte ?</summary><p>La livraison est automatique et instantanée après l'achat : les informations du compte (code, identifiants ou QR code) s'affichent directement à l'écran et restent disponibles dans « Mes comptes ».</p></details>
+    <details><summary>Mon paiement a été débité mais je n'ai rien reçu ?</summary><p>Ouvre un ticket dans la catégorie « Paiement / Wallet » avec ton numéro de commande. On vérifie la transaction et on régularise sous 24 h.</p></details>
+    <details><summary>Comment recharger mon wallet ?</summary><p>Rends-toi sur la page Wallet, choisis un montant et paie par carte. Le solde est crédité dès la confirmation du paiement.</p></details>
+    <details><summary>Le compte livré ne fonctionne pas, que faire ?</summary><p>Ouvre un ticket « Commande / Livraison ». Si le compte est indisponible, tu es remboursé ou re-livré sous garantie 30 jours.</p></details>
+  </div>
+</section>
+
+<footer class="footer">
+  <div class="wrap">
+    <div class="foot-grid">
+      <div class="foot-col"><a href="index.html" class="brandmark" style="margin-bottom:16px"><span class="plug">F</span> FoodPlug</a><p class="muted" style="font-size:14px;max-width:30ch">L'accès premium au fast-food. Comptes, wallet et communauté en un seul endroit.</p></div>
+      <div class="foot-col"><h5>Boutique</h5><a href="boutique.html">KFC</a><a href="boutique.html">McDonald's</a><a href="boutique.html">O'Tacos</a></div>
+      <div class="foot-col"><h5>Compte</h5><a href="wallet.html">Wallet</a><a href="compte.html">Mes commandes</a><a href="sav.html">Aide & SAV</a></div>
+      <div class="foot-col"><h5>FoodPlug</h5><a href="communaute.html">Communauté</a><a href="sav.html">Support / SAV</a></div>
+    </div>
+    <div class="foot-bottom"><span>© 2026 FoodPlug. Conçu avec faim.</span><span class="mono">CGU · Confidentialité · Contact</span></div>
+  </div>
+</footer>
+
+<template id="__bundler_thumbnail"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#08080a"/><circle cx="50" cy="46" r="20" fill="#f0a93a"/><text x="50" y="53" font-family="monospace" font-size="22" fill="#1a1206" text-anchor="middle" font-weight="bold">?</text><text x="50" y="86" font-family="monospace" font-size="10" fill="#f0a93a" text-anchor="middle" font-weight="bold">SAV</text></svg></template>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="image-slot.js"></script>
+<script src="assets/scene.js"></script>
+<script src="assets/user.js"></script>
+<script>
+(function(){
+  const $=id=>document.getElementById(id);
+  const CATS={commande:'Commande',paiement:'Paiement',compte:'Compte',technique:'Technique',autre:'Autre'};
+  const STT={open:'En attente',answered:'Répondu',closed:'Clôturé'};
+  const esc=s=>String(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const when=d=>{ try{ const dt=new Date(d); return dt.toLocaleDateString('fr-FR',{day:'numeric',month:'short'})+' '+dt.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}); }catch{ return ''; } };
+
+  let tickets=[], curId=null;
+
+  FP_AUTH.init().then(async u=>{
+    if(!u) return;
+    await loadTickets();
+
+    // submit new ticket
+    $('tkSubmit').addEventListener('click', async function(){
+      const subject=$('tkSubject').value.trim();
+      const category=$('tkCategory').value;
+      const message=$('tkMessage').value.trim();
+      $('tkErr').textContent='';
+      if(!subject){ $('tkErr').textContent='Indique un sujet.'; return; }
+      if(!message){ $('tkErr').textContent='Décris ton problème.'; return; }
+      this.disabled=true; this.textContent='⏳ Envoi…';
+      try{
+        const r=await fetch('/api/me/tickets',{method:'POST',headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({subject,category,message})});
+        const d=await r.json();
+        if(d.ok){
+          $('tkSubject').value=''; $('tkMessage').value='';
+          tickets.unshift(d.ticket); renderList(); openTicket(d.ticket.id);
+        } else { $('tkErr').textContent=d.error||'Erreur'; }
+      }catch{ $('tkErr').textContent='Erreur réseau'; }
+      this.disabled=false; this.textContent='Envoyer le ticket';
+    });
+
+    // list clicks
+    $('tkList').addEventListener('click',e=>{ const c=e.target.closest('[data-id]'); if(c) openTicket(c.dataset.id); });
+  });
+
+  async function loadTickets(){
+    try{ tickets=await fetch('/api/me/tickets').then(r=>r.ok?r.json():[]); }catch{ tickets=[]; }
+    tickets.sort((a,b)=>new Date(b.updatedAt)-new Date(a.updatedAt));
+    renderList();
+  }
+
+  function renderList(){
+    const box=$('tkList');
+    if(!tickets.length){ box.innerHTML='<div class="tkempty">Aucun ticket pour l\'instant.<br>Ouvre-en un ci-dessus 👆</div>'; return; }
+    box.innerHTML=tickets.map(t=>`<div class="tkcard${t.id===curId?' active':''}" data-id="${t.id}">
+      <div class="top"><span class="subj">${esc(t.subject)}</span><span class="stt ${t.status}">${STT[t.status]||t.status}</span></div>
+      <div class="meta"><span class="cat">${CATS[t.category]||t.category}</span><span>·</span><span>${t.messages.length} msg</span><span>·</span><span>${when(t.updatedAt)}</span></div>
+    </div>`).join('');
+  }
+
+  async function openTicket(id){
+    curId=id; renderList();
+    let t;
+    try{ t=await fetch('/api/me/tickets/'+encodeURIComponent(id)).then(r=>r.ok?r.json():null); }catch{ t=null; }
+    if(!t){ return; }
+    const idx=tickets.findIndex(x=>x.id===id); if(idx!==-1) tickets[idx]=t;
+    $('convoPlaceholder').style.display='none';
+    const body=$('convoBody'); body.style.display='flex';
+    const closed=t.status==='closed';
+    body.innerHTML=`
+      <div class="convo-head">
+        <div>
+          <div class="subj">${esc(t.subject)}</div>
+          <div class="meta">#${t.id} · ${CATS[t.category]||t.category} · ouvert le ${when(t.createdAt)}</div>
+        </div>
+        <span class="stt ${t.status}">${STT[t.status]||t.status}</span>
+      </div>
+      <div class="msgs" id="msgs">
+        ${t.messages.map(m=>`<div class="msg ${m.from==='staff'?'staff':'user'}">
+          <div class="bubble">${esc(m.text)}</div>
+          <div class="who">${m.from==='staff'?'🛡 '+esc(m.name):esc(m.name)} · ${when(m.date)}</div>
+        </div>`).join('')}
+      </div>
+      ${closed
+        ? '<div class="closednote">Ce ticket est clôturé. Ouvre-en un nouveau si besoin.</div>'
+        : `<div class="replybox">
+            <textarea id="replyText" rows="1" placeholder="Écris ta réponse…"></textarea>
+            <button class="btn btn-gold btn-sm" id="replyBtn">Envoyer</button>
+          </div>`}`;
+    const m=$('msgs'); if(m) m.scrollTop=m.scrollHeight;
+    if(!closed){
+      $('replyBtn').addEventListener('click', sendReply);
+      $('replyText').addEventListener('keydown',e=>{ if(e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); sendReply(); } });
+    }
+  }
+
+  async function sendReply(){
+    const ta=$('replyText'), btn=$('replyBtn'); const text=ta.value.trim();
+    if(!text) return;
+    btn.disabled=true; ta.disabled=true;
+    try{
+      const r=await fetch('/api/me/tickets/'+encodeURIComponent(curId)+'/messages',{method:'POST',
+        headers:{'Content-Type':'application/json'},body:JSON.stringify({text})});
+      const d=await r.json();
+      if(d.ok){ const idx=tickets.findIndex(x=>x.id===curId); if(idx!==-1) tickets[idx]=d.ticket; openTicket(curId); renderList(); }
+    }catch{}
+    btn.disabled=false; ta.disabled=false;
+  }
+})();
+</script>
+<script src="assets/app.js"></script>
+</body>
+</html>

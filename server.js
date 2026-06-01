@@ -386,6 +386,62 @@ app.post('/api/me/accounts', requireAuth, async (req, res) => {
 });
 
 /* ================================================================
+   SAV — TICKETS SUPPORT
+   ================================================================ */
+const TICKET_CATEGORIES = ['commande', 'paiement', 'compte', 'technique', 'autre'];
+
+/* Liste les tickets de l'utilisateur connecté */
+app.get('/api/me/tickets', requireAuth, async (req, res) => {
+  const all = await dbRead('tickets', []);
+  res.json(all.filter(t => t.userId === req.user.id));
+});
+
+/* Détail d'un ticket (propriétaire uniquement) */
+app.get('/api/me/tickets/:id', requireAuth, async (req, res) => {
+  const all = await dbRead('tickets', []);
+  const t = all.find(t => t.id === req.params.id && t.userId === req.user.id);
+  if (!t) return res.status(404).json({ error: 'Ticket introuvable' });
+  res.json(t);
+});
+
+/* Ouvre un nouveau ticket staff */
+app.post('/api/me/tickets', requireAuth, async (req, res) => {
+  const { subject, category, message } = req.body || {};
+  if (!subject || !subject.trim()) return res.status(400).json({ error: 'Sujet requis' });
+  if (!message || !message.trim()) return res.status(400).json({ error: 'Message requis' });
+  const cat = TICKET_CATEGORIES.includes(category) ? category : 'autre';
+  const now = new Date().toISOString();
+  const ticket = {
+    id: 'T-' + Date.now().toString(36).toUpperCase() + crypto.randomBytes(2).toString('hex').toUpperCase(),
+    userId: req.user.id, userName: req.user.name, userEmail: req.user.email,
+    subject: subject.trim().slice(0, 120), category: cat,
+    status: 'open', createdAt: now, updatedAt: now,
+    messages: [{ from: 'user', name: req.user.name, text: message.trim().slice(0, 2000), date: now }],
+  };
+  const all = await dbRead('tickets', []);
+  all.unshift(ticket);
+  await dbWrite('tickets', all);
+  sendNtfy('Nouveau ticket SAV', `${ticket.subject} — ${req.user.name} (${cat})`);
+  res.json({ ok: true, ticket });
+});
+
+/* L'utilisateur répond à son ticket */
+app.post('/api/me/tickets/:id/messages', requireAuth, async (req, res) => {
+  const { text } = req.body || {};
+  if (!text || !text.trim()) return res.status(400).json({ error: 'Message vide' });
+  const all = await dbRead('tickets', []);
+  const t = all.find(t => t.id === req.params.id && t.userId === req.user.id);
+  if (!t) return res.status(404).json({ error: 'Ticket introuvable' });
+  if (t.status === 'closed') return res.status(423).json({ error: 'Ticket clôturé' });
+  const now = new Date().toISOString();
+  t.messages.push({ from: 'user', name: req.user.name, text: text.trim().slice(0, 2000), date: now });
+  t.status = 'open'; t.updatedAt = now;
+  await dbWrite('tickets', all);
+  sendNtfy('Réponse ticket SAV', `${t.subject} — ${req.user.name}`);
+  res.json({ ok: true, ticket: t });
+});
+
+/* ================================================================
    COMMUNITY MESSAGES
    ================================================================ */
 const CHANNELS = ['les-bons-plans', 'drops', 'entraide', 'kfc', 'mcdo', 'otacos'];
@@ -474,6 +530,37 @@ app.post('/api/admin/users/:id/credit', requireAdmin, async (req, res) => {
   wallets[req.params.id] = w;
   await dbWrite('wallets', wallets);
   res.json({ ok: true, balance: w.balance });
+});
+
+/* SAV — tous les tickets (admin) */
+app.get('/api/admin/tickets', requireAdmin, async (req, res) => {
+  res.json(await dbRead('tickets', []));
+});
+
+/* SAV — le staff répond à un ticket */
+app.post('/api/admin/tickets/:id/reply', requireAdmin, async (req, res) => {
+  const { text } = req.body || {};
+  if (!text || !text.trim()) return res.status(400).json({ error: 'Message vide' });
+  const all = await dbRead('tickets', []);
+  const t = all.find(t => t.id === req.params.id);
+  if (!t) return res.status(404).json({ error: 'Ticket introuvable' });
+  const now = new Date().toISOString();
+  t.messages.push({ from: 'staff', name: 'Support FoodPlug', text: text.trim().slice(0, 2000), date: now });
+  t.status = 'answered'; t.updatedAt = now;
+  await dbWrite('tickets', all);
+  res.json({ ok: true, ticket: t });
+});
+
+/* SAV — change le statut d'un ticket (open / answered / closed) */
+app.post('/api/admin/tickets/:id/status', requireAdmin, async (req, res) => {
+  const { status } = req.body || {};
+  if (!['open', 'answered', 'closed'].includes(status)) return res.status(400).json({ error: 'Statut invalide' });
+  const all = await dbRead('tickets', []);
+  const t = all.find(t => t.id === req.params.id);
+  if (!t) return res.status(404).json({ error: 'Ticket introuvable' });
+  t.status = status; t.updatedAt = new Date().toISOString();
+  await dbWrite('tickets', all);
+  res.json({ ok: true, ticket: t });
 });
 
 /* Gestion du verrouillage des salons de la communauté */
