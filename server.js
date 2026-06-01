@@ -18,6 +18,8 @@ const REDIS_URL   = process.env.UPSTASH_REDIS_REST_URL   || '';
 const REDIS_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN || '';
 const ADMIN_TOKEN = process.env.ADMIN_TOKEN || 'foodplug';
 const STRIPE_SECRET = process.env.STRIPE_SECRET_KEY || '';
+// Cookie secure=true sur Render (HTTPS) ou si NODE_ENV=production
+const IS_PROD = !!process.env.RENDER || process.env.NODE_ENV === 'production';
 
 const publicDir = path.join(__dirname, 'public');
 const dataDir   = path.join(__dirname, 'data');
@@ -239,7 +241,7 @@ app.post('/api/auth/register', async (req, res) => {
   wallets[id] = { balance: 0, cashback: 0, recharges: 0, saved: 0, transactions: [] };
   await dbWrite('wallets', wallets);
   const token = await createSession(id);
-  res.cookie('fp_sess', token, { httpOnly: true, sameSite: 'lax', maxAge: 30 * 86400 * 1000, path: '/' });
+  res.cookie('fp_sess', token, { httpOnly: true, sameSite: 'lax', secure: IS_PROD, maxAge: 30 * 86400 * 1000, path: '/' });
   res.json({ ok: true, user: pub(user, wallets[id]) });
 });
 
@@ -252,7 +254,7 @@ app.post('/api/auth/login', async (req, res) => {
   const wallets = await dbRead('wallets', {});
   if (!wallets[user.id]) { wallets[user.id] = { balance: 0, cashback: 0, recharges: 0, saved: 0, transactions: [] }; await dbWrite('wallets', wallets); }
   const token = await createSession(user.id);
-  res.cookie('fp_sess', token, { httpOnly: true, sameSite: 'lax', maxAge: 30 * 86400 * 1000, path: '/' });
+  res.cookie('fp_sess', token, { httpOnly: true, sameSite: 'lax', secure: IS_PROD, maxAge: 30 * 86400 * 1000, path: '/' });
   res.json({ ok: true, user: pub(user, wallets[user.id]) });
 });
 
