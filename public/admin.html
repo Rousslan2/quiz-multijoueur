@@ -149,6 +149,7 @@ body{ background:#070708; }
     <div class="anav" data-p="clients"><span class="ic">◍</span> Clients</div>
     <div class="anav" data-p="community"><span class="ic">◈</span> Communauté</div>
     <div class="anav" data-p="tickets"><span class="ic">✉</span> SAV <span id="tkBadge" class="stt pend" style="display:none;margin-left:auto;padding:2px 8px">0</span></div>
+    <div class="anav" data-p="security"><span class="ic">⛒</span> Sécurité</div>
     <div class="anav" data-p="admins"><span class="ic">◆</span> Admins</div>
     <div class="sp"></div>
     <a href="index.html" class="anav"><span class="ic">↗</span> Voir le site</a>
@@ -279,6 +280,32 @@ body{ background:#070708; }
         </div>
         <div class="panel" id="tkConvo">
           <div style="color:var(--text-3);font-size:14px;text-align:center;padding:60px 20px">Sélectionne un ticket pour répondre.</div>
+        </div>
+      </div>
+    </section>
+    <!-- SECURITY / IP BANS -->
+    <section class="apage" data-page="security">
+      <div class="ahead"><div><h1>Sécurité — Bannissement d'IP</h1><div class="sub" id="secSub">Bloque l'accès au site pour une adresse IP</div></div>
+        <button class="pillbtn" id="secRefresh">↻ Rafraîchir</button></div>
+
+      <div class="panel">
+        <div class="ph"><h3>Bannir une IP</h3><span class="muted" id="yourIp">—</span></div>
+        <div class="saverow" style="margin-top:0;flex-wrap:wrap">
+          <span class="priceinput" style="flex:1;min-width:180px;max-width:260px"><input type="text" id="banIp" placeholder="ex. 203.0.113.42" style="text-align:left"></span>
+          <span class="priceinput" style="flex:1;min-width:180px;max-width:300px"><input type="text" id="banReason" placeholder="Motif (optionnel)" style="text-align:left"></span>
+          <button class="btn btn-gold btn-sm" id="banBtn">Bannir</button>
+          <span class="saved" id="secMsg">✓ Mis à jour</span>
+        </div>
+      </div>
+
+      <div class="two" style="align-items:start">
+        <div class="panel">
+          <div class="ph"><h3>IP bannies</h3><span class="muted" id="banCount">0</span></div>
+          <div id="bannedList"><div style="color:var(--text-3);font-size:13px;font-family:var(--mono)">Chargement…</div></div>
+        </div>
+        <div class="panel">
+          <div class="ph"><h3>Visiteurs récents</h3><span class="muted">en mémoire</span></div>
+          <div id="recentList" style="max-height:60vh;overflow-y:auto"><div style="color:var(--text-3);font-size:13px;font-family:var(--mono)">Chargement…</div></div>
         </div>
       </div>
     </section>
@@ -614,6 +641,50 @@ body{ background:#070708; }
       document.querySelectorAll('#tkFilters .btab').forEach(x=>x.classList.remove('active')); b.classList.add('active'); tkFilter=b.dataset.f; renderTkList(); });
     document.getElementById('tkRefresh').addEventListener('click',loadTickets);
     loadTickets();
+
+    /* ---- Sécurité / bannissement IP ---- */
+    const SECH={'X-Admin-Token':'foodplug','Content-Type':'application/json'};
+    const secAgo=ts=>{ const s=Math.floor((Date.now()-ts)/1000); if(s<60)return s+'s'; if(s<3600)return Math.floor(s/60)+'min'; if(s<86400)return Math.floor(s/3600)+'h'; return Math.floor(s/86400)+'j'; };
+    const secEsc=s=>String(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+    function secFlash(){ const m=document.getElementById('secMsg'); m.classList.add('show'); setTimeout(()=>m.classList.remove('show'),1800); }
+
+    async function loadSecurity(){
+      let d={banned:[],recent:[],yourIp:''};
+      try{ d=await fetch('/api/admin/security',{headers:SECH}).then(r=>r.ok?r.json():d); }catch{}
+      document.getElementById('yourIp').textContent='Ton IP : '+(d.yourIp||'—');
+      document.getElementById('banCount').textContent=d.banned.length;
+      document.getElementById('secSub').textContent=`${d.banned.length} IP bannie(s)`;
+      document.getElementById('bannedList').innerHTML=d.banned.length
+        ?d.banned.map(b=>`<div class="prow" style="grid-template-columns:1fr auto;align-items:center">
+            <div><span class="pts tnum">${secEsc(b.ip)}</span>${b.reason?`<div style="font-size:11px;color:var(--text-3)">${secEsc(b.reason)}</div>`:''}</div>
+            <button class="pillbtn" data-unban="${secEsc(b.ip)}">Débannir</button></div>`).join('')
+        :'<div style="color:var(--text-3);font-size:13px;font-family:var(--mono)">Aucune IP bannie</div>';
+      document.getElementById('recentList').innerHTML=d.recent.length
+        ?d.recent.map(v=>`<div class="prow" style="grid-template-columns:1fr auto auto;align-items:center;gap:10px">
+            <div><span class="pts tnum">${secEsc(v.ip)}</span><div style="font-size:11px;color:var(--text-3);font-family:var(--mono)">${secEsc(v.path)} · ${v.count}× · il y a ${secAgo(v.last)}</div></div>
+            ${v.banned?'<span class="stt pend">BANNI</span>':'<span></span>'}
+            ${v.banned?`<button class="pillbtn" data-unban="${secEsc(v.ip)}">Débannir</button>`:`<button class="pillbtn" data-ban="${secEsc(v.ip)}">Bannir</button>`}</div>`).join('')
+        :'<div style="color:var(--text-3);font-size:13px;font-family:var(--mono)">Aucun visiteur récent</div>';
+    }
+    async function banIp(ip,reason){
+      try{ await fetch('/api/admin/ban',{method:'POST',headers:SECH,body:JSON.stringify({ip,reason:reason||''})}); }catch{}
+      secFlash(); loadSecurity();
+    }
+    async function unbanIp(ip){
+      try{ await fetch('/api/admin/unban',{method:'POST',headers:SECH,body:JSON.stringify({ip})}); }catch{}
+      secFlash(); loadSecurity();
+    }
+    document.getElementById('banBtn').addEventListener('click',()=>{
+      const ip=document.getElementById('banIp').value.trim(); const reason=document.getElementById('banReason').value.trim();
+      if(!ip)return; banIp(ip,reason); document.getElementById('banIp').value=''; document.getElementById('banReason').value='';
+    });
+    document.getElementById('banIp').addEventListener('keydown',e=>{ if(e.key==='Enter')document.getElementById('banBtn').click(); });
+    document.querySelector('[data-page="security"]').addEventListener('click',e=>{
+      const u=e.target.closest('[data-unban]'); if(u){ unbanIp(u.dataset.unban); return; }
+      const b=e.target.closest('[data-ban]'); if(b){ banIp(b.dataset.ban,''); }
+    });
+    document.getElementById('secRefresh').addEventListener('click',loadSecurity);
+    loadSecurity();
   }
 })();
 </script>

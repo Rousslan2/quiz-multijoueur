@@ -212,6 +212,27 @@ const FAKE_ACCOUNTS = {
 };
 
 /* ================================================================
+   IP / BANS — blocage d'adresses IP
+   ================================================================ */
+let bannedIps = new Set();          // cache mémoire des IP bannies
+const recentVisitors = new Map();   // ip → { count, last, path } (mémoire, derniers visiteurs)
+
+/* Récupère l'IP réelle du client (derrière Cloudflare / Render) */
+function clientIp(req) {
+  return (
+    req.headers['cf-connecting-ip'] ||
+    (req.headers['x-forwarded-for'] || '').split(',')[0].trim() ||
+    req.socket.remoteAddress || ''
+  ).replace(/^::ffff:/, '');
+}
+
+/* Charge la liste des IP bannies dans le cache mémoire au démarrage */
+async function loadBans() {
+  const arr = await dbRead('banned_ips', []);
+  bannedIps = new Set(arr.map(b => b.ip));
+}
+
+/* ================================================================
    NTFY
    ================================================================ */
 function sendNtfy(title, body) {
@@ -226,7 +247,28 @@ function sendNtfy(title, body) {
    MIDDLEWARE
    ================================================================ */
 app.disable('x-powered-by');
+app.set('trust proxy', true);
 app.use(express.json({ limit: '4mb' }));
+
+/* Blocage des IP bannies — l'admin (token ou page admin) reste toujours
+   accessible pour pouvoir débannir, même si sa propre IP est bannie. */
+app.use((req, res, next) => {
+  const ip = clientIp(req);
+  // Trace des derniers visiteurs (pour la liste dans l'admin)
+  if (ip && !req.path.startsWith('/api/admin')) {
+    const v = recentVisitors.get(ip) || { count: 0 };
+    v.count++; v.last = Date.now(); v.path = req.path;
+    recentVisitors.set(ip, v);
+    if (recentVisitors.size > 200) { const first = recentVisitors.keys().next().value; recentVisitors.delete(first); }
+  }
+  // Voies de secours pour l'admin
+  const isAdminPath = req.path.startsWith('/api/admin') || req.path === '/admin' || req.path === '/admin.html';
+  const hasAdminToken = req.headers['x-admin-token'] === ADMIN_TOKEN;
+  if (bannedIps.has(ip) && !isAdminPath && !hasAdminToken) {
+    return res.status(403).type('html').send('<!doctype html><meta charset="utf-8"><title>Accès refusé</title><body style="background:#070708;color:#e7e7ea;font-family:system-ui;display:grid;place-items:center;height:100vh;margin:0;text-align:center"><div><h1 style="font-size:60px;margin:0">403</h1><p style="color:#9a9aa2">Votre accès à FoodPlug a été restreint.</p></div></body>');
+  }
+  next();
+});
 
 /* ================================================================
    AUTH ENDPOINTS
@@ -595,6 +637,40 @@ app.post('/api/admin/chat/lock', requireAdmin, async (req, res) => {
 });
 
 /* ================================================================
+   SÉCURITÉ — bannissement d'IP (admin)
+   ================================================================ */
+app.get('/api/admin/security', requireAdmin, async (req, res) => {
+  const banned = await dbRead('banned_ips', []);
+  const recent = [...recentVisitors.entries()]
+    .map(([ip, v]) => ({ ip, count: v.count, last: v.last, path: v.path, banned: bannedIps.has(ip) }))
+    .sort((a, b) => b.last - a.last)
+    .slice(0, 60);
+  res.json({ banned, recent, yourIp: clientIp(req) });
+});
+
+app.post('/api/admin/ban', requireAdmin, async (req, res) => {
+  const ip = String((req.body && req.body.ip) || '').trim();
+  const reason = String((req.body && req.body.reason) || '').trim().slice(0, 200);
+  if (!ip) return res.status(400).json({ error: 'IP manquante' });
+  const banned = await dbRead('banned_ips', []);
+  if (banned.find(b => b.ip === ip)) return res.json({ ok: true, banned, already: true });
+  banned.unshift({ ip, reason: reason || null, date: new Date().toISOString() });
+  await dbWrite('banned_ips', banned);
+  bannedIps.add(ip);
+  res.json({ ok: true, banned });
+});
+
+app.post('/api/admin/unban', requireAdmin, async (req, res) => {
+  const ip = String((req.body && req.body.ip) || '').trim();
+  if (!ip) return res.status(400).json({ error: 'IP manquante' });
+  let banned = await dbRead('banned_ips', []);
+  banned = banned.filter(b => b.ip !== ip);
+  await dbWrite('banned_ips', banned);
+  bannedIps.delete(ip);
+  res.json({ ok: true, banned });
+});
+
+/* ================================================================
    ORDERS (admin + purchases)
    ================================================================ */
 app.get('/api/orders', requireAuth, async (req, res) => {
@@ -653,9 +729,11 @@ app.get('*', (req, res, next) => {
   res.sendFile(path.join(publicDir, 'index.html'), err => { if (err) next(err); });
 });
 
-app.listen(PORT, '0.0.0.0', () => {
+app.listen(PORT, '0.0.0.0', async () => {
   console.log('FoodPlug prêt → http://0.0.0.0:%s/', PORT);
   if (REDIS_URL) console.log('Persistance → Upstash Redis');
   else           console.log('Persistance → fichier local');
   if (NTFY_TOPIC) console.log('Notifications ntfy → ntfy.sh/%s', NTFY_TOPIC);
+  await loadBans();
+  console.log('IP bannies chargées : %d', bannedIps.size);
 });
