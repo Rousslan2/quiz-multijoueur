@@ -17,6 +17,7 @@ const NTFY_TOPIC  = process.env.NTFY_TOPIC  || '';
 const REDIS_URL   = process.env.UPSTASH_REDIS_REST_URL   || '';
 const REDIS_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN || '';
 const ADMIN_TOKEN = process.env.ADMIN_TOKEN || 'foodplug';
+const STRIPE_SECRET = process.env.STRIPE_SECRET_KEY || '';
 
 const publicDir = path.join(__dirname, 'public');
 const dataDir   = path.join(__dirname, 'data');
@@ -104,6 +105,30 @@ async function requireAuth(req, res, next) {
   req.user = users.find(u => u.id === uid);
   if (!req.user) return res.status(401).json({ error: 'Compte introuvable' });
   next();
+}
+
+/* ================================================================
+   STRIPE (API directe, sans dépendance npm)
+   ================================================================ */
+function stripeForm(obj, prefix, out) {
+  out = out || [];
+  for (const k in obj) {
+    const key = prefix ? `${prefix}[${k}]` : k;
+    const v = obj[k];
+    if (v !== null && typeof v === 'object') stripeForm(v, key, out);
+    else out.push(encodeURIComponent(key) + '=' + encodeURIComponent(v));
+  }
+  return out;
+}
+
+async function stripeApi(path, method = 'POST', params = null) {
+  const opts = {
+    method,
+    headers: { Authorization: `Bearer ${STRIPE_SECRET}`, 'Content-Type': 'application/x-www-form-urlencoded' },
+  };
+  if (params) opts.body = stripeForm(params).join('&');
+  const r = await fetch('https://api.stripe.com/v1' + path, opts);
+  return r.json();
 }
 
 /* ================================================================
@@ -197,19 +222,59 @@ app.get('/api/me/wallet', requireAuth, async (req, res) => {
   res.json(wallets[req.user.id] || { balance: 0, cashback: 0, recharges: 0, saved: 0, transactions: [] });
 });
 
-app.post('/api/me/wallet/recharge', requireAuth, async (req, res) => {
-  const { amount, bonus = 0, method = 'Carte' } = req.body || {};
-  const amt = Number(amount); const bon = Number(bonus);
-  if (!amt || amt <= 0) return res.status(400).json({ error: 'Montant invalide' });
-  const wallets = await dbRead('wallets', {});
-  const w = wallets[req.user.id] || { balance: 0, cashback: 0, recharges: 0, saved: 0, transactions: [] };
-  const total = Math.round((amt + bon) * 100) / 100;
-  w.balance  = Math.round((w.balance  + total)          * 100) / 100;
-  w.cashback = Math.round((w.cashback + total * 0.08)   * 100) / 100;
+/* Crée une session de paiement Stripe Checkout. Le solde n'est PAS crédité ici :
+   il le sera uniquement après confirmation du paiement (voir /confirm). */
+app.post('/api/me/wallet/checkout', requireAuth, async (req, res) => {
+  if (!STRIPE_SECRET) return res.status(503).json({ error: 'Paiement indisponible : Stripe non configuré sur le serveur.' });
+  const { amount, bonus = 0 } = req.body || {};
+  const amt = Math.round(Number(amount) * 100) / 100;
+  const bon = Math.round(Number(bonus) * 100) / 100;
+  if (!amt || amt <= 0 || amt > 10000) return res.status(400).json({ error: 'Montant invalide' });
+  const credit = Math.round((amt + bon) * 100) / 100;
+  const origin = req.headers.origin || (req.protocol + '://' + req.get('host'));
+  const session = await stripeApi('/checkout/sessions', 'POST', {
+    mode: 'payment',
+    success_url: origin + '/wallet?session_id={CHECKOUT_SESSION_ID}',
+    cancel_url: origin + '/wallet?canceled=1',
+    line_items: { 0: {
+      quantity: 1,
+      price_data: {
+        currency: 'eur',
+        unit_amount: Math.round(amt * 100),
+        product_data: { name: 'Recharge wallet FoodPlug' + (bon > 0 ? ` (+${bon} € bonus)` : '') },
+      },
+    } },
+    metadata: { userId: req.user.id, credit: String(credit), base: String(amt), bonus: String(bon) },
+  });
+  if (!session || !session.url) return res.status(502).json({ error: (session && session.error && session.error.message) || 'Erreur Stripe' });
+  res.json({ ok: true, url: session.url });
+});
+
+/* Vérifie le paiement auprès de Stripe et crédite le wallet (idempotent). */
+app.post('/api/me/wallet/confirm', requireAuth, async (req, res) => {
+  if (!STRIPE_SECRET) return res.status(503).json({ error: 'Stripe non configuré' });
+  const { session_id } = req.body || {};
+  if (!session_id) return res.status(400).json({ error: 'Session manquante' });
+  const session = await stripeApi('/checkout/sessions/' + encodeURIComponent(session_id), 'GET');
+  if (!session || session.payment_status !== 'paid') return res.status(402).json({ error: 'Paiement non confirmé' });
+  if (!session.metadata || session.metadata.userId !== req.user.id) return res.status(403).json({ error: 'Session invalide' });
+
+  const processed = await dbRead('stripe_sessions', {});
+  const wallets   = await dbRead('wallets', {});
+  let w = wallets[req.user.id] || { balance: 0, cashback: 0, recharges: 0, saved: 0, transactions: [] };
+
+  if (processed[session_id]) { wallets[req.user.id] = w; return res.json({ ok: true, wallet: w, already: true }); }
+
+  const credit = Math.round((Number(session.metadata.credit) || 0) * 100) / 100;
+  w.balance   = Math.round((w.balance  + credit)        * 100) / 100;
+  w.cashback  = Math.round((w.cashback + credit * 0.08) * 100) / 100;
   w.recharges = (w.recharges || 0) + 1;
-  w.transactions = [{ date: new Date().toISOString(), note: `Recharge wallet · ${method}`, amount: total, balance: w.balance }, ...(w.transactions || [])].slice(0, 80);
+  w.transactions = [{ date: new Date().toISOString(), note: 'Recharge wallet · Carte', amount: credit, balance: w.balance }, ...(w.transactions || [])].slice(0, 80);
   wallets[req.user.id] = w;
   await dbWrite('wallets', wallets);
+
+  processed[session_id] = { userId: req.user.id, credit, date: new Date().toISOString() };
+  await dbWrite('stripe_sessions', processed);
   res.json({ ok: true, wallet: w });
 });
 

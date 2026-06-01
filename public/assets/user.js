@@ -48,10 +48,17 @@ window.FP_AUTH = (function () {
       document.querySelectorAll('a.avatar').forEach(el => (el.textContent = avi));
     },
 
-    /* Recharge le wallet */
-    async recharge(amount, bonus, method) {
-      const r = await fetch('/api/me/wallet/recharge', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount, bonus, method }) });
+    /* Démarre un paiement Stripe — renvoie l'URL de la page de paiement */
+    async checkout(amount, bonus) {
+      const r = await fetch('/api/me/wallet/checkout', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount, bonus }) });
+      return r.json();
+    },
+
+    /* Confirme un paiement Stripe au retour (crédite le wallet côté serveur) */
+    async confirmPayment(sessionId) {
+      const r = await fetch('/api/me/wallet/confirm', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ session_id: sessionId }) });
       return r.json();
     },
 

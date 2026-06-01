@@ -10,3 +10,7 @@ services:
     envVars:
       - key: NODE_VERSION
         value: "22.22.0"
+      # Paiement Stripe — clé secrète à renseigner dans le dashboard Render
+      # (Settings → Environment). Sans elle, la recharge wallet est désactivée.
+      - key: STRIPE_SECRET_KEY
+        sync: false

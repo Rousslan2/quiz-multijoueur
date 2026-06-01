@@ -188,24 +188,43 @@
     document.querySelectorAll('.pm').forEach(x=>x.classList.remove('active')); p.classList.add('active');
   });
   btn.addEventListener('click', async function() {
-    if (!FP_AUTH.user) return;
-    this.disabled = true; this.textContent = '⏳ En cours…';
-    const pm = document.querySelector('.pm.active')?.textContent?.trim() || 'Carte';
-    const res = await FP_AUTH.recharge(amount, bonus, pm);
-    if (res.ok) {
-      FP_AUTH.user.balance = res.wallet.balance;
-      FP_AUTH.wireNav(FP_AUTH.user);
-      renderWallet(res.wallet);
-      this.textContent = '✓ ' + fmt(amount) + ' rechargés';
+    if (!FP_AUTH.user) { window.location.href = '/login?next=/wallet'; return; }
+    if (!amount || amount <= 0) return;
+    this.disabled = true; this.textContent = '⏳ Redirection vers le paiement…';
+    const res = await FP_AUTH.checkout(amount, bonus);
+    if (res.ok && res.url) {
+      window.location.href = res.url; // page de paiement sécurisée Stripe
     } else {
-      this.textContent = res.error || 'Erreur';
+      this.textContent = res.error || 'Paiement indisponible';
+      setTimeout(() => { this.disabled = false; upd(); }, 2600);
     }
-    setTimeout(() => { this.disabled = false; upd(); }, 1800);
   });
   upd();
 
   FP_AUTH.init().then(async u => {
     if (!u) return;
+
+    // Retour depuis Stripe : confirmer le paiement et créditer
+    const params = new URLSearchParams(location.search);
+    const sid = params.get('session_id');
+    if (sid) {
+      btn.disabled = true; btn.textContent = '⏳ Vérification du paiement…';
+      const c = await FP_AUTH.confirmPayment(sid);
+      if (c.ok) {
+        FP_AUTH.user.balance = c.wallet.balance;
+        FP_AUTH.wireNav(FP_AUTH.user);
+        btn.textContent = c.already ? '✓ Déjà crédité' : '✓ Paiement réussi · crédité';
+      } else {
+        btn.textContent = c.error || 'Paiement non confirmé';
+      }
+      history.replaceState(null, '', '/wallet');
+      setTimeout(() => { btn.disabled = false; upd(); }, 2600);
+    } else if (params.get('canceled')) {
+      btn.textContent = 'Paiement annulé';
+      history.replaceState(null, '', '/wallet');
+      setTimeout(() => { upd(); }, 2000);
+    }
+
     const w = await FP_AUTH.getWallet();
     if (w) renderWallet(w);
   });
