@@ -10,6 +10,7 @@ window.FP_AUTH = (function () {
       try {
         const r = await fetch('/api/me');
         if (r.status === 401) {
+          this.wireNav(null);
           if (redirectIfNotAuth) {
             window.location.href = '/login?next=' + encodeURIComponent(location.pathname);
           }
@@ -21,6 +22,7 @@ window.FP_AUTH = (function () {
         this.wireNav(u);
         return u;
       } catch {
+        this.wireNav(null);
         if (redirectIfNotAuth) window.location.href = '/login';
         return null;
       }
@@ -28,10 +30,11 @@ window.FP_AUTH = (function () {
 
     /* Met à jour la nav (balance + avatar) */
     wireNav(u) {
-      if (!u) u = this.user; if (!u) return;
-      const bal = (u.balance || 0).toFixed(2).replace('.', ',') + ' €';
+      if (u === undefined) u = this.user;
+      const bal = u ? (u.balance || 0).toFixed(2).replace('.', ',') + ' €' : '—';
+      const avi = u ? (u.initials || 'FP') : '?';
       document.querySelectorAll('.bal b').forEach(el => (el.textContent = bal));
-      document.querySelectorAll('a.avatar').forEach(el => (el.textContent = u.initials || 'FP'));
+      document.querySelectorAll('a.avatar').forEach(el => (el.textContent = avi));
     },
 
     /* Recharge le wallet */
@@ -82,7 +85,7 @@ window.FP_AUTH = (function () {
     },
 
     /* Formatage montant */
-    fmt(v) { return Math.abs(v).toFixed(2).replace('.', ',') + ' €'; },
+    fmt(v) { return Math.abs(v).toFixed(2).replace('.', ',') + ' €'; },
   };
 })();
 

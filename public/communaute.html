@@ -70,8 +70,8 @@
       <a href="communaute.html" class="active">Communauté</a><a href="compte.html">Compte</a>
     </nav>
     <div class="nav-right">
-      <div class="bal"><span class="dot"></span> <b>148,50&nbsp;€</b></div>
-      <a href="compte.html" class="avatar">YZ</a>
+      <div class="bal"><span class="dot"></span> <b>—</b></div>
+      <a href="compte.html" class="avatar">?</a>
       <button class="burger" aria-label="Menu"><span></span></button>
     </div>
   </div>
@@ -117,13 +117,9 @@
 
     <!-- MEMBERS -->
     <div class="cpanel members">
-      <div class="ch-lbl">En ligne — 6</div>
+      <div class="ch-lbl" id="memberLbl">En ligne</div>
       <div class="mem"><div class="av" style="background:var(--gold);color:#1a1206">FP<span class="on"></span></div><div><div class="nm">FoodPlug</div><div class="rl">BOT · Officiel</div></div></div>
-      <div class="mem"><div class="av" style="background:var(--kfc);color:#fff">M<span class="on"></span></div><div><div class="nm">Maya</div><div class="rl">Gold</div></div></div>
-      <div class="mem"><div class="av" style="background:var(--mcdo);color:#1a1206">T<span class="on"></span></div><div><div class="nm">Théo</div><div class="rl">Elite</div></div></div>
-      <div class="mem"><div class="av" style="background:var(--otacos);color:#fff">L<span class="on"></span></div><div><div class="nm">Lina</div><div class="rl">Premium</div></div></div>
-      <div class="mem"><div class="av" style="background:#5b6bff;color:#fff">K<span class="on"></span></div><div><div class="nm">Karim</div><div class="rl">Gold</div></div></div>
-      <div class="mem"><div class="av" style="background:#2a2a32;color:var(--text-2)">YZ<span class="on"></span></div><div><div class="nm">Toi</div><div class="rl">Gold</div></div></div>
+      <div class="mem" id="myMember" style="display:none"><div class="av" id="myAv" style="background:#2a2a32;color:var(--text-2)"><span id="myAvi">?</span><span class="on"></span></div><div><div class="nm" id="myName">Vous</div><div class="rl" id="myRl">Membre</div></div></div>
     </div>
   </div>
 </section>
@@ -236,6 +232,15 @@
     if(!u) return;
     loadMessages(curCh);
     startPoll();
+    // Show current user in members panel
+    const m = document.getElementById('myMember');
+    if(m && u) {
+      document.getElementById('myAvi').textContent = u.initials || '?';
+      document.getElementById('myName').textContent = u.name || 'Vous';
+      document.getElementById('myRl').textContent = 'Membre';
+      m.style.display = '';
+      document.getElementById('memberLbl').textContent = 'En ligne — 2';
+    }
   });
 })();
 </script>
