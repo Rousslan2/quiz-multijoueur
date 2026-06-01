@@ -22,7 +22,7 @@
 .bigcard .top{ display:flex; align-items:center; justify-content:space-between; }
 .bigcard .logo{ font-weight:900; font-size:clamp(16px,4vw,22px); letter-spacing:-.03em; }
 .bigcard .lab{ font-family:var(--mono); font-size:clamp(9px,2vw,11px); letter-spacing:.1em; opacity:.7; }
-.bigcard .bal{ font-family:var(--mono); font-size:clamp(32px,7vw,54px); font-weight:700; letter-spacing:-.02em; line-height:1; margin-top:4px; }
+.bigcard .cardbal{ font-family:var(--mono); font-size:clamp(32px,7vw,54px); font-weight:700; letter-spacing:-.02em; line-height:1; margin-top:4px; color:#1a1206; }
 .bigcard .num{ font-family:var(--mono); font-size:clamp(13px,3.5vw,18px); letter-spacing:.1em; font-weight:700; }
 .bigcard .chiprow{ display:flex; gap:6px; }
 .bigcard .wc{ background:rgba(26,18,6,.16); padding:5px 10px; border-radius:100px; font-size:clamp(9px,2vw,11px); font-weight:700; font-family:var(--mono); }
@@ -35,13 +35,13 @@
 /* recharge panel */
 .panel{ border:1px solid var(--line-2); border-radius:24px; padding:28px; background:linear-gradient(180deg,rgba(255,255,255,.03),rgba(255,255,255,.008)); }
 .panel h3{ font-size:22px; margin-bottom:6px; }
-.amts{ display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin:20px 0 14px; }
-.amt{ position:relative; padding:18px 10px; border-radius:14px; border:1px solid var(--line-2); background:rgba(255,255,255,.02);
+.amts{ display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin:20px 0 14px; }
+.amt{ position:relative; padding:13px 6px; border-radius:13px; border:1px solid var(--line-2); background:rgba(255,255,255,.02);
   text-align:center; cursor:pointer; transition:border-color .3s, background .3s, transform .4s var(--spring); }
 .amt:hover{ border-color:var(--line-3); transform:translateY(-2px); }
 .amt.active{ border-color:var(--gold); background:rgba(240,169,58,.08); }
-.amt .v{ font-family:var(--mono); font-weight:700; font-size:18px; }
-.amt .b{ font-size:11px; color:#39d98a; margin-top:3px; }
+.amt .v{ font-family:var(--mono); font-weight:700; font-size:15px; }
+.amt .b{ font-size:10px; color:#39d98a; margin-top:2px; }
 .custom{ display:flex; align-items:center; gap:10px; border:1px solid var(--line-2); border-radius:14px; padding:4px 4px 4px 16px; margin-bottom:22px; }
 .custom span{ font-family:var(--mono); color:var(--text-3); }
 .custom input{ flex:1; background:none; border:none; color:var(--text); font-family:var(--mono); font-size:18px; font-weight:700; padding:14px 0; outline:none; }
@@ -97,7 +97,7 @@
       <div class="bigcard" data-tilt>
         <div class="shine"></div>
         <div class="top"><span class="logo">FoodPlug</span><span class="chip" style="color:#1a1206;border-color:rgba(26,18,6,.25)">PREMIUM</span></div>
-        <div><span class="lab">SOLDE DISPONIBLE</span><div class="bal" id="cardBal">0,00 €</div></div>
+        <div><span class="lab">SOLDE DISPONIBLE</span><div class="cardbal" id="cardBal">0,00 €</div></div>
         <div class="top"><span class="num">5821 •••• 0042</span><div class="chiprow"><span class="wc">+8% CASHBACK</span></div></div>
       </div>
       <div class="wstats">
@@ -110,12 +110,12 @@
       <h3>Recharger mon wallet</h3>
       <p class="muted" style="font-size:14px">Plus tu recharges, plus le bonus grimpe.</p>
       <div class="amts" id="amts">
+        <div class="amt" data-v="10" data-bonus="0"><div class="v">10 €</div></div>
         <div class="amt" data-v="20" data-bonus="0"><div class="v">20 €</div></div>
-        <div class="amt active" data-v="50" data-bonus="3"><div class="v">50 €</div><div class="b">+3 € offerts</div></div>
-        <div class="amt" data-v="100" data-bonus="10"><div class="v">100 €</div><div class="b">+10 € offerts</div></div>
-        <div class="amt" data-v="150" data-bonus="18"><div class="v">150 €</div><div class="b">+18 € offerts</div></div>
-        <div class="amt" data-v="250" data-bonus="35"><div class="v">250 €</div><div class="b">+35 € offerts</div></div>
-        <div class="amt" data-v="500" data-bonus="85"><div class="v">500 €</div><div class="b">+85 € offerts</div></div>
+        <div class="amt" data-v="30" data-bonus="1"><div class="v">30 €</div><div class="b">+1 €</div></div>
+        <div class="amt active" data-v="50" data-bonus="3"><div class="v">50 €</div><div class="b">+3 €</div></div>
+        <div class="amt" data-v="100" data-bonus="10"><div class="v">100 €</div><div class="b">+10 €</div></div>
+        <div class="amt" data-v="200" data-bonus="25"><div class="v">200 €</div><div class="b">+25 €</div></div>
       </div>
       <div class="custom">
         <span>€</span><input id="customAmt" type="number" placeholder="Autre montant" />
