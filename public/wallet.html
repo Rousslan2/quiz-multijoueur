@@ -170,42 +170,44 @@
     body.innerHTML = hist.map(t => { const plus = t.amount > 0; return `<div class="htr"><div class="ic">${plus?'↓':'↑'}</div><div><div class="nm">${t.note}</div><div class="dt">${fmtDate(t.date)}</div></div><div class="am ${plus?'plus':'minus'}">${plus?'+':'−'}${fmt(t.amount)}</div></div>`; }).join('');
   }
 
+  // Sélection montant et moyen de paiement — immédiat, sans attendre l'auth
+  let amount = 50, bonus = 3;
+  const credit = document.getElementById('credit'), btn = document.getElementById('rechargeBtn'), customAmt = document.getElementById('customAmt');
+  function upd() { credit.textContent = fmt(amount + bonus); btn.textContent = 'Recharger ' + fmt(amount); }
+  document.getElementById('amts').addEventListener('click', e => {
+    const a = e.target.closest('.amt'); if(!a) return;
+    document.querySelectorAll('.amt').forEach(x=>x.classList.remove('active')); a.classList.add('active');
+    amount = parseFloat(a.dataset.v); bonus = parseFloat(a.dataset.bonus); customAmt.value = ''; upd();
+  });
+  customAmt.addEventListener('input', e => {
+    const v = parseFloat(e.target.value)||0; amount=v; bonus=Math.floor(v*0.13);
+    document.querySelectorAll('.amt').forEach(x=>x.classList.remove('active')); upd();
+  });
+  document.getElementById('pms').addEventListener('click', e => {
+    const p = e.target.closest('.pm'); if(!p) return;
+    document.querySelectorAll('.pm').forEach(x=>x.classList.remove('active')); p.classList.add('active');
+  });
+  btn.addEventListener('click', async function() {
+    if (!FP_AUTH.user) return;
+    this.disabled = true; this.textContent = '⏳ En cours…';
+    const pm = document.querySelector('.pm.active')?.textContent?.trim() || 'Carte';
+    const res = await FP_AUTH.recharge(amount, bonus, pm);
+    if (res.ok) {
+      FP_AUTH.user.balance = res.wallet.balance;
+      FP_AUTH.wireNav(FP_AUTH.user);
+      renderWallet(res.wallet);
+      this.textContent = '✓ ' + fmt(amount) + ' rechargés';
+    } else {
+      this.textContent = res.error || 'Erreur';
+    }
+    setTimeout(() => { this.disabled = false; upd(); }, 1800);
+  });
+  upd();
+
   FP_AUTH.init().then(async u => {
     if (!u) return;
     const w = await FP_AUTH.getWallet();
     if (w) renderWallet(w);
-
-    let amount = 50, bonus = 3;
-    const credit = document.getElementById('credit'), btn = document.getElementById('rechargeBtn'), customAmt = document.getElementById('customAmt');
-    function upd() { credit.textContent = fmt(amount + bonus); btn.textContent = 'Recharger ' + fmt(amount); }
-    document.getElementById('amts').addEventListener('click', e => {
-      const a = e.target.closest('.amt'); if(!a) return;
-      document.querySelectorAll('.amt').forEach(x=>x.classList.remove('active')); a.classList.add('active');
-      amount = parseFloat(a.dataset.v); bonus = parseFloat(a.dataset.bonus); customAmt.value = ''; upd();
-    });
-    customAmt.addEventListener('input', e => {
-      const v = parseFloat(e.target.value)||0; amount=v; bonus=Math.floor(v*0.13);
-      document.querySelectorAll('.amt').forEach(x=>x.classList.remove('active')); upd();
-    });
-    document.getElementById('pms').addEventListener('click', e => {
-      const p = e.target.closest('.pm'); if(!p) return;
-      document.querySelectorAll('.pm').forEach(x=>x.classList.remove('active')); p.classList.add('active');
-    });
-    btn.addEventListener('click', async function() {
-      this.disabled = true; this.textContent = '⏳ En cours…';
-      const pm = document.querySelector('.pm.active')?.textContent?.trim() || 'Carte';
-      const res = await FP_AUTH.recharge(amount, bonus, pm);
-      if (res.ok) {
-        FP_AUTH.user.balance = res.wallet.balance;
-        FP_AUTH.wireNav(FP_AUTH.user);
-        renderWallet(res.wallet);
-        this.textContent = '✓ ' + fmt(amount) + ' rechargés';
-      } else {
-        this.textContent = res.error || 'Erreur';
-      }
-      setTimeout(() => { this.disabled = false; upd(); }, 1800);
-    });
-    upd();
   });
 })();
 </script>

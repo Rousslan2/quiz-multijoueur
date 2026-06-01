@@ -5,14 +5,20 @@ window.FP_AUTH = (function () {
   return {
     user: null,
 
-    /* Initialise la session. redirectIfNotAuth=true → redirige vers /login */
+    /* Initialise la session. redirectIfNotAuth=true → masque la page et redirige vers /login si 401 */
     async init(redirectIfNotAuth = true) {
+      if (redirectIfNotAuth) {
+        // Masque immédiatement le contenu pour éviter le flash sur pages protégées
+        document.documentElement.style.visibility = 'hidden';
+      }
       try {
         const r = await fetch('/api/me');
         if (r.status === 401) {
           this.wireNav(null);
           if (redirectIfNotAuth) {
             window.location.href = '/login?next=' + encodeURIComponent(location.pathname);
+          } else {
+            document.documentElement.style.visibility = '';
           }
           return null;
         }
@@ -20,10 +26,15 @@ window.FP_AUTH = (function () {
         this.user = u;
         _user = u;
         this.wireNav(u);
+        document.documentElement.style.visibility = '';
         return u;
       } catch {
         this.wireNav(null);
-        if (redirectIfNotAuth) window.location.href = '/login';
+        if (redirectIfNotAuth) {
+          window.location.href = '/login';
+        } else {
+          document.documentElement.style.visibility = '';
+        }
         return null;
       }
     },
@@ -31,7 +42,7 @@ window.FP_AUTH = (function () {
     /* Met à jour la nav (balance + avatar) */
     wireNav(u) {
       if (u === undefined) u = this.user;
-      const bal = u ? (u.balance || 0).toFixed(2).replace('.', ',') + ' €' : '—';
+      const bal = u ? (u.balance || 0).toFixed(2).replace('.', ',') + ' €' : '—';
       const avi = u ? (u.initials || 'FP') : '?';
       document.querySelectorAll('.bal b').forEach(el => (el.textContent = bal));
       document.querySelectorAll('a.avatar').forEach(el => (el.textContent = avi));
