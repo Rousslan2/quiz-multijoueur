@@ -71,9 +71,12 @@ async function dbWrite(name, data) {
 }
 
 /* ================================================================
-   SESSIONS (in-memory — survive process lifetime)
+   SESSIONS (persistées — survivent aux redémarrages)
+   Redis : une clé par token avec TTL. Sinon : fichier sessions.json.
+   La Map sert de cache en mémoire (rapide), reconstruit au besoin.
    ================================================================ */
-const sessions = new Map(); // token → {userId, exp}
+const sessions = new Map(); // cache : token → {userId, exp}
+const SESSION_TTL = 30 * 86400; // secondes (30 jours)
 
 function parseCookies(req) {
   const out = {};
@@ -84,19 +87,46 @@ function parseCookies(req) {
   return out;
 }
 
-function createSession(userId) {
-  for (const [k, v] of sessions) if (v.exp < Date.now()) sessions.delete(k);
+async function createSession(userId) {
   const token = crypto.randomBytes(32).toString('hex');
-  sessions.set(token, { userId, exp: Date.now() + 30 * 86400 * 1000 });
+  const exp = Date.now() + SESSION_TTL * 1000;
+  sessions.set(token, { userId, exp });
+  if (USE_REDIS) {
+    await redisCmd('SET', 'fp_session_' + token, userId, 'EX', String(SESSION_TTL));
+  } else {
+    const all = await dbRead('sessions', {});
+    all[token] = { userId, exp };
+    await dbWrite('sessions', all);
+  }
   return token;
 }
 
-function sessionUserId(req) {
+async function destroySession(token) {
+  sessions.delete(token);
+  if (USE_REDIS) { await redisCmd('DEL', 'fp_session_' + token); }
+  else { const all = await dbRead('sessions', {}); delete all[token]; await dbWrite('sessions', all); }
+}
+
+async function sessionUserId(req) {
   const t = parseCookies(req).fp_sess;
   if (!t) return null;
-  const s = sessions.get(t);
-  if (!s || s.exp < Date.now()) { if (s) sessions.delete(t); return null; }
-  return s.userId;
+  // cache en mémoire
+  const cached = sessions.get(t);
+  if (cached) {
+    if (cached.exp < Date.now()) { await destroySession(t); return null; }
+    return cached.userId;
+  }
+  // cache vide (ex. après redémarrage) → relire depuis le store persistant
+  if (USE_REDIS) {
+    const r = await redisCmd('GET', 'fp_session_' + t);
+    if (r.ok && r.result) { sessions.set(t, { userId: r.result, exp: Date.now() + SESSION_TTL * 1000 }); return r.result; }
+    return null;
+  }
+  const all = await dbRead('sessions', {});
+  const s = all[t];
+  if (s && s.exp > Date.now()) { sessions.set(t, s); return s.userId; }
+  if (s) await destroySession(t);
+  return null;
 }
 
 /* ================================================================
@@ -113,7 +143,7 @@ function checkPw(pw, stored) {
    AUTH MIDDLEWARE
    ================================================================ */
 async function requireAuth(req, res, next) {
-  const uid = sessionUserId(req);
+  const uid = await sessionUserId(req);
   if (!uid) return res.status(401).json({ error: 'Non connecté' });
   const users = await dbRead('users', []);
   req.user = users.find(u => u.id === uid);
@@ -179,7 +209,7 @@ app.post('/api/auth/register', async (req, res) => {
   const wallets = await dbRead('wallets', {});
   wallets[id] = { balance: 0, cashback: 0, recharges: 0, saved: 0, transactions: [] };
   await dbWrite('wallets', wallets);
-  const token = createSession(id);
+  const token = await createSession(id);
   res.cookie('fp_sess', token, { httpOnly: true, sameSite: 'lax', maxAge: 30 * 86400 * 1000, path: '/' });
   res.json({ ok: true, user: pub(user, wallets[id]) });
 });
@@ -192,13 +222,13 @@ app.post('/api/auth/login', async (req, res) => {
   if (!user || !checkPw(password, user.password)) return res.status(401).json({ error: 'Email ou mot de passe incorrect' });
   const wallets = await dbRead('wallets', {});
   if (!wallets[user.id]) { wallets[user.id] = { balance: 0, cashback: 0, recharges: 0, saved: 0, transactions: [] }; await dbWrite('wallets', wallets); }
-  const token = createSession(user.id);
+  const token = await createSession(user.id);
   res.cookie('fp_sess', token, { httpOnly: true, sameSite: 'lax', maxAge: 30 * 86400 * 1000, path: '/' });
   res.json({ ok: true, user: pub(user, wallets[user.id]) });
 });
 
-app.post('/api/auth/logout', (req, res) => {
-  const t = parseCookies(req).fp_sess; if (t) sessions.delete(t);
+app.post('/api/auth/logout', async (req, res) => {
+  const t = parseCookies(req).fp_sess; if (t) await destroySession(t);
   res.clearCookie('fp_sess', { path: '/' });
   res.json({ ok: true });
 });
