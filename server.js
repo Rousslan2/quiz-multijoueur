@@ -354,6 +354,33 @@ app.get('/api/admin/orders', requireAdmin, async (req, res) => {
   res.json(await dbRead('orders', []));
 });
 
+/* Liste tous les utilisateurs avec leur solde */
+app.get('/api/admin/users', requireAdmin, async (req, res) => {
+  const users   = await dbRead('users', []);
+  const wallets = await dbRead('wallets', {});
+  res.json(users.map(u => ({
+    id: u.id, name: u.name, email: u.email, initials: u.initials,
+    tier: u.tier, createdAt: u.createdAt,
+    balance: (wallets[u.id] || {}).balance || 0,
+    recharges: (wallets[u.id] || {}).recharges || 0,
+  })));
+});
+
+/* Crédite ou débite manuellement le wallet d'un utilisateur */
+app.post('/api/admin/users/:id/credit', requireAdmin, async (req, res) => {
+  const { amount, note } = req.body || {};
+  const amt = Math.round(Number(amount) * 100) / 100;
+  if (!amt || amt === 0) return res.status(400).json({ error: 'Montant invalide' });
+  const wallets = await dbRead('wallets', {});
+  const w = wallets[req.params.id] || { balance: 0, cashback: 0, recharges: 0, saved: 0, transactions: [] };
+  w.balance = Math.round((w.balance + amt) * 100) / 100;
+  if (w.balance < 0) return res.status(400).json({ error: 'Solde insuffisant pour ce débit' });
+  w.transactions = [{ date: new Date().toISOString(), note: note || (amt > 0 ? 'Crédit admin' : 'Débit admin'), amount: amt, balance: w.balance }, ...(w.transactions || [])].slice(0, 80);
+  wallets[req.params.id] = w;
+  await dbWrite('wallets', wallets);
+  res.json({ ok: true, balance: w.balance });
+});
+
 /* Gestion du verrouillage des salons de la communauté */
 app.get('/api/admin/chat/locks', requireAdmin, async (req, res) => {
   res.json(await dbRead('chat_locks', {}));

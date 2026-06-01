@@ -207,9 +207,31 @@ body{ background:#070708; }
       <div class="ahead"><div><h1>Clients</h1><div class="sub" id="clientsSub">—</div></div></div>
       <div class="panel">
         <table class="tbl">
-          <thead><tr><th>Client</th><th style="text-align:right">Commandes</th><th style="text-align:right">Dépensé</th></tr></thead>
-          <tbody id="clientsBody"><tr><td colspan="3" style="text-align:center;color:var(--text-3);padding:32px;font-family:var(--mono)">Chargement…</td></tr></tbody>
+          <thead><tr><th>Client</th><th style="text-align:right">Commandes</th><th style="text-align:right">Dépensé</th><th style="text-align:right">Solde wallet</th><th style="text-align:right">Action</th></tr></thead>
+          <tbody id="clientsBody"><tr><td colspan="5" style="text-align:center;color:var(--text-3);padding:32px;font-family:var(--mono)">Chargement…</td></tr></tbody>
         </table>
+      </div>
+
+      <!-- Modal crédit -->
+      <div id="creditModal" style="display:none;position:fixed;inset:0;z-index:999;background:rgba(0,0,0,.7);backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center">
+        <div style="background:var(--surface);border:1px solid var(--line-2);border-radius:22px;padding:32px;width:min(400px,92vw);display:flex;flex-direction:column;gap:16px">
+          <h3 style="font-size:19px;margin:0">Crédit / Débit wallet</h3>
+          <p style="font-size:13px;color:var(--text-3);margin:0">Utilisateur : <b id="creditUserName" style="color:var(--text)">—</b></p>
+          <div style="display:flex;gap:8px">
+            <button class="pillbtn creditSign active" data-s="1" style="flex:1;justify-content:center">+ Ajouter</button>
+            <button class="pillbtn creditSign" data-s="-1" style="flex:1;justify-content:center">− Retirer</button>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;border:1px solid var(--line-2);border-radius:12px;padding:4px 4px 4px 16px">
+            <span style="font-family:var(--mono);color:var(--text-3)">€</span>
+            <input id="creditAmt" type="number" min="0.01" step="0.01" placeholder="Montant" style="flex:1;background:none;border:none;color:var(--text);font-family:var(--mono);font-size:20px;font-weight:700;padding:12px 0;outline:none" />
+          </div>
+          <input id="creditNote" type="text" placeholder="Note (optionnel)" style="background:var(--surface-2);border:1px solid var(--line-2);border-radius:12px;padding:13px 16px;color:var(--text);font-size:14px;outline:none" />
+          <p id="creditErr" style="color:#ff6b5e;font-size:12.5px;min-height:16px;margin:0"></p>
+          <div style="display:flex;gap:10px">
+            <button class="btn btn-gold" id="creditConfirm" style="flex:1;justify-content:center">Confirmer</button>
+            <button class="pillbtn" id="creditCancel" style="flex:1;justify-content:center">Annuler</button>
+          </div>
+        </div>
       </div>
     </section>
     <!-- COMMUNITY -->
@@ -395,14 +417,60 @@ body{ background:#070708; }
         }).join('')
       :'<tr><td colspan="6" style="text-align:center;color:var(--text-3);padding:32px;font-family:var(--mono)">Aucune commande pour l\'instant</td></tr>';
 
-    // Clients — computed from orders
-    const clients={};
-    orders.forEach(o=>{ const u=o.user||'Anonyme'; if(!clients[u])clients[u]={n:u,c:0,t:0}; clients[u].c++; clients[u].t+=(o.total||0); });
-    const clientsArr=Object.values(clients).sort((a,b)=>b.t-a.t);
-    document.getElementById('clientsSub').textContent=`${clientsArr.length} client${clientsArr.length>1?'s':''} · ${count} commande${count>1?'s':''}`;
-    document.getElementById('clientsBody').innerHTML=clientsArr.length
-      ?clientsArr.map(c=>`<tr><td>${c.n}</td><td class="tnum" style="text-align:right">${c.c}</td><td class="tnum" style="text-align:right">${fmt(c.t)}</td></tr>`).join('')
-      :'<tr><td colspan="3" style="text-align:center;color:var(--text-3);padding:32px;font-family:var(--mono)">Aucun client pour l\'instant</td></tr>';
+    // Clients — depuis l'API (comptes réels avec solde wallet)
+    let allUsers=[];
+    const ordersByUser={};
+    orders.forEach(o=>{ const u=o.user||'Anonyme'; if(!ordersByUser[u])ordersByUser[u]={c:0,t:0}; ordersByUser[u].c++; ordersByUser[u].t+=(o.total||0); });
+
+    async function loadClients(){
+      try{ allUsers=await fetch('/api/admin/users',{headers:{'X-Admin-Token':'foodplug'}}).then(r=>r.ok?r.json():[]); }catch{ allUsers=[]; }
+      renderClients();
+    }
+    function renderClients(){
+      document.getElementById('clientsSub').textContent=`${allUsers.length} membre${allUsers.length>1?'s':''}`;
+      document.getElementById('clientsBody').innerHTML=allUsers.length
+        ?allUsers.map(u=>{
+            const ord=ordersByUser[u.name]||{c:0,t:0};
+            return `<tr>
+              <td><b>${u.name}</b><div style="font-size:11px;color:var(--text-3);font-family:var(--mono)">${u.email}</div></td>
+              <td class="tnum" style="text-align:right">${ord.c}</td>
+              <td class="tnum" style="text-align:right">${fmt(ord.t)}</td>
+              <td class="tnum" style="text-align:right;color:var(--gold-soft)" id="bal-${u.id}">${fmt(u.balance)}</td>
+              <td style="text-align:right"><button class="pillbtn" data-uid="${u.id}" data-uname="${u.name}">Créditer</button></td>
+            </tr>`;
+          }).join('')
+        :'<tr><td colspan="5" style="text-align:center;color:var(--text-3);padding:32px;font-family:var(--mono)">Aucun membre pour l\'instant</td></tr>';
+    }
+    loadClients();
+
+    // Modal crédit/débit
+    const modal=document.getElementById('creditModal');
+    let creditSign=1, creditUserId=null;
+    function openCredit(uid,uname){ creditUserId=uid; document.getElementById('creditUserName').textContent=uname;
+      document.getElementById('creditAmt').value=''; document.getElementById('creditNote').value=''; document.getElementById('creditErr').textContent='';
+      creditSign=1; document.querySelectorAll('.creditSign').forEach(b=>b.classList.toggle('active',+b.dataset.s===1));
+      modal.style.display='flex'; }
+    document.getElementById('clientsBody').addEventListener('click',e=>{
+      const b=e.target.closest('[data-uid]'); if(!b)return; openCredit(b.dataset.uid,b.dataset.uname); });
+    modal.addEventListener('click',e=>{ if(e.target===modal) modal.style.display='none'; });
+    document.getElementById('creditCancel').addEventListener('click',()=>modal.style.display='none');
+    document.querySelectorAll('.creditSign').forEach(b=>b.addEventListener('click',()=>{
+      creditSign=+b.dataset.s; document.querySelectorAll('.creditSign').forEach(x=>x.classList.toggle('active',+x.dataset.s===creditSign)); }));
+    document.getElementById('creditConfirm').addEventListener('click',async function(){
+      const v=parseFloat(document.getElementById('creditAmt').value); const note=document.getElementById('creditNote').value.trim();
+      if(!v||v<=0){ document.getElementById('creditErr').textContent='Montant invalide'; return; }
+      this.disabled=true; this.textContent='⏳';
+      try{
+        const r=await fetch(`/api/admin/users/${creditUserId}/credit`,{method:'POST',headers:{'X-Admin-Token':'foodplug','Content-Type':'application/json'},
+          body:JSON.stringify({amount:creditSign*v,note:note||(creditSign>0?'Crédit admin':'Débit admin')})});
+        const d=await r.json();
+        if(d.ok){ document.getElementById('bal-'+creditUserId).textContent=fmt(d.balance);
+          const u=allUsers.find(x=>x.id===creditUserId); if(u) u.balance=d.balance;
+          modal.style.display='none';
+        } else { document.getElementById('creditErr').textContent=d.error||'Erreur'; }
+      }catch{ document.getElementById('creditErr').textContent='Erreur réseau'; }
+      this.disabled=false; this.textContent='Confirmer';
+    });
   }
 })();
 </script>
