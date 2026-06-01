@@ -173,8 +173,13 @@ async function stripeApi(path, method = 'POST', params = null) {
     headers: { Authorization: `Bearer ${STRIPE_SECRET}`, 'Content-Type': 'application/x-www-form-urlencoded' },
   };
   if (params) opts.body = stripeForm(params).join('&');
-  const r = await fetch('https://api.stripe.com/v1' + path, opts);
-  return r.json();
+  try {
+    const r = await fetch('https://api.stripe.com/v1' + path, opts);
+    return r.json();
+  } catch (e) {
+    console.error('[Stripe] Erreur réseau :', e.message);
+    return null;
+  }
 }
 
 /* ================================================================
@@ -327,30 +332,40 @@ app.post('/api/me/wallet/checkout', requireAuth, async (req, res) => {
 
 /* Vérifie le paiement auprès de Stripe et crédite le wallet (idempotent). */
 app.post('/api/me/wallet/confirm', requireAuth, async (req, res) => {
-  if (!STRIPE_SECRET) return res.status(503).json({ error: 'Stripe non configuré' });
-  const { session_id } = req.body || {};
-  if (!session_id) return res.status(400).json({ error: 'Session manquante' });
-  const session = await stripeApi('/checkout/sessions/' + encodeURIComponent(session_id), 'GET');
-  if (!session || session.payment_status !== 'paid') return res.status(402).json({ error: 'Paiement non confirmé' });
-  if (!session.metadata || session.metadata.userId !== req.user.id) return res.status(403).json({ error: 'Session invalide' });
+  try {
+    if (!STRIPE_SECRET) return res.status(503).json({ error: 'Stripe non configuré' });
+    const { session_id } = req.body || {};
+    if (!session_id) return res.status(400).json({ error: 'Session manquante' });
 
-  const processed = await dbRead('stripe_sessions', {});
-  const wallets   = await dbRead('wallets', {});
-  let w = wallets[req.user.id] || { balance: 0, cashback: 0, recharges: 0, saved: 0, transactions: [] };
+    const session = await stripeApi('/checkout/sessions/' + encodeURIComponent(session_id), 'GET');
+    if (!session) return res.status(502).json({ error: 'Impossible de joindre Stripe' });
+    if (session.error) return res.status(402).json({ error: session.error.message || 'Erreur Stripe' });
+    if (session.payment_status !== 'paid') return res.status(402).json({ error: 'Paiement non confirmé (statut: ' + session.payment_status + ')' });
+    if (!session.metadata || session.metadata.userId !== req.user.id) return res.status(403).json({ error: 'Session invalide' });
 
-  if (processed[session_id]) { wallets[req.user.id] = w; return res.json({ ok: true, wallet: w, already: true }); }
+    const processed = await dbRead('stripe_sessions', {});
+    const wallets   = await dbRead('wallets', {});
+    let w = wallets[req.user.id] || { balance: 0, cashback: 0, recharges: 0, saved: 0, transactions: [] };
 
-  const credit = Math.round((Number(session.metadata.credit) || 0) * 100) / 100;
-  w.balance   = Math.round((w.balance  + credit)        * 100) / 100;
-  w.cashback  = Math.round((w.cashback + credit * 0.08) * 100) / 100;
-  w.recharges = (w.recharges || 0) + 1;
-  w.transactions = [{ date: new Date().toISOString(), note: 'Recharge wallet · Carte', amount: credit, balance: w.balance }, ...(w.transactions || [])].slice(0, 80);
-  wallets[req.user.id] = w;
-  await dbWrite('wallets', wallets);
+    if (processed[session_id]) { return res.json({ ok: true, wallet: w, already: true }); }
 
-  processed[session_id] = { userId: req.user.id, credit, date: new Date().toISOString() };
-  await dbWrite('stripe_sessions', processed);
-  res.json({ ok: true, wallet: w });
+    const credit = Math.round((Number(session.metadata.credit) || 0) * 100) / 100;
+    if (!credit) return res.status(400).json({ error: 'Montant de crédit invalide dans la session' });
+
+    w.balance   = Math.round((w.balance  + credit)        * 100) / 100;
+    w.cashback  = Math.round((w.cashback + credit * 0.08) * 100) / 100;
+    w.recharges = (w.recharges || 0) + 1;
+    w.transactions = [{ date: new Date().toISOString(), note: 'Recharge wallet · Carte', amount: credit, balance: w.balance }, ...(w.transactions || [])].slice(0, 80);
+    wallets[req.user.id] = w;
+    await dbWrite('wallets', wallets);
+
+    processed[session_id] = { userId: req.user.id, credit, date: new Date().toISOString() };
+    await dbWrite('stripe_sessions', processed);
+    res.json({ ok: true, wallet: w });
+  } catch (e) {
+    console.error('[confirm] Erreur inattendue :', e.message);
+    res.status(500).json({ error: 'Erreur serveur : ' + e.message });
+  }
 });
 
 app.post('/api/me/wallet/deduct', requireAuth, async (req, res) => {

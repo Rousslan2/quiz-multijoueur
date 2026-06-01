@@ -204,29 +204,40 @@
   FP_AUTH.init().then(async u => {
     if (!u) return;
 
-    // Retour depuis Stripe : confirmer le paiement et créditer
     const params = new URLSearchParams(location.search);
     const sid = params.get('session_id');
+    let walletData = null;
+
     if (sid) {
       btn.disabled = true; btn.textContent = '⏳ Vérification du paiement…';
-      const c = await FP_AUTH.confirmPayment(sid);
-      if (c.ok) {
-        FP_AUTH.user.balance = c.wallet.balance;
-        FP_AUTH.wireNav(FP_AUTH.user);
-        btn.textContent = c.already ? '✓ Déjà crédité' : '✓ Paiement réussi · crédité';
-      } else {
-        btn.textContent = c.error || 'Paiement non confirmé';
+      try {
+        const c = await FP_AUTH.confirmPayment(sid);
+        if (c.ok) {
+          // Utiliser directement le wallet retourné par le serveur — pas de second aller Redis
+          walletData = c.wallet;
+          FP_AUTH.user.balance = c.wallet.balance;
+          FP_AUTH.wireNav(FP_AUTH.user);
+          btn.textContent = c.already ? '✓ Déjà crédité' : '✓ Paiement réussi · +' + fmt(c.wallet.transactions?.[0]?.amount || 0);
+        } else {
+          // Affiche l'erreur exacte renvoyée par le serveur
+          btn.textContent = '⚠ ' + (c.error || 'Paiement non confirmé');
+          console.error('[wallet] confirmPayment échoué :', c.error);
+        }
+      } catch (e) {
+        btn.textContent = '⚠ Erreur réseau — réessaie';
+        console.error('[wallet] confirmPayment exception :', e);
       }
       history.replaceState(null, '', '/wallet');
-      setTimeout(() => { btn.disabled = false; upd(); }, 2600);
+      setTimeout(() => { btn.disabled = false; upd(); }, 3000);
     } else if (params.get('canceled')) {
       btn.textContent = 'Paiement annulé';
       history.replaceState(null, '', '/wallet');
       setTimeout(() => { upd(); }, 2000);
     }
 
-    const w = await FP_AUTH.getWallet();
-    if (w) renderWallet(w);
+    // Si on n'a pas encore les données du wallet (pas de retour Stripe ou confirm échoué), on va les chercher
+    if (!walletData) walletData = await FP_AUTH.getWallet();
+    if (walletData) renderWallet(walletData);
   });
 })();
 </script>
