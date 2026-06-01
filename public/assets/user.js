@@ -83,9 +83,10 @@ window.FP_AUTH = (function () {
       return r.json();
     },
 
-    /* Ajoute un compte acheté */
+    /* Ajoute un compte acheté — retourne { ok, delivery } */
     async addAccount(data) {
-      return fetch('/api/me/accounts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+      const r = await fetch('/api/me/accounts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+      return r.json();
     },
 
     /* Met à jour le profil */

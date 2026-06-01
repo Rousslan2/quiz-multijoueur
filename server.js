@@ -176,6 +176,35 @@ async function stripeApi(path, method = 'POST', params = null) {
 }
 
 /* ================================================================
+   FAKE ACCOUNT POOL (données de test — à remplacer par de vrais comptes)
+   ================================================================ */
+const FAKE_ACCOUNTS = {
+  kfc: [
+    { code: 'D8F5EB', name: 'Jacky',   phone: '0601231351' },
+    { code: 'A3C7F2', name: 'Lucas',   phone: '0759874523' },
+    { code: 'E1B9D4', name: 'Sophie',  phone: '0634568712' },
+    { code: 'F5A2C8', name: 'Nathan',  phone: '0712345678' },
+    { code: 'B7E3A1', name: 'Emma',    phone: '0698765432' },
+    { code: 'C9D1E7', name: 'Mathis',  phone: '0623456789' },
+    { code: 'H2F8G3', name: 'Julie',   phone: '0745678901' },
+  ],
+  mcdo: [
+    { qr: 'MCDO-PREMIUM-2025-XK9F3M' },
+    { qr: 'MCDO-ACCOUNT-7Y4P2N-2025' },
+    { qr: 'MCDO-VIP-QX8L5R-ACTIVE'  },
+    { qr: 'MCDO-GOLD-2M6K9T-2025'   },
+    { qr: 'MCDO-PLUS-4H7W2E-VALID'  },
+  ],
+  otacos: [
+    { qr: 'OTC-PREMIUM-2025-JK3N8P' },
+    { qr: 'OTC-ACCOUNT-5T9R2M-2025' },
+    { qr: 'OTC-VIP-BW4X7Y-ACTIVE'   },
+    { qr: 'OTC-GOLD-6C2L8Q-2025'    },
+    { qr: 'OTC-PLUS-3V9F5H-VALID'   },
+  ],
+};
+
+/* ================================================================
    NTFY
    ================================================================ */
 function sendNtfy(title, body) {
@@ -348,10 +377,12 @@ app.get('/api/me/accounts', requireAuth, async (req, res) => {
 app.post('/api/me/accounts', requireAuth, async (req, res) => {
   const { brand, pts, name: aname } = req.body || {};
   if (!brand || !pts) return res.status(400).json({ error: 'Données manquantes' });
+  const pool = FAKE_ACCOUNTS[brand] || FAKE_ACCOUNTS.kfc;
+  const delivery = pool[Math.floor(Math.random() * pool.length)];
   const all = await dbRead('user_accounts', []);
-  all.unshift({ userId: req.user.id, brand, pts, name: aname || brand, date: new Date().toISOString() });
+  all.unshift({ userId: req.user.id, brand, pts, name: aname || brand, date: new Date().toISOString(), delivery });
   await dbWrite('user_accounts', all);
-  res.json({ ok: true });
+  res.json({ ok: true, delivery });
 });
 
 /* ================================================================

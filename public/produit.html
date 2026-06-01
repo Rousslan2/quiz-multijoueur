@@ -80,6 +80,25 @@
 .related-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:22px; }
 @media(max-width:900px){ .related-grid{ grid-template-columns:1fr 1fr; } }
 @media(max-width:560px){ .related-grid{ grid-template-columns:1fr; } }
+
+/* ---- Delivery modal ---- */
+#delivModal{ position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.72);backdrop-filter:blur(10px);display:none;align-items:center;justify-content:center;padding:24px; }
+#delivModal.open{ display:flex; }
+.deliv-card{ background:var(--surface);border:1px solid var(--line);border-radius:22px;max-width:420px;width:100%;padding:32px;position:relative; }
+.deliv-head{ display:flex;align-items:center;gap:14px;margin-bottom:26px; }
+.deliv-badge{ width:50px;height:50px;border-radius:50%;background:rgba(57,217,138,.12);border:1px solid rgba(57,217,138,.3);display:grid;place-items:center;font-size:24px;flex:none; }
+.deliv-title{ font-size:20px;font-weight:700; }
+.deliv-sub{ font-size:13px;color:var(--text-3);margin-top:2px; }
+.deliv-row{ display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:13px;background:var(--surface-2);border:1px solid var(--line-2);margin-bottom:10px; }
+.deliv-row .d-ico{ font-size:20px;flex:none; }
+.deliv-row .d-lbl{ font-size:10px;color:var(--text-3);font-family:var(--mono);text-transform:uppercase;letter-spacing:.14em;margin-bottom:3px; }
+.deliv-row .d-val{ font-family:var(--mono);font-weight:700;font-size:17px; }
+.deliv-code{ color:var(--gold-soft);font-size:22px;letter-spacing:.12em; }
+.deliv-copy{ margin-left:auto;background:rgba(240,169,58,.1);border:1px solid rgba(240,169,58,.25);border-radius:8px;padding:5px 12px;font-size:12px;font-family:var(--mono);color:var(--gold);cursor:pointer;transition:background .2s; }
+.deliv-copy:hover{ background:rgba(240,169,58,.2); }
+.deliv-qr{ text-align:center;padding:10px 0; }
+.deliv-qr-inner{ background:#fff;border-radius:14px;padding:16px;display:inline-block; }
+.deliv-qr-code{ margin-top:12px;font-family:var(--mono);font-size:12px;color:var(--text-3);word-break:break-all; }
 </style>
 </head>
 <body>
@@ -196,6 +215,46 @@
   </div>
 </section>
 
+<!-- DELIVERY MODAL -->
+<div id="delivModal">
+  <div class="deliv-card">
+    <div class="deliv-head">
+      <div class="deliv-badge">✅</div>
+      <div>
+        <div class="deliv-title" id="delivTitle">Compte livré</div>
+        <div class="deliv-sub" id="delivSub">Livraison instantanée</div>
+      </div>
+    </div>
+
+    <!-- KFC: code + name + phone -->
+    <div id="delivKfc" style="display:none">
+      <div class="deliv-row">
+        <span class="d-ico">📋</span>
+        <div><div class="d-lbl">Code livré</div><div class="d-val deliv-code" id="dCode">—</div></div>
+        <button class="deliv-copy" id="copyCodeBtn">Copier</button>
+      </div>
+      <div class="deliv-row">
+        <span class="d-ico">👤</span>
+        <div><div class="d-lbl">Compte</div><div class="d-val" id="dName">—</div></div>
+      </div>
+      <div class="deliv-row">
+        <span class="d-ico">📱</span>
+        <div><div class="d-lbl">N° lié</div><div class="d-val" style="color:var(--text-2)" id="dPhone">—</div></div>
+      </div>
+    </div>
+
+    <!-- McDo / O'Tacos: QR code -->
+    <div id="delivQr" style="display:none">
+      <div class="deliv-qr">
+        <div class="deliv-qr-inner"><div id="qrContainer"></div></div>
+        <div class="deliv-qr-code" id="delivQrTxt"></div>
+      </div>
+    </div>
+
+    <button onclick="document.getElementById('delivModal').classList.remove('open')" class="btn btn-ghost" style="width:100%;justify-content:center;margin-top:20px">Fermer</button>
+  </div>
+</div>
+
 <footer class="footer">
   <div class="wrap">
     <div class="foot-grid">
@@ -210,6 +269,7 @@
 
 <template id="__bundler_thumbnail"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#08080a"/><circle cx="50" cy="46" r="22" fill="#e4002b"/><text x="50" y="86" font-family="monospace" font-size="11" fill="#f0a93a" text-anchor="middle" font-weight="bold">PRODUIT</text></svg></template>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="image-slot.js"></script>
 <script src="assets/scene.js"></script>
@@ -240,6 +300,29 @@
   function upd(){ const t=B.tr[sel]; big.textContent=fmt(t[1]); ptsLbl.textContent=t[0]; totalLbl.textContent=fmt(t[1]*qty); qtyEl.textContent=qty; }
   wrap.addEventListener('click',e=>{ const t=e.target.closest('.tranche'); if(!t)return; sel=+t.dataset.i; rows(); upd(); });
   document.querySelectorAll('.qty button').forEach(b=>b.addEventListener('click',()=>{ qty=Math.max(1,qty+parseInt(b.dataset.q)); upd(); }));
+  function showDelivery(brand, d) {
+    const kfcDiv = $('delivKfc'), qrDiv = $('delivQr');
+    if (brand === 'kfc') {
+      kfcDiv.style.display = 'block'; qrDiv.style.display = 'none';
+      $('dCode').textContent = d.code;
+      $('dName').textContent = d.name;
+      $('dPhone').textContent = '•••• ' + String(d.phone).slice(-4);
+      $('copyCodeBtn').onclick = () => {
+        navigator.clipboard.writeText(d.code).then(() => {
+          $('copyCodeBtn').textContent = 'Copié !';
+          setTimeout(() => { $('copyCodeBtn').textContent = 'Copier'; }, 2000);
+        });
+      };
+    } else {
+      kfcDiv.style.display = 'none'; qrDiv.style.display = 'block';
+      const container = $('qrContainer');
+      container.innerHTML = '';
+      new QRCode(container, { text: d.qr, width: 200, height: 200, colorDark: '#000', colorLight: '#fff' });
+      $('delivQrTxt').textContent = d.qr;
+    }
+    $('delivModal').classList.add('open');
+  }
+
   $('addBtn').addEventListener('click', async function(){
     if (!FP_AUTH.user) { window.location.href = '/login?next=/produit%23' + key; return; }
     const price = B.tr[sel][1] * qty;
@@ -253,11 +336,12 @@
     if (!ded.ok) { this.textContent = ded.error||'Erreur'; this.disabled=false; return; }
     FP_AUTH.user.balance = ded.wallet.balance;
     FP_AUTH.wireNav(FP_AUTH.user);
-    await FP_AUTH.addAccount({ brand:key, name:B.name, pts:B.tr[sel][0] });
+    const acctRes = await FP_AUTH.addAccount({ brand:key, name:B.name, pts:B.tr[sel][0] });
     await fetch('/api/orders',{ method:'POST', headers:{'Content-Type':'application/json'},
       body:JSON.stringify({ id:'FP-'+Date.now(), brand:key, items:[{pts:B.tr[sel][0],qty}], user:FP_AUTH.user.name, total:price, date:new Date().toISOString(), status:'ok' }) });
     this.innerHTML='✓ Acheté · '+fmt(price);
     setTimeout(()=>{ this.innerHTML='Acheter · '+fmt(price); this.disabled=false; },3000);
+    if (acctRes && acctRes.delivery) showDelivery(key, acctRes.delivery);
   });
   document.querySelector('.ptabs').addEventListener('click',e=>{ const b=e.target.closest('.ptab'); if(!b)return; document.querySelectorAll('.ptab').forEach(x=>x.classList.remove('active')); b.classList.add('active'); document.querySelectorAll('.tabpane').forEach(p=>p.classList.toggle('active',p.dataset.pane===b.dataset.t)); if(window.__fp)window.__fp.scan(); });
   window.addEventListener('hashchange',()=>location.reload());
