@@ -354,15 +354,17 @@ app.get('/api/admin/orders', requireAdmin, async (req, res) => {
   res.json(await dbRead('orders', []));
 });
 
-/* Liste tous les utilisateurs avec leur solde */
+/* Liste tous les utilisateurs avec leur solde + comptes achetés */
 app.get('/api/admin/users', requireAdmin, async (req, res) => {
   const users   = await dbRead('users', []);
   const wallets = await dbRead('wallets', {});
+  const accts   = await dbRead('user_accounts', []);
   res.json(users.map(u => ({
     id: u.id, name: u.name, email: u.email, initials: u.initials,
     tier: u.tier, createdAt: u.createdAt,
     balance: (wallets[u.id] || {}).balance || 0,
     recharges: (wallets[u.id] || {}).recharges || 0,
+    accounts: accts.filter(a => a.userId === u.id).map(a => ({ brand: a.brand, pts: a.pts, name: a.name, date: a.date })),
   })));
 });
 

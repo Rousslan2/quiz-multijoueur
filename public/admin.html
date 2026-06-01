@@ -207,8 +207,8 @@ body{ background:#070708; }
       <div class="ahead"><div><h1>Clients</h1><div class="sub" id="clientsSub">—</div></div></div>
       <div class="panel">
         <table class="tbl">
-          <thead><tr><th>Client</th><th style="text-align:right">Commandes</th><th style="text-align:right">Dépensé</th><th style="text-align:right">Solde wallet</th><th style="text-align:right">Action</th></tr></thead>
-          <tbody id="clientsBody"><tr><td colspan="5" style="text-align:center;color:var(--text-3);padding:32px;font-family:var(--mono)">Chargement…</td></tr></tbody>
+          <thead><tr><th>Client</th><th style="text-align:right">Commandes</th><th style="text-align:right">Comptes</th><th style="text-align:right">Dépensé</th><th style="text-align:right">Solde wallet</th><th style="text-align:right">Action</th></tr></thead>
+          <tbody id="clientsBody"><tr><td colspan="6" style="text-align:center;color:var(--text-3);padding:32px;font-family:var(--mono)">Chargement…</td></tr></tbody>
         </table>
       </div>
 
@@ -426,20 +426,33 @@ body{ background:#070708; }
       try{ allUsers=await fetch('/api/admin/users',{headers:{'X-Admin-Token':'foodplug'}}).then(r=>r.ok?r.json():[]); }catch{ allUsers=[]; }
       renderClients();
     }
+    const acctDate=d=>{ try{ return new Date(d).toLocaleDateString('fr-FR',{day:'numeric',month:'short',year:'numeric'}); }catch{ return ''; } };
     function renderClients(){
-      document.getElementById('clientsSub').textContent=`${allUsers.length} membre${allUsers.length>1?'s':''}`;
+      const totalAccts=allUsers.reduce((s,u)=>s+(u.accounts||[]).length,0);
+      document.getElementById('clientsSub').textContent=`${allUsers.length} membre${allUsers.length>1?'s':''} · ${totalAccts} compte${totalAccts>1?'s':''} créé${totalAccts>1?'s':''}`;
       document.getElementById('clientsBody').innerHTML=allUsers.length
         ?allUsers.map(u=>{
             const ord=ordersByUser[u.name]||{c:0,t:0};
-            return `<tr>
+            const accts=u.accounts||[];
+            const main=`<tr>
               <td><b>${u.name}</b><div style="font-size:11px;color:var(--text-3);font-family:var(--mono)">${u.email}</div></td>
               <td class="tnum" style="text-align:right">${ord.c}</td>
+              <td class="tnum" style="text-align:right">${accts.length?`<span class="stt ok" style="cursor:pointer" data-toggle="${u.id}">${accts.length} ▾</span>`:'<span style="color:var(--text-3)">0</span>'}</td>
               <td class="tnum" style="text-align:right">${fmt(ord.t)}</td>
               <td class="tnum" style="text-align:right;color:var(--gold-soft)" id="bal-${u.id}">${fmt(u.balance)}</td>
               <td style="text-align:right"><button class="pillbtn" data-uid="${u.id}" data-uname="${u.name}">Créditer</button></td>
             </tr>`;
+            const detail=accts.length?`<tr class="acct-detail" data-detail="${u.id}" style="display:none"><td colspan="6" style="background:rgba(255,255,255,.015);padding:0">
+              <div style="padding:12px 18px;display:flex;flex-direction:column;gap:8px">
+                ${accts.map(a=>`<div style="display:flex;align-items:center;gap:12px;font-size:13px">
+                  <span class="brand-tag ${a.brand||''}">${labels[a.brand]||a.brand||'—'}</span>
+                  <span class="tnum"><b>${a.pts}</b> pts</span>
+                  <span style="color:var(--text-3);font-family:var(--mono);font-size:11px;margin-left:auto">${acctDate(a.date)}</span>
+                </div>`).join('')}
+              </div></td></tr>`:'';
+            return main+detail;
           }).join('')
-        :'<tr><td colspan="5" style="text-align:center;color:var(--text-3);padding:32px;font-family:var(--mono)">Aucun membre pour l\'instant</td></tr>';
+        :'<tr><td colspan="6" style="text-align:center;color:var(--text-3);padding:32px;font-family:var(--mono)">Aucun membre pour l\'instant</td></tr>';
     }
     loadClients();
 
@@ -451,6 +464,9 @@ body{ background:#070708; }
       creditSign=1; document.querySelectorAll('.creditSign').forEach(b=>b.classList.toggle('active',+b.dataset.s===1));
       modal.style.display='flex'; }
     document.getElementById('clientsBody').addEventListener('click',e=>{
+      const tog=e.target.closest('[data-toggle]');
+      if(tog){ const row=document.querySelector(`[data-detail="${tog.dataset.toggle}"]`);
+        if(row){ const open=row.style.display==='none'; row.style.display=open?'table-row':'none'; tog.innerHTML=tog.textContent.replace(/[▾▴]/,open?'▴':'▾'); } return; }
       const b=e.target.closest('[data-uid]'); if(!b)return; openCredit(b.dataset.uid,b.dataset.uname); });
     modal.addEventListener('click',e=>{ if(e.target===modal) modal.style.display='none'; });
     document.getElementById('creditCancel').addEventListener('click',()=>modal.style.display='none');
