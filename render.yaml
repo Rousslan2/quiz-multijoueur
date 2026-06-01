@@ -14,3 +14,10 @@ services:
       # (Settings → Environment). Sans elle, la recharge wallet est désactivée.
       - key: STRIPE_SECRET_KEY
         sync: false
+      # Base de données persistante (Upstash Redis, gratuit). SANS ces deux
+      # variables, toutes les données (comptes, crédits, commandes) sont
+      # PERDUES à chaque redéploiement. À créer sur https://upstash.com
+      - key: UPSTASH_REDIS_REST_URL
+        sync: false
+      - key: UPSTASH_REDIS_REST_TOKEN
+        sync: false

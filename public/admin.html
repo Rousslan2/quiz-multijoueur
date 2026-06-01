@@ -145,6 +145,7 @@ body{ background:#070708; }
         <div><h1>Aperçu</h1><div class="sub">Vue d'ensemble · 30 derniers jours</div></div>
         <span class="pillbtn"><span class="dot live"></span> Temps réel</span>
       </div>
+      <div id="dbStatus" style="display:none;align-items:center;gap:12px;padding:14px 18px;border-radius:14px;margin-bottom:20px;font-size:13.5px"></div>
       <div class="kgrid">
         <div class="kc gold"><div class="l">Chiffre d'affaires</div><b class="tnum" id="kpiCA">—</b></div>
         <div class="kc"><div class="l">Commandes</div><b class="tnum" id="kpiOrders">—</b></div>
@@ -285,6 +286,22 @@ body{ background:#070708; }
 
   async function init(){
     if(inited) return; inited=true;
+
+    /* ---- statut base de données ---- */
+    (async()=>{
+      try{
+        const h=await fetch('/api/admin/health',{headers:{'X-Admin-Token':'foodplug'}}).then(r=>r.json());
+        const box=document.getElementById('dbStatus'); if(!box)return;
+        const ok=h.persistence==='redis';
+        box.style.display='flex';
+        box.style.background=ok?'rgba(57,217,138,.08)':'rgba(255,107,94,.08)';
+        box.style.border='1px solid '+(ok?'rgba(57,217,138,.3)':'rgba(255,107,94,.3)');
+        box.style.color=ok?'#39d98a':'#ff6b5e';
+        box.innerHTML=ok
+          ?`<b>✅ Base de données connectée</b> · ${h.label} · ${h.users} membre(s), ${h.accounts} compte(s) sauvegardés durablement`
+          :`<b>⚠️ Données NON persistantes</b> · ${h.label}. Les comptes et crédits seront perdus au prochain redéploiement. Configure Upstash Redis (variables UPSTASH_REDIS_REST_URL et UPSTASH_REDIS_REST_TOKEN sur Render).`;
+      }catch{}
+    })();
 
     /* ---- sidebar nav ---- */
     document.querySelectorAll('.anav[data-p]').forEach(n=>n.addEventListener('click',()=>{

@@ -24,24 +24,35 @@ const dataDir   = path.join(__dirname, 'data');
 if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
 
 /* ================================================================
-   PERSISTENCE (file + Redis)
+   PERSISTENCE (Redis Upstash si configuré, sinon fichiers locaux)
    ================================================================ */
+const USE_REDIS = !!(REDIS_URL && REDIS_TOKEN);
+let redisHealthy = false;       // passe à true au 1er appel réussi
+let redisLastError = '';
+
 async function redisCmd(...args) {
-  if (!REDIS_URL || !REDIS_TOKEN) return null;
+  if (!USE_REDIS) return { ok: false };
   try {
     const r = await fetch(REDIS_URL, {
       method: 'POST',
       headers: { Authorization: `Bearer ${REDIS_TOKEN}`, 'Content-Type': 'application/json' },
       body: JSON.stringify(args),
     });
-    return (await r.json()).result;
-  } catch { return null; }
+    const j = await r.json();
+    if (j.error) { redisLastError = j.error; redisHealthy = false; return { ok: false, error: j.error }; }
+    redisHealthy = true; redisLastError = '';
+    return { ok: true, result: j.result };
+  } catch (e) {
+    redisLastError = String(e && e.message || e); redisHealthy = false;
+    return { ok: false, error: redisLastError };
+  }
 }
 
 async function dbRead(name, def) {
-  if (REDIS_URL && REDIS_TOKEN) {
-    const raw = await redisCmd('GET', 'fp_' + name);
-    if (raw) try { return JSON.parse(raw); } catch {}
+  if (USE_REDIS) {
+    const r = await redisCmd('GET', 'fp_' + name);
+    if (r.ok && r.result) { try { return JSON.parse(r.result); } catch {} }
+    if (r.ok) return def; // clé absente → valeur par défaut (ne pas lire le fichier éphémère)
   }
   const f = path.join(dataDir, name + '.json');
   try { return JSON.parse(fs.readFileSync(f, 'utf8')); }
@@ -49,11 +60,14 @@ async function dbRead(name, def) {
 }
 
 async function dbWrite(name, data) {
-  if (REDIS_URL && REDIS_TOKEN) {
-    await redisCmd('SET', 'fp_' + name, JSON.stringify(data));
-    return;
+  if (USE_REDIS) {
+    const r = await redisCmd('SET', 'fp_' + name, JSON.stringify(data));
+    if (r.ok) return;
+    console.error('[DB] Échec écriture Redis (%s) : %s', name, r.error || 'inconnu');
+    // on tente quand même le fichier local pour ne rien perdre dans la session
   }
-  fs.writeFileSync(path.join(dataDir, name + '.json'), JSON.stringify(data), 'utf8');
+  try { fs.writeFileSync(path.join(dataDir, name + '.json'), JSON.stringify(data), 'utf8'); }
+  catch (e) { console.error('[DB] Échec écriture fichier (%s) : %s', name, e.message); }
 }
 
 /* ================================================================
@@ -352,6 +366,24 @@ function requireAdmin(req, res, next) {
 
 app.get('/api/admin/orders', requireAdmin, async (req, res) => {
   res.json(await dbRead('orders', []));
+});
+
+/* État de la base de données (persistance) */
+app.get('/api/admin/health', requireAdmin, async (req, res) => {
+  let mode = 'fichiers locaux (éphémère ⚠️)';
+  if (USE_REDIS) {
+    await redisCmd('PING'); // rafraîchit l'état
+    mode = redisHealthy ? 'Redis Upstash (persistant ✅)' : 'Redis configuré mais INJOIGNABLE ⚠️';
+  }
+  const users = await dbRead('users', []);
+  const accts = await dbRead('user_accounts', []);
+  res.json({
+    persistence: USE_REDIS ? (redisHealthy ? 'redis' : 'redis-error') : 'file',
+    label: mode,
+    redisError: redisLastError || null,
+    users: users.length,
+    accounts: accts.length,
+  });
 });
 
 /* Liste tous les utilisateurs avec leur solde + comptes achetés */
