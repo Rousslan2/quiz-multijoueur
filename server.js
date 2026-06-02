@@ -260,6 +260,18 @@ app.use((req, res, next) => {
     v.count++; v.last = Date.now(); v.path = req.path;
     recentVisitors.set(ip, v);
     if (recentVisitors.size > 200) { const first = recentVisitors.keys().next().value; recentVisitors.delete(first); }
+    // Associe le nom d'utilisateur si le visiteur est connecté (non-bloquant)
+    if (!v.userName) {
+      const t = parseCookies(req).fp_sess;
+      if (t) {
+        sessionUserId(req).then(async uid => {
+          if (!uid) return;
+          const users = await dbRead('users', []);
+          const u = users.find(x => x.id === uid);
+          if (u) { const vv = recentVisitors.get(ip); if (vv) { vv.userName = u.name; vv.userEmail = u.email; } }
+        }).catch(() => {});
+      }
+    }
   }
   // Voies de secours pour l'admin
   const isAdminPath = req.path.startsWith('/api/admin') || req.path === '/admin' || req.path === '/admin.html';
@@ -642,7 +654,7 @@ app.post('/api/admin/chat/lock', requireAdmin, async (req, res) => {
 app.get('/api/admin/security', requireAdmin, async (req, res) => {
   const banned = await dbRead('banned_ips', []);
   const recent = [...recentVisitors.entries()]
-    .map(([ip, v]) => ({ ip, count: v.count, last: v.last, path: v.path, banned: bannedIps.has(ip) }))
+    .map(([ip, v]) => ({ ip, count: v.count, last: v.last, path: v.path, banned: bannedIps.has(ip), userName: v.userName || null, userEmail: v.userEmail || null }))
     .sort((a, b) => b.last - a.last)
     .slice(0, 60);
   res.json({ banned, recent, yourIp: clientIp(req) });
@@ -654,7 +666,8 @@ app.post('/api/admin/ban', requireAdmin, async (req, res) => {
   if (!ip) return res.status(400).json({ error: 'IP manquante' });
   const banned = await dbRead('banned_ips', []);
   if (banned.find(b => b.ip === ip)) return res.json({ ok: true, banned, already: true });
-  banned.unshift({ ip, reason: reason || null, date: new Date().toISOString() });
+  const vis = recentVisitors.get(ip);
+  banned.unshift({ ip, reason: reason || null, date: new Date().toISOString(), userName: vis ? (vis.userName || null) : null, userEmail: vis ? (vis.userEmail || null) : null });
   await dbWrite('banned_ips', banned);
   bannedIps.add(ip);
   res.json({ ok: true, banned });

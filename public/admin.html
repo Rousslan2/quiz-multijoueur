@@ -656,12 +656,16 @@ body{ background:#070708; }
       document.getElementById('secSub').textContent=`${d.banned.length} IP bannie(s)`;
       document.getElementById('bannedList').innerHTML=d.banned.length
         ?d.banned.map(b=>`<div class="prow" style="grid-template-columns:1fr auto;align-items:center">
-            <div><span class="pts tnum">${secEsc(b.ip)}</span>${b.reason?`<div style="font-size:11px;color:var(--text-3)">${secEsc(b.reason)}</div>`:''}</div>
+            <div><span class="pts tnum">${secEsc(b.ip)}</span>
+            ${b.userName?`<div style="font-size:12px;color:var(--text-2);font-weight:600">👤 ${secEsc(b.userName)}${b.userEmail?' · <span style="color:var(--text-3);font-weight:400">'+secEsc(b.userEmail)+'</span>':''}</div>`:''}
+            ${b.reason?`<div style="font-size:11px;color:var(--text-3)">${secEsc(b.reason)}</div>`:''}</div>
             <button class="pillbtn" data-unban="${secEsc(b.ip)}">Débannir</button></div>`).join('')
         :'<div style="color:var(--text-3);font-size:13px;font-family:var(--mono)">Aucune IP bannie</div>';
       document.getElementById('recentList').innerHTML=d.recent.length
         ?d.recent.map(v=>`<div class="prow" style="grid-template-columns:1fr auto auto;align-items:center;gap:10px">
-            <div><span class="pts tnum">${secEsc(v.ip)}</span><div style="font-size:11px;color:var(--text-3);font-family:var(--mono)">${secEsc(v.path)} · ${v.count}× · il y a ${secAgo(v.last)}</div></div>
+            <div><span class="pts tnum">${secEsc(v.ip)}</span>
+            ${v.userName?`<div style="font-size:12px;color:var(--text-2);font-weight:600">👤 ${secEsc(v.userName)}</div>`:''}
+            <div style="font-size:11px;color:var(--text-3);font-family:var(--mono)">${secEsc(v.path)} · ${v.count}× · il y a ${secAgo(v.last)}</div></div>
             ${v.banned?'<span class="stt pend">BANNI</span>':'<span></span>'}
             ${v.banned?`<button class="pillbtn" data-unban="${secEsc(v.ip)}">Débannir</button>`:`<button class="pillbtn" data-ban="${secEsc(v.ip)}">Bannir</button>`}</div>`).join('')
         :'<div style="color:var(--text-3);font-size:13px;font-family:var(--mono)">Aucun visiteur récent</div>';
